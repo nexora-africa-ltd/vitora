@@ -339,6 +339,8 @@ class ImagingSchedulingService:
             existing_appt.resource = resource
             existing_appt.scheduled_start = scheduled_datetime
             existing_appt.scheduled_end = scheduled_end
+            if not existing_appt.facility_id and resource.facility_id:
+                existing_appt.facility_id = resource.facility_id
             existing_appt.save()
             appointment = existing_appt
         else:
@@ -346,6 +348,7 @@ class ImagingSchedulingService:
             appointment = Appointment.objects.create(
                 patient=imaging_order.patient,
                 resource=resource,
+                facility=resource.facility,
                 appointment_type="IMAGING",
                 scheduled_start=scheduled_datetime,
                 scheduled_end=scheduled_end,

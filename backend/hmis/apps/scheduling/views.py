@@ -742,6 +742,42 @@ class AppointmentViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     filterset_class = AppointmentFilter
     tenant_scope = "facility"
 
+    def get_queryset(self):
+        """
+        Scope appointments to tenant, including legacy rows missing facility FK.
+
+        Older integrations created appointments with ``facility=NULL`` but with
+        a tenant-scoped resource. Keep these visible by inheriting scope from
+        ``resource.facility`` / ``resource.organization``.
+        """
+        self._resolve_tenant_context()
+        qs = Appointment.objects.select_related(
+            "patient", "resource", "created_by", "confirmed_by", "cancelled_by"
+        )
+        request_facility = getattr(self.request, "facility", None)
+        request_organization = getattr(self.request, "organization", None)
+        request_user = getattr(self.request, "user", None)
+
+        if request_facility:
+            return qs.filter(
+                models.Q(facility=request_facility)
+                | models.Q(facility__isnull=True, resource__facility=request_facility)
+            ).distinct()
+
+        if request_organization:
+            return qs.filter(
+                models.Q(organization=request_organization)
+                | models.Q(
+                    organization__isnull=True,
+                    resource__organization=request_organization,
+                )
+            ).distinct()
+
+        if request_user and getattr(request_user, "is_superuser", False):
+            return qs
+
+        return qs.none()
+
     def get_serializer_class(self):
         """Get appropriate serializer class."""
         if self.action == "create":

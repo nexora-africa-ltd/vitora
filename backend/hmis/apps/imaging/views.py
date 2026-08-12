@@ -733,11 +733,21 @@ class ImagingOrderViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
                 resource_serializer.is_valid(raise_exception=True)
 
                 # Resource-based scheduling with appointment linking
+                resource_qs = Resource.objects.filter(pk=resource_id)
+                request_facility = getattr(request, "facility", None)
+                request_organization = getattr(request, "organization", None)
+                if request_facility:
+                    resource_qs = resource_qs.filter(facility=request_facility)
+                elif request_organization:
+                    resource_qs = resource_qs.filter(organization=request_organization)
+
                 try:
-                    resource = Resource.objects.get(pk=resource_id)
+                    resource = resource_qs.get()
                 except Resource.DoesNotExist:
                     return Response(
-                        {"error": f"Resource with id {resource_id} not found"},
+                        {
+                            "error": f"Resource with id {resource_id} not found in current facility scope"
+                        },
                         status=status.HTTP_404_NOT_FOUND,
                     )
 

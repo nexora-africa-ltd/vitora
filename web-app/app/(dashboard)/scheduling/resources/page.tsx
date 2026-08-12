@@ -29,6 +29,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Select,
@@ -69,7 +70,27 @@ import { departmentsApi } from '@/lib/api/rbac';
 import { getApiErrorMessage } from '@/lib/api/client';
 import { AxiosError } from 'axios';
 import type { ResourceType, ResourceListItem, ResourceCreateData } from '@/lib/types/scheduling';
+import { ImagingModality, MODALITY_LABELS } from '@/lib/types/imaging';
 import { cn } from '@/lib/utils/cn';
+
+const IMAGING_MODALITY_OPTIONS: ImagingModality[] = ['XR', 'US', 'CT', 'MRI', 'NM', 'MG', 'FL'];
+
+function extractModalities(metadata: unknown): ImagingModality[] {
+  if (!metadata || typeof metadata !== 'object') return [];
+  const value = (metadata as Record<string, unknown>).modalities;
+  if (!Array.isArray(value)) return [];
+  return value.filter((item): item is ImagingModality => {
+    return typeof item === 'string' && item in MODALITY_LABELS;
+  });
+}
+
+function isRadiologyDepartment(department: { name?: string; code?: string; department_type?: string } | undefined): boolean {
+  if (!department) return false;
+  if (department.department_type === 'RADIOLOGY') return true;
+  const name = (department.name || '').toLowerCase();
+  const code = (department.code || '').toLowerCase();
+  return name.includes('radiology') || code === 'rad' || code.includes('radio');
+}
 
 const typeIcons: Record<ResourceType, React.ReactNode> = {
   PERSON: <User className="h-4 w-4" />,
@@ -136,6 +157,8 @@ export default function SchedulingResourcesPage() {
   const [formCapacity, setFormCapacity] = useState('1');
   const [formDescription, setFormDescription] = useState('');
   const [formDepartment, setFormDepartment] = useState<string>('');
+  const [formModalities, setFormModalities] = useState<ImagingModality[]>([]);
+  const [formMetadataBase, setFormMetadataBase] = useState<Record<string, unknown>>({});
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   // Track which groups are open (all open by default)
@@ -163,6 +186,12 @@ export default function SchedulingResourcesPage() {
   const departments = departmentsData?.results || [];
 
   const resources = useMemo(() => data?.results || [], [data?.results]);
+  const selectedDepartment = useMemo(
+    () => departments.find((department) => department.id.toString() === formDepartment),
+    [departments, formDepartment],
+  );
+  const requiresRadiologyModalities =
+    formType !== 'PERSON' && isRadiologyDepartment(selectedDepartment);
 
   // Client-side search filter + grouping
   const grouped = useMemo(() => {
@@ -281,6 +310,8 @@ export default function SchedulingResourcesPage() {
     setFormCapacity('1');
     setFormDescription('');
     setFormDepartment('');
+    setFormModalities([]);
+    setFormMetadataBase({});
     setFormErrors({});
   }
 
@@ -292,16 +323,37 @@ export default function SchedulingResourcesPage() {
     setFormCapacity('1');
     setFormDescription('');
     setFormDepartment(r.department?.toString() || '');
+    setFormModalities(extractModalities((r as ResourceListItem).metadata));
+    setFormMetadataBase({});
     // Fetch full resource for capacity/description
     resourcesApi.get(r.id).then((full) => {
       setFormCapacity(full.capacity.toString());
       setFormDescription(full.description);
+      setFormModalities(extractModalities(full.metadata));
+      setFormMetadataBase((full.metadata && typeof full.metadata === 'object') ? full.metadata : {});
     });
     setShowCreate(true);
   }
 
   function handleSubmit() {
     setFormErrors({});
+    if (requiresRadiologyModalities && formModalities.length === 0) {
+      setFormErrors({ modalities: 'Select at least one supported imaging modality for radiology resources.' });
+      toast({
+        title: 'Supported modalities required',
+        description: 'Radiology rooms and equipment must include at least one supported imaging modality.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const metadata = { ...formMetadataBase };
+    if (formModalities.length > 0) {
+      metadata.modalities = formModalities;
+    } else {
+      delete metadata.modalities;
+    }
+
     const data: ResourceCreateData = {
       name: formName,
       code: formCode,
@@ -309,6 +361,7 @@ export default function SchedulingResourcesPage() {
       capacity: formType === 'PERSON' ? 1 : (parseInt(formCapacity, 10) || 1),
       description: formDescription,
       department: formDepartment ? parseInt(formDepartment, 10) : null,
+      metadata: Object.keys(metadata).length > 0 ? metadata : undefined,
     };
     if (editingId) {
       updateMutation.mutate({ id: editingId, data });
@@ -481,6 +534,20 @@ export default function SchedulingResourcesPage() {
                                           • {r.department_name}
                                         </span>
                                       )}
+                                      {extractModalities(r.metadata).length > 0 && (
+                                        <div className="flex items-center gap-1">
+                                          {extractModalities(r.metadata).slice(0, 3).map((modality) => (
+                                            <Badge key={`${r.id}-${modality}`} variant="outline" className="text-[10px] px-1.5 py-0">
+                                              {modality}
+                                            </Badge>
+                                          ))}
+                                          {extractModalities(r.metadata).length > 3 && (
+                                            <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                                              +{extractModalities(r.metadata).length - 3}
+                                            </Badge>
+                                          )}
+                                        </div>
+                                      )}
                                     </div>
                                   </TableCell>
                                   <TableCell>
@@ -545,6 +612,15 @@ export default function SchedulingResourcesPage() {
                               <div className="min-w-0">
                                 <p className="font-medium truncate text-sm">{r.name}</p>
                                 <code className="text-xs text-muted-foreground">{r.code}</code>
+                                {extractModalities(r.metadata).length > 0 && (
+                                  <div className="mt-1 flex flex-wrap gap-1">
+                                    {extractModalities(r.metadata).slice(0, 2).map((modality) => (
+                                      <Badge key={`${r.id}-mobile-${modality}`} variant="outline" className="text-[10px] px-1.5 py-0">
+                                        {modality}
+                                      </Badge>
+                                    ))}
+                                  </div>
+                                )}
                               </div>
                             </div>
                             <div className="flex items-center gap-1.5 shrink-0">
@@ -675,6 +751,50 @@ export default function SchedulingResourcesPage() {
                       ))}
                     </SelectContent>
                   </Select>
+                </div>
+              )}
+              {formType !== 'PERSON' && (
+                <div>
+                  <Label>Supported imaging modalities</Label>
+                  <div className="mt-2 grid grid-cols-2 sm:grid-cols-3 gap-2 rounded-md border p-3">
+                    {IMAGING_MODALITY_OPTIONS.map((modality) => {
+                      const checked = formModalities.includes(modality);
+                      return (
+                        <label key={modality} className="flex items-center gap-2 text-sm cursor-pointer">
+                          <Checkbox
+                            checked={checked}
+                            onCheckedChange={(nextChecked) => {
+                              setFormModalities((prev) => {
+                                if (nextChecked === true) {
+                                  return prev.includes(modality) ? prev : [...prev, modality];
+                                }
+                                return prev.filter((item) => item !== modality);
+                              });
+                              if (formErrors.modalities) {
+                                setFormErrors((prev) => {
+                                  const { modalities: _modalities, ...rest } = prev;
+                                  return rest;
+                                });
+                              }
+                            }}
+                          />
+                          <span>{MODALITY_LABELS[modality]}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                  {requiresRadiologyModalities ? (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Radiology rooms/equipment require at least one modality.
+                    </p>
+                  ) : (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Optional for non-radiology resources.
+                    </p>
+                  )}
+                  {formErrors.modalities && (
+                    <p className="text-xs text-destructive mt-1">{formErrors.modalities}</p>
+                  )}
                 </div>
               )}
               <div>

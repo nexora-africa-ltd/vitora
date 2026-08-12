@@ -6,6 +6,7 @@
 
 import { useState, useCallback, useDeferredValue } from 'react';
 import { useRouter } from 'next/navigation';
+import { AxiosError } from 'axios';
 import {
   Card,
   CardContent,
@@ -83,6 +84,8 @@ import {
   ImagingOrder,
   ImagingOrderStatus,
   LATERALITY_LABELS,
+  MODALITY_LABELS,
+  ImagingModality,
 } from '@/lib/types/imaging';
 import { OrderStatusBadge } from './order-status-badge';
 import { PriorityBadge } from './priority-badge';
@@ -106,6 +109,62 @@ function getStatusIndex(status: ImagingOrderStatus): number {
   if (status === 'DRAFT') return -1;
   if (status === 'CANCELLED') return -2;
   return STATUS_STEPS.findIndex((s) => s.status === status);
+}
+
+function getModalityLabel(modalityCode: string): string {
+  if ((modalityCode as ImagingModality) in MODALITY_LABELS) {
+    return MODALITY_LABELS[modalityCode as ImagingModality];
+  }
+  return modalityCode;
+}
+
+function parseSchedulingError(error: unknown): { title: string; description: string } {
+  if (error instanceof AxiosError && error.response?.data && typeof error.response.data === 'object') {
+    const data = error.response.data as { error?: unknown };
+    if (typeof data.error === 'string') {
+      const modalityMismatch = data.error.match(
+        /Resource\s+(.+?)\s+does not support modality\s+([A-Z]+)\.\s*Supported:\s*\[(.*?)\]/i,
+      );
+
+      if (modalityMismatch) {
+        const resourceCode = modalityMismatch[1]?.trim() || 'selected room';
+        const requestedModalityCode = modalityMismatch[2]?.trim() || '';
+        const supportedRaw = modalityMismatch[3]?.trim() || '';
+        const supportedCodes = supportedRaw
+          ? supportedRaw
+              .split(',')
+              .map((value) => value.replace(/[\[\]'"\s]/g, '').trim())
+              .filter(Boolean)
+          : [];
+
+        const requestedLabel = getModalityLabel(requestedModalityCode);
+        const title = `Selected room cannot perform ${requestedLabel.toLowerCase()}`;
+
+        if (supportedCodes.length === 0) {
+          return {
+            title,
+            description: `${resourceCode} has no imaging modalities configured. Choose a room configured for ${requestedModalityCode}, or update the room's supported modalities in Scheduling Resources.`,
+          };
+        }
+
+        const supportedLabels = supportedCodes.map(getModalityLabel).join(', ');
+        return {
+          title,
+          description: `${resourceCode} supports ${supportedLabels}. Choose a ${requestedLabel.toLowerCase()}-capable room.`,
+        };
+      }
+
+      return {
+        title: 'Error scheduling order',
+        description: data.error,
+      };
+    }
+  }
+
+  return {
+    title: 'Error scheduling order',
+    description: error instanceof Error ? error.message : 'An error occurred',
+  };
 }
 
 export function ImagingOrderDetail({ orderNumber }: ImagingOrderDetailProps) {
@@ -202,9 +261,10 @@ export function ImagingOrderDetail({ orderNumber }: ImagingOrderDetailProps) {
       toast({ title: 'Order scheduled successfully' });
       setScheduleDialogOpen(false);
     } catch (error) {
+      const parsedError = parseSchedulingError(error);
       toast({
-        title: 'Error scheduling order',
-        description: error instanceof Error ? error.message : 'An error occurred',
+        title: parsedError.title,
+        description: parsedError.description,
         variant: 'destructive',
       });
     }

@@ -275,6 +275,31 @@ class TestScheduleAPI:
 class TestAppointmentAPI:
     """Tests for Appointment CRUD endpoints."""
 
+    def test_list_includes_legacy_appointments_scoped_via_resource(
+        self, authenticated_client, sample_patient, sample_person_resource
+    ):
+        """Should include legacy appointments with null facility if resource matches facility."""
+        from hmis.apps.scheduling.models import Appointment
+
+        start = timezone.now() + timedelta(days=1)
+        legacy_appointment = Appointment.objects.create(
+            patient=sample_patient,
+            resource=sample_person_resource,
+            facility=None,
+            organization=None,
+            appointment_type="IMAGING",
+            scheduled_start=start,
+            scheduled_end=start + timedelta(minutes=30),
+            status="CONFIRMED",
+            reason="Legacy imaging schedule",
+        )
+
+        response = authenticated_client.get("/api/scheduling/appointments/")
+
+        assert response.status_code == status.HTTP_200_OK
+        ids = {item["id"] for item in response.data["results"]}
+        assert legacy_appointment.id in ids
+
     def test_list_appointments(self, authenticated_client, sample_appointment):
         """Should list all appointments."""
         response = authenticated_client.get("/api/scheduling/appointments/")

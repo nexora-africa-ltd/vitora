@@ -59,7 +59,7 @@ import { HelpPopover } from '@/components/shared/help-popover';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { toast } from 'sonner';
-import { schedulesApi, resourcesApi, shiftsApi } from '@/lib/api/scheduling';
+import { appointmentsApi, attendanceApi, schedulesApi, resourcesApi, shiftsApi } from '@/lib/api/scheduling';
 import type {
   ScheduleType,
   Schedule,
@@ -67,6 +67,7 @@ import type {
   ScheduleBreakCreateData,
   ResourceType,
   ShiftListItem,
+  ResourceListItem,
 } from '@/lib/types/scheduling';
 
 const DAY_LABELS: Record<number, string> = {
@@ -367,6 +368,8 @@ export default function SchedulesPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [showBreakDialog, setShowBreakDialog] = useState<number | null>(null);
   const [selectedScheduleId, setSelectedScheduleId] = useState<number | null>(null);
+  const today = new Date().toISOString().split('T')[0] || '';
+  const [resourceStatusDate, setResourceStatusDate] = useState(today);
 
   // Form state
   const [formResource, setFormResource] = useState('');
@@ -422,6 +425,14 @@ export default function SchedulesPage() {
     () => resources.filter((r) => r.resource_type === activeTab),
     [resources, activeTab],
   );
+  const resourcesByType = useMemo(
+    () => ({
+      PERSON: resources.filter((r) => r.resource_type === 'PERSON'),
+      PLACE: resources.filter((r) => r.resource_type === 'PLACE'),
+      ASSET: resources.filter((r) => r.resource_type === 'ASSET'),
+    }),
+    [resources],
+  );
   const tabResourceIds = useMemo(
     () => new Set(tabResources.map((r) => r.id)),
     [tabResources],
@@ -469,6 +480,77 @@ export default function SchedulesPage() {
     }),
   });
   const weekShifts = useMemo(() => shiftsData?.results || [], [shiftsData]);
+
+  const { data: resourceDateAppointmentsData } = useQuery({
+    queryKey: ['schedules-page-resource-appointments', resourceStatusDate],
+    queryFn: () =>
+      appointmentsApi.list({
+        from_date: resourceStatusDate,
+        to_date: resourceStatusDate,
+        page_size: 500,
+      }),
+  });
+
+  const { data: onDutyData } = useQuery({
+    queryKey: ['schedules-page-on-duty'],
+    queryFn: () => attendanceApi.onDuty(),
+    refetchInterval: 60_000,
+  });
+
+  const occupiedStaffResourceIds = useMemo(() => {
+    if (resourceStatusDate !== today) return new Set<number>();
+    return new Set(
+      [...(onDutyData?.clocked_in || []), ...(onDutyData?.late || [])]
+        .map((entry) => entry.staff_resource_id)
+        .filter((id): id is number => typeof id === 'number'),
+    );
+  }, [onDutyData, resourceStatusDate, today]);
+
+  const scheduledResourceIds = useMemo(() => {
+    const activeStatuses = new Set(['CREATED', 'CONFIRMED', 'CHECKED_IN', 'IN_PROGRESS']);
+    return new Set(
+      (resourceDateAppointmentsData?.results || [])
+        .filter((appointment) => activeStatuses.has(appointment.status))
+        .map((appointment) => appointment.resource),
+    );
+  }, [resourceDateAppointmentsData]);
+
+  const occupiedInProgressResourceIds = useMemo(() => {
+    if (resourceStatusDate !== today) return new Set<number>();
+    return new Set(
+      (resourceDateAppointmentsData?.results || [])
+        .filter((appointment) => appointment.status === 'IN_PROGRESS')
+        .map((appointment) => appointment.resource),
+    );
+  }, [resourceDateAppointmentsData, resourceStatusDate, today]);
+
+  const getResourceStatusSummary = useMemo(
+    () => (resourceType: ResourceType) => {
+      const scopedResources = resourcesByType[resourceType];
+      const isOccupied = (resource: ResourceListItem): boolean => {
+        if (resourceType === 'PERSON') {
+          return occupiedStaffResourceIds.has(resource.id) || occupiedInProgressResourceIds.has(resource.id);
+        }
+        return occupiedInProgressResourceIds.has(resource.id);
+      };
+
+      const occupied = scopedResources.filter((resource) => isOccupied(resource));
+      const scheduled = scopedResources.filter(
+        (resource) => !isOccupied(resource) && scheduledResourceIds.has(resource.id),
+      );
+      const available = scopedResources.filter(
+        (resource) => !isOccupied(resource) && !scheduledResourceIds.has(resource.id),
+      );
+
+      return {
+        resources: scopedResources,
+        occupied,
+        scheduled,
+        available,
+      };
+    },
+    [resourcesByType, occupiedStaffResourceIds, occupiedInProgressResourceIds, scheduledResourceIds],
+  );
 
   // Group shifts by staff name
   const groupedShifts = useMemo(() => {
@@ -620,6 +702,72 @@ export default function SchedulesPage() {
           {/* Shared content area for all tabs */}
           {(['PERSON', 'PLACE', 'ASSET'] as ResourceType[]).map((tabType) => (
             <TabsContent key={tabType} value={tabType} className="mt-4 space-y-4">
+              {(() => {
+                const statusSummary = getResourceStatusSummary(tabType);
+                return (
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm flex items-center justify-between">
+                      <span>
+                        {tabType === 'PERSON'
+                          ? 'Staff Scheduling Status'
+                          : tabType === 'PLACE'
+                          ? 'Room Scheduling Status'
+                          : 'Equipment Scheduling Status'}
+                      </span>
+                      <Input
+                        type="date"
+                        value={resourceStatusDate}
+                        onChange={(e) => setResourceStatusDate(e.target.value || today)}
+                        className="w-[190px]"
+                      />
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300 text-xs">
+                        {statusSummary.available.length} available
+                      </Badge>
+                      <Badge className="bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-300 text-xs">
+                        {statusSummary.scheduled.length} scheduled
+                      </Badge>
+                      <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300 text-xs">
+                        {statusSummary.occupied.length} occupied
+                      </Badge>
+                      <Badge variant="outline" className="text-xs">
+                        {statusSummary.resources.length} total {tabType === 'PERSON' ? 'staff' : tabType === 'PLACE' ? 'rooms' : 'equipment'}
+                      </Badge>
+                    </div>
+                    <div className="grid gap-2 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+                      {statusSummary.resources.slice(0, 12).map((resource: ResourceListItem) => {
+                        const isOccupied = statusSummary.occupied.some((item) => item.id === resource.id);
+                        const isScheduled = !isOccupied && statusSummary.scheduled.some((item) => item.id === resource.id);
+                        return (
+                          <div key={resource.id} className="flex items-center justify-between rounded-md border px-2.5 py-2">
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium truncate">{resource.name}</p>
+                              <p className="text-xs text-muted-foreground font-mono">{resource.code}</p>
+                            </div>
+                            <Badge
+                              className={`text-xs ml-2 ${
+                                isOccupied
+                                  ? 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300'
+                                  : isScheduled
+                                  ? 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-300'
+                                  : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300'
+                              }`}
+                            >
+                              {isOccupied ? 'Occupied' : isScheduled ? 'Scheduled' : 'Available'}
+                            </Badge>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </CardContent>
+                </Card>
+                );
+              })()}
+
               {/* Staff tab: This week's roster */}
               {tabType === 'PERSON' && groupedShifts.length > 0 && (
                 <WeekRosterSection
@@ -644,9 +792,9 @@ export default function SchedulesPage() {
                 <Card className="border-dashed">
                   <CardContent className="py-12 text-center">
                     <Settings className="h-10 w-10 mx-auto text-muted-foreground mb-3 opacity-50" />
-                    <p className="text-sm font-medium text-muted-foreground">No schedules defined</p>
+                    <p className="text-sm font-medium text-muted-foreground">No availability schedules defined</p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      Add schedules to define when {tabType === 'PERSON' ? 'staff' : tabType === 'PLACE' ? 'rooms' : 'equipment'} are available.
+                      Appointments may still exist. Add schedules to define when {tabType === 'PERSON' ? 'staff' : tabType === 'PLACE' ? 'rooms' : 'equipment'} are available.
                     </p>
                   </CardContent>
                 </Card>

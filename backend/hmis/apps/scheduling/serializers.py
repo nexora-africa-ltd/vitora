@@ -102,6 +102,7 @@ class ResourceListSerializer(serializers.ModelSerializer):
             "is_active",
             "department",
             "department_name",
+            "metadata",
         ]
 
     def get_department_name(self, obj) -> str | None:

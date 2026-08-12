@@ -32,6 +32,7 @@ import {
 } from '@/components/ui/table';
 import { resourcesApi, shiftsApi } from '@/lib/api/scheduling';
 import type { ResourceType, ShiftListItem } from '@/lib/types/scheduling';
+import { ImagingModality, MODALITY_LABELS } from '@/lib/types/imaging';
 import { cn } from '@/lib/utils/cn';
 
 const typeIcons: Record<ResourceType, React.ReactNode> = {
@@ -56,6 +57,15 @@ const shiftStatusColors: Record<string, string> = {
 
 function today() {
   return new Date().toISOString().slice(0, 10);
+}
+
+function extractModalities(metadata: unknown): ImagingModality[] {
+  if (!metadata || typeof metadata !== 'object') return [];
+  const value = (metadata as Record<string, unknown>).modalities;
+  if (!Array.isArray(value)) return [];
+  return value.filter((item): item is ImagingModality => {
+    return typeof item === 'string' && item in MODALITY_LABELS;
+  });
 }
 
 export default function ResourceDetailPage() {
@@ -131,6 +141,7 @@ export default function ResourceDetailPage() {
   const todayShifts = todayShiftsData?.results ?? [];
   const recentShifts = recentShiftsData?.results ?? [];
   const activeShifts = todayShifts.filter((s) => s.status === 'ACTIVE' || s.status === 'ON_BREAK');
+  const supportedModalities = extractModalities(resource?.metadata);
 
   if (isLoading) {
     return (
@@ -206,6 +217,27 @@ export default function ResourceDetailPage() {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
+        {resource.resource_type !== 'PERSON' && (
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">Supported Modalities</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {supportedModalities.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No modalities configured.</p>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {supportedModalities.map((modality) => (
+                    <Badge key={modality} variant="outline">
+                      {MODALITY_LABELS[modality]}
+                    </Badge>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
         {/* Active Now */}
         {resource.resource_type === 'PLACE' && (
           <Card>

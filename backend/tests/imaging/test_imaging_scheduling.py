@@ -354,6 +354,7 @@ class TestScheduleImagingOrderAPI:
         assert imaging_order.appointment is not None
         assert imaging_order.appointment.appointment_type == "IMAGING"
         assert imaging_order.appointment.status == "CONFIRMED"
+        assert imaging_order.appointment.facility == imaging_room_resource.facility
 
     def test_schedule_imaging_order_checks_availability(
         self,

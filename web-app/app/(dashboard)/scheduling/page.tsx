@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import {
@@ -23,6 +23,7 @@ import { PullToRefresh } from '@/components/shared/pull-to-refresh';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { useFacility } from '@/lib/context/facility-context';
@@ -38,6 +39,7 @@ export default function SchedulingDashboardPage() {
   const { refresh, isRefreshing } = usePageRefresh();
   const { facility } = useFacility();
   useSchedulingSocket(facility?.id ?? null);
+  const [resourcesDate, setResourcesDate] = useState(today);
 
   // Appointments
   const { data: todayData } = useQuery({
@@ -47,6 +49,15 @@ export default function SchedulingDashboardPage() {
   const { data: upcomingData } = useQuery({
     queryKey: ['scheduling-appointments-upcoming'],
     queryFn: () => appointmentsApi.list({ status: 'CONFIRMED', page_size: 5, ordering: 'scheduled_start' }),
+  });
+  const { data: resourcesDateAppointmentsData } = useQuery({
+    queryKey: ['scheduling-appointments-by-date', resourcesDate],
+    queryFn: () =>
+      appointmentsApi.list({
+        from_date: resourcesDate,
+        to_date: resourcesDate,
+        page_size: 500,
+      }),
   });
 
   // On-duty staff
@@ -63,6 +74,10 @@ export default function SchedulingDashboardPage() {
   });
 
   const todayAppts = useMemo(() => todayData?.results || [], [todayData]);
+  const resourcesDateAppts = useMemo(
+    () => resourcesDateAppointmentsData?.results || [],
+    [resourcesDateAppointmentsData],
+  );
   const upcomingAppts = useMemo(() => upcomingData?.results || [], [upcomingData]);
   const allResources = useMemo(() => resourcesData?.results || [], [resourcesData]);
 
@@ -84,15 +99,24 @@ export default function SchedulingDashboardPage() {
     return { staff: staff.length, places: places.length, assets: assets.length, total: allResources.length };
   }, [allResources]);
 
-  // Rooms currently occupied (clocked_in staff have a room_name)
-  const occupiedRooms = useMemo(() => {
+  const occupiedRoomNames = useMemo(() => {
+    if (resourcesDate !== today) return new Set<string>();
     if (!onDutyData) return new Set<string>();
     const rooms = new Set<string>();
     for (const entry of [...onDutyData.clocked_in, ...(onDutyData.late || [])]) {
       if (entry.room_name) rooms.add(entry.room_name);
     }
     return rooms;
-  }, [onDutyData]);
+  }, [onDutyData, resourcesDate]);
+
+  const scheduledRoomIds = useMemo(() => {
+    const activeStatuses = new Set(['CREATED', 'CONFIRMED', 'CHECKED_IN', 'IN_PROGRESS']);
+    return new Set(
+      resourcesDateAppts
+        .filter((appointment) => activeStatuses.has(appointment.status))
+        .map((appointment) => appointment.resource),
+    );
+  }, [resourcesDateAppts]);
 
   return (
     <PullToRefresh onRefresh={refresh} isRefreshing={isRefreshing} className="min-h-full">
@@ -262,10 +286,30 @@ export default function SchedulingDashboardPage() {
               <StatCard icon={CheckCircle} label="Total Active" value={resourceCounts.total} color="green" />
             </div>
 
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-sm font-medium">Room status date</p>
+                    <p className="text-xs text-muted-foreground">
+                      Availability and scheduled counts are shown for the selected date.
+                    </p>
+                  </div>
+                  <Input
+                    type="date"
+                    value={resourcesDate}
+                    onChange={(e) => setResourcesDate(e.target.value || today)}
+                    className="w-full sm:w-[200px]"
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
             {/* Rooms overview */}
             <RoomOverviewCard
               resources={allResources.filter((r) => r.resource_type === 'PLACE')}
-              occupiedRooms={occupiedRooms}
+              occupiedRoomNames={occupiedRoomNames}
+              scheduledRoomIds={scheduledRoomIds}
               onRowClick={(r) => router.push(`/scheduling/resources/${r.id}`)}
             />
 
@@ -430,15 +474,22 @@ function StaffSection({
 
 function RoomOverviewCard({
   resources,
-  occupiedRooms,
+  occupiedRoomNames,
+  scheduledRoomIds,
   onRowClick,
 }: {
   resources: ResourceListItem[];
-  occupiedRooms: Set<string>;
+  occupiedRoomNames: Set<string>;
+  scheduledRoomIds: Set<number>;
   onRowClick: (r: ResourceListItem) => void;
 }) {
-  const occupied = resources.filter((r) => occupiedRooms.has(r.name));
-  const available = resources.filter((r) => !occupiedRooms.has(r.name));
+  const occupied = resources.filter((r) => occupiedRoomNames.has(r.name));
+  const scheduled = resources.filter(
+    (r) => !occupiedRoomNames.has(r.name) && scheduledRoomIds.has(r.id),
+  );
+  const available = resources.filter(
+    (r) => !occupiedRoomNames.has(r.name) && !scheduledRoomIds.has(r.id),
+  );
   return (
     <Card>
       <CardHeader className="pb-2 px-4 pt-4">
@@ -449,6 +500,9 @@ function RoomOverviewCard({
           <div className="flex items-center gap-2">
             <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300 text-xs">
               {available.length} available
+            </Badge>
+            <Badge className="bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-300 text-xs">
+              {scheduled.length} scheduled
             </Badge>
             <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300 text-xs">
               {occupied.length} occupied
@@ -462,7 +516,8 @@ function RoomOverviewCard({
         ) : (
           <div className="grid gap-2 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
             {resources.map((r) => {
-              const isOccupied = occupiedRooms.has(r.name);
+              const isOccupied = occupiedRoomNames.has(r.name);
+              const isScheduled = !isOccupied && scheduledRoomIds.has(r.id);
               return (
                 <div
                   key={r.id}
@@ -479,10 +534,12 @@ function RoomOverviewCard({
                     className={`text-xs shrink-0 ml-2 ${
                       isOccupied
                         ? 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300'
+                        : isScheduled
+                        ? 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-300'
                         : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300'
                     }`}
                   >
-                    {isOccupied ? 'Occupied' : 'Available'}
+                    {isOccupied ? 'Occupied' : isScheduled ? 'Scheduled' : 'Available'}
                   </Badge>
                 </div>
               );

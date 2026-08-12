@@ -20,6 +20,7 @@ export interface ResourceListItem {
   is_active: boolean;
   department: number | null;
   department_name: string | null;
+  metadata?: Record<string, unknown>;
 }
 
 export interface Resource extends ResourceListItem {

@@ -27,6 +27,7 @@ export const ResourceListItemSchema = z.object({
   is_active: z.boolean(),
   department: z.number().nullable(),
   department_name: z.string().nullable(),
+  metadata: z.record(z.unknown()).optional(),
 });
 
 export const ResourceSchema = z.object({
