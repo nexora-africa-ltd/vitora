@@ -265,6 +265,12 @@ export const EligibilityCheckResponseSchema = z.object({
   pfms_category: z.string().nullable().optional(),
   pfms_category_display: z.string().nullable().optional(),
   pfms_verified: z.boolean().optional(),
+  error: z.string().nullable().optional(),
+  error_code: z.string().nullable().optional(),
+  error_title: z.string().nullable().optional(),
+  error_detail: z.string().nullable().optional(),
+  upstream_status: z.number().nullable().optional(),
+  detail: z.string().nullable().optional(),
 });
 
 export type EligibilityCheckResponseSchemaType = z.infer<typeof EligibilityCheckResponseSchema>;
@@ -349,6 +355,12 @@ export const DirectEligibilityCheckResponseSchema = z.object({
   dependents_covered: z.number().optional(),
   raw_response: z.record(z.unknown()).optional(),
   error: z.string().nullable().optional(),
+  error_code: z.string().nullable().optional(),
+  error_title: z.string().nullable().optional(),
+  error_detail: z.string().nullable().optional(),
+  upstream_status: z.number().nullable().optional(),
+  message: z.string().nullable().optional(),
+  detail: z.string().nullable().optional(),
 });
 
 export type DirectEligibilityCheckResponseSchemaType = z.infer<typeof DirectEligibilityCheckResponseSchema>;

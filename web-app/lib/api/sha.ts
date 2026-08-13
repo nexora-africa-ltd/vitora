@@ -407,6 +407,12 @@ async function checkPatientEligibility(
               verified_name: directResponse.full_name || undefined,
               coverage_end_date: directResponse.coverage_end_date || undefined,
               message: 'Dependant — coverage via principal member',
+              error: directResponse.error || undefined,
+              error_code: directResponse.error_code || undefined,
+              error_title: directResponse.error_title || undefined,
+              error_detail: directResponse.error_detail || undefined,
+              upstream_status: directResponse.upstream_status ?? undefined,
+              detail: directResponse.detail || undefined,
             };
           }
           return {
@@ -418,7 +424,16 @@ async function checkPatientEligibility(
             whitelisted_for_otp: directResponse.whitelisted_for_otp,
             message: directResponse.is_eligible
               ? 'SHA coverage verified via direct lookup'
-              : directResponse.reason || 'Patient is not eligible for SHA coverage',
+              : directResponse.message
+                || directResponse.error
+                || directResponse.reason
+                || 'Patient is not eligible for SHA coverage',
+            detail: directResponse.detail || undefined,
+            error: directResponse.error || undefined,
+            error_code: directResponse.error_code || undefined,
+            error_title: directResponse.error_title || undefined,
+            error_detail: directResponse.error_detail || undefined,
+            upstream_status: directResponse.upstream_status ?? undefined,
           };
         } catch (primaryError) {
           // If primary lookup failed, try fallback identifier
@@ -441,7 +456,16 @@ async function checkPatientEligibility(
                 whitelisted_for_otp: fallbackResponse.whitelisted_for_otp,
                 message: fallbackResponse.is_eligible
                   ? 'SHA coverage verified via direct lookup'
-                  : fallbackResponse.reason || 'Patient is not eligible for SHA coverage',
+                  : fallbackResponse.message
+                    || fallbackResponse.error
+                    || fallbackResponse.reason
+                    || 'Patient is not eligible for SHA coverage',
+                detail: fallbackResponse.detail || undefined,
+                error: fallbackResponse.error || undefined,
+                error_code: fallbackResponse.error_code || undefined,
+                error_title: fallbackResponse.error_title || undefined,
+                error_detail: fallbackResponse.error_detail || undefined,
+                upstream_status: fallbackResponse.upstream_status ?? undefined,
               };
             } catch {
               throw primaryError;

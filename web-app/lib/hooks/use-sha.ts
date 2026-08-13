@@ -5,6 +5,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { shaApi } from '@/lib/api/sha';
 import { toCrId } from '@/lib/sha/ilm-parsers';
+import { extractSHAErrorInfo } from '@/lib/sha/error-utils';
 import type {
   ClaimListParams,
   ClaimCreateRequest,
@@ -472,7 +473,14 @@ export type BenefitsAvailableState =
   | { status: 'loading' }
   | { status: 'available' }
   | { status: 'empty'; reason: 'no_coverage' | 'no_benefits' }
-  | { status: 'error'; message: string };
+  | {
+    status: 'error';
+    message: string;
+    title?: string;
+    detail?: string;
+    code?: string;
+    upstreamStatus?: number;
+  };
 
 /**
  * Check whether a patient has active SHA benefit packages at the current facility.
@@ -555,6 +563,17 @@ export function deriveBenefitsState(
       if (text.includes('no result found')) {
         return { status: 'empty', reason: 'no_coverage' };
       }
+    }
+    const shaError = extractSHAErrorInfo(error);
+    if (shaError) {
+      return {
+        status: 'error',
+        message: shaError.message,
+        title: shaError.title,
+        detail: shaError.detail,
+        code: shaError.code,
+        upstreamStatus: shaError.upstreamStatus,
+      };
     }
     return { status: 'error', message: error?.message ?? 'Unknown error' };
   }

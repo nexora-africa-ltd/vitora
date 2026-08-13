@@ -31,6 +31,7 @@ import type {
   SchemeCategory,
 } from '@/lib/types/sha';
 import { format, parseISO, isPast } from 'date-fns';
+import { extractSHAErrorInfo } from '@/lib/sha/error-utils';
 
 // ============================================================================
 // Types
@@ -74,6 +75,18 @@ function formatCoverageDate(dateStr?: string): string {
   } catch {
     return dateStr;
   }
+}
+
+function hasEligibilityServiceError(payload: {
+  error?: string | null;
+  error_code?: string | null;
+  error_title?: string | null;
+  error_detail?: string | null;
+  upstream_status?: number | null;
+}): boolean {
+  return !!(
+    payload.error_code || payload.error_title || payload.error_detail || payload.upstream_status != null
+  );
 }
 
 // ============================================================================
@@ -376,9 +389,19 @@ function FullEligibilityBanner({
           )}
 
           {status === 'error' && (
-            <p className="text-sm text-destructive">
-              {errorMessage || 'Unable to verify SHA coverage. You can proceed with manual billing.'}
-            </p>
+            <div className="text-sm text-destructive space-y-1">
+              <p className="font-medium">{eligibility.errorTitle || 'Unable to verify SHA coverage'}</p>
+              <p>{errorMessage || 'Unable to verify SHA coverage. You can proceed with manual billing.'}</p>
+              {eligibility.errorDetail && eligibility.errorDetail !== errorMessage && (
+                <p className="text-xs break-words">{eligibility.errorDetail}</p>
+              )}
+              {(eligibility.errorCode || typeof eligibility.upstreamStatus === 'number') && (
+                <p className="text-xs font-mono">
+                  {eligibility.errorCode || 'SHA_ERROR'}
+                  {typeof eligibility.upstreamStatus === 'number' ? ` (upstream ${eligibility.upstreamStatus})` : ''}
+                </p>
+              )}
+            </div>
           )}
 
           {/* Member Info Badge */}
@@ -477,6 +500,22 @@ export function EligibilityBanner({
     try {
       const response = await shaApi.checkPatientEligibility(patientId);
 
+      if (hasEligibilityServiceError(response)) {
+        const info = extractSHAErrorInfo(response);
+        const errorState: EligibilityState = {
+          status: 'error',
+          errorMessage: info?.message || response.message || 'Unable to verify SHA coverage.',
+          errorTitle: info?.title,
+          errorDetail: info?.detail,
+          errorCode: info?.code,
+          upstreamStatus: info?.upstreamStatus,
+          checkedAt: response.checked_at,
+        };
+        setEligibility(errorState);
+        onStatusChange?.(errorState);
+        return;
+      }
+
       if (response.is_eligible) {
         // Check if coverage is expired
         if (response.coverage_end_date && isPast(parseISO(response.coverage_end_date))) {
@@ -507,9 +546,14 @@ export function EligibilityBanner({
       onStatusChange?.(newState);
     } catch (error) {
       console.error('Eligibility check failed:', error);
+      const info = extractSHAErrorInfo(error);
       const errorState: EligibilityState = {
         status: 'error',
-        errorMessage: error instanceof Error ? error.message : 'An unexpected error occurred',
+        errorMessage: info?.message || (error instanceof Error ? error.message : 'An unexpected error occurred'),
+        errorTitle: info?.title,
+        errorDetail: info?.detail,
+        errorCode: info?.code,
+        upstreamStatus: info?.upstreamStatus,
       };
       setEligibility(errorState);
       onStatusChange?.(errorState);
@@ -568,6 +612,21 @@ export function useEligibilityCheck(patientId?: number) {
     try {
       const response = await shaApi.checkPatientEligibility(id);
 
+      if (hasEligibilityServiceError(response)) {
+        const info = extractSHAErrorInfo(response);
+        const errorState: EligibilityState = {
+          status: 'error',
+          errorMessage: info?.message || response.message || 'Unable to verify SHA coverage.',
+          errorTitle: info?.title,
+          errorDetail: info?.detail,
+          errorCode: info?.code,
+          upstreamStatus: info?.upstreamStatus,
+          checkedAt: response.checked_at,
+        };
+        setEligibility(errorState);
+        return errorState;
+      }
+
       let status: EligibilityStatus = 'ineligible';
       if (response.is_eligible) {
         if (response.coverage_end_date && isPast(parseISO(response.coverage_end_date))) {
@@ -596,9 +655,14 @@ export function useEligibilityCheck(patientId?: number) {
       setEligibility(newState);
       return newState;
     } catch (error) {
+      const info = extractSHAErrorInfo(error);
       const errorState: EligibilityState = {
         status: 'error',
-        errorMessage: error instanceof Error ? error.message : 'An unexpected error occurred',
+        errorMessage: info?.message || (error instanceof Error ? error.message : 'An unexpected error occurred'),
+        errorTitle: info?.title,
+        errorDetail: info?.detail,
+        errorCode: info?.code,
+        upstreamStatus: info?.upstreamStatus,
       };
       setEligibility(errorState);
       return errorState;

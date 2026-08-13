@@ -51,11 +51,22 @@ export function SHABenefitsAlert({
           <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
           <div className="min-w-0">
             <p className="text-xs font-medium text-amber-800 dark:text-amber-300">
-              Benefits Check Failed
+              {benefitsState.title || 'Benefits Check Failed'}
             </p>
             <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
               {benefitsState.message}
             </p>
+            {benefitsState.detail && benefitsState.detail !== benefitsState.message && (
+              <p className="text-[11px] text-amber-700/90 dark:text-amber-300/90 mt-1 break-words">
+                {benefitsState.detail}
+              </p>
+            )}
+            {(benefitsState.code || typeof benefitsState.upstreamStatus === 'number') && (
+              <p className="text-[10px] text-amber-700/80 dark:text-amber-300/80 mt-1 font-mono">
+                {benefitsState.code || 'SHA_ERROR'}
+                {typeof benefitsState.upstreamStatus === 'number' ? ` (upstream ${benefitsState.upstreamStatus})` : ''}
+              </p>
+            )}
           </div>
         </div>
       </div>

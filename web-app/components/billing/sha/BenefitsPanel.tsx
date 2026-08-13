@@ -40,6 +40,7 @@ import type { ParsedUtilizationEntry } from '@/lib/sha/ilm-parsers';
 import { useQuery } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
 import { useFacility } from '@/lib/context/facility-context';
+import { extractSHAErrorInfo } from '@/lib/sha/error-utils';
 
 /**
  * DHA returns HTTP 400 with "No result found for ID ... ClientRegistry ID"
@@ -274,11 +275,24 @@ export function BenefitsPanel({
   }
 
   if (isError && !noCoverage) {
+    const shaError = extractSHAErrorInfo(error);
     return (
       <Alert variant="destructive" className={className}>
         <AlertCircle className="h-4 w-4" />
         <AlertDescription>
-          Failed to load benefits: {error instanceof Error ? error.message : 'Unknown error'}
+          <div className="space-y-1">
+            <p className="font-medium">{shaError?.title || 'Failed to load benefits'}</p>
+            <p>{shaError?.message || (error instanceof Error ? error.message : 'Unknown error')}</p>
+            {shaError?.detail && shaError.detail !== shaError.message && (
+              <p className="text-xs break-words">{shaError.detail}</p>
+            )}
+            {(shaError?.code || typeof shaError?.upstreamStatus === 'number') && (
+              <p className="text-xs font-mono opacity-90">
+                {shaError?.code || 'SHA_ERROR'}
+                {typeof shaError?.upstreamStatus === 'number' ? ` (upstream ${shaError.upstreamStatus})` : ''}
+              </p>
+            )}
+          </div>
         </AlertDescription>
       </Alert>
     );

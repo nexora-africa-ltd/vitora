@@ -26,6 +26,7 @@ import { SHALogo } from '@/components/ui/sha-logo';
 import { cn } from '@/lib/utils';
 import { shaApi } from '@/lib/api/sha';
 import { useRequiresInternet } from '@/lib/hooks/use-requires-internet';
+import { extractSHAErrorInfo } from '@/lib/sha/error-utils';
 import type {
   DirectEligibilityCheckResponse,
   ClientRegistryClient,
@@ -71,6 +72,8 @@ export function SHAStatusIndicator({
 
     try {
       const result = await shaApi.checkPatientEligibility(patientId);
+
+      const shaError = extractSHAErrorInfo(result);
       setEligibilityData({
         is_eligible: result.is_eligible,
         copay_percentage: result.copay_percentage ?? 0,
@@ -78,10 +81,23 @@ export function SHAStatusIndicator({
         full_name: result.verified_name ?? null,
         sha_number: null,
         reason: result.message,
+        message: result.message,
+        detail: result.detail,
+        error: result.error,
+        error_code: result.error_code,
+        error_title: result.error_title,
+        error_detail: result.error_detail,
+        upstream_status: result.upstream_status,
       });
-      setEligibilityState(result.is_eligible ? 'eligible' : 'ineligible');
+      if (shaError) {
+        setEligibilityError(shaError.message);
+        setEligibilityState('error');
+      } else {
+        setEligibilityState(result.is_eligible ? 'eligible' : 'ineligible');
+      }
     } catch (err) {
-      setEligibilityError(err instanceof Error ? err.message : 'Eligibility check failed');
+      const shaError = extractSHAErrorInfo(err);
+      setEligibilityError(shaError?.message || (err instanceof Error ? err.message : 'Eligibility check failed'));
       setEligibilityState('error');
     }
   }, [patientId]);
@@ -313,9 +329,23 @@ function EligibilitySection({
       )}
 
       {state === 'error' && (
-        <div className="flex items-center gap-1.5 text-xs text-red-600 dark:text-red-400">
-          <AlertCircle className="h-3.5 w-3.5 shrink-0" />
-          <span>{error || 'Check failed'}</span>
+        <div className="rounded-md bg-red-50 dark:bg-red-950/20 p-2 space-y-1">
+          <div className="flex items-center gap-1.5 text-xs text-red-700 dark:text-red-300">
+            <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+            <span className="font-medium">{data?.error_title || 'SHA check failed'}</span>
+          </div>
+          <p className="text-[11px] text-red-600 dark:text-red-400 pl-5 break-words">{error || data?.error || 'Check failed'}</p>
+          {data?.error_detail && data.error_detail !== error && (
+            <p className="text-[10px] text-red-600/90 dark:text-red-400/90 pl-5 break-words">
+              {data.error_detail}
+            </p>
+          )}
+          {(data?.error_code || typeof data?.upstream_status === 'number') && (
+            <p className="text-[10px] text-red-600/90 dark:text-red-400/90 pl-5 font-mono">
+              {data?.error_code || 'SHA_ERROR'}
+              {typeof data?.upstream_status === 'number' ? ` (upstream ${data.upstream_status})` : ''}
+            </p>
+          )}
         </div>
       )}
 

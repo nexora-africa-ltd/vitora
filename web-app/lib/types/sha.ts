@@ -253,6 +253,13 @@ export interface EligibilityCheckResponse {
   pfms_category?: string | null;
   pfms_category_display?: string | null;
   pfms_verified?: boolean;
+  // Upstream error metadata (when DHA middleware is unreachable/unavailable)
+  error?: string | null;
+  error_code?: string | null;
+  error_title?: string | null;
+  error_detail?: string | null;
+  upstream_status?: number | null;
+  detail?: string | null;
 }
 
 // Direct eligibility check (without SHAMember record)
@@ -384,6 +391,12 @@ export interface DirectEligibilityCheckResponse {
   dependents_covered?: number;
   raw_response?: Record<string, unknown>;
   error?: string | null;
+  error_code?: string | null;
+  error_title?: string | null;
+  error_detail?: string | null;
+  upstream_status?: number | null;
+  message?: string | null;
+  detail?: string | null;
 }
 
 export interface EligibilityState {
@@ -401,6 +414,10 @@ export interface EligibilityState {
   eligibleSchemes?: string[];
   billableSchemes?: string[];
   coverageBlocked?: boolean;
+  errorTitle?: string;
+  errorDetail?: string;
+  errorCode?: string;
+  upstreamStatus?: number;
 }
 
 // ============================================================================

@@ -42,6 +42,7 @@ import { useToast } from '@/lib/hooks/use-toast';
 import { shaApi, type CapitationValidationResult } from '@/lib/api/sha';
 import { useDebounce } from '@/lib/hooks/use-debounce';
 import { useCreateRouteAccess } from '@/lib/hooks/use-create-route-access';
+import { extractSHAErrorInfo } from '@/lib/sha/error-utils';
 import type { Patient } from '@/lib/types/patient';
 import type {
   ClientRegistryClient,
@@ -847,6 +848,7 @@ function CRResultCard({
 
   const hasExtraLocation = client.sub_county || client.ward || client.village_estate;
   const hasContactInfo = client.email || client.address || client.zip_code;
+  const eligibilityErrorInfo = eligibility ? extractSHAErrorInfo(eligibility) : null;
   const hasDemographics = client.citizenship || client.civil_status || client.employment_type || client.place_of_birth || client.is_person_with_disability;
   const hasDetailSection = hasExtraLocation || hasContactInfo || hasDemographics || principalIds.length > 0;
 
@@ -990,7 +992,7 @@ function CRResultCard({
               <div className="space-y-2">
             {/* Status badge row */}
             <div className="flex items-center gap-2 flex-wrap">
-              {eligibility.is_eligible ? (
+              {eligibility.is_eligible && !eligibilityErrorInfo ? (
                 <Badge variant="default" className="bg-green-600 hover:bg-green-700 gap-1">
                   <ShieldCheck className="h-3 w-3" />
                   Covered
@@ -998,7 +1000,7 @@ function CRResultCard({
               ) : (
                 <Badge variant="destructive" className="gap-1">
                   <ShieldX className="h-3 w-3" />
-                  Not Covered
+                  {eligibilityErrorInfo ? 'Check Failed' : 'Not Covered'}
                 </Badge>
               )}
               {eligibility.sha_number && (
@@ -1022,8 +1024,29 @@ function CRResultCard({
             </div>
 
             {/* Reason (ineligible) */}
-            {eligibility.reason && !eligibility.is_eligible && (
+            {eligibility.reason && !eligibility.is_eligible && !eligibilityErrorInfo && (
               <p className="text-xs text-muted-foreground">{eligibility.reason}</p>
+            )}
+
+            {eligibilityErrorInfo && (
+              <Alert variant="destructive" className="bg-destructive/10">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>
+                  <div className="space-y-1">
+                    <p className="font-medium">{eligibilityErrorInfo.title}</p>
+                    <p>{eligibilityErrorInfo.message}</p>
+                    {eligibilityErrorInfo.detail && eligibilityErrorInfo.detail !== eligibilityErrorInfo.message && (
+                      <p className="text-xs break-words">{eligibilityErrorInfo.detail}</p>
+                    )}
+                    {(eligibilityErrorInfo.code || typeof eligibilityErrorInfo.upstreamStatus === 'number') && (
+                      <p className="text-xs font-mono opacity-90">
+                        {eligibilityErrorInfo.code || 'SHA_ERROR'}
+                        {typeof eligibilityErrorInfo.upstreamStatus === 'number' ? ` (upstream ${eligibilityErrorInfo.upstreamStatus})` : ''}
+                      </p>
+                    )}
+                  </div>
+                </AlertDescription>
+              </Alert>
             )}
 
             {/* Possible solution */}

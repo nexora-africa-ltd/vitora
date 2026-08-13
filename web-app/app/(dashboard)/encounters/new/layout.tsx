@@ -26,7 +26,7 @@ import { PageHeader } from '@/components/shared/page-header';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { RotateCcw, X, Clock } from 'lucide-react';
+import { Clock } from 'lucide-react';
 import { useToast } from '@/lib/hooks/use-toast';
 import { usePermissions } from '@/lib/hooks/use-permissions';
 
@@ -67,7 +67,7 @@ export default function NewEncounterLayout({
     isDirtyState,
   } = useNewEncounterStore();
 
-  const [showDraftBanner, setShowDraftBanner] = useState(false);
+  const [didNotifyDraftRecovery, setDidNotifyDraftRecovery] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
 
   // Check if we have a pre-selected patient from URL
@@ -78,9 +78,13 @@ export default function NewEncounterLayout({
     const session = getSession();
 
     if (session) {
-      // Session exists - check if it's a draft we should prompt to recover
-      if (session.isDirty && !isInitialized) {
-        setShowDraftBanner(true);
+      // Session exists - auto-recover unsaved draft without prompting
+      if (session.isDirty && !didNotifyDraftRecovery) {
+        toast({
+          title: 'Draft Restored',
+          description: 'Recovered your unsaved encounter draft automatically.',
+        });
+        setDidNotifyDraftRecovery(true);
       }
     } else {
       // No session - create new one
@@ -88,7 +92,7 @@ export default function NewEncounterLayout({
     }
 
     setIsInitialized(true);
-  }, [getSession, initSession, isInitialized]);
+  }, [getSession, initSession, isInitialized, didNotifyDraftRecovery, toast]);
 
   // Set prefetched patient if provided in URL
   useEffect(() => {
@@ -100,28 +104,21 @@ export default function NewEncounterLayout({
     }
   }, [prefetchedPatient, isInitialized, getSession, setPatient]);
 
-  // Handle draft recovery
-  const handleRecoverDraft = () => {
-    setShowDraftBanner(false);
-    toast({
-      title: 'Draft Recovered',
-      description: 'Your previous work has been restored.',
-    });
-  };
-
-  // Handle draft discard
-  const handleDiscardDraft = () => {
-    clearSession();
-    initSession();
-    setShowDraftBanner(false);
-    toast({
-      title: 'Draft Discarded',
-      description: 'Starting fresh.',
-    });
-  };
-
   const isDirty = isDirtyState();
   const session = getSession();
+
+  const handleStartFresh = () => {
+    clearSession();
+    initSession();
+    if (prefetchedPatient) {
+      setPatient(prefetchedPatient.id, prefetchedPatient);
+    }
+    setDidNotifyDraftRecovery(false);
+    toast({
+      title: 'Started fresh',
+      description: 'Unsaved draft cleared. You can begin a new encounter.',
+    });
+  };
 
   return (
     <div className="flex flex-col min-h-full">
@@ -132,11 +129,22 @@ export default function NewEncounterLayout({
           helpContent="Create a new patient encounter. Follow the steps to select a patient, enter encounter details, and optionally add medical history and diagnoses."
           actions={
             isDirty ? (
-              <Badge variant="secondary" className="gap-1 shrink-0">
-                <Clock className="h-3 w-3" />
-                <span className="hidden sm:inline">Unsaved changes</span>
-                <span className="sm:hidden">Unsaved</span>
-              </Badge>
+              <div className="flex items-center gap-2">
+                <Badge variant="secondary" className="gap-1 shrink-0">
+                  <Clock className="h-3 w-3" />
+                  <span className="hidden sm:inline">Unsaved changes</span>
+                  <span className="sm:hidden">Unsaved</span>
+                </Badge>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleStartFresh}
+                  className="h-8"
+                >
+                  Start fresh
+                </Button>
+              </div>
             ) : null
           }
         />
@@ -152,40 +160,6 @@ export default function NewEncounterLayout({
           </div>
         )}
       </div>
-
-      {/* Draft Recovery Banner */}
-      {showDraftBanner && (
-        <div className="px-3 py-3 sm:px-4">
-          <Alert className="border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950">
-            <RotateCcw className="h-4 w-4 text-blue-600" />
-            <AlertTitle className="text-blue-800 dark:text-blue-200">
-              Unsaved Draft Found
-            </AlertTitle>
-            <AlertDescription className="text-blue-700 dark:text-blue-300">
-              You have an unsaved draft from a previous session. Would you like to recover it?
-              <div className="flex flex-col gap-2 mt-3 sm:flex-row">
-                <Button
-                  size="sm"
-                  onClick={handleRecoverDraft}
-                  className="w-full sm:w-auto"
-                >
-                  <RotateCcw className="h-3.5 w-3.5 mr-1" />
-                  Recover Draft
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={handleDiscardDraft}
-                  className="w-full sm:w-auto"
-                >
-                  <X className="h-3.5 w-3.5 mr-1" />
-                  Discard
-                </Button>
-              </div>
-            </AlertDescription>
-          </Alert>
-        </div>
-      )}
 
       {/* Tab Navigation */}
       <NewEncounterTabs />
