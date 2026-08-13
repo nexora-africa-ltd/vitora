@@ -276,6 +276,8 @@ export function VitalsForm({
                 normalRange={getRangeHint('pulse')}
                 status={getFieldStatus('pulse', alerts)}
                 disabled={!canEdit}
+                min={30}
+                max={200}
               />
 
               <BloodPressureInput

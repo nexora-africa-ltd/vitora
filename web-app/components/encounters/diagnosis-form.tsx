@@ -17,6 +17,7 @@ import { useAIEnabled, useAIICD10Suggest } from '@/lib/hooks/use-ai';
 import { useFeatureFlag } from '@/lib/hooks/use-feature-flags';
 import { SmartSuggestion } from '@/components/shared/smart-suggestion';
 import { encountersApi } from '@/lib/api/encounters';
+import { getApiErrorMessage } from '@/lib/api/client';
 import { cn } from '@/lib/utils/cn';
 import type { SmartSuggestion as SmartSuggestionType } from '@/lib/hooks/use-smart-suggestions';
 import type { DiagnosisFormData, ICD10SearchResult } from '@/lib/types/encounter-form';
@@ -51,6 +52,7 @@ export function DiagnosisEntry({
   const [snomedQuery, setSnomedQuery] = useState('');
   const [snomedResults, setSnomedResults] = useState<SNOMEDSearchResult[]>([]);
   const [snomedSearching, setSnomedSearching] = useState(false);
+  const [snomedError, setSnomedError] = useState<string | null>(null);
   const [isSnomedOpen, setIsSnomedOpen] = useState(false);
 
   const [formData, setFormData] = useState<DiagnosisFormData>({
@@ -62,7 +64,11 @@ export function DiagnosisEntry({
     certainty: 'suspected',
   });
 
-  const { data: searchResults, isLoading: isSearching } = useICD10Search(searchQuery);
+  const {
+    data: searchResults,
+    isLoading: isSearching,
+    error: icd10SearchError,
+  } = useICD10Search(searchQuery);
 
   // AI ICD-10 suggestions
   const aiEnabled = useAIEnabled();
@@ -253,14 +259,17 @@ export function DiagnosisEntry({
     setSnomedQuery(query);
     if (query.length < 2) {
       setSnomedResults([]);
+      setSnomedError(null);
       return;
     }
     setSnomedSearching(true);
     try {
       const data = await encountersApi.searchSNOMED(query);
       setSnomedResults(data.results);
-    } catch {
+      setSnomedError(null);
+    } catch (error) {
       setSnomedResults([]);
+      setSnomedError(getApiErrorMessage(error));
     } finally {
       setSnomedSearching(false);
     }
@@ -414,8 +423,8 @@ export function DiagnosisEntry({
 
                 {/* Search Results Dropdown */}
                 {isSearchOpen && searchQuery.length >= 2 && (
-                  <Card className="absolute z-50 mt-1 w-full shadow-lg max-h-64 overflow-y-auto">
-                    <CardContent className="p-2">
+                  <Card className="absolute z-50 mt-1 w-full shadow-lg overflow-hidden">
+                    <CardContent className="p-2 max-h-72 overflow-y-auto overscroll-contain">
                       {isSearching ? (
                         <div className="space-y-2">
                           {[1, 2, 3].map((i) => (
@@ -424,6 +433,13 @@ export function DiagnosisEntry({
                               <Skeleton className="h-4 flex-1" />
                             </div>
                           ))}
+                        </div>
+                      ) : icd10SearchError ? (
+                        <div className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/5 p-2.5">
+                          <AlertCircle className="h-4 w-4 shrink-0 text-destructive mt-0.5" />
+                          <p className="text-xs sm:text-sm text-destructive">
+                            {getApiErrorMessage(icd10SearchError)}
+                          </p>
                         </div>
                       ) : searchResults && searchResults.length > 0 ? (
                         <ul className="space-y-1">
@@ -486,8 +502,8 @@ export function DiagnosisEntry({
                 />
 
                 {isSnomedOpen && snomedQuery.length >= 2 && (
-                  <Card className="absolute z-50 mt-1 w-full shadow-lg max-h-64 overflow-y-auto">
-                    <CardContent className="p-2">
+                  <Card className="absolute z-50 mt-1 w-full shadow-lg overflow-hidden">
+                    <CardContent className="p-2 max-h-72 overflow-y-auto overscroll-contain">
                       {snomedSearching ? (
                         <div className="space-y-2">
                           {[1, 2, 3].map((i) => (
@@ -496,6 +512,11 @@ export function DiagnosisEntry({
                               <Skeleton className="h-4 flex-1" />
                             </div>
                           ))}
+                        </div>
+                      ) : snomedError ? (
+                        <div className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/5 p-2.5">
+                          <AlertCircle className="h-4 w-4 shrink-0 text-destructive mt-0.5" />
+                          <p className="text-xs sm:text-sm text-destructive">{snomedError}</p>
                         </div>
                       ) : snomedResults.length > 0 ? (
                         <ul className="space-y-1">

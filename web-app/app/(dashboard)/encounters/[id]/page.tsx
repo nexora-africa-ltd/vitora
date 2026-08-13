@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import {
   PlayCircle, User, Calendar, Stethoscope, Eye,
   ClipboardList, FileText, Beaker, ScanLine, Pill, Scissors,
@@ -71,6 +71,7 @@ import { PatientDetailSheet } from '@/components/patients/patient-detail-sheet';
 import Link from 'next/link';
 import type { EncounterFormData, DiagnosisFormData } from '@/lib/types/encounter-form';
 import type { AIQuickAction } from '@/lib/types/ai';
+import type { EncounterFocusTarget } from '@/lib/utils/encounter-focus';
 
 // Parse blood pressure string "120/80" to systolic/diastolic
 function parseBP(bp: string | null | undefined): { systolic: number | null; diastolic: number | null } {
@@ -109,6 +110,23 @@ function parseClinicalList(value: string | null | undefined): string[] {
 
 function normalizeClinicalText(value: string | undefined): string {
   return (value || '').trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+function parseEncounterFocus(value: string | null): EncounterFocusTarget | null {
+  if (!value) return null;
+  const normalized = value.trim().toLowerCase();
+  if (
+    normalized === 'vitals' ||
+    normalized === 'soap' ||
+    normalized === 'assessment' ||
+    normalized === 'orders' ||
+    normalized === 'referrals' ||
+    normalized === 'history' ||
+    normalized === 'comments'
+  ) {
+    return normalized;
+  }
+  return null;
 }
 
 // =============================================================================
@@ -155,6 +173,7 @@ const ENCOUNTER_QUICK_ACTIONS: AIQuickAction[] = [
 
 export default function EncounterDetailPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const encounterRouteId = String(params.id);
 
   // Use encounter context instead of independent fetch
@@ -349,6 +368,33 @@ export default function EncounterDetailPage() {
   const [autoTriggerInvestigations, setAutoTriggerInvestigations] = useState(false);
   const [autoTriggerEGFR, setAutoTriggerEGFR] = useState(false);
   const [patientSheetOpen, setPatientSheetOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState('soap');
+  const [highlightVitals, setHighlightVitals] = useState(false);
+
+  const focusTarget = useMemo(
+    () => parseEncounterFocus(searchParams.get('focus')),
+    [searchParams],
+  );
+
+  useEffect(() => {
+    if (!focusTarget) return;
+
+    if (focusTarget === 'assessment') {
+      setActiveTab('assessment-dx');
+    } else if (focusTarget !== 'vitals') {
+      setActiveTab(focusTarget);
+    }
+
+    if (focusTarget === 'vitals') {
+      setHighlightVitals(true);
+      const timeoutId = window.setTimeout(() => setHighlightVitals(false), 2600);
+      const section = document.getElementById('encounter-vitals-focus');
+      section?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return () => window.clearTimeout(timeoutId);
+    }
+
+    return undefined;
+  }, [focusTarget]);
 
   useEffect(() => {
     if (!activePanelAction || !clearPanelAction) return;
@@ -612,16 +658,23 @@ export default function EncounterDetailPage() {
 
       <EncounterChiefComplaintCard encounter={encounter} />
 
-      {/* Vitals */}
-      <VitalsDisplay encounter={encounter} />
+      <div
+        id="encounter-vitals-focus"
+        className={`space-y-4 rounded-lg transition-all duration-500 ${
+          highlightVitals ? 'ring-2 ring-primary/60 bg-primary/5 p-2 sm:p-3' : ''
+        }`}
+      >
+        {/* Vitals */}
+        <VitalsDisplay encounter={encounter} />
 
-      {/* Vitals Trends */}
-      <VitalsTrendChart
-        data={vitalsHistory ?? []}
-        isLoading={isLoadingVitals}
-        defaultRange="all"
-        compact
-      />
+        {/* Vitals Trends */}
+        <VitalsTrendChart
+          data={vitalsHistory ?? []}
+          isLoading={isLoadingVitals}
+          defaultRange="all"
+          compact
+        />
+      </div>
 
       {/* CDS Alerts Panel — tiered advisory alerts from clinical rules */}
       <CDSAlertsPanel encounterId={encounterId} />
@@ -701,7 +754,7 @@ export default function EncounterDetailPage() {
       })()}
 
       {/* Tabs — grouped: SOAP | Assessment & Dx | Orders | Referrals | History */}
-      <Tabs defaultValue="soap" className="space-y-4">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TooltipProvider delayDuration={400}>
         <TabsList className="flex flex-wrap h-auto gap-1 p-1 justify-start">
           <Tooltip>

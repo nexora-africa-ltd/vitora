@@ -10,6 +10,7 @@ import { FloatingPeekPanel, type PeekPanelState } from '@/components/shared/floa
 import { EncounterPeekContent } from '@/components/encounters/encounter-peek-content';
 import { formatDate, formatRelativeTime } from '@/lib/utils/format';
 import { ENCOUNTER_STATUS, ENCOUNTER_TYPES } from '@/lib/utils/constants';
+import { buildEncounterHref, getEncounterFocusFromStatus } from '@/lib/utils/encounter-focus';
 import { usePatientEncounters } from '@/lib/hooks/use-patients';
 import type { PatientEncounter } from '@/lib/types/patient';
 
@@ -120,7 +121,7 @@ export function PatientEncounters({ patientId }: PatientEncountersProps) {
           title={`${ENCOUNTER_TYPES.find((t) => t.value === peekEncounter.encounter_type)?.label || peekEncounter.encounter_type} — ${formatDate(peekEncounter.encounter_date)}`}
           subtitle={peekEncounter.chief_complaint}
           icon={Stethoscope}
-          fullPageHref={`/encounters/${peekEncounter.id}`}
+          fullPageHref={buildEncounterHref(peekEncounter.id, getEncounterFocusFromStatus(peekEncounter.status))}
         >
           <EncounterPeekContent encounterId={peekEncounter.id} />
         </FloatingPeekPanel>

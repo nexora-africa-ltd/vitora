@@ -24,6 +24,15 @@ const nullableNumber = (min: number, max: number, fieldName: string) =>
     z.null(),
   ]).optional().default(null);
 
+const nullablePulseNumber = () =>
+  z.union([
+    z.number().refine(
+      (value) => value >= 30 && value <= 200,
+      'Pulse must be between 30 and 200 beats per minute.'
+    ),
+    z.null(),
+  ]).optional().default(null);
+
 // =============================================================================
 // VITALS SCHEMA (Encounter Form)
 // =============================================================================
@@ -38,11 +47,7 @@ export const vitalsSchema = z.object({
     VITAL_RANGES.temperature.max,
     'Temperature'
   ),
-  pulse: nullableNumber(
-    VITAL_RANGES.pulse.min,
-    VITAL_RANGES.pulse.max,
-    'Pulse'
-  ),
+  pulse: nullablePulseNumber(),
   blood_pressure_systolic: nullableNumber(
     VITAL_RANGES.blood_pressure_systolic.min,
     VITAL_RANGES.blood_pressure_systolic.max,

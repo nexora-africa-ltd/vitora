@@ -38,6 +38,7 @@ import { toast } from '@/lib/hooks/use-toast';
 import type { ClinicVisitStatus, ClinicVisitPriority } from '@/lib/types/clinic';
 import { cn } from '@/lib/utils/cn';
 import { getClinicVisitDestination } from '@/lib/utils/clinic-visit-routing';
+import { buildEncounterHref } from '@/lib/utils/encounter-focus';
 
 const statusConfig: Record<ClinicVisitStatus, { label: string; className: string; icon: typeof Clock }> = {
   REGISTERED: { label: 'Registered', className: 'bg-blue-100 text-blue-800', icon: Clock },
@@ -375,7 +376,7 @@ export default function ClinicVisitDetailPage() {
             {visit.encounter && (
               <Button
                 variant="outline"
-                onClick={() => router.push(`/encounters/${visit.encounter}`)}
+                onClick={() => router.push(buildEncounterHref(visit.encounter!, 'soap'))}
               >
                 <Stethoscope className="h-4 w-4 mr-2" />
                 View Encounter

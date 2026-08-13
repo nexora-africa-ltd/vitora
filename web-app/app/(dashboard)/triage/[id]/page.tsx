@@ -59,6 +59,7 @@ import {
 } from '@/lib/types/triage';
 import { cn } from '@/lib/utils/cn';
 import Link from 'next/link';
+import { buildEncounterHref } from '@/lib/utils/encounter-focus';
 
 // =============================================================================
 // VITALS DISPLAY
@@ -668,7 +669,7 @@ export default function TriageAssessmentDetailPage() {
               )}
               <div className="pt-2">
                 <Button variant="outline" size="sm" className="w-full" asChild>
-                  <Link href={`/encounters/${assessment.encounter}`}>
+                  <Link href={buildEncounterHref(assessment.encounter, 'vitals')}>
                     View Encounter
                   </Link>
                 </Button>

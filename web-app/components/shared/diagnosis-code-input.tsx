@@ -248,8 +248,12 @@ export function DiagnosisCodeInput({
 
               {/* Search Results Dropdown */}
               {isSearchOpen && searchQuery.length >= 2 && (
-                <Card className="absolute z-50 mt-1 w-full shadow-lg max-h-64 overflow-y-auto">
-                  <CardContent className="p-2">
+                <Card className="absolute z-50 mt-1 w-full shadow-lg overflow-hidden">
+                  <CardContent
+                    className="p-2 max-h-64 overflow-y-auto overscroll-contain touch-pan-y"
+                    onWheel={(event) => event.stopPropagation()}
+                    onTouchMove={(event) => event.stopPropagation()}
+                  >
                     {isSearching ? (
                       <div className="space-y-2">
                         {[1, 2, 3].map((i) => (
@@ -323,8 +327,12 @@ export function DiagnosisCodeInput({
               />
 
               {isSnomedOpen && snomedQuery.length >= 2 && (
-                <Card className="absolute z-50 mt-1 w-full shadow-lg max-h-64 overflow-y-auto">
-                  <CardContent className="p-2">
+                <Card className="absolute z-50 mt-1 w-full shadow-lg overflow-hidden">
+                  <CardContent
+                    className="p-2 max-h-64 overflow-y-auto overscroll-contain touch-pan-y"
+                    onWheel={(event) => event.stopPropagation()}
+                    onTouchMove={(event) => event.stopPropagation()}
+                  >
                     {snomedSearching ? (
                       <div className="space-y-2">
                         {[1, 2, 3].map((i) => (

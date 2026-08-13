@@ -32,6 +32,7 @@ import { PatientSelector } from '@/components/encounters/patient-selector';
 import { usePatient } from '@/lib/hooks/use-patients';
 import { usePermissions } from '@/lib/hooks/use-permissions';
 import { patientsApi } from '@/lib/api/patients';
+import { buildEncounterHref } from '@/lib/utils/encounter-focus';
 import type { Patient, PatientEncounter } from '@/lib/types/patient';
 
 export default function NewImagingOrderPage() {
@@ -100,7 +101,7 @@ export default function NewImagingOrderPage() {
     if (admissionId) {
       router.push(`/admissions/${admissionId}?tab=orders`);
     } else if (selectedEncounterId) {
-      router.push(`/encounters/${selectedEncounterId}`);
+      router.push(buildEncounterHref(selectedEncounterId, 'orders'));
     } else {
       router.push(`/imaging/orders/${orderNumber}`);
     }

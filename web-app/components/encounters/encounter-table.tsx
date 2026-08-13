@@ -9,6 +9,7 @@ import { ChevronLeft, ChevronRight, AlertTriangle, Clock } from 'lucide-react';
 import { Encounter } from '@/lib/types/encounter';
 import { formatDate } from '@/lib/utils/format';
 import { ENCOUNTER_STATUS, ENCOUNTER_TYPES } from '@/lib/utils/constants';
+import { buildEncounterHref, getEncounterFocusFromStatus } from '@/lib/utils/encounter-focus';
 import { EmptyState } from '@/components/shared/empty-state';
 import { cn } from '@/lib/utils/cn';
 
@@ -198,7 +199,9 @@ export function EncounterTable({
         data={encounters}
         columns={columns}
         keyExtractor={(encounter) => encounter.id}
-        onRowClick={(encounter) => router.push(`/encounters/${encounter.id}`)}
+        onRowClick={(encounter) =>
+          router.push(buildEncounterHref(encounter.id, getEncounterFocusFromStatus(encounter.status)))
+        }
         isLoading={isLoading}
         emptyMessage={emptyTitle}
         mobileCard={renderMobileCard}

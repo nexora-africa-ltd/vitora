@@ -14,7 +14,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Check, ChevronsUpDown, Loader2, Search } from 'lucide-react';
+import { Check, ChevronsUpDown, Loader2, Search, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Command,
@@ -30,6 +30,7 @@ import {
 } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
+import { getApiErrorMessage } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { terminologyApi } from '@/lib/terminology';
 import type { ICD11SelectValue, ICD11Code } from '@/lib/terminology';
@@ -72,12 +73,14 @@ export function ICD11Select({
   const [searchQuery, setSearchQuery] = useState('');
   const [results, setResults] = useState<ICD11Code[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
   const debounceRef = useRef<NodeJS.Timeout>();
 
   // Debounced search
   useEffect(() => {
     if (searchQuery.length < minSearchLength) {
       setResults([]);
+      setSearchError(null);
       return;
     }
 
@@ -93,9 +96,11 @@ export function ICD11Select({
           page_size: 20
         });
         setResults(response.results);
+        setSearchError(null);
       } catch (error) {
         console.error('ICD-11 search failed:', error);
         setResults([]);
+        setSearchError(getApiErrorMessage(error));
       } finally {
         setIsLoading(false);
       }
@@ -156,7 +161,7 @@ export function ICD11Select({
             />
             {isLoading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
           </div>
-          <CommandList className="max-h-[min(50vh,300px)]">
+          <CommandList className="max-h-[min(50vh,300px)] overflow-hidden">
             {searchQuery.length < minSearchLength ? (
               <div className="py-6 text-center text-sm text-muted-foreground">
                 Type at least {minSearchLength} characters to search...
@@ -167,11 +172,20 @@ export function ICD11Select({
                   <Skeleton key={i} className="h-12 w-full" />
                 ))}
               </div>
+            ) : searchError ? (
+              <div className="p-2.5">
+                <div className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/5 p-2.5">
+                  <AlertCircle className="h-4 w-4 shrink-0 text-destructive mt-0.5" />
+                  <p className="text-xs sm:text-sm text-destructive">{searchError}</p>
+                </div>
+              </div>
             ) : results.length === 0 ? (
               <CommandEmpty className="text-muted-foreground">No ICD-11 codes found.</CommandEmpty>
             ) : (
               <CommandGroup>
-                <ScrollArea className="max-h-[min(45vh,280px)]">
+                <ScrollArea
+                  className="h-[280px] overscroll-contain"
+                >
                   {results.map((code, idx) => (
                     <CommandItem
                       key={code.code || code.id || idx}

@@ -11,7 +11,7 @@ from hmis.apps.billing.models import ICD11CodeReference
 
 
 class Command(BaseCommand):
-    help = "Import ICD-11 codes from a WHO linearization CSV export"
+    help = "Import ICD-11 codes from WHO full export or simple Code/Title CSV"
 
     def add_arguments(self, parser):
         parser.add_argument("csv_file", type=str, help="Path to the ICD-11 CSV file")
@@ -47,35 +47,72 @@ class Command(BaseCommand):
         with open(csv_file, encoding="utf-8", newline="") as handle:
             reader = csv.DictReader(handle)
 
+            fieldnames = {str(name or "").lstrip("\ufeff") for name in (reader.fieldnames or [])}
             required_columns = {"8Y", "Title", "ClassKind", "ChapterNo", "isLeaf", "IsResidual"}
-            if not required_columns.issubset(set(reader.fieldnames or [])):
-                missing = required_columns - set(reader.fieldnames or [])
-                raise CommandError(f"Missing required columns: {missing}")
+            simple_columns = {"Code", "Title"}
+            is_who_full_export = required_columns.issubset(fieldnames)
+            is_simple_export = simple_columns.issubset(fieldnames)
+
+            if not is_who_full_export and not is_simple_export:
+                raise CommandError(
+                    "Unsupported CSV format. Expected WHO export columns "
+                    f"{sorted(required_columns)} or simple columns {sorted(simple_columns)}."
+                )
 
             for row_num, row in enumerate(reader, start=2):
                 try:
-                    code = self._normalize_code(row.get("8Y", ""))
-                    title = (row.get("Title") or "").strip()
-                    class_kind = (row.get("ClassKind") or "").strip().lower()
+                    normalized_row = {str(k or "").lstrip("\ufeff"): v for k, v in row.items()}
 
-                    if class_kind != "category" or not code or not title:
-                        skipped_count += 1
-                        continue
+                    if is_who_full_export:
+                        code = self._normalize_code(normalized_row.get("8Y", ""))
+                        title = (normalized_row.get("Title") or "").strip()
+                        class_kind = (normalized_row.get("ClassKind") or "").strip().lower()
 
-                    defaults = {
-                        "title": title,
-                        "description": title,
-                        "chapter": (row.get("ChapterNo") or "").strip(),
-                        "chapter_no": (row.get("ChapterNo") or "").strip(),
-                        "class_kind": class_kind,
-                        "depth_in_kind": self._to_int(row.get("DepthInKind")),
-                        "entity_id": self._extract_entity_id(row.get("Foundation URI", "")),
-                        "foundation_uri": (row.get("Foundation URI") or "").strip(),
-                        "linearization_uri": (row.get("Linearization (release) URI") or "").strip(),
-                        "is_leaf": self._to_bool(row.get("isLeaf")),
-                        "is_residual": self._to_bool(row.get("IsResidual")),
-                        "is_active": True,
-                    }
+                        if class_kind != "category" or not code or not title:
+                            skipped_count += 1
+                            continue
+
+                        defaults = {
+                            "title": title,
+                            "description": title,
+                            "chapter": (normalized_row.get("ChapterNo") or "").strip(),
+                            "chapter_no": (normalized_row.get("ChapterNo") or "").strip(),
+                            "class_kind": class_kind,
+                            "depth_in_kind": self._to_int(normalized_row.get("DepthInKind")),
+                            "entity_id": self._extract_entity_id(
+                                normalized_row.get("Foundation URI", "")
+                            ),
+                            "foundation_uri": (normalized_row.get("Foundation URI") or "").strip(),
+                            "linearization_uri": (
+                                normalized_row.get("Linearization (release) URI") or ""
+                            ).strip(),
+                            "is_leaf": self._to_bool(normalized_row.get("isLeaf")),
+                            "is_residual": self._to_bool(normalized_row.get("IsResidual")),
+                            "is_active": True,
+                        }
+                    else:
+                        code = self._normalize_code(normalized_row.get("Code", ""))
+                        title = (normalized_row.get("Title") or "").strip()
+
+                        if not code or not title:
+                            skipped_count += 1
+                            continue
+
+                        chapter_no = code[0] if code and code[0].isdigit() else ""
+                        defaults = {
+                            "title": title,
+                            "description": title,
+                            "chapter": chapter_no,
+                            "chapter_no": chapter_no,
+                            "class_kind": "category",
+                            "depth_in_kind": code.count("."),
+                            "entity_id": "",
+                            "foundation_uri": "",
+                            "linearization_uri": "",
+                            "is_leaf": True,
+                            "is_residual": code.endswith("Y") or code.endswith("Z"),
+                            "is_active": True,
+                        }
 
                     existing = ICD11CodeReference.objects.filter(code=code).first()
                     if existing:

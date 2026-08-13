@@ -3,11 +3,13 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
+import { ChevronDown } from 'lucide-react';
 
 import { PageHeader } from '@/components/shared/page-header';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -84,6 +86,7 @@ export default function InsuranceEnrollmentDetailPage() {
   const [removeBack, setRemoveBack] = useState(false);
   const [serviceName, setServiceName] = useState('SLADE_ADVANTAGE');
   const [profileIdInput, setProfileIdInput] = useState('');
+  const [isHealthIdOpen, setIsHealthIdOpen] = useState(true);
 
   useEffect(() => {
     if (!enrollment || isEditing) return;
@@ -272,9 +275,24 @@ export default function InsuranceEnrollmentDetailPage() {
         <>
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Health ID Workflow</CardTitle>
+              <div className="flex items-center justify-between gap-2">
+                <CardTitle className="text-base">Health ID Workflow</CardTitle>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="gap-1.5 text-xs"
+                  onClick={() => setIsHealthIdOpen((prev) => !prev)}
+                >
+                  {isHealthIdOpen ? 'Hide details' : 'Show details'}
+                  <ChevronDown
+                    className={`h-4 w-4 transition-transform ${isHealthIdOpen ? 'rotate-180' : ''}`}
+                  />
+                </Button>
+              </div>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <Collapsible open={isHealthIdOpen} onOpenChange={setIsHealthIdOpen}>
+              <CollapsibleContent>
+                <CardContent className="space-y-4">
               {(() => {
                 const identity = extractHealthIdentitySnapshot(enrollment.last_eligibility_payload);
                 const resolvedProfileId = identity.profileRequestId || identity.profileId;
@@ -336,7 +354,7 @@ export default function InsuranceEnrollmentDetailPage() {
                           id="healthcrm-profile-id"
                           value={profileIdInput}
                           onChange={(e) => setProfileIdInput(e.target.value)}
-                          placeholder={resolvedProfileId || 'Auto from enrollment snapshot'}
+                          placeholder={resolvedProfileId || 'Auto-generated from patient identity when blank'}
                         />
                       </div>
                     </div>
@@ -358,12 +376,14 @@ export default function InsuranceEnrollmentDetailPage() {
                     </div>
 
                     <p className="text-xs text-muted-foreground">
-                      Webhook endpoint (optional): <code>/api/insurance/healthcloud/webhooks/health-id/</code>
+                      Leave Profile ID empty to let backend derive a stable patient-based profile ID. Webhook endpoint (optional): <code>/api/insurance/healthcloud/webhooks/health-id/</code>
                     </p>
                   </>
                 );
               })()}
-            </CardContent>
+                </CardContent>
+              </CollapsibleContent>
+            </Collapsible>
           </Card>
 
           <Card>

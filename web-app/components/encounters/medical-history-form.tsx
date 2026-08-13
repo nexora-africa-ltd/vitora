@@ -22,6 +22,7 @@ import { ChronicConditionFormDialog } from '@/components/patients/chronic-condit
 import { CurrentMedicationFormDialog } from '@/components/patients/current-medications/current-medication-form-dialog';
 import { PastSurgeryFormDialog } from '@/components/patients/past-surgeries/past-surgery-form-dialog';
 import { FamilyHistoryFormDialog } from '@/components/patients/family-history/family-history-form-dialog';
+import { getApiErrorMessage } from '@/lib/api/client';
 import type { SmartSuggestion as SmartSuggestionType } from '@/lib/hooks/use-smart-suggestions';
 import type { EncounterFormData } from '@/lib/types/encounter-form';
 
@@ -301,7 +302,7 @@ const severityColors: Record<string, string> = {
 
 function AllergySummary({ patientId, disabled }: { patientId?: number; disabled?: boolean }) {
   const [showAdd, setShowAdd] = useState(false);
-  const { data: allergies, isLoading } = usePatientAllergies(patientId ?? 0);
+  const { data: allergies, isLoading, error } = usePatientAllergies(patientId ?? 0);
   const hasPatient = !!patientId;
 
   if (!hasPatient) {
@@ -314,6 +315,15 @@ function AllergySummary({ patientId, disabled }: { patientId?: number; disabled?
 
   if (isLoading) {
     return <div className="h-10 bg-muted/40 rounded animate-pulse" />;
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/5 p-2.5">
+        <AlertCircle className="h-4 w-4 shrink-0 text-destructive mt-0.5" />
+        <p className="text-xs sm:text-sm text-destructive">{getApiErrorMessage(error)}</p>
+      </div>
+    );
   }
 
   const items = allergies ?? [];
@@ -383,7 +393,7 @@ const typeIcons: Record<string, string> = {
 
 function SocialHistorySummary({ patientId, disabled }: { patientId?: number; disabled?: boolean }) {
   const [showAdd, setShowAdd] = useState(false);
-  const { data: observations, isLoading } = usePatientSocialHistory(patientId ?? 0);
+  const { data: observations, isLoading, error } = usePatientSocialHistory(patientId ?? 0);
   const hasPatient = !!patientId;
 
   if (!hasPatient) {
@@ -396,6 +406,15 @@ function SocialHistorySummary({ patientId, disabled }: { patientId?: number; dis
 
   if (isLoading) {
     return <div className="h-10 bg-muted/40 rounded animate-pulse" />;
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/5 p-2.5">
+        <AlertCircle className="h-4 w-4 shrink-0 text-destructive mt-0.5" />
+        <p className="text-xs sm:text-sm text-destructive">{getApiErrorMessage(error)}</p>
+      </div>
+    );
   }
 
   const items = observations ?? [];
@@ -459,13 +478,21 @@ const conditionStatusColors: Record<string, string> = {
 
 function ChronicConditionsSummary({ patientId, disabled }: { patientId?: number; disabled?: boolean }) {
   const [showAdd, setShowAdd] = useState(false);
-  const { data: conditions, isLoading } = usePatientChronicConditions(patientId ?? 0);
+  const { data: conditions, isLoading, error } = usePatientChronicConditions(patientId ?? 0);
   const hasPatient = !!patientId;
 
   if (!hasPatient) {
     return <p className="text-sm text-muted-foreground italic">Select a patient to view chronic conditions.</p>;
   }
   if (isLoading) return <div className="h-10 bg-muted/40 rounded animate-pulse" />;
+  if (error) {
+    return (
+      <div className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/5 p-2.5">
+        <AlertCircle className="h-4 w-4 shrink-0 text-destructive mt-0.5" />
+        <p className="text-xs sm:text-sm text-destructive">{getApiErrorMessage(error)}</p>
+      </div>
+    );
+  }
 
   const items = conditions ?? [];
 
@@ -514,13 +541,21 @@ const medicationStatusColors: Record<string, string> = {
 
 function CurrentMedicationsSummary({ patientId, disabled }: { patientId?: number; disabled?: boolean }) {
   const [showAdd, setShowAdd] = useState(false);
-  const { data: medications, isLoading } = usePatientCurrentMedications(patientId ?? 0);
+  const { data: medications, isLoading, error } = usePatientCurrentMedications(patientId ?? 0);
   const hasPatient = !!patientId;
 
   if (!hasPatient) {
     return <p className="text-sm text-muted-foreground italic">Select a patient to view current medications.</p>;
   }
   if (isLoading) return <div className="h-10 bg-muted/40 rounded animate-pulse" />;
+  if (error) {
+    return (
+      <div className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/5 p-2.5">
+        <AlertCircle className="h-4 w-4 shrink-0 text-destructive mt-0.5" />
+        <p className="text-xs sm:text-sm text-destructive">{getApiErrorMessage(error)}</p>
+      </div>
+    );
+  }
 
   const items = medications ?? [];
 
@@ -569,13 +604,21 @@ const outcomeColors: Record<string, string> = {
 
 function PastSurgeriesSummary({ patientId, disabled }: { patientId?: number; disabled?: boolean }) {
   const [showAdd, setShowAdd] = useState(false);
-  const { data: surgeries, isLoading } = usePatientPastSurgeries(patientId ?? 0);
+  const { data: surgeries, isLoading, error } = usePatientPastSurgeries(patientId ?? 0);
   const hasPatient = !!patientId;
 
   if (!hasPatient) {
     return <p className="text-sm text-muted-foreground italic">Select a patient to view past surgeries.</p>;
   }
   if (isLoading) return <div className="h-10 bg-muted/40 rounded animate-pulse" />;
+  if (error) {
+    return (
+      <div className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/5 p-2.5">
+        <AlertCircle className="h-4 w-4 shrink-0 text-destructive mt-0.5" />
+        <p className="text-xs sm:text-sm text-destructive">{getApiErrorMessage(error)}</p>
+      </div>
+    );
+  }
 
   const items = surgeries ?? [];
 
@@ -617,13 +660,21 @@ function PastSurgeriesSummary({ patientId, disabled }: { patientId?: number; dis
 
 function FamilyHistorySummary({ patientId, disabled }: { patientId?: number; disabled?: boolean }) {
   const [showAdd, setShowAdd] = useState(false);
-  const { data: history, isLoading } = usePatientFamilyHistory(patientId ?? 0);
+  const { data: history, isLoading, error } = usePatientFamilyHistory(patientId ?? 0);
   const hasPatient = !!patientId;
 
   if (!hasPatient) {
     return <p className="text-sm text-muted-foreground italic">Select a patient to view family history.</p>;
   }
   if (isLoading) return <div className="h-10 bg-muted/40 rounded animate-pulse" />;
+  if (error) {
+    return (
+      <div className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/5 p-2.5">
+        <AlertCircle className="h-4 w-4 shrink-0 text-destructive mt-0.5" />
+        <p className="text-xs sm:text-sm text-destructive">{getApiErrorMessage(error)}</p>
+      </div>
+    );
+  }
 
   const items = history ?? [];
 

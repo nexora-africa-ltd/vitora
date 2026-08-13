@@ -25,6 +25,7 @@ import { useDebounce } from '@/lib/hooks/use-debounce';
 import { proceduresApi } from '@/lib/api/procedures';
 import { getApiErrorMessage } from '@/lib/api/client';
 import { usePermissions } from '@/lib/hooks/use-permissions';
+import { buildEncounterHref } from '@/lib/utils/encounter-focus';
 import { formatCurrency } from '@/lib/utils/format';
 import type { ProcedureCatalogEntry } from '@/lib/types/procedure';
 import { RISK_LEVEL_COLORS } from '@/lib/types/procedure';
@@ -173,7 +174,7 @@ export default function NewProcedureOrderPage() {
       });
       queryClient.invalidateQueries({ queryKey: ['procedure-external-requests'] });
       if (preEncounterId) {
-        router.push(`/encounters/${preEncounterId}`);
+        router.push(buildEncounterHref(preEncounterId, 'orders'));
       } else {
         router.push('/procedures/external-requests');
       }

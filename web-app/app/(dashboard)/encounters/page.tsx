@@ -37,6 +37,7 @@ import { useDebounce } from '@/lib/hooks/use-debounce';
 import { getApiErrorMessage } from '@/lib/api/client';
 import { formatRelativeTime } from '@/lib/utils/format';
 import { ENCOUNTER_TYPES, ENCOUNTER_STATUS } from '@/lib/utils/constants';
+import { buildEncounterHref, getEncounterFocusFromStatus } from '@/lib/utils/encounter-focus';
 import type { Encounter } from '@/lib/types/encounter';
 import { usePermissions } from '@/lib/hooks/use-permissions';
 
@@ -349,7 +350,7 @@ export default function EncountersPage() {
                   <Card key={encounter.id} className="hover:bg-muted/30 transition-colors">
                     <CardContent className="p-4">
                       <Link
-                        href={`/encounters/${encounter.id}`}
+                        href={buildEncounterHref(encounter.id, getEncounterFocusFromStatus(encounter.status))}
                         className="flex items-center gap-3"
                       >
                         <Avatar className="h-10 w-10 shrink-0">
@@ -399,11 +400,13 @@ export default function EncountersPage() {
                                 variant="default"
                                 size="sm"
                                 className="h-8"
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  router.push(`/encounters/${encounter.id}`);
-                                }}
-                              >
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    router.push(
+                                      buildEncounterHref(encounter.id, getEncounterFocusFromStatus(encounter.status))
+                                    );
+                                  }}
+                                >
                                 <Play className="h-3.5 w-3.5 mr-1" />
                                 <span className="hidden sm:inline">Continue</span>
                               </Button>

@@ -32,6 +32,10 @@ interface VitalInputProps {
   disabled?: boolean;
   /** Step for number input */
   step?: string;
+  /** Optional min override */
+  min?: number;
+  /** Optional max override */
+  max?: number;
   /** Additional class names */
   className?: string;
 }
@@ -45,6 +49,8 @@ export function VitalInput({
   status = 'normal',
   disabled = false,
   step = '1',
+  min,
+  max,
   className,
 }: VitalInputProps) {
   const { control } = useFormContext<VitalsFormValues>();
@@ -73,8 +79,8 @@ export function VitalInput({
               id={name}
               type="number"
               step={step}
-              min={range?.min}
-              max={range?.max}
+              min={min ?? range?.min}
+              max={max ?? range?.max}
               placeholder={placeholder}
               value={field.value ?? ''}
               onChange={(e) => {

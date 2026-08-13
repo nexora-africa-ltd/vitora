@@ -33,6 +33,7 @@ import { toast } from '@/lib/hooks/use-toast';
 import { referralsApi } from '@/lib/api/referrals';
 import { encountersApi } from '@/lib/api/encounters';
 import { getApiErrorMessage } from '@/lib/api/client';
+import { buildEncounterHref } from '@/lib/utils/encounter-focus';
 import { usePermissions } from '@/lib/hooks/use-permissions';
 import type { Patient } from '@/lib/types/patient';
 import type { Encounter } from '@/lib/types/encounter';
@@ -230,7 +231,11 @@ export default function NewReferralPage() {
         description: `Referral ${data.referral_number} created successfully.`,
       });
       queryClient.invalidateQueries({ queryKey: ['referrals'] });
-      router.push(`/referrals/${data.id}`);
+      if (encounterId) {
+        router.push(buildEncounterHref(encounterId, 'referrals'));
+      } else {
+        router.push(`/referrals/${data.id}`);
+      }
     },
     onError: (err) => {
       toast({

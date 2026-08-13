@@ -44,6 +44,7 @@ import { useEmergencySocket } from '@/lib/hooks/use-websocket';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { cn } from '@/lib/utils/cn';
 import { ZONE_ROUTES } from '@/lib/config/emergency';
+import { buildEncounterHref, getEncounterFocusFromStatus } from '@/lib/utils/encounter-focus';
 
 // =============================================================================
 // BED BOARD PANEL (inline overview section)
@@ -217,7 +218,9 @@ export default function EmergencyDashboardPage() {
     // Route to encounter if it exists (all triaged patients have an encounter)
     // Fall back to triage assessment if encounter_id is missing (shouldn't happen)
     if (patient.encounter_id) {
-      router.push(`/encounters/${patient.encounter_id}`);
+      router.push(
+        buildEncounterHref(patient.encounter_id, getEncounterFocusFromStatus(patient.encounter_status))
+      );
     } else {
       router.push(`/triage/${patient.id}`);
     }

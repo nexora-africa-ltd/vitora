@@ -25,6 +25,7 @@ import { useCompleteVisit } from '@/lib/hooks/use-clinics';
 import { toast } from '@/lib/hooks/use-toast';
 import type { ClinicVisit } from '@/lib/types/clinic';
 import { cn } from '@/lib/utils/cn';
+import { buildEncounterHref } from '@/lib/utils/encounter-focus';
 
 interface ClinicVisitCardProps {
   visit: ClinicVisit;
@@ -86,7 +87,7 @@ export function ClinicVisitCard({ visit, clinicId, onRefresh }: ClinicVisitCardP
 
   const handleViewEncounter = () => {
     if (visit.encounter) {
-      router.push(`/encounters/${visit.encounter}`);
+      router.push(buildEncounterHref(visit.encounter, 'soap'));
     }
   };
 

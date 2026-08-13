@@ -28,6 +28,7 @@ import {
 import { useMyClaimedEncounters, useReleaseEncounter } from '@/lib/hooks/use-consultation-queue';
 import { useToast } from '@/lib/hooks/use-toast';
 import { getApiErrorMessage } from '@/lib/api/client';
+import { buildEncounterHref, getEncounterFocusFromStatus } from '@/lib/utils/encounter-focus';
 import { DashboardEmptyState, DashboardFooterLink, DashboardListSkeleton } from './widget-primitives';
 
 const MAX_DISPLAY_ITEMS = 5;
@@ -80,7 +81,7 @@ export function MyClaimedEncountersWidget() {
           {displayItems.map((encounter) => (
             <li key={encounter.id}>
               <Link
-                href={`/encounters/${encounter.id}`}
+                href={buildEncounterHref(encounter.id, getEncounterFocusFromStatus(encounter.status))}
                 className="group block rounded-xl border border-border/60 bg-muted/10 p-3 transition-colors hover:border-primary/30 hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               >
                 <div className="flex items-start gap-3">

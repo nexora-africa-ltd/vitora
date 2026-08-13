@@ -27,6 +27,7 @@ import { useTriageAssessStore } from '@/lib/stores/triage-assess-store';
 import { formatDate } from '@/lib/utils/format';
 import type { PatientEncounter } from '@/lib/types/patient';
 import { ENCOUNTER_TYPES } from '@/lib/utils/constants';
+import { buildEncounterHref } from '@/lib/utils/encounter-focus';
 
 // =============================================================================
 // Past Encounter Card Component (Clickable)
@@ -189,7 +190,7 @@ export default function TriageHistoryPage() {
           title={`${ENCOUNTER_TYPES.find((t) => t.value === peekEncounter.encounter_type)?.label || peekEncounter.encounter_type} — ${formatDate(peekEncounter.encounter_date)}`}
           subtitle={peekEncounter.chief_complaint}
           icon={Stethoscope}
-          fullPageHref={`/encounters/${peekEncounter.id}`}
+          fullPageHref={buildEncounterHref(peekEncounter.id, 'history')}
         >
           <EncounterPeekContent encounterId={peekEncounter.id} />
         </FloatingPeekPanel>

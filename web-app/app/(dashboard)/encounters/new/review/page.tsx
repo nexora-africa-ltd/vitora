@@ -48,12 +48,12 @@ import { ToastAction } from '@/components/ui/toast';
 import { useAISuggestionAudit } from '@/lib/hooks/use-ai';
 import { useSmartSuggestions } from '@/lib/hooks/use-smart-suggestions';
 import { SmartSuggestionBatch } from '@/components/shared/smart-suggestion-batch';
-import { LEGACY_TRIAGE_FLOW } from '@/lib/utils/constants';
 import { SHAConsentStep } from '@/components/patients/sha-consent-step';
 import { encountersApi } from '@/lib/api/encounters';
+import { getApiErrorMessage } from '@/lib/api/client';
 import { shaApi } from '@/lib/api/sha';
 import { useQuery } from '@tanstack/react-query';
-import type { DiagnosisFormData } from '@/lib/types/encounter-form';
+import type { DiagnosisFormData, EncounterFormData } from '@/lib/types/encounter-form';
 import type { CreateDiagnosisData } from '@/lib/api/encounters';
 
 /**
@@ -65,6 +65,16 @@ function toApiCertainty(
   certainty: DiagnosisFormData['certainty'],
 ): CreateDiagnosisData['certainty'] {
   return certainty === 'probable' ? 'provisional' : certainty;
+}
+
+function getEncounterValidationError(formData: EncounterFormData | null | undefined): string | null {
+  if (!formData) return 'Unable to retrieve form data';
+
+  if (formData.pulse != null && (formData.pulse < 30 || formData.pulse > 200)) {
+    return 'Pulse must be between 30 and 200 beats per minute.';
+  }
+
+  return null;
 }
 
 // =============================================================================
@@ -202,12 +212,16 @@ export default function NewEncounterReviewPage() {
   // Save as draft
   const handleSaveDraft = useCallback(async () => {
     const formData = getFormData();
-    if (!formData) {
+    const validationError = getEncounterValidationError(formData);
+    if (validationError) {
       toast({
         title: 'Error',
-        description: 'Unable to retrieve form data',
+        description: validationError,
         variant: 'destructive',
       });
+      return;
+    }
+    if (!formData) {
       return;
     }
 
@@ -219,7 +233,7 @@ export default function NewEncounterReviewPage() {
 
       // Save diagnoses collected during the wizard
       if (diagnoses.length > 0) {
-        await Promise.all(
+        const diagnosisResults = await Promise.allSettled(
           diagnoses.map((dx: DiagnosisFormData) =>
             encountersApi.createDiagnosis(draft.id, {
               icd10_code: dx.icd10_code,
@@ -232,11 +246,21 @@ export default function NewEncounterReviewPage() {
               notes: dx.notes,
               is_confirmed: dx.is_confirmed,
               certainty: toApiCertainty(dx.certainty),
-            }).catch((err) => {
-              console.error('Failed to save diagnosis:', err);
             })
           )
         );
+        const failedDiagnoses = diagnosisResults.filter(
+          (result): result is PromiseRejectedResult => result.status === 'rejected'
+        );
+        if (failedDiagnoses.length > 0) {
+          const firstFailureReason = failedDiagnoses[0]?.reason;
+          const diagnosisLabel = failedDiagnoses.length === 1 ? 'diagnosis' : 'diagnoses';
+          toast({
+            title: 'Some diagnoses were not saved',
+            description: `${failedDiagnoses.length} ${diagnosisLabel} failed to save. ${getApiErrorMessage(firstFailureReason)}`,
+            variant: 'destructive',
+          });
+        }
       }
 
       clearSession();
@@ -250,7 +274,7 @@ export default function NewEncounterReviewPage() {
     } catch (error) {
       toast({
         title: 'Error',
-        description: 'Failed to save encounter',
+        description: getApiErrorMessage(error),
         variant: 'destructive',
       });
     }
@@ -259,12 +283,16 @@ export default function NewEncounterReviewPage() {
   // Create encounter
   const handleCreate = useCallback(async () => {
     const formData = getFormData();
-    if (!formData) {
+    const validationError = getEncounterValidationError(formData);
+    if (validationError) {
       toast({
         title: 'Error',
-        description: 'Unable to retrieve form data',
+        description: validationError,
         variant: 'destructive',
       });
+      return;
+    }
+    if (!formData) {
       return;
     }
 
@@ -295,7 +323,7 @@ export default function NewEncounterReviewPage() {
 
       // Save diagnoses collected during the wizard
       if (diagnoses.length > 0) {
-        await Promise.all(
+        const diagnosisResults = await Promise.allSettled(
           diagnoses.map((dx: DiagnosisFormData) =>
             encountersApi.createDiagnosis(result.id, {
               icd10_code: dx.icd10_code,
@@ -308,11 +336,21 @@ export default function NewEncounterReviewPage() {
               notes: dx.notes,
               is_confirmed: dx.is_confirmed,
               certainty: toApiCertainty(dx.certainty),
-            }).catch((err) => {
-              console.error('Failed to save diagnosis:', err);
             })
           )
         );
+        const failedDiagnoses = diagnosisResults.filter(
+          (saveResult): saveResult is PromiseRejectedResult => saveResult.status === 'rejected'
+        );
+        if (failedDiagnoses.length > 0) {
+          const firstFailureReason = failedDiagnoses[0]?.reason;
+          const diagnosisLabel = failedDiagnoses.length === 1 ? 'diagnosis' : 'diagnoses';
+          toast({
+            title: 'Some diagnoses were not saved',
+            description: `${failedDiagnoses.length} ${diagnosisLabel} failed to save. ${getApiErrorMessage(firstFailureReason)}`,
+            variant: 'destructive',
+          });
+        }
       }
 
       // For EMERGENCY or IPD encounters, skip triage modal
@@ -340,10 +378,7 @@ export default function NewEncounterReviewPage() {
               action: <ToastAction altText="View encounter" onClick={() => router.push(`/encounters/${result.id}`)}>View</ToastAction>,
             });
           } catch (admissionError: unknown) {
-            const data = (admissionError as { response?: { data?: { detail?: string; error?: string } } })
-              ?.response?.data;
-            const admissionErrorMessage =
-              data?.detail || data?.error || (admissionError as Error)?.message || '';
+            const admissionErrorMessage = getApiErrorMessage(admissionError);
             if (/active admission/i.test(admissionErrorMessage)) {
               setAdmissionConflictHint(
                 'Patient already has an active admission in this organization. Resolve it before creating another IPD admission.'
@@ -352,20 +387,19 @@ export default function NewEncounterReviewPage() {
             // Encounter created but admission failed — still redirect
             toast({
               title: 'Encounter Created',
-              description: 'Encounter created but admission failed. Please create admission separately.',
+              description: `Encounter created but admission failed. ${admissionErrorMessage}`,
               variant: 'destructive',
             });
           }
         } else if (isIPD) {
-          // IPD without admission details — redirect to admission recommendations
+          // IPD without admission details — still land on created encounter
           toast({
             title: 'IPD Encounter Created',
-            description: 'Encounter created. Redirecting to create admission record.',
+            description: 'Encounter created. Complete admission details from the encounter workflow.',
           });
           const encId = result.id;
-          const ptId = patientData!.id;
           clearSession();
-          router.push(`/admissions/new?patient=${ptId}&encounter=${encId}`);
+          router.push(`/encounters/${encId}`);
           return;
         } else {
           toast({
@@ -402,7 +436,14 @@ export default function NewEncounterReviewPage() {
         });
       } catch (checkInError) {
         // If patient is already in queue, that's fine - continue with the flow
-        console.log('Check-in note:', checkInError);
+        const checkInErrorMessage = getApiErrorMessage(checkInError).toLowerCase();
+        if (!checkInErrorMessage.includes('already') || !checkInErrorMessage.includes('queue')) {
+          toast({
+            title: 'Encounter created',
+            description: `Triage queue check-in failed. ${getApiErrorMessage(checkInError)}`,
+            variant: 'destructive',
+          });
+        }
       }
 
       // Show triage modal
@@ -411,7 +452,7 @@ export default function NewEncounterReviewPage() {
     } catch (error) {
       toast({
         title: 'Error',
-        description: 'Failed to create encounter',
+        description: getApiErrorMessage(error),
         variant: 'destructive',
       });
     }
@@ -441,28 +482,24 @@ export default function NewEncounterReviewPage() {
 
   // Handle triage modal response
   const handleGoToTriage = useCallback(() => {
-    if (createdEncounterId && patientData) {
+    if (createdEncounterId) {
       clearSession();
-      if (LEGACY_TRIAGE_FLOW) {
-        router.push(`/triage/new?patientId=${patientData.id}&encounterId=${createdEncounterId}`);
-      } else {
-        router.push(`/triage/assess/${patientData.id}/${createdEncounterId}/vitals`);
-      }
+      router.push(`/encounters/${createdEncounterId}?focus=vitals`);
     }
-  }, [createdEncounterId, patientData, clearSession, router]);
+  }, [createdEncounterId, clearSession, router]);
 
   const handleSkipTriage = useCallback(() => {
     setShowTriageModal(false);
     clearSession();
     toast({
       title: 'Encounter Created',
-      description: 'Encounter has been created. You can record vitals later in Triage.',
+      description: 'Encounter has been created. You can record vitals from the encounter page.',
       action: createdEncounterId
-        ? <ToastAction altText="View encounter" onClick={() => router.push(`/encounters/${createdEncounterId}`)}>View</ToastAction>
+        ? <ToastAction altText="View encounter" onClick={() => router.push(`/encounters/${createdEncounterId}?focus=vitals`)}>View</ToastAction>
         : undefined,
     });
     if (createdEncounterId) {
-      router.push(`/encounters/${createdEncounterId}`);
+      router.push(`/encounters/${createdEncounterId}?focus=vitals`);
       return;
     }
     router.push('/encounters');
@@ -558,11 +595,11 @@ export default function NewEncounterReviewPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Activity className="h-5 w-5 text-blue-500" />
-              Record Vital Signs?
+              Open Encounter?
             </DialogTitle>
             <DialogDescription>
               The encounter has been created successfully. Vital signs have not been recorded
-              yet. Would you like to record vitals now through Triage?
+              yet. Open the encounter now to continue documentation and record vitals.
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">
@@ -591,7 +628,7 @@ export default function NewEncounterReviewPage() {
             </Button>
             <Button onClick={handleGoToTriage}>
               <Activity className="h-4 w-4 mr-2" />
-              Record Vitals
+              Open Encounter
             </Button>
           </DialogFooter>
         </DialogContent>

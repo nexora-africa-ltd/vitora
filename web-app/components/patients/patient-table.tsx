@@ -35,6 +35,7 @@ import { EmptyState } from '@/components/shared/empty-state';
 import { EntityCard, EntityGrid } from '@/components/shared/entity-card';
 import type { ViewMode } from '@/components/ui/view-toggle';
 import { useQuickConsultation } from '@/lib/hooks/use-encounters';
+import { buildEncounterHref, getEncounterFocusFromStatus } from '@/lib/utils/encounter-focus';
 import { useToast } from '@/lib/hooks/use-toast';
 import { PendingSyncBadge, isPendingSync } from '@/components/shared/pending-sync-badge';
 
@@ -228,7 +229,7 @@ function PatientListView({ patients, selectMode, onRowClick, router }: PatientLi
         title: 'Consultation Started',
         description: 'Patient has been called. You can now start the consultation.',
       });
-      router.push(`/encounters/${encounter.id}`);
+      router.push(buildEncounterHref(encounter.id, getEncounterFocusFromStatus(encounter.status)));
     } catch (err) {
       // Handle 409 Conflict - patient already has active encounter with another clinician
       if (axios.isAxiosError(err) && err.response?.status === 409) {

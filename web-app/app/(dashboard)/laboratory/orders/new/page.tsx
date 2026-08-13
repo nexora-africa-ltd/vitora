@@ -18,6 +18,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { usePatientContext } from '@/lib/context/patient-context';
 import { useEncounterContext } from '@/lib/context/encounter-context';
 import { PageHeader } from '@/components/shared/page-header';
+import { buildEncounterHref } from '@/lib/utils/encounter-focus';
 import type { Patient, PatientEncounter } from '@/lib/types/patient';
 
 export default function NewLabOrderPage() {
@@ -114,7 +115,7 @@ export default function NewLabOrderPage() {
     if (admissionId) {
       router.push(`/admissions/${admissionId}?tab=orders`);
     } else if (activeEncounterId) {
-      router.push(`/encounters/${activeEncounterId}`);
+      router.push(buildEncounterHref(activeEncounterId, 'orders'));
     } else {
       router.push(orderNumber ? `/laboratory/orders/${orderNumber}` : '/laboratory/orders');
     }

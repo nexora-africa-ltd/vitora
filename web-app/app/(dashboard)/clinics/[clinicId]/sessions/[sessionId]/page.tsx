@@ -40,6 +40,7 @@ import type { ClinicVisit, ClinicVisitStatus, ClinicSessionStatus } from '@/lib/
 import type { ProcedureOrderListItem } from '@/lib/types/procedure';
 import { PROCEDURE_STATUS_COLORS, PROCEDURE_STATUS_LABELS, PROCEDURE_PRIORITY_COLORS } from '@/lib/types/procedure';
 import { cn } from '@/lib/utils/cn';
+import { buildEncounterHref } from '@/lib/utils/encounter-focus';
 
 // =============================================================================
 // Constants
@@ -389,7 +390,7 @@ export default function SessionDetailPage() {
                     subtitle={visit.patient?.mrn || visit.patient_mrn || undefined}
                     initials={getPatientInitials(visit)}
                     gender={visit.patient?.gender as 'M' | 'F' | 'O' | undefined}
-                    href={visit.encounter ? `/encounters/${visit.encounter}` : `/clinics/visits/${visit.id}`}
+                    href={visit.encounter ? buildEncounterHref(visit.encounter, 'soap') : `/clinics/visits/${visit.id}`}
                     status={{
                       label: visit.status_display,
                       variant: VISIT_STATUS_BADGE_VARIANT[visit.status],
@@ -415,7 +416,7 @@ export default function SessionDetailPage() {
                 emptyMessage="No patients in this session."
                 onRowClick={(visit) => {
                   if (visit.encounter) {
-                    router.push(`/encounters/${visit.encounter}`);
+                    router.push(buildEncounterHref(visit.encounter, 'soap'));
                   } else {
                     router.push(`/clinics/visits/${visit.id}`);
                   }

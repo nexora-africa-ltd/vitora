@@ -1,13 +1,14 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { Search, User, X, Clock, ChevronDown } from 'lucide-react';
+import { Search, User, X, Clock, ChevronDown, AlertCircle } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { usePatientSearch, useRecentPatients } from '@/lib/hooks/use-encounter-form';
+import { getApiErrorMessage } from '@/lib/api/client';
 import { cn } from '@/lib/utils/cn';
 import type { Patient } from '@/lib/types/patient';
 
@@ -29,12 +30,22 @@ export function PatientSelector({
   const [searchQuery, setSearchQuery] = useState('');
   const [isOpen, setIsOpen] = useState(false);
 
-  const { data: searchResults, isLoading: isSearching } = usePatientSearch(searchQuery);
-  const { data: recentPatients, isLoading: isLoadingRecent } = useRecentPatients();
+  const {
+    data: searchResults,
+    isLoading: isSearching,
+    error: searchError,
+  } = usePatientSearch(searchQuery);
+  const {
+    data: recentPatients,
+    isLoading: isLoadingRecent,
+    error: recentError,
+  } = useRecentPatients();
 
   // Use search results if searching, otherwise show recent patients
   const patients = searchQuery.length >= 2 ? searchResults : recentPatients;
   const isLoading = searchQuery.length >= 2 ? isSearching : isLoadingRecent;
+  const activeQueryError = searchQuery.length >= 2 ? searchError : recentError;
+  const queryErrorMessage = activeQueryError ? getApiErrorMessage(activeQueryError) : null;
 
   const handleSelect = useCallback((patient: Patient) => {
     onChange(patient.id, patient);
@@ -147,6 +158,11 @@ export function PatientSelector({
                     </div>
                   </div>
                 ))}
+              </div>
+            ) : queryErrorMessage ? (
+              <div className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/5 p-2.5">
+                <AlertCircle className="h-4 w-4 shrink-0 text-destructive mt-0.5" />
+                <p className="text-xs sm:text-sm text-destructive">{queryErrorMessage}</p>
               </div>
             ) : patients && patients.length > 0 ? (
                 <ul className="space-y-0.5">

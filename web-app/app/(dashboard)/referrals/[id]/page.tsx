@@ -6,7 +6,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import {
@@ -47,6 +47,7 @@ import {
 } from '@/lib/types/referral';
 import type { ReferralStatus, ReferralPriority } from '@/lib/types/referral';
 import { useToast } from '@/lib/hooks/use-toast';
+import { buildEncounterHref } from '@/lib/utils/encounter-focus';
 
 const STATUS_COLORS: Record<ReferralStatus, string> = {
   DRAFT: 'bg-muted text-muted-foreground',
@@ -67,6 +68,7 @@ const PRIORITY_COLORS: Record<ReferralPriority, string> = {
 
 export default function ReferralDetailPage() {
   const params = useParams();
+  const router = useRouter();
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { facilityDetail } = useFacility();
@@ -107,6 +109,9 @@ export default function ReferralDetailPage() {
       await referralsApi.accept(id, 'Completed');
       invalidate();
       toast({ title: 'Referral marked complete' });
+      if (referral?.encounter) {
+        router.push(buildEncounterHref(referral.encounter, 'referrals'));
+      }
     } catch {
       toast({ title: 'Failed to complete referral', variant: 'destructive' });
     } finally {
@@ -190,6 +195,13 @@ export default function ReferralDetailPage() {
       <PageHeader
         title={`Referral ${referral.referral_number}`}
         helpContent="View referral details. Accept, decline, complete, or cancel as appropriate."
+        actions={
+          referral.encounter ? (
+            <Button variant="outline" onClick={() => router.push(buildEncounterHref(referral.encounter!, 'referrals'))}>
+              View Encounter
+            </Button>
+          ) : undefined
+        }
       />
 
       {/* Summary Bar */}
