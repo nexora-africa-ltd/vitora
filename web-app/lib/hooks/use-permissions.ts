@@ -206,8 +206,10 @@ export function usePermissions(): PermissionsResult {
   const hasPermission = useCallback((permission: string): boolean => {
     if (!isAuthenticated || !user) return false;
     // Strict Django permission check for create/view/change/delete gating.
-    // Only superusers bypass model/action permissions.
+    // Admin exception: admin roles bypass frontend permission gating,
+    // but backend still enforces server-side authorization.
     if (isSuperuser) return true;
+    if (isAdmin) return true;
 
     const userPermissions = user.permissions || [];
 
@@ -225,11 +227,12 @@ export function usePermissions(): PermissionsResult {
       const codename = p.includes('.') ? p.split('.')[1] : p;
       return codename === permission;
     });
-  }, [user, isAuthenticated, isSuperuser]);
+  }, [user, isAuthenticated, isSuperuser, isAdmin]);
 
   const canAccessModule = useCallback((module: ModuleKey): boolean => {
     if (!isAuthenticated) return false;
     if (isSuperuser) return true;
+    if (isAdmin) return true;
 
     const requiredPerm = MODULE_PERMISSIONS[module];
     if (requiredPerm === null) return true; // null = no permission required (e.g. dashboard)
@@ -250,7 +253,7 @@ export function usePermissions(): PermissionsResult {
     }
 
     return false;
-  }, [isAuthenticated, isSuperuser, hasPermission, user]);
+  }, [isAuthenticated, isSuperuser, isAdmin, hasPermission, user]);
 
   const canPerformAction = useCallback((action: ActionKey): boolean => {
     if (!isAuthenticated || !user) return false;

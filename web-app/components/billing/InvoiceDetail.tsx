@@ -47,6 +47,7 @@ import {
   RefreshCw,
   Link2,
   Receipt,
+  CheckCircle2,
 } from 'lucide-react';
 import { printInvoice } from '@/lib/documents';
 import { SHALogo } from '@/components/ui/sha-logo';
@@ -762,6 +763,14 @@ export function InvoiceDetail({
 
       {/* Action Buttons */}
       <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
+        {/* Draft autosave indicator */}
+        {canEdit && (
+          <div className="inline-flex items-center gap-2 rounded-md border border-green-300 bg-green-50 px-3 py-2 text-sm text-green-700 sm:mr-auto">
+            <CheckCircle2 className="h-4 w-4" />
+            <span>Auto-saved</span>
+          </div>
+        )}
+
         {/* Print Invoice */}
         <Button
           variant="outline"
