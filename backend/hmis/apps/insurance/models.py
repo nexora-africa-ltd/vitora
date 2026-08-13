@@ -7,6 +7,7 @@ This module contains all private insurance–related models including:
 - InsurancePlan: Plans/schemes offered by each provider
 - PatientInsurance: Patient enrollment in insurance plans
 - InsuranceProviderConfig: Per-facility insurer credentials & contract info
+- FacilitySladeCredential: Facility-level Slade OAuth credentials
 - InsuranceClaim: Claims submitted to private insurers
 - InsuranceClaimItem: Line items on claims
 - InsurancePreauth: Pre-authorization requests
@@ -380,6 +381,83 @@ class PatientInsurance(OrganizationScopedModel):
 
 
 # ---------------------------------------------------------------------------
+# FacilitySladeCredential (per-facility)
+# ---------------------------------------------------------------------------
+class FacilitySladeCredential(FacilityScopedModel):
+    """Facility-level Slade OAuth credentials shared across provider configs."""
+
+    id = models.BigAutoField(primary_key=True)
+    slade_client_id_encrypted = models.TextField(
+        blank=True,
+        default="",
+        help_text="KMS-encrypted Slade OAuth client ID",
+    )
+    slade_client_secret_encrypted = models.TextField(
+        blank=True,
+        default="",
+        help_text="KMS-encrypted Slade OAuth client secret",
+    )
+    slade_username_encrypted = models.TextField(
+        blank=True,
+        default="",
+        help_text="KMS-encrypted Slade OAuth username",
+    )
+    slade_password_encrypted = models.TextField(
+        blank=True,
+        default="",
+        help_text="KMS-encrypted Slade OAuth password",
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    slade_client_id = encrypted_pii_property("slade_client_id")
+    slade_client_secret = encrypted_pii_property("slade_client_secret")
+    slade_username = encrypted_pii_property("slade_username")
+    slade_password = encrypted_pii_property("slade_password")
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["facility"],
+                name="unique_slade_credential_per_facility",
+            )
+        ]
+        verbose_name = "Facility Slade Credential"
+        verbose_name_plural = "Facility Slade Credentials"
+
+    def __str__(self):
+        return f"Slade creds @ {self.facility.name}"
+
+    def get_credentials_dict(self) -> dict[str, str]:
+        creds: dict[str, str] = {}
+        if self.slade_client_id:
+            creds["slade_client_id"] = self.slade_client_id
+            creds["api_key"] = self.slade_client_id
+        if self.slade_client_secret:
+            creds["slade_client_secret"] = self.slade_client_secret
+            creds["api_secret"] = self.slade_client_secret
+        if self.slade_username:
+            creds["slade_username"] = self.slade_username
+            creds["username"] = self.slade_username
+        if self.slade_password:
+            creds["slade_password"] = self.slade_password
+            creds["password"] = self.slade_password
+        return creds
+
+    @property
+    def is_configured(self) -> bool:
+        return all(
+            [
+                bool(self.slade_client_id),
+                bool(self.slade_client_secret),
+                bool(self.slade_username),
+                bool(self.slade_password),
+            ]
+        )
+
+
+# ---------------------------------------------------------------------------
 # InsuranceProviderConfig (per-facility)
 # ---------------------------------------------------------------------------
 class InsuranceProviderConfig(FacilityScopedModel):
@@ -460,6 +538,26 @@ class InsuranceProviderConfig(FacilityScopedModel):
     api_token_encrypted = models.TextField(
         blank=True, default="", help_text="KMS-encrypted bearer token"
     )
+    slade_client_id_encrypted = models.TextField(
+        blank=True,
+        default="",
+        help_text="KMS-encrypted Slade OAuth client ID",
+    )
+    slade_client_secret_encrypted = models.TextField(
+        blank=True,
+        default="",
+        help_text="KMS-encrypted Slade OAuth client secret",
+    )
+    slade_username_encrypted = models.TextField(
+        blank=True,
+        default="",
+        help_text="KMS-encrypted Slade OAuth username",
+    )
+    slade_password_encrypted = models.TextField(
+        blank=True,
+        default="",
+        help_text="KMS-encrypted Slade OAuth password",
+    )
     api_enabled = models.BooleanField(default=False)
     healthcloud_enabled = models.BooleanField(
         default=False,
@@ -502,6 +600,10 @@ class InsuranceProviderConfig(FacilityScopedModel):
     api_username = encrypted_pii_property("api_username")
     api_password = encrypted_pii_property("api_password")
     api_token = encrypted_pii_property("api_token")
+    slade_client_id = encrypted_pii_property("slade_client_id")
+    slade_client_secret = encrypted_pii_property("slade_client_secret")
+    slade_username = encrypted_pii_property("slade_username")
+    slade_password = encrypted_pii_property("slade_password")
 
     class Meta:
         constraints = [
@@ -533,6 +635,18 @@ class InsuranceProviderConfig(FacilityScopedModel):
             creds["password"] = self.api_password
         if self.api_token:
             creds["token"] = self.api_token
+        if self.slade_client_id:
+            creds["slade_client_id"] = self.slade_client_id
+            creds.setdefault("api_key", self.slade_client_id)
+        if self.slade_client_secret:
+            creds["slade_client_secret"] = self.slade_client_secret
+            creds.setdefault("api_secret", self.slade_client_secret)
+        if self.slade_username:
+            creds["slade_username"] = self.slade_username
+            creds.setdefault("username", self.slade_username)
+        if self.slade_password:
+            creds["slade_password"] = self.slade_password
+            creds.setdefault("password", self.slade_password)
         # Fall back to legacy JSONField if no encrypted fields populated
         if not creds and self.api_credentials:
             return self.api_credentials

@@ -507,6 +507,7 @@ const _allNavItems: NavItemType[] = [
       { label: 'Claims', href: '/insurance/claims', icon: FileText, actionKey: 'billing.view_insurance', requiresInternet: true },
       { label: 'Pre-authorizations', href: '/insurance/preauths', icon: ShieldCheck, actionKey: 'billing.view_insurance', requiresInternet: true },
       { label: 'Enrollments', href: '/insurance/enrollments', icon: ClipboardList, actionKey: 'billing.view_insurance', requiresInternet: true },
+      { label: 'Slade Credentials', href: '/insurance/slade-credentials', icon: Lock, actionKey: 'billing.manage_insurance_config', requiresInternet: true },
       { label: 'Provider Configs', href: '/insurance/provider-configs', icon: Settings, actionKey: 'billing.manage_insurance_config', requiresInternet: true },
       { label: 'Authorizations', href: '/insurance/authorizations', icon: ShieldAlert, actionKey: 'billing.view_insurance', requiresInternet: true },
       { label: 'Reservations', href: '/insurance/reservations', icon: Wallet, actionKey: 'billing.view_insurance', requiresInternet: true },

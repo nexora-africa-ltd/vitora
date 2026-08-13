@@ -2,7 +2,11 @@
 
 import pytest  # type: ignore
 
-from hmis.apps.insurance.models import InsuranceProviderConfig, PatientInsurance
+from hmis.apps.insurance.models import (
+    FacilitySladeCredential,
+    InsuranceProviderConfig,
+    PatientInsurance,
+)
 
 
 @pytest.mark.django_db
@@ -98,6 +102,27 @@ class TestInsuranceProviderConfigCredentials:
             "password": "pass_test",
         }
 
+    def test_get_credentials_dict_includes_slade_encrypted_fields(self, provider_config):
+        """Slade credential fields should be decrypted and exposed for auth services."""
+        config = provider_config
+        config.slade_client_id = "slade_client"
+        config.slade_client_secret = "slade_secret"
+        config.slade_username = "slade_user"
+        config.slade_password = "slade_pass"
+        config.save()
+        config.refresh_from_db()
+
+        creds = config.get_credentials_dict()
+        assert creds["slade_client_id"] == "slade_client"
+        assert creds["slade_client_secret"] == "slade_secret"
+        assert creds["slade_username"] == "slade_user"
+        assert creds["slade_password"] == "slade_pass"
+        # Backward-compatible aliases still resolve for older auth call-sites.
+        assert creds["api_key"] == "slade_client"
+        assert creds["api_secret"] == "slade_secret"
+        assert creds["username"] == "slade_user"
+        assert creds["password"] == "slade_pass"
+
     def test_get_credentials_dict_fallback_to_legacy(self, provider_config):
         """Falls back to api_credentials JSONField when no encrypted fields set."""
         config = provider_config
@@ -108,6 +133,10 @@ class TestInsuranceProviderConfigCredentials:
         config.api_username_encrypted = ""
         config.api_password_encrypted = ""
         config.api_token_encrypted = ""
+        config.slade_client_id_encrypted = ""
+        config.slade_client_secret_encrypted = ""
+        config.slade_username_encrypted = ""
+        config.slade_password_encrypted = ""
         config.save()
         config.refresh_from_db()
 
@@ -124,3 +153,34 @@ class TestInsuranceProviderConfigCredentials:
 
         creds = config.get_credentials_dict()
         assert creds["api_key"] == "new_key"
+
+
+@pytest.mark.django_db
+class TestFacilitySladeCredentialEncryption:
+    """Verify KMS-encrypted facility-level Slade credentials."""
+
+    def test_encrypted_facility_slade_credentials_roundtrip(
+        self, sample_facility, sample_organization
+    ):
+        creds = FacilitySladeCredential.objects.create(
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+        creds.slade_client_id = "fac-client-id"
+        creds.slade_client_secret = "fac-secret"
+        creds.slade_username = "fac-user"
+        creds.slade_password = "fac-pass"
+        creds.save()
+        creds.refresh_from_db()
+
+        assert creds.slade_client_id_encrypted != ""
+        assert creds.slade_client_secret_encrypted != ""
+        assert creds.slade_username_encrypted != ""
+        assert creds.slade_password_encrypted != ""
+        assert creds.is_configured is True
+
+        exported = creds.get_credentials_dict()
+        assert exported["slade_client_id"] == "fac-client-id"
+        assert exported["slade_client_secret"] == "fac-secret"
+        assert exported["slade_username"] == "fac-user"
+        assert exported["slade_password"] == "fac-pass"

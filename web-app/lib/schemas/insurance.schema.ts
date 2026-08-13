@@ -267,6 +267,14 @@ export const InsuranceProviderConfigSchema = z.object({
   updated_at: z.string(),
 });
 
+export const FacilitySladeCredentialSchema = z.object({
+  id: z.number(),
+  facility_name: z.string(),
+  is_configured: z.boolean(),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+
 export const InsuranceVisitAuthorizationStatusSchema = z.enum([
   'pending',
   'otp_requested',
@@ -646,3 +654,4 @@ export const PaginatedInsuranceRemittancesSchema = paginated(InsuranceRemittance
 export const PaginatedPayerTariffsSchema = paginated(PayerTariffSchema);
 export const PaginatedProviderConfigsSchema = paginated(InsuranceProviderConfigSchema);
 export const PaginatedInsuranceVisitAuthorizationsSchema = paginated(InsuranceVisitAuthorizationSchema);
+export const PaginatedFacilitySladeCredentialsSchema = paginated(FacilitySladeCredentialSchema);

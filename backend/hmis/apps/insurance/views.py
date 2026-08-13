@@ -7,7 +7,7 @@ import re
 from decimal import ROUND_HALF_UP, Decimal
 
 from django.core.exceptions import ValidationError
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
@@ -33,6 +33,7 @@ from hmis.apps.insurance.filters import (
 )
 from hmis.apps.insurance.media_security import read_decrypted_card_image, validate_card_image_token
 from hmis.apps.insurance.models import (
+    FacilitySladeCredential,
     InsuranceBalanceReservation,
     InsuranceClaim,
     InsuranceClaimItem,
@@ -48,6 +49,7 @@ from hmis.apps.insurance.models import (
     PayerTariff,
 )
 from hmis.apps.insurance.serializers import (
+    FacilitySladeCredentialSerializer,
     HealthCloudGetHealthIdSerializer,
     HealthCloudPostProfileSerializer,
     HealthCloudSessionRequestOTPSerializer,
@@ -99,6 +101,62 @@ from hmis.apps.insurance.services.insurance_services import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# FacilitySladeCredential
+# ---------------------------------------------------------------------------
+class FacilitySladeCredentialViewSet(
+    ReadOnCreateMixin, TenantScopedViewMixin, viewsets.ModelViewSet
+):
+    """CRUD for facility-level Slade OAuth credentials."""
+
+    queryset = FacilitySladeCredential.objects.select_related("facility").order_by("-updated_at")
+    serializer_class = FacilitySladeCredentialSerializer
+    tenant_scope = "facility"
+
+    def get_permissions(self):
+        if self.action in ["create", "update", "partial_update", "destroy"]:
+            return [IsAdminUser()]
+        return [IsAuthenticated()]
+
+    def create(self, request, *args, **kwargs):
+        """Upsert facility credentials to avoid unique-constraint collisions."""
+        resolve_request_tenant(request)
+        tenant_kwargs = self.get_tenant_save_kwargs()
+        facility = tenant_kwargs.get(self.tenant_facility_field) or getattr(
+            request, "facility", None
+        )
+        organization = tenant_kwargs.get("organization") or getattr(request, "organization", None)
+        existing = None
+        if facility is not None:
+            existing = FacilitySladeCredential.objects.filter(
+                facility=facility,
+            ).first()
+
+        if existing is not None:
+            serializer = self.get_serializer(existing, data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            save_kwargs: dict[str, object] = {}
+            if getattr(existing, "organization_id", None) is None and organization is not None:
+                save_kwargs["organization"] = organization
+            if getattr(existing, "facility_id", None) is None and facility is not None:
+                save_kwargs["facility"] = facility
+            serializer.save(**save_kwargs)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+        try:
+            return super().create(request, *args, **kwargs)
+        except IntegrityError:
+            if facility is None:
+                raise
+            existing = FacilitySladeCredential.objects.filter(facility=facility).first()
+            if existing is None:
+                raise
+            serializer = self.get_serializer(existing, data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 # ---------------------------------------------------------------------------

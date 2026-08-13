@@ -9,6 +9,7 @@ Re-run the script to update after serializer changes:
 import pytest  # type: ignore
 
 from hmis.apps.insurance.serializers import (
+    FacilitySladeCredentialSerializer,
     HealthCloudSessionRequestOTPSerializer,
     HealthCloudSessionStartVisitSerializer,
     InsuranceClaimAppealSerializer,
@@ -51,6 +52,22 @@ from hmis.apps.insurance.serializers import (
 )
 
 CONTRACTS: list[tuple[type, frozenset[str]]] = [
+    (
+        FacilitySladeCredentialSerializer,
+        frozenset(
+            {
+                "created_at",
+                "facility_name",
+                "id",
+                "is_configured",
+                "slade_client_id",
+                "slade_client_secret",
+                "slade_password",
+                "slade_username",
+                "updated_at",
+            }
+        ),
+    ),
     (
         HealthCloudSessionRequestOTPSerializer,
         frozenset(
@@ -374,6 +391,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "contract_start",
                 "created_at",
                 "facility_name",
+                "health_crm_base_url",
                 "healthcloud_enabled",
                 "id",
                 "is_contract_active",
@@ -386,6 +404,10 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "provider_name",
                 "require_balance_reservation",
                 "require_visit_authorization",
+                "slade_client_id",
+                "slade_client_secret",
+                "slade_password",
+                "slade_username",
                 "submission_format",
                 "updated_at",
             }

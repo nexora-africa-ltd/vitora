@@ -9,6 +9,7 @@ from rest_framework import serializers
 
 from hmis.apps.insurance.media_security import build_card_image_url, save_encrypted_card_image
 from hmis.apps.insurance.models import (
+    FacilitySladeCredential,
     InsuranceClaim,
     InsuranceClaimItem,
     InsurancePlan,
@@ -22,6 +23,69 @@ from hmis.apps.insurance.models import (
     PayerTariff,
 )
 from hmis.apps.insurance.payer_mappings import infer_healthcloud_payer_slade_code
+
+
+# ---------------------------------------------------------------------------
+# FacilitySladeCredential
+# ---------------------------------------------------------------------------
+class FacilitySladeCredentialSerializer(serializers.ModelSerializer):
+    facility_name = serializers.CharField(source="facility.name", read_only=True)
+    slade_client_id = serializers.CharField(write_only=True, required=False, allow_blank=True)
+    slade_client_secret = serializers.CharField(write_only=True, required=False, allow_blank=True)
+    slade_username = serializers.CharField(write_only=True, required=False, allow_blank=True)
+    slade_password = serializers.CharField(write_only=True, required=False, allow_blank=True)
+    is_configured = serializers.BooleanField(read_only=True)
+
+    class Meta:
+        model = FacilitySladeCredential
+        fields = [
+            "id",
+            "facility_name",
+            "slade_client_id",
+            "slade_client_secret",
+            "slade_username",
+            "slade_password",
+            "is_configured",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "is_configured", "created_at", "updated_at"]
+
+    def create(self, validated_data):
+        secret_fields = {
+            "slade_client_id": validated_data.pop("slade_client_id", ""),
+            "slade_client_secret": validated_data.pop("slade_client_secret", ""),
+            "slade_username": validated_data.pop("slade_username", ""),
+            "slade_password": validated_data.pop("slade_password", ""),
+        }
+        instance = super().create(validated_data)
+        for field, value in secret_fields.items():
+            if value:
+                setattr(instance, field, value)
+        if any(secret_fields.values()):
+            encrypted_updates = [
+                f"{field}_encrypted" for field, value in secret_fields.items() if value
+            ]
+            instance.save(update_fields=[*encrypted_updates, "updated_at"])
+        return instance
+
+    def update(self, instance, validated_data):
+        secret_fields = {
+            "slade_client_id": validated_data.pop("slade_client_id", ""),
+            "slade_client_secret": validated_data.pop("slade_client_secret", ""),
+            "slade_username": validated_data.pop("slade_username", ""),
+            "slade_password": validated_data.pop("slade_password", ""),
+        }
+        instance = super().update(instance, validated_data)
+        for field, value in secret_fields.items():
+            if value:
+                setattr(instance, field, value)
+        if any(secret_fields.values()):
+            encrypted_updates = [
+                f"{field}_encrypted" for field, value in secret_fields.items() if value
+            ]
+            instance.save(update_fields=[*encrypted_updates, "updated_at"])
+        return instance
 
 
 # ---------------------------------------------------------------------------
@@ -472,6 +536,10 @@ class InsuranceProviderConfigSerializer(serializers.ModelSerializer):
     api_username = serializers.CharField(write_only=True, required=False, allow_blank=True)
     api_password = serializers.CharField(write_only=True, required=False, allow_blank=True)
     api_token = serializers.CharField(write_only=True, required=False, allow_blank=True)
+    slade_client_id = serializers.CharField(write_only=True, required=False, allow_blank=True)
+    slade_client_secret = serializers.CharField(write_only=True, required=False, allow_blank=True)
+    slade_username = serializers.CharField(write_only=True, required=False, allow_blank=True)
+    slade_password = serializers.CharField(write_only=True, required=False, allow_blank=True)
 
     class Meta:
         model = InsuranceProviderConfig
@@ -497,6 +565,10 @@ class InsuranceProviderConfigSerializer(serializers.ModelSerializer):
             "api_username",
             "api_password",
             "api_token",
+            "slade_client_id",
+            "slade_client_secret",
+            "slade_username",
+            "slade_password",
             "api_enabled",
             "healthcloud_enabled",
             "payer_slade_code",
@@ -568,6 +640,10 @@ class InsuranceProviderConfigSerializer(serializers.ModelSerializer):
             "api_username": validated_data.pop("api_username", ""),
             "api_password": validated_data.pop("api_password", ""),
             "api_token": validated_data.pop("api_token", ""),
+            "slade_client_id": validated_data.pop("slade_client_id", ""),
+            "slade_client_secret": validated_data.pop("slade_client_secret", ""),
+            "slade_username": validated_data.pop("slade_username", ""),
+            "slade_password": validated_data.pop("slade_password", ""),
         }
         instance = super().create(validated_data)
         for field, value in secret_fields.items():
@@ -584,6 +660,10 @@ class InsuranceProviderConfigSerializer(serializers.ModelSerializer):
             "api_username": validated_data.pop("api_username", ""),
             "api_password": validated_data.pop("api_password", ""),
             "api_token": validated_data.pop("api_token", ""),
+            "slade_client_id": validated_data.pop("slade_client_id", ""),
+            "slade_client_secret": validated_data.pop("slade_client_secret", ""),
+            "slade_username": validated_data.pop("slade_username", ""),
+            "slade_password": validated_data.pop("slade_password", ""),
         }
         instance = super().update(instance, validated_data)
         for field, value in secret_fields.items():

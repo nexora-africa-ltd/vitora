@@ -5,6 +5,7 @@ from django.urls import include, path
 from rest_framework import routers
 
 from hmis.apps.insurance.views import (
+    FacilitySladeCredentialViewSet,
     HealthCloudHealthIdWebhookView,
     InsuranceClaimItemViewSet,
     InsuranceClaimViewSet,
@@ -20,6 +21,11 @@ from hmis.apps.insurance.views import (
 )
 
 router = routers.DefaultRouter()
+router.register(
+    r"slade-credentials",
+    FacilitySladeCredentialViewSet,
+    basename="insurance-slade-credential",
+)
 router.register(r"providers", InsuranceProviderViewSet, basename="insurance-provider")
 router.register(r"plans", InsurancePlanViewSet, basename="insurance-plan")
 router.register(r"enrollments", PatientInsuranceViewSet, basename="patient-insurance")

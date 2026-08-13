@@ -6,6 +6,7 @@ from django.utils.html import format_html
 
 from hmis.apps.core.mixins import TenantScopedAdminMixin
 from hmis.apps.insurance.models import (
+    FacilitySladeCredential,
     InsuranceClaim,
     InsuranceClaimItem,
     InsuranceOutboundCall,
@@ -190,6 +191,14 @@ class InsuranceProviderConfigAdmin(TenantScopedAdminMixin, admin.ModelAdmin):
     ]
     list_filter = ["accreditation_status", "api_enabled", "submission_format"]
     raw_id_fields = ["provider", "facility", "organization"]
+
+
+@admin.register(FacilitySladeCredential)
+class FacilitySladeCredentialAdmin(TenantScopedAdminMixin, admin.ModelAdmin):
+    list_display = ["facility", "organization", "is_configured", "updated_at"]
+    list_filter = ["facility", "organization"]
+    raw_id_fields = ["facility", "organization"]
+    readonly_fields = ["updated_at", "created_at"]
 
 
 @admin.register(InsuranceVisitAuthorization)

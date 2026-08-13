@@ -15,6 +15,7 @@ import type {
   InsurancePreauthCreateInput,
   InsurancePreauthFilters,
   InsuranceProviderConfigCreateInput,
+  FacilitySladeCredentialInput,
   RequestOTPInput,
   ReserveBalanceInput,
   StartVisitInput,
@@ -63,6 +64,7 @@ export const insuranceQueryKeys = {
   configList: (params?: Record<string, unknown>) =>
     [...insuranceQueryKeys.configs(), 'list', params] as const,
   configDetail: (id: number) => [...insuranceQueryKeys.configs(), id] as const,
+  sladeCredentialCurrent: () => [...insuranceQueryKeys.configs(), 'slade-credential-current'] as const,
 
   authorizations: () => [...insuranceQueryKeys.all, 'authorizations'] as const,
   authorizationList: (params?: Record<string, unknown>) =>
@@ -405,6 +407,38 @@ export function useUpdateProviderConfig() {
       queryClient.invalidateQueries({
         queryKey: insuranceQueryKeys.configDetail(variables.id),
       });
+    },
+  });
+}
+
+export function useFacilitySladeCredential(options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: insuranceQueryKeys.sladeCredentialCurrent(),
+    queryFn: () => insuranceApi.getCurrentFacilitySladeCredential(),
+    enabled: options?.enabled ?? true,
+  });
+}
+
+export function useCreateFacilitySladeCredential() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: FacilitySladeCredentialInput) =>
+      insuranceApi.createFacilitySladeCredential(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: insuranceQueryKeys.configs() });
+      queryClient.invalidateQueries({ queryKey: insuranceQueryKeys.sladeCredentialCurrent() });
+    },
+  });
+}
+
+export function useUpdateFacilitySladeCredential() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: FacilitySladeCredentialInput }) =>
+      insuranceApi.updateFacilitySladeCredential(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: insuranceQueryKeys.configs() });
+      queryClient.invalidateQueries({ queryKey: insuranceQueryKeys.sladeCredentialCurrent() });
     },
   });
 }

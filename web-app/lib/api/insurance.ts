@@ -10,6 +10,7 @@ import {
   InsurancePlanSchema,
   InsurancePreauthSchema,
   InsuranceProviderConfigSchema,
+  FacilitySladeCredentialSchema,
   InsuranceProviderSchema,
   InsuranceVisitAuthorizationSchema,
   InsuranceRemittanceSchema,
@@ -24,6 +25,7 @@ import {
   PaginatedPatientInsurancesSchema,
   PaginatedPayerTariffsSchema,
   PaginatedProviderConfigsSchema,
+  PaginatedFacilitySladeCredentialsSchema,
   PaginatedInsuranceProvidersSchema,
   PatientInsuranceSchema,
   PayerTariffSchema,
@@ -51,6 +53,8 @@ import type {
   InsurancePreauthFilters,
   InsuranceProvider,
   InsuranceProviderConfig,
+  FacilitySladeCredential,
+  FacilitySladeCredentialInput,
   InsuranceProviderCreateInput,
   InsuranceVisitAuthorization,
   InsuranceRemittance,
@@ -360,6 +364,43 @@ async function updateProviderConfig(
   const response = await apiClient.patch(`${BASE}/provider-configs/${id}/`, data);
   return parseResponse(InsuranceProviderConfigSchema, response.data, {
     context: 'insuranceApi.updateProviderConfig',
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Facility Slade Credentials
+// ---------------------------------------------------------------------------
+
+async function listFacilitySladeCredentials(
+  params?: Record<string, string | number | undefined>
+): Promise<PaginatedInsuranceResponse<FacilitySladeCredential>> {
+  const response = await apiClient.get(`${BASE}/slade-credentials/`, { params });
+  return parseResponse(PaginatedFacilitySladeCredentialsSchema, response.data, {
+    context: 'insuranceApi.listFacilitySladeCredentials',
+  });
+}
+
+async function getCurrentFacilitySladeCredential(): Promise<FacilitySladeCredential | null> {
+  const page = await listFacilitySladeCredentials({ page: 1, page_size: 1 });
+  return page.results[0] ?? null;
+}
+
+async function createFacilitySladeCredential(
+  data: FacilitySladeCredentialInput
+): Promise<FacilitySladeCredential> {
+  const response = await apiClient.post(`${BASE}/slade-credentials/`, data);
+  return parseResponse(FacilitySladeCredentialSchema, response.data, {
+    context: 'insuranceApi.createFacilitySladeCredential',
+  });
+}
+
+async function updateFacilitySladeCredential(
+  id: number,
+  data: FacilitySladeCredentialInput
+): Promise<FacilitySladeCredential> {
+  const response = await apiClient.patch(`${BASE}/slade-credentials/${id}/`, data);
+  return parseResponse(FacilitySladeCredentialSchema, response.data, {
+    context: 'insuranceApi.updateFacilitySladeCredential',
   });
 }
 
@@ -749,6 +790,10 @@ export const insuranceApi = {
   getProviderConfig,
   createProviderConfig,
   updateProviderConfig,
+  listFacilitySladeCredentials,
+  getCurrentFacilitySladeCredential,
+  createFacilitySladeCredential,
+  updateFacilitySladeCredential,
 
   // HealthCloud authorizations
   listVisitAuthorizations,

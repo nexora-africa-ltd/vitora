@@ -20,6 +20,7 @@ from unittest.mock import MagicMock, patch
 import pytest  # type: ignore
 
 from hmis.apps.insurance.models import (
+    FacilitySladeCredential,
     InsuranceClaim,
     InsuranceOutboundCall,
     InsurancePreauth,
@@ -500,6 +501,79 @@ class TestSlade360Adapter:
         assert captured["data"]["username"] == "env-user"
         assert captured["data"]["password"] == "env-pass"
         assert captured["headers"] == {"Content-Type": "application/x-www-form-urlencoded"}
+
+    @pytest.mark.django_db
+    def test_slade_auth_uses_facility_credentials_when_provider_credentials_missing(
+        self,
+        provider_config,
+        monkeypatch,
+    ):
+        monkeypatch.delenv("SLADE_CLIENT_ID", raising=False)
+        monkeypatch.delenv("SLADE_SECRET_KEY", raising=False)
+        monkeypatch.delenv("SLADE_CLIENT_SECRET", raising=False)
+        monkeypatch.delenv("SLADE_USERNAME", raising=False)
+        monkeypatch.delenv("SLADE_API_USERNAME", raising=False)
+        monkeypatch.delenv("SLADE_PASSWORD", raising=False)
+        monkeypatch.delenv("SLADE_API_PASSWORD", raising=False)
+
+        provider_config.api_key = ""
+        provider_config.api_secret = ""
+        provider_config.api_username = ""
+        provider_config.api_password = ""
+        provider_config.slade_client_id = ""
+        provider_config.slade_client_secret = ""
+        provider_config.slade_username = ""
+        provider_config.slade_password = ""
+        provider_config.save(
+            update_fields=[
+                "api_key_encrypted",
+                "api_secret_encrypted",
+                "api_username_encrypted",
+                "api_password_encrypted",
+                "slade_client_id_encrypted",
+                "slade_client_secret_encrypted",
+                "slade_username_encrypted",
+                "slade_password_encrypted",
+                "updated_at",
+            ]
+        )
+
+        facility_creds = FacilitySladeCredential.objects.create(
+            facility=provider_config.facility,
+            organization=provider_config.organization,
+        )
+        facility_creds.slade_client_id = "facility-client-id"
+        facility_creds.slade_client_secret = "facility-secret"
+        facility_creds.slade_username = "facility-user"
+        facility_creds.slade_password = "facility-pass"
+        facility_creds.save(
+            update_fields=[
+                "slade_client_id_encrypted",
+                "slade_client_secret_encrypted",
+                "slade_username_encrypted",
+                "slade_password_encrypted",
+                "updated_at",
+            ]
+        )
+
+        service = SladeAuthService(provider_config)
+        captured: dict = {}
+
+        def _mock_post(path, *, data=None, headers=None, host=None, **kwargs):
+            captured["data"] = data
+            return InsuranceResponse(
+                status_code=200,
+                headers={},
+                json={"access_token": "tok", "token_type": "Bearer", "expires_in": 3600},
+            )
+
+        service.client.post = _mock_post
+        service.get_access_token(force_refresh=True)
+
+        assert captured["data"]["client_id"] == "facility-client-id"
+        assert captured["data"]["client_secret"] == "facility-secret"
+        assert captured["data"]["username"] == "facility-user"
+        assert captured["data"]["password"] == "facility-pass"
 
     @pytest.mark.django_db
     def test_submit_claim_uses_latest_authorization_token_as_member_number(

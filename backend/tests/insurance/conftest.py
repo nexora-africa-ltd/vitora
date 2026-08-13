@@ -6,6 +6,7 @@ from decimal import Decimal
 import pytest  # type: ignore
 
 from hmis.apps.insurance.models import (
+    FacilitySladeCredential,
     InsuranceClaim,
     InsuranceClaimItem,
     InsurancePlan,
@@ -153,6 +154,19 @@ def provider_config(db, insurance_provider, sample_facility, sample_organization
         contract_end=date.today() + timedelta(days=365),
         accreditation_status=InsuranceProviderConfig.AccreditationStatus.ACCREDITED,
         submission_format=InsuranceProviderConfig.SubmissionFormat.MANUAL,
+    )
+
+
+@pytest.fixture
+def slade_credential(db, sample_facility, sample_organization):
+    """Create facility-level Slade credentials."""
+    return FacilitySladeCredential.objects.create(
+        facility=sample_facility,
+        organization=sample_organization,
+        slade_client_id="facility-client-id",
+        slade_client_secret="facility-client-secret",
+        slade_username="facility-user",
+        slade_password="facility-pass",
     )
 
 

@@ -82,6 +82,90 @@ class TestInsuranceProviderAPI:
 
 
 # ===================================================================
+# FacilitySladeCredential API
+# ===================================================================
+class TestFacilitySladeCredentialAPI:
+    def test_list_slade_credentials(self, authenticated_client):
+        response = authenticated_client.get("/api/insurance/slade-credentials/")
+        assert response.status_code == status.HTTP_200_OK
+
+    def test_create_slade_credentials_admin_only(self, authenticated_client):
+        response = authenticated_client.post(
+            "/api/insurance/slade-credentials/",
+            {
+                "slade_client_id": "client-id",
+                "slade_client_secret": "secret",
+                "slade_username": "username",
+                "slade_password": "password",
+            },
+            format="json",
+        )
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_create_slade_credentials(self, admin_client):
+        response = admin_client.post(
+            "/api/insurance/slade-credentials/",
+            {
+                "slade_client_id": "client-id",
+                "slade_client_secret": "secret",
+                "slade_username": "username",
+                "slade_password": "password",
+            },
+            format="json",
+        )
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data["is_configured"] is True
+        assert "slade_client_id" not in response.data
+        assert "slade_client_secret" not in response.data
+        assert "slade_username" not in response.data
+        assert "slade_password" not in response.data
+
+    def test_update_slade_credentials(self, admin_client):
+        create = admin_client.post(
+            "/api/insurance/slade-credentials/",
+            {
+                "slade_client_id": "old-client",
+                "slade_client_secret": "old-secret",
+                "slade_username": "old-user",
+                "slade_password": "old-pass",
+            },
+            format="json",
+        )
+        credential_id = create.data["id"]
+
+        response = admin_client.patch(
+            f"/api/insurance/slade-credentials/{credential_id}/",
+            {"slade_client_id": "new-client"},
+            format="json",
+        )
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["is_configured"] is True
+
+    def test_create_slade_credentials_upserts_existing(self, admin_client):
+        first = admin_client.post(
+            "/api/insurance/slade-credentials/",
+            {
+                "slade_client_id": "client-a",
+                "slade_client_secret": "secret-a",
+                "slade_username": "user-a",
+                "slade_password": "pass-a",
+            },
+            format="json",
+        )
+        assert first.status_code == status.HTTP_201_CREATED
+
+        second = admin_client.post(
+            "/api/insurance/slade-credentials/",
+            {
+                "slade_client_id": "client-b",
+            },
+            format="json",
+        )
+        assert second.status_code == status.HTTP_200_OK
+        assert second.data["id"] == first.data["id"]
+
+
+# ===================================================================
 # InsurancePlan API
 # ===================================================================
 class TestInsurancePlanAPI:

@@ -337,6 +337,10 @@ export interface InsuranceProviderConfigCreateInput {
   api_username?: string;
   api_password?: string;
   api_token?: string;
+  slade_client_id?: string;
+  slade_client_secret?: string;
+  slade_username?: string;
+  slade_password?: string;
   api_enabled?: boolean;
   auth_base_url?: string;
   provider_edi_base_url?: string;
@@ -349,6 +353,21 @@ export interface InsuranceProviderConfigCreateInput {
   max_claim_amount?: string | null;
   submission_format?: SubmissionFormat;
   notes?: string;
+}
+
+export interface FacilitySladeCredential {
+  id: number;
+  facility_name: string;
+  is_configured: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface FacilitySladeCredentialInput {
+  slade_client_id?: string;
+  slade_client_secret?: string;
+  slade_username?: string;
+  slade_password?: string;
 }
 
 export type InsuranceVisitAuthorizationStatus =

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 
 import { PageHeader } from '@/components/shared/page-header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -60,23 +61,25 @@ export default function InsuranceProviderConfigsPage() {
       ).values()
     );
 
-  const handleProviderChange = (value: string) => {
-    setProvider(value);
-    const selected = providerOptions.find((p) => String(p.id) === value);
-    if (!selected) return;
-    const match = KNOWN_PAYER_CODES.find(
-      (entry) => entry.name.trim().toLowerCase() === selected.name.trim().toLowerCase()
-    );
-    if (match) {
-      setPayerSladeCode(String(match.code));
-    }
-  };
-
   const handleCreate = async () => {
     if (!provider) {
-      toast({ title: 'Missing provider', description: 'Select provider first.', variant: 'destructive' });
+      toast({
+        title: 'Missing provider',
+        description: 'Select a provider before creating a provider config.',
+        variant: 'destructive',
+      });
       return;
     }
+
+    if (healthcloudEnabled && !payerSladeCode) {
+      toast({
+        title: 'Missing payer code',
+        description: 'Select payer Slade code when HealthCloud is enabled.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     try {
       await createConfig.mutateAsync({
         provider: Number(provider),
@@ -103,61 +106,88 @@ export default function InsuranceProviderConfigsPage() {
 
       <Card>
         <CardHeader>
+          <CardTitle className="text-base">Slade Credentials</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-muted-foreground">Manage shared facility-level Slade OAuth credentials in a separate page.</p>
+          <Button asChild variant="outline">
+            <Link href="/insurance/slade-credentials">Open Slade Credentials</Link>
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
           <CardTitle className="text-base">Create Config</CardTitle>
         </CardHeader>
-        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <Label>Provider</Label>
-            <Select value={provider} onValueChange={handleProviderChange}>
-              <SelectTrigger><SelectValue placeholder="Select provider" /></SelectTrigger>
-              <SelectContent>
-                {providerOptions.map((p) => (
-                  <SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+        <CardContent className="space-y-4">
+          <div className="border rounded-lg p-3 space-y-3">
+            <p className="text-sm font-medium">Provider Mapping</p>
+            <div className="grid grid-cols-1 gap-4">
+              <div>
+                <Label>Payer Slade Code</Label>
+                <Select value={payerSladeCode} onValueChange={setPayerSladeCode}>
+                  <SelectTrigger><SelectValue placeholder="Select payer code" /></SelectTrigger>
+                  <SelectContent>
+                    {KNOWN_PAYER_CODES.map((entry) => (
+                      <SelectItem key={entry.code} value={String(entry.code)}>
+                        {entry.name} ({entry.code})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Provider</Label>
+                <Select value={provider} onValueChange={setProvider}>
+                  <SelectTrigger><SelectValue placeholder="Select provider" /></SelectTrigger>
+                  <SelectContent>
+                    {providerOptions.map((p) => (
+                      <SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
           </div>
-          <div>
-            <Label>Payer Slade Code</Label>
-            <Select value={payerSladeCode} onValueChange={setPayerSladeCode}>
-              <SelectTrigger><SelectValue placeholder="Select payer code" /></SelectTrigger>
-              <SelectContent>
-                {KNOWN_PAYER_CODES.map((entry) => (
-                  <SelectItem key={entry.code} value={String(entry.code)}>
-                    {entry.name} ({entry.code})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+
+          <div className="border rounded-lg p-3 space-y-3">
+            <p className="text-sm font-medium">API Endpoints</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label>Auth Base URL</Label>
+                <Input value={authBaseUrl} onChange={(e) => setAuthBaseUrl(e.target.value)} />
+              </div>
+              <div>
+                <Label>API Base URL</Label>
+                <Input value={apiBaseUrl} onChange={(e) => setApiBaseUrl(e.target.value)} />
+              </div>
+              <div>
+                <Label>Provider EDI Base URL</Label>
+                <Input value={providerEdiBaseUrl} onChange={(e) => setProviderEdiBaseUrl(e.target.value)} />
+              </div>
+              <div>
+                <Label>Provider IS Base URL</Label>
+                <Input value={providerIsBaseUrl} onChange={(e) => setProviderIsBaseUrl(e.target.value)} />
+              </div>
+              <div>
+                <Label>Health CRM Base URL</Label>
+                <Input value={healthCrmBaseUrl} onChange={(e) => setHealthCrmBaseUrl(e.target.value)} />
+              </div>
+            </div>
           </div>
-          <div>
-            <Label>Auth Base URL</Label>
-            <Input value={authBaseUrl} onChange={(e) => setAuthBaseUrl(e.target.value)} />
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="flex items-center gap-2">
+              <Checkbox checked={apiEnabled} onCheckedChange={(v) => setApiEnabled(Boolean(v))} />
+              <Label>API Enabled</Label>
+            </div>
+            <div className="flex items-center gap-2">
+              <Checkbox checked={healthcloudEnabled} onCheckedChange={(v) => setHealthcloudEnabled(Boolean(v))} />
+              <Label>HealthCloud Enabled</Label>
+            </div>
           </div>
-          <div>
-            <Label>API Base URL</Label>
-            <Input value={apiBaseUrl} onChange={(e) => setApiBaseUrl(e.target.value)} />
-          </div>
-          <div>
-            <Label>Provider EDI Base URL</Label>
-            <Input value={providerEdiBaseUrl} onChange={(e) => setProviderEdiBaseUrl(e.target.value)} />
-          </div>
-          <div>
-            <Label>Provider IS Base URL</Label>
-            <Input value={providerIsBaseUrl} onChange={(e) => setProviderIsBaseUrl(e.target.value)} />
-          </div>
-          <div>
-            <Label>Health CRM Base URL</Label>
-            <Input value={healthCrmBaseUrl} onChange={(e) => setHealthCrmBaseUrl(e.target.value)} />
-          </div>
-          <div className="flex items-center gap-2">
-            <Checkbox checked={apiEnabled} onCheckedChange={(v) => setApiEnabled(Boolean(v))} />
-            <Label>API Enabled</Label>
-          </div>
-          <div className="flex items-center gap-2">
-            <Checkbox checked={healthcloudEnabled} onCheckedChange={(v) => setHealthcloudEnabled(Boolean(v))} />
-            <Label>HealthCloud Enabled</Label>
-          </div>
+
           <div className="md:col-span-2 flex justify-end">
             <Button onClick={handleCreate} disabled={createConfig.isPending}>
               {createConfig.isPending ? 'Saving...' : 'Create Config'}

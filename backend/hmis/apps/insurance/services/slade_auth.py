@@ -12,6 +12,7 @@ from typing import Any
 from django.core.cache import cache
 from prometheus_client import Counter
 
+from hmis.apps.insurance.models import FacilitySladeCredential
 from hmis.apps.insurance.services.errors import InsuranceUnauthorizedError, InsuranceValidationError
 
 from .client import InsuranceHttpClient
@@ -52,6 +53,15 @@ class SladeAuthService:
         self.config = config
         self.client = InsuranceHttpClient.from_config(config)
         self.creds = config.get_credentials_dict()
+        facility_id = getattr(config, "facility_id", None)
+        if facility_id is not None:
+            facility_creds = FacilitySladeCredential.objects.filter(
+                facility_id=facility_id,
+                organization_id=getattr(config, "organization_id", None),
+            ).first()
+            if facility_creds is not None:
+                for key, value in facility_creds.get_credentials_dict().items():
+                    self.creds.setdefault(key, value)
 
     def get_access_token(self, *, force_refresh: bool = False) -> SladeAccessToken:
         cache_key = self._cache_key()
@@ -82,20 +92,27 @@ class SladeAuthService:
         }
 
     def _request_new_token(self) -> SladeAccessToken:
-        client_id = os.getenv("SLADE_CLIENT_ID", "") or self.creds.get("api_key", "")
+        client_id = (
+            os.getenv("SLADE_CLIENT_ID", "")
+            or self.creds.get("slade_client_id", "")
+            or self.creds.get("api_key", "")
+        )
         client_secret = (
             os.getenv("SLADE_SECRET_KEY", "")
             or os.getenv("SLADE_CLIENT_SECRET", "")
+            or self.creds.get("slade_client_secret", "")
             or self.creds.get("api_secret", "")
         )
         username = (
             os.getenv("SLADE_USERNAME", "")
             or os.getenv("SLADE_API_USERNAME", "")
+            or self.creds.get("slade_username", "")
             or self.creds.get("username", "")
         )
         password = (
             os.getenv("SLADE_PASSWORD", "")
             or os.getenv("SLADE_API_PASSWORD", "")
+            or self.creds.get("slade_password", "")
             or self.creds.get("password", "")
         )
 
