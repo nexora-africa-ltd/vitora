@@ -1,6 +1,7 @@
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """Views for the insurance app."""
 
+import json
 import logging
 import re
 from decimal import ROUND_HALF_UP, Decimal
@@ -87,6 +88,7 @@ from hmis.apps.insurance.serializers import (
     VerifyEnrollmentPreviewSerializer,
 )
 from hmis.apps.insurance.services.adapters import get_adapter
+from hmis.apps.insurance.services.errors import InsuranceApiError
 from hmis.apps.insurance.services.insurance_services import (
     HealthCloudWorkflowService,
     InsuranceEligibilityService,
@@ -801,6 +803,87 @@ class InsuranceClaimViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.M
     def _as_money(value) -> Decimal:
         return Decimal(str(value or "0")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
+    @staticmethod
+    def _strip_html(value: str) -> str:
+        """Strip HTML tags and collapse whitespace for safe, readable messages."""
+        no_tags = re.sub(r"<[^>]+>", " ", value)
+        return re.sub(r"\s+", " ", no_tags).strip()
+
+    @classmethod
+    def _extract_upstream_message(cls, value) -> str:
+        """Extract a concise error message from insurer payloads/text."""
+        if isinstance(value, dict):
+            for key in ("detail", "error", "message"):
+                candidate = value.get(key)
+                if isinstance(candidate, str) and candidate.strip():
+                    return cls._extract_upstream_message(candidate)
+            return json.dumps(value)[:300]
+
+        if isinstance(value, list):
+            for item in value:
+                if isinstance(item, str) and item.strip():
+                    return cls._extract_upstream_message(item)
+            return "Upstream request failed."
+
+        text = str(value or "").strip()
+        if not text:
+            return "Upstream request failed."
+
+        if "<" in text and ">" in text:
+            stripped = cls._strip_html(text)
+            if stripped:
+                return stripped[:300]
+
+        if text.startswith("{") and text.endswith("}"):
+            try:
+                parsed = json.loads(text)
+                return cls._extract_upstream_message(parsed)
+            except (TypeError, ValueError):
+                pass
+
+        return text[:300]
+
+    @classmethod
+    def _upstream_error_response(
+        cls, exc: Exception, fallback: str = "Upstream request failed"
+    ) -> Response:
+        """Normalize upstream errors into a structured payload for UI consumption."""
+        if isinstance(exc, InsuranceApiError):
+            message = cls._extract_upstream_message(exc.response_body or exc.message)
+            provider = str(exc.provider_code or "")
+            method = str(exc.method or "")
+            path = str(exc.path or "")
+            status_code = int(exc.status_code) if isinstance(exc.status_code, int) else None
+
+            action_hint = ""
+            if status_code == 404 and "/remittances/claim_remittance" in path:
+                action_hint = (
+                    "Slade contract mismatch: confirm the claim remittance endpoint and required query keys "
+                    "for this payer/facility, then update adapter routing."
+                )
+            elif status_code == 404 and path.startswith("/claims/"):
+                action_hint = (
+                    "External claim not found in payer tenant. Verify external_claim_id and confirm the claim was "
+                    "submitted in the same Slade environment."
+                )
+
+            payload = {
+                "error": message or fallback,
+                "upstream": {
+                    "provider": provider,
+                    "method": method,
+                    "path": path,
+                    "status": status_code,
+                    "message": message or fallback,
+                },
+            }
+            if action_hint:
+                payload["action"] = action_hint
+
+            return Response(payload, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response({"error": str(exc) or fallback}, status=status.HTTP_400_BAD_REQUEST)
+
     def _build_invoice_submission_payload(self, claim: InsuranceClaim, payload: dict) -> dict:
         invoice = claim.invoice
         invoice_number = str(payload.get("invoice_number") or "").strip()
@@ -1185,7 +1268,9 @@ class InsuranceClaimViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.M
                 organization=getattr(request, "organization", None),
             )
         except Exception as exc:
-            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+            return self._upstream_error_response(
+                exc, fallback="Failed to refresh external claim status"
+            )
         return Response({"claim": InsuranceClaimSerializer(claim).data, "external": response})
 
     @action(detail=True, methods=["post"], url_path="submit-credit-note")
@@ -1299,7 +1384,7 @@ class InsuranceClaimViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.M
                 organization=getattr(request, "organization", None),
             )
         except Exception as exc:
-            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+            return self._upstream_error_response(exc, fallback="Failed to fetch claim remittance")
         return Response({"claim": InsuranceClaimSerializer(claim).data, "remittance": response})
 
 

@@ -31,7 +31,12 @@ if TYPE_CHECKING:
 
 from .base_adapter import InsuranceApiAdapter
 from .client import InsuranceHttpClient
-from .errors import InsuranceNotConfiguredError, InsuranceValidationError
+from .errors import (
+    InsuranceApiError,
+    InsuranceNotConfiguredError,
+    InsuranceNotFoundError,
+    InsuranceValidationError,
+)
 from .results import ClaimResult, EligibilityResult, PreauthResult, RemittanceResult, TariffEntry
 from .slade_auth import SladeAuthService
 
@@ -599,14 +604,47 @@ class Slade360Adapter(InsuranceApiAdapter):
         )
         return response.json or {}
 
-    def get_claim_remittance(self, claim_id: int | str) -> dict[str, Any]:
-        response = self.client.get(
-            "/remittances/claim_remittance/",
-            params={"claim_id": claim_id},
-            headers=self.auth_service.get_auth_headers(),
-            host="provider_edi",
-        )
-        return response.json or {}
+    def get_claim_remittance(
+        self,
+        claim_id: int | str,
+        *,
+        claim_number: str | None = None,
+    ) -> dict[str, Any]:
+        """Fetch remittance info with endpoint fallbacks for payer contract variance."""
+        claim_id_str = str(claim_id)
+        endpoint_attempts = [
+            ("provider_edi", "/remittances/claim_remittance/", {"claim_id": claim_id_str}),
+            ("provider_edi", "/remittances/claim_remittance", {"claim_id": claim_id_str}),
+            ("provider_is", "/remittances/claim_remittance/", {"claim_id": claim_id_str}),
+            ("provider_edi", "/remittances/claim_remittance/", {"claim": claim_id_str}),
+            ("provider_edi", f"/claims/{claim_id_str}/remittance/", None),
+            ("provider_is", f"/claims/{claim_id_str}/remittance/", None),
+        ]
+
+        if claim_number:
+            endpoint_attempts.insert(
+                2,
+                ("provider_edi", "/remittances/claim_remittance/", {"claim_number": claim_number}),
+            )
+
+        last_not_found: InsuranceApiError | None = None
+        for host, path, params in endpoint_attempts:
+            try:
+                response = self.client.get(
+                    path,
+                    params=params,
+                    headers=self.auth_service.get_auth_headers(),
+                    host=host,
+                )
+                return response.json or {}
+            except InsuranceNotFoundError as exc:
+                last_not_found = exc
+                continue
+
+        if last_not_found:
+            raise last_not_found
+
+        return {}
 
 
 # ---------------------------------------------------------------------------

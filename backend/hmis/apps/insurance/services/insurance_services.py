@@ -1141,7 +1141,10 @@ class HealthCloudWorkflowService:
             facility=facility,
             organization=organization,
             payload=payload,
-            runner=lambda _payload: adapter.get_claim_remittance(claim_ref),
+            runner=lambda _payload: adapter.get_claim_remittance(
+                claim_ref,
+                claim_number=claim.claim_number,
+            ),
             claim=claim,
         )
 

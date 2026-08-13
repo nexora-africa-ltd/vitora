@@ -165,35 +165,70 @@ function cleanApiErrorMessage(message: string): string {
   return normalizeDetail(trimmed);
 }
 
-function extractApiErrorMessage(error: unknown): string | null {
+type UpstreamErrorPayload = {
+  provider?: string;
+  method?: string;
+  path?: string;
+  status?: number;
+  message?: string;
+};
+
+function extractApiError(error: unknown): { message: string | null; upstream: UpstreamErrorPayload | null; action: string | null } {
   if (!error || typeof error !== 'object') {
-    return null;
+    return { message: null, upstream: null, action: null };
   }
 
   const response = (error as { response?: { data?: unknown } }).response;
   const data = response?.data;
 
   if (typeof data === 'string') {
-    return cleanApiErrorMessage(data);
+    return { message: cleanApiErrorMessage(data), upstream: null, action: null };
   }
 
   if (data && typeof data === 'object') {
     const payload = data as Record<string, unknown>;
+    const upstreamCandidate = payload.upstream;
+    const upstream = upstreamCandidate && typeof upstreamCandidate === 'object'
+      ? (upstreamCandidate as UpstreamErrorPayload)
+      : null;
+    const action = typeof payload.action === 'string' ? payload.action : null;
+
+    if (upstream && typeof upstream.message === 'string' && upstream.message.trim()) {
+      return {
+        message: cleanApiErrorMessage(upstream.message),
+        upstream,
+        action,
+      };
+    }
+
     const candidate = payload.error ?? payload.detail ?? payload.message;
 
     if (typeof candidate === 'string') {
-      return cleanApiErrorMessage(candidate);
+      return { message: cleanApiErrorMessage(candidate), upstream, action };
     }
 
     if (Array.isArray(candidate)) {
       const first = candidate.find((item) => typeof item === 'string');
       if (typeof first === 'string') {
-        return cleanApiErrorMessage(first);
+        return { message: cleanApiErrorMessage(first), upstream, action };
       }
     }
+
+    return { message: null, upstream, action };
   }
 
-  return null;
+  return { message: null, upstream: null, action: null };
+}
+
+function formatUpstreamContext(upstream: UpstreamErrorPayload | null): string {
+  if (!upstream) return '';
+  const provider = (upstream.provider || '').trim();
+  const method = (upstream.method || '').trim();
+  const path = (upstream.path || '').trim();
+  const status = typeof upstream.status === 'number' ? `HTTP ${upstream.status}` : '';
+
+  const parts = [provider, status, method, path].filter(Boolean);
+  return parts.length > 0 ? `${parts.join(' ')}.` : '';
 }
 
 export default function InsuranceClaimDetailPage() {
@@ -383,8 +418,11 @@ export default function InsuranceClaimDetailPage() {
     description: string;
     error?: unknown;
   }) => {
-    const apiMessage = extractApiErrorMessage(error);
-    const message = apiMessage || description;
+    const parsed = extractApiError(error);
+    const context = formatUpstreamContext(parsed.upstream);
+    const detail = parsed.message || description;
+    const action = parsed.action ? ` Next: ${parsed.action}` : '';
+    const message = `${context} ${detail}${action}`.trim();
     setInlineError(message);
     toast({ title, description: message, variant: 'destructive' });
   };
