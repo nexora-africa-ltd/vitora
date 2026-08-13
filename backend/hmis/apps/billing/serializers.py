@@ -414,6 +414,12 @@ class InvoiceSerializer(serializers.ModelSerializer):
     items = InvoiceItemSerializer(many=True, read_only=True)
     payers = InvoicePayerSerializer(many=True, read_only=True)
     balance = serializers.SerializerMethodField()
+    gross_total = serializers.SerializerMethodField()
+    sha_credit_amount = serializers.SerializerMethodField()
+    insurance_credit_amount = serializers.SerializerMethodField()
+    payer_credit_total = serializers.SerializerMethodField()
+    patient_copay_amount = serializers.SerializerMethodField()
+    patient_net_due = serializers.SerializerMethodField()
     balance_due = serializers.DecimalField(
         max_digits=12, decimal_places=2, read_only=True, coerce_to_string=True
     )
@@ -447,10 +453,16 @@ class InvoiceSerializer(serializers.ModelSerializer):
             "discount_amount",
             "discount_reason",
             "tax_amount",
+            "gross_total",
             "total_amount",
             "amount_paid",
             "balance",
             "balance_due",
+            "sha_credit_amount",
+            "insurance_credit_amount",
+            "payer_credit_total",
+            "patient_copay_amount",
+            "patient_net_due",
             "insurance_provider",
             "insurance_member_no",
             "sha_claim_number",
@@ -484,10 +496,16 @@ class InvoiceSerializer(serializers.ModelSerializer):
             "subtotal",
             "discount_amount",
             "tax_amount",
+            "gross_total",
             "total_amount",
             "amount_paid",
             "balance",
             "balance_due",
+            "sha_credit_amount",
+            "insurance_credit_amount",
+            "payer_credit_total",
+            "patient_copay_amount",
+            "patient_net_due",
             "cancelled_by",
             "cancelled_at",
             "is_converted",
@@ -510,6 +528,149 @@ class InvoiceSerializer(serializers.ModelSerializer):
         """Calculate balance dynamically and return as string for consistency."""
         balance = obj.total_amount - obj.amount_paid
         return str(balance)
+
+    @staticmethod
+    def _money(value) -> Decimal:
+        try:
+            return Decimal(str(value or "0.00")).quantize(Decimal("0.01"))
+        except Exception:
+            return Decimal("0.00")
+
+    def _insurance_reservation_credit(self, payer) -> Decimal:
+        claim = getattr(payer, "insurance_claim", None)
+        if claim is None:
+            return Decimal("0.00")
+
+        reservations = getattr(claim, "balance_reservations", None)
+        if reservations is None:
+            return Decimal("0.00")
+
+        active_statuses = {
+            "reserved",
+            "partially_released",
+        }
+        total = Decimal("0.00")
+        for reservation in reservations.all():
+            if getattr(reservation, "status", "") not in active_statuses:
+                continue
+            reserved_amount = self._money(getattr(reservation, "amount", None))
+            released_amount = self._money(getattr(reservation, "amount_released", None))
+            outstanding = reserved_amount - released_amount
+            if outstanding > 0:
+                total += outstanding
+
+        if total > 0:
+            return total.quantize(Decimal("0.01"))
+
+        approved = self._money(getattr(claim, "approved_amount", None))
+        if approved > 0:
+            return approved
+
+        return self._money(getattr(claim, "total_amount", None))
+
+    def _resolve_payer_credit(self, payer) -> Decimal:
+        approved = self._money(getattr(payer, "approved_amount", None))
+        if approved > 0:
+            return approved
+
+        allocated = self._money(getattr(payer, "allocated_amount", None))
+        if allocated > 0:
+            return allocated
+
+        if payer.payer_type == payer.PayerType.PRIVATE_INSURANCE:
+            reserve_credit = self._insurance_reservation_credit(payer)
+            if reserve_credit > 0:
+                return reserve_credit
+
+        return Decimal("0.00")
+
+    def _credit_breakdown(self, obj) -> tuple[Decimal, Decimal]:
+        payers = getattr(obj, "payers", None)
+        if payers is None:
+            return Decimal("0.00"), Decimal("0.00")
+
+        sha_total = Decimal("0.00")
+        insurance_total = Decimal("0.00")
+        for payer in payers.all():
+            credit = self._resolve_payer_credit(payer)
+            if credit <= 0:
+                continue
+            if payer.payer_type == payer.PayerType.SHA:
+                sha_total += credit
+            elif payer.payer_type == payer.PayerType.PRIVATE_INSURANCE:
+                insurance_total += credit
+
+        return (
+            sha_total.quantize(Decimal("0.01")),
+            insurance_total.quantize(Decimal("0.01")),
+        )
+
+    def get_gross_total(self, obj) -> str:
+        return str(self._money(obj.total_amount))
+
+    def get_sha_credit_amount(self, obj) -> str:
+        sha_total, _ = self._credit_breakdown(obj)
+        return str(sha_total)
+
+    def get_insurance_credit_amount(self, obj) -> str:
+        _, insurance_total = self._credit_breakdown(obj)
+        return str(insurance_total)
+
+    def get_payer_credit_total(self, obj) -> str:
+        sha_total, insurance_total = self._credit_breakdown(obj)
+        return str((sha_total + insurance_total).quantize(Decimal("0.01")))
+
+    def _patient_copay_total(self, obj) -> Decimal:
+        total_copay = Decimal("0.00")
+
+        sha_claims = getattr(obj, "sha_claims", None)
+        if sha_claims is not None:
+            for claim in sha_claims.all():
+                total_copay += self._money(getattr(claim, "patient_copay", None))
+
+        # Private insurance claims may carry patient copay on the claim itself.
+        # Aggregate from both invoice.insurance_claims and payer-linked insurance_claim,
+        # de-duplicating by claim id when both relations point to the same claim.
+        insurance_claim_ids: set[int] = set()
+
+        insurance_claims = getattr(obj, "insurance_claims", None)
+        if insurance_claims is not None:
+            for claim in insurance_claims.all():
+                claim_id = getattr(claim, "id", None)
+                if claim_id in insurance_claim_ids:
+                    continue
+                if claim_id is not None:
+                    insurance_claim_ids.add(claim_id)
+                total_copay += self._money(getattr(claim, "copay_amount", None))
+
+        payers = getattr(obj, "payers", None)
+        if payers is not None:
+            for payer in payers.all():
+                claim = getattr(payer, "insurance_claim", None)
+                if claim is None:
+                    continue
+                claim_id = getattr(claim, "id", None)
+                if claim_id in insurance_claim_ids:
+                    continue
+                if claim_id is not None:
+                    insurance_claim_ids.add(claim_id)
+                total_copay += self._money(getattr(claim, "copay_amount", None))
+
+        return total_copay.quantize(Decimal("0.01"))
+
+    def get_patient_copay_amount(self, obj) -> str:
+        return str(self._patient_copay_total(obj))
+
+    def get_patient_net_due(self, obj) -> str:
+        gross = self._money(obj.total_amount)
+        sha_total, insurance_total = self._credit_breakdown(obj)
+        copay = self._patient_copay_total(obj)
+        net = gross - sha_total - insurance_total
+        if net < 0:
+            net = Decimal("0.00")
+        if copay > net:
+            net = copay
+        return str(net.quantize(Decimal("0.01")))
 
     def get_qr_code(self, obj) -> str:
         """Generate QR code data URI containing a verification URL."""

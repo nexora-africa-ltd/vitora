@@ -7,13 +7,15 @@ by the DHA HIE flow router (phc, shif, or eccif).
 """
 
 from datetime import date
+from decimal import Decimal
 from unittest.mock import patch
 
 import pytest  # type: ignore
 from django.contrib.auth import get_user_model
 from django.test import override_settings
 
-from hmis.apps.billing.models import Invoice, SHAClaim, SHAMember
+from hmis.apps.billing.models import Invoice, InvoiceItem, SHAClaim, SHAMember
+from hmis.apps.core.models import AuditLog
 from hmis.apps.encounters.models import Encounter
 from hmis.apps.patients.models import Patient
 
@@ -389,3 +391,43 @@ class TestPhcClaimRetryAndQueueTrigger:
 
         trigger_phc_claim_on_queue(phc_patient.pk, sample_facility.pk)
         assert SHAClaim.objects.filter(patient=phc_patient).count() == 0
+
+    @override_settings(FACILITY_LEVEL="L3", FACILITY_MFL_CODE="99999")
+    def test_approved_sha_claim_auto_finalizes_linked_draft_invoice(
+        self, phc_patient, phc_sha_member, sample_facility
+    ):
+        """SHA claim approval should transition linked draft invoice to pending payment."""
+        encounter = Encounter.objects.create(
+            patient=phc_patient,
+            encounter_type="OPD",
+            chief_complaint="Finalize on claim approval",
+            facility=sample_facility,
+        )
+
+        claim = SHAClaim.objects.filter(encounter=encounter).first()
+        assert claim is not None
+
+        invoice = Invoice.objects.filter(encounter=encounter, status=Invoice.Status.DRAFT).first()
+        assert invoice is not None
+
+        InvoiceItem.objects.create(
+            invoice=invoice,
+            description="Consultation",
+            quantity=1,
+            unit_price=Decimal("1000.00"),
+        )
+
+        claim.invoice = invoice
+        claim.status = SHAClaim.ClaimStatus.APPROVED
+        claim.save(update_fields=["invoice", "status", "updated_at"])
+
+        invoice.refresh_from_db()
+        assert invoice.status == Invoice.Status.PENDING
+
+        audit_entry = AuditLog.objects.filter(
+            action="invoice_auto_finalized_by_claim_approval",
+            resource_type="Invoice",
+            resource_id=invoice.id,
+        ).first()
+        assert audit_entry is not None
+        assert audit_entry.details.get("trigger") == "sha_claim_approval"

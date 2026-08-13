@@ -48,6 +48,7 @@ import {
   Link2,
   Receipt,
   CheckCircle2,
+  FileText,
 } from 'lucide-react';
 import { printInvoice } from '@/lib/documents';
 import { SHALogo } from '@/components/ui/sha-logo';
@@ -66,6 +67,11 @@ function formatKES(amount: number): string {
     maximumFractionDigits: 2,
   });
   return `KES ${formatted}`;
+}
+
+function toAmount(value: unknown, fallback = 0): number {
+  const num = Number.parseFloat(String(value ?? ''));
+  return Number.isFinite(num) ? num : fallback;
 }
 
 // ============================================================================
@@ -107,6 +113,15 @@ interface AllocationDraft {
   saving?: boolean;
   error?: string | null;
 }
+
+type InvoiceTotalsView = Invoice & {
+  gross_total?: string | null;
+  sha_credit_amount?: string | null;
+  insurance_credit_amount?: string | null;
+  payer_credit_total?: string | null;
+  patient_copay_amount?: string | null;
+  patient_net_due?: string | null;
+};
 
 // ============================================================================
 // Status Badge Colors
@@ -305,12 +320,68 @@ export function InvoiceDetail({
   const canConvertProforma = isProforma && invoice.can_convert;
   const canRenewProforma = isProforma && !invoice.is_valid;
   const isConvertedFromProforma = !!invoice.converted_from_proforma;
+  const insuranceClaimHref = (() => {
+    const payers = (invoice as Invoice & {
+      payers?: Array<{ insurance_claim?: number | null }>;
+    }).payers;
+    const payerWithInsuranceClaim = payers?.find(
+      (payer) => typeof payer.insurance_claim === 'number' && payer.insurance_claim > 0,
+    );
+    if (payerWithInsuranceClaim?.insurance_claim) {
+      return `/insurance/claims/${payerWithInsuranceClaim.insurance_claim}`;
+    }
+    return '/insurance/claims';
+  })();
 
-  const subtotal = parseFloat(invoice.subtotal || invoice.total_amount);
-  const discount = parseFloat(invoice.discount_amount || '0');
-  const total = parseFloat(invoice.total_amount);
-  const paid = parseFloat(invoice.amount_paid || '0');
-  const balance = total - paid;
+  const notesWithClaimLinks = (() => {
+    const noteText = invoice.notes || '';
+    if (!noteText) return null;
+
+    const claimRegex = /\bIC-\d{8}-\d{4}\b/g;
+    const parts: React.ReactNode[] = [];
+    let lastIndex = 0;
+
+    for (const match of noteText.matchAll(claimRegex)) {
+      const claimNumber = match[0];
+      const start = match.index ?? 0;
+
+      if (start > lastIndex) {
+        parts.push(noteText.slice(lastIndex, start));
+      }
+
+      parts.push(
+        <Link
+          key={`${claimNumber}-${start}`}
+          href={insuranceClaimHref}
+          className="inline-flex items-center gap-1 font-medium text-blue-700 underline decoration-blue-300 underline-offset-2 hover:text-blue-800"
+        >
+          {claimNumber}
+          <ExternalLink className="h-3 w-3" />
+        </Link>,
+      );
+
+      lastIndex = start + claimNumber.length;
+    }
+
+    if (lastIndex < noteText.length) {
+      parts.push(noteText.slice(lastIndex));
+    }
+
+    return parts.length ? parts : noteText;
+  })();
+
+  const invoiceTotals = invoice as InvoiceTotalsView;
+  const subtotal = toAmount(invoice.subtotal || invoice.total_amount);
+  const discount = toAmount(invoice.discount_amount, 0);
+  const grossTotal = toAmount(invoiceTotals.gross_total, toAmount(invoice.total_amount));
+  const shaCredit = toAmount(invoiceTotals.sha_credit_amount, 0);
+  const insuranceCredit = toAmount(invoiceTotals.insurance_credit_amount, 0);
+  const payerCreditTotal = toAmount(invoiceTotals.payer_credit_total, Math.max(0, shaCredit + insuranceCredit));
+  const patientCopayAmount = toAmount(invoiceTotals.patient_copay_amount, 0);
+  const patientNetDue = toAmount(invoiceTotals.patient_net_due, Math.max(0, grossTotal - payerCreditTotal));
+  const total = grossTotal;
+  const paid = toAmount(invoice.amount_paid || '0');
+  const balance = Math.max(0, patientNetDue - paid);
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -448,15 +519,31 @@ export function InvoiceDetail({
           <CardContent>
             <div className="space-y-1">
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Amount:</span>
+                <span className="text-muted-foreground">Gross:</span>
                 <span className="font-semibold">{formatKES(total)}</span>
+              </div>
+              {payerCreditTotal > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Payer Credits:</span>
+                  <span className="text-emerald-700">-{formatKES(payerCreditTotal)}</span>
+                </div>
+              )}
+              {patientCopayAmount > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Patient Copay:</span>
+                  <span className="text-amber-700">{formatKES(patientCopayAmount)}</span>
+                </div>
+              )}
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Net Due:</span>
+                <span className="font-semibold">{formatKES(patientNetDue)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Paid:</span>
                 <span className="text-green-600">{formatKES(paid)}</span>
               </div>
               <div className="flex justify-between border-t pt-1">
-                <span className="font-medium">Balance:</span>
+                <span className="font-medium">Patient Balance:</span>
                 <span className={`font-bold ${balance > 0 ? 'text-red-600' : 'text-green-600'}`}>
                   {formatKES(balance)}
                 </span>
@@ -755,6 +842,41 @@ export function InvoiceDetail({
                 </TableCell>
                 {canEdit && onRemoveItem && <TableCell />}
               </TableRow>
+              {shaCredit > 0 && (
+                <TableRow>
+                  <TableCell colSpan={showShaPanels ? 7 : 3} className="text-emerald-700">SHA Credit</TableCell>
+                  <TableCell className="text-right text-emerald-700">-{formatKES(shaCredit)}</TableCell>
+                  {canEdit && onRemoveItem && <TableCell />}
+                </TableRow>
+              )}
+              {insuranceCredit > 0 && (
+                <TableRow>
+                  <TableCell colSpan={showShaPanels ? 7 : 3} className="text-emerald-700 dark:text-emerald-300">Insurance Reserve/Credit</TableCell>
+                  <TableCell className="text-right text-emerald-700 dark:text-emerald-300">-{formatKES(insuranceCredit)}</TableCell>
+                  {canEdit && onRemoveItem && <TableCell />}
+                </TableRow>
+              )}
+              {payerCreditTotal > 0 && (
+                <TableRow>
+                  <TableCell colSpan={showShaPanels ? 7 : 3} className="text-muted-foreground">Total Payer Credits</TableCell>
+                  <TableCell className="text-right text-muted-foreground">-{formatKES(payerCreditTotal)}</TableCell>
+                  {canEdit && onRemoveItem && <TableCell />}
+                </TableRow>
+              )}
+              {patientCopayAmount > 0 && (
+                <TableRow>
+                  <TableCell colSpan={showShaPanels ? 7 : 3} className="text-amber-700 dark:text-amber-300">Patient Copay</TableCell>
+                  <TableCell className="text-right text-amber-700 dark:text-amber-300">{formatKES(patientCopayAmount)}</TableCell>
+                  {canEdit && onRemoveItem && <TableCell />}
+                </TableRow>
+              )}
+              <TableRow className="font-bold bg-emerald-50/60 dark:bg-emerald-950/40">
+                <TableCell colSpan={showShaPanels ? 7 : 3}>Patient Net Due</TableCell>
+                <TableCell className="text-right text-emerald-800 dark:text-emerald-200">
+                  {formatKES(patientNetDue)}
+                </TableCell>
+                {canEdit && onRemoveItem && <TableCell />}
+              </TableRow>
             </TableFooter>
           </Table>
           </div>
@@ -897,12 +1019,15 @@ export function InvoiceDetail({
 
       {/* Notes */}
       {invoice.notes && (
-        <Card>
+        <Card className="border-blue-200 bg-blue-50/60 dark:border-blue-900 dark:bg-blue-950/20">
           <CardHeader>
-            <CardTitle className="text-sm">Notes</CardTitle>
+            <CardTitle className="text-sm text-blue-900 dark:text-blue-100 flex items-center gap-2">
+              <FileText className="h-4 w-4" />
+              Notes
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-muted-foreground">{invoice.notes}</p>
+            <p className="text-blue-900/90 dark:text-blue-100/90 leading-relaxed">{notesWithClaimLinks}</p>
           </CardContent>
         </Card>
       )}

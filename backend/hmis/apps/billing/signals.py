@@ -19,8 +19,9 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 
 from hmis.apps.billing.facility_identifiers import resolve_fr_code
-from hmis.apps.billing.models import Invoice, Payment, SupplierBill, SupplierPayment
+from hmis.apps.billing.models import Invoice, Payment, SHAClaim, SupplierBill, SupplierPayment
 from hmis.apps.core.events import BillingEvents, publish_event
+from hmis.apps.core.models import AuditLog
 from hmis.apps.core.sync_context import is_sync_materialization_active
 from hmis.apps.encounters.models import Encounter
 
@@ -438,6 +439,52 @@ def broadcast_payment_change(sender, instance, created, **kwargs):
         broadcast_payment_received(instance)
     except Exception as e:
         logger.error(f"Failed to broadcast payment received for {instance.id}: {e}")
+
+
+@receiver(post_save, sender=SHAClaim)
+def auto_finalize_invoice_on_sha_claim_approval(sender, instance, created, **kwargs):
+    """Auto-finalize linked draft invoice when SHA claim reaches approval stage."""
+    if created:
+        return
+
+    if instance.status not in {
+        SHAClaim.ClaimStatus.APPROVED,
+        SHAClaim.ClaimStatus.PARTIALLY_APPROVED,
+    }:
+        return
+
+    invoice = getattr(instance, "invoice", None)
+    if invoice is None or invoice.status != Invoice.Status.DRAFT:
+        return
+
+    if not invoice.items.exists():
+        logger.warning(
+            "Skipping auto-finalize for invoice %s from SHA claim %s: no invoice items",
+            invoice.id,
+            instance.claim_number,
+        )
+        return
+
+    invoice.status = Invoice.Status.PENDING
+    invoice.save(update_fields=["status", "updated_at"])
+
+    AuditLog.log(
+        action="invoice_auto_finalized_by_claim_approval",
+        user=getattr(instance, "submitted_by", None),
+        resource_type="Invoice",
+        resource_id=invoice.id,
+        details={
+            "trigger": "sha_claim_approval",
+            "claim_id": instance.id,
+            "claim_number": instance.claim_number,
+            "claim_status": instance.status,
+            "from_status": Invoice.Status.DRAFT,
+            "to_status": Invoice.Status.PENDING,
+            "reason": "invoice auto-finalized by claim approval",
+        },
+        facility=getattr(invoice, "facility", None),
+        organization=getattr(invoice, "organization", None),
+    )
 
 
 # ---------------------------------------------------------------------------

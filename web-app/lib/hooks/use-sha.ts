@@ -18,6 +18,14 @@ import type {
   SubmitPreauthRequest,
 } from '@/lib/types/sha';
 
+const SHA_POLLABLE_STATUSES = new Set([
+  'pending_submission',
+  'submitted',
+  'acknowledged',
+  'under_review',
+  'query',
+]);
+
 // ============================================================================
 // Query Keys
 // ============================================================================
@@ -130,6 +138,14 @@ export function useClaims(params?: ClaimListParams, options?: { enabled?: boolea
     queryKey: shaQueryKeys.claimsList(params),
     queryFn: () => shaApi.getClaims(params),
     enabled: options?.enabled,
+    refetchInterval: (query) => {
+      const data = query.state.data as { results?: Array<{ status?: string }> } | undefined;
+      const hasInProgress = data?.results?.some((claim) => {
+        const status = String(claim.status || '').toLowerCase();
+        return SHA_POLLABLE_STATUSES.has(status);
+      });
+      return hasInProgress ? 15000 : false;
+    },
   });
 }
 
@@ -143,8 +159,9 @@ export function useClaim(id: number | undefined) {
     enabled: !!id,
     refetchInterval: (query) => {
       // Auto-refetch for claims in progress
-      const data = query.state.data;
-      if (data && ['pending', 'submitted', 'processing'].includes(data.status)) {
+      const data = query.state.data as { status?: string } | undefined;
+      const status = String(data?.status || '').toLowerCase();
+      if (data && SHA_POLLABLE_STATUSES.has(status)) {
         return 10000; // 10 seconds
       }
       return false;

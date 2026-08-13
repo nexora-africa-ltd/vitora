@@ -59,6 +59,32 @@ interface ReceivePaymentModalProps {
 
 type ModalStep = 'search' | 'payment' | 'success';
 
+function toAmount(value: unknown): number {
+  const parsed = Number.parseFloat(String(value ?? ''));
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function getInvoicePayableBalance(invoice: Invoice): number {
+  const grossTotal = toAmount(invoice.total_amount);
+  const paidAmount = toAmount(invoice.amount_paid);
+  const patientNetDueRaw = Number.parseFloat(String(invoice.patient_net_due ?? ''));
+  if (Number.isFinite(patientNetDueRaw)) {
+    return Math.max(0, patientNetDueRaw - paidAmount);
+  }
+
+  const balanceDue = Number.parseFloat(String(invoice.balance_due ?? ''));
+  if (Number.isFinite(balanceDue)) {
+    return Math.max(0, balanceDue);
+  }
+
+  const balanceRaw = Number.parseFloat(String(invoice.balance ?? ''));
+  if (Number.isFinite(balanceRaw)) {
+    return Math.max(0, balanceRaw);
+  }
+
+  return Math.max(0, grossTotal - paidAmount);
+}
+
 // ============================================================================
 // Invoice Status Badge
 // ============================================================================
@@ -106,14 +132,10 @@ function SearchStep({ onSelectInvoice, onCreateInvoice }: SearchStepProps) {
     ordering: '-invoice_date',
   });
 
-  // Filter for payable invoices only (balance > 0)
+  // Filter for payable invoices only (patient-facing payable balance > 0)
   const payableInvoices = React.useMemo(() => {
     if (!data?.results) return [];
-    return data.results.filter(inv => {
-      // Check balance_due or balance field
-      const balance = parseFloat(inv.balance_due || (inv as any).balance || '0');
-      return balance > 0;
-    });
+    return data.results.filter((inv) => getInvoicePayableBalance(inv) > 0);
   }, [data?.results]);
 
   if (error) {
@@ -229,13 +251,13 @@ function SearchStep({ onSelectInvoice, onCreateInvoice }: SearchStepProps) {
               },
               {
                 key: 'balance_due',
-                header: 'Balance',
+                header: 'Payable',
                 sortable: true,
                 sortType: 'number',
-                sortFn: (a, b) => parseFloat(a.balance_due) - parseFloat(b.balance_due),
+                sortFn: (a, b) => getInvoicePayableBalance(a) - getInvoicePayableBalance(b),
                 cell: (invoice) => (
                   <span className="font-medium text-red-600">
-                    {formatCurrency(parseFloat(invoice.balance_due))}
+                    {formatCurrency(getInvoicePayableBalance(invoice))}
                   </span>
                 ),
                 className: 'text-right',
@@ -254,7 +276,7 @@ function SearchStep({ onSelectInvoice, onCreateInvoice }: SearchStepProps) {
                   </div>
                   <div className="text-right shrink-0">
                     <p className="font-semibold text-red-600">
-                      {formatCurrency(parseFloat(invoice.balance_due))}
+                      {formatCurrency(getInvoicePayableBalance(invoice))}
                     </p>
                   </div>
                 </div>
@@ -281,6 +303,7 @@ interface PaymentStepProps {
 function PaymentStep({ invoice, onBack, onSuccess }: PaymentStepProps) {
   const { toast } = useToast();
   const createPayment = useCreatePayment();
+  const payableBalance = getInvoicePayableBalance(invoice);
 
   const handleSubmit = async (data: PaymentCreateData) => {
     try {
@@ -313,9 +336,9 @@ function PaymentStep({ invoice, onBack, onSuccess }: PaymentStepProps) {
           </p>
         </div>
         <div className="text-left sm:text-right shrink-0">
-          <p className="text-xs sm:text-sm text-muted-foreground">Balance Due</p>
+          <p className="text-xs sm:text-sm text-muted-foreground">Payable Balance</p>
           <p className="text-lg font-bold text-red-600">
-            {formatCurrency(parseFloat(invoice.balance_due))}
+            {formatCurrency(payableBalance)}
           </p>
         </div>
       </div>

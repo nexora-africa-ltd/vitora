@@ -8,6 +8,7 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 
 from hmis.apps.core.events import InsuranceEvents, publish_event
+from hmis.apps.core.models import AuditLog
 from hmis.apps.insurance.models import (
     InsuranceClaim,
     InsurancePreauth,
@@ -112,6 +113,43 @@ def publish_claim_event(sender, instance, created, **kwargs):
                     "paid_amount": str(instance.paid_amount),
                 },
             )
+
+    if instance.status in {
+        InsuranceClaim.Status.APPROVED,
+        InsuranceClaim.Status.PARTIALLY_APPROVED,
+    }:
+        invoice = getattr(instance, "invoice", None)
+        if invoice is not None and getattr(invoice, "status", "") == "draft":
+            if invoice.items.exists():
+                from hmis.apps.billing.models import Invoice
+
+                invoice.status = Invoice.Status.PENDING
+                invoice.save(update_fields=["status", "updated_at"])
+
+                AuditLog.log(
+                    action="invoice_auto_finalized_by_claim_approval",
+                    user=getattr(instance, "reviewed_by", None)
+                    or getattr(instance, "submitted_by", None),
+                    resource_type="Invoice",
+                    resource_id=invoice.id,
+                    details={
+                        "trigger": "insurance_claim_approval",
+                        "claim_id": instance.id,
+                        "claim_number": instance.claim_number,
+                        "claim_status": instance.status,
+                        "from_status": "draft",
+                        "to_status": "pending",
+                        "reason": "invoice auto-finalized by claim approval",
+                    },
+                    facility=getattr(invoice, "facility", None),
+                    organization=getattr(invoice, "organization", None),
+                )
+            else:
+                logger.warning(
+                    "Skipping auto-finalize for invoice %s from insurance claim %s: no invoice items",
+                    invoice.id,
+                    instance.claim_number,
+                )
 
 
 # ---------------------------------------------------------------------------

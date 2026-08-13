@@ -92,6 +92,11 @@ function formatKES(amount: number): string {
   return `KES ${amount.toFixed(2)}`;
 }
 
+function toAmount(value: unknown): number {
+  const parsed = Number.parseFloat(String(value ?? ''));
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
 function isValidKenyanPhoneNumber(value: string): boolean {
   const trimmed = value.trim();
   if (!trimmed) return false;
@@ -119,21 +124,31 @@ export function PaymentForm({
     !!(invoice as any).sha_claim_number
   );
 
-  const computedBalance = parseFloat(invoice.total_amount) - parseFloat(invoice.amount_paid || '0');
-  const balanceDue = invoice.balance_due ? parseFloat(invoice.balance_due) : Number.NaN;
-  const balance = Number.isFinite(balanceDue) ? balanceDue : computedBalance;
+  const grossTotal = toAmount(invoice.total_amount);
+  const paidAmount = toAmount(invoice.amount_paid);
+  const patientNetDueRaw = Number.parseFloat(String(invoice.patient_net_due ?? ''));
+  const hasPatientNetDue = Number.isFinite(patientNetDueRaw);
+  const patientNetDue = hasPatientNetDue ? patientNetDueRaw : grossTotal;
+  const patientCopayRaw = Number.parseFloat(String(invoice.patient_copay_amount ?? ''));
+  const patientCopayAmount = Number.isFinite(patientCopayRaw) ? patientCopayRaw : 0;
+  const computedBalance = grossTotal - paidAmount;
+  const balanceDue = invoice.balance_due ? toAmount(invoice.balance_due) : Number.NaN;
+  const fallbackBalance = Number.isFinite(balanceDue) ? balanceDue : computedBalance;
+  const payableBalance = hasPatientNetDue
+    ? Math.max(0, patientNetDue - paidAmount)
+    : Math.max(0, fallbackBalance);
 
   const form = useForm<PaymentFormValues>({
     resolver: zodResolver(paymentFormSchema),
     defaultValues: {
       payment_method: isInsuranceOrSHAInvoice ? 'BANK_TRANSFER' : 'CASH',
       payment_point: '',
-      amount: balance,
+      amount: payableBalance,
       reference_number: '',
       notes: '',
       phone_number: '',
       mpesa_mode: 'stk_push',
-      cash_received: balance,
+      cash_received: payableBalance,
       card_last_four: '',
       card_type: '',
     },
@@ -190,10 +205,10 @@ export function PaymentForm({
     : 0;
 
   const handleSubmit = (values: PaymentFormValues) => {
-    if (values.amount > balance) {
+    if (values.amount > payableBalance) {
       form.setError('amount', {
         type: 'manual',
-        message: 'Amount cannot exceed balance',
+        message: 'Amount cannot exceed payable balance',
       });
       return;
     }
@@ -313,21 +328,31 @@ export function PaymentForm({
                 <CardContent>
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
-                <span className="text-muted-foreground">Total:</span>
+                <span className="text-muted-foreground">Gross:</span>
                 <span className="ml-2 font-medium">
-                  {formatCurrency(parseFloat(invoice.total_amount))}
+                  {formatCurrency(grossTotal)}
                 </span>
               </div>
               <div>
+                <span className="text-muted-foreground">Net Due:</span>
+                <span className="ml-2 font-medium">{formatCurrency(patientNetDue)}</span>
+              </div>
+              {patientCopayAmount > 0 && (
+                <div>
+                  <span className="text-muted-foreground">Patient Copay:</span>
+                  <span className="ml-2 font-medium text-amber-700">{formatCurrency(patientCopayAmount)}</span>
+                </div>
+              )}
+              <div>
                 <span className="text-muted-foreground">Paid:</span>
                 <span className="ml-2 font-medium text-green-600">
-                  {formatCurrency(parseFloat(invoice.amount_paid || '0'))}
+                  {formatCurrency(paidAmount)}
                 </span>
               </div>
               <div className="col-span-2 pt-2 border-t">
-                <span className="text-muted-foreground">Balance Due:</span>
+                <span className="text-muted-foreground">Payable Balance:</span>
                 <span className="ml-2 font-bold text-lg">
-                  {formatCurrency(balance)}
+                  {formatCurrency(payableBalance)}
                 </span>
               </div>
             </div>
@@ -470,7 +495,7 @@ export function PaymentForm({
                 />
               </FormControl>
               <FormDescription>
-                Maximum: {formatCurrency(balance)}
+                Maximum: {formatCurrency(payableBalance)}
               </FormDescription>
               <FormMessage />
             </FormItem>

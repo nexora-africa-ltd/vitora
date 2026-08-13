@@ -4,7 +4,9 @@ from decimal import Decimal
 
 import pytest  # type: ignore
 
+from hmis.apps.billing.models import Invoice, InvoiceItem, Service, ServiceCategory
 from hmis.apps.core.events.types import InsuranceEvents
+from hmis.apps.core.models import AuditLog
 from hmis.apps.insurance.models import (
     InsuranceClaim,
     InsurancePreauth,
@@ -101,6 +103,63 @@ class TestInsuranceClaimEvents:
         insurance_claim.mark_paid(paid_amount=Decimal("5000.00"))
         mock_publish.assert_called_once()
         assert mock_publish.call_args[0][0] == InsuranceEvents.CLAIM_PAID
+
+    def test_approved_claim_auto_finalizes_linked_draft_invoice(
+        self,
+        sample_patient,
+        test_user,
+        insurance_claim,
+        sample_facility,
+        sample_organization,
+    ):
+        """Insurance claim approval should transition linked draft invoice to pending."""
+        category = ServiceCategory.objects.create(
+            name="Signal Test",
+            code="SIG",
+            description="Signal test category",
+            display_order=1,
+        )
+        service = Service.objects.create(
+            category=category,
+            code="SIG-001",
+            name="Signal Test Service",
+            unit_price=Decimal("1000.00"),
+            created_by=test_user,
+        )
+        invoice = Invoice.objects.create(
+            patient=sample_patient,
+            invoice_date="2026-01-01",
+            due_date="2026-01-31",
+            status=Invoice.Status.DRAFT,
+            payment_type=Invoice.PaymentType.INSURANCE,
+            payer_type=Invoice.PayerType.PRIVATE_INSURANCE,
+            created_by=test_user,
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+        InvoiceItem.objects.create(
+            invoice=invoice,
+            service=service,
+            description=service.name,
+            quantity=1,
+            unit_price=Decimal("1000.00"),
+        )
+        insurance_claim.invoice = invoice
+        insurance_claim.save(update_fields=["invoice", "updated_at"])
+
+        insurance_claim.submit()
+        insurance_claim.approve(approved_amount=Decimal("4000.00"))
+
+        invoice.refresh_from_db()
+        assert invoice.status == Invoice.Status.PENDING
+
+        audit_entry = AuditLog.objects.filter(
+            action="invoice_auto_finalized_by_claim_approval",
+            resource_type="Invoice",
+            resource_id=invoice.id,
+        ).first()
+        assert audit_entry is not None
+        assert audit_entry.details.get("trigger") == "insurance_claim_approval"
 
 
 class TestInsurancePreauthEvents:

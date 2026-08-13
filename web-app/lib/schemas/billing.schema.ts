@@ -169,10 +169,16 @@ export const InvoiceSchema = z.object({
   discount_value: z.string(),
   discount_amount: z.string(),
   tax_amount: z.string(),
+  gross_total: z.string().optional().nullable(),
   total_amount: z.string(),
   amount_paid: z.string(),
   balance_due: z.string(),
   balance: z.string().optional().nullable(),
+  sha_credit_amount: z.string().optional().nullable(),
+  insurance_credit_amount: z.string().optional().nullable(),
+  payer_credit_total: z.string().optional().nullable(),
+  patient_copay_amount: z.string().optional().nullable(),
+  patient_net_due: z.string().optional().nullable(),
 
   // Insurance/SHA
   sha_claim_number: z.string().optional().nullable(),

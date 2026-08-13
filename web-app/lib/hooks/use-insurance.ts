@@ -28,6 +28,14 @@ import type {
   VerifyEnrollmentPreviewInput,
 } from '@/lib/types/insurance';
 
+const INSURANCE_POLLABLE_STATUSES = new Set([
+  'submitted',
+  'acknowledged',
+  'under_review',
+  'query',
+  'pending_preauth',
+]);
+
 // ---------------------------------------------------------------------------
 // Query Keys
 // ---------------------------------------------------------------------------
@@ -404,6 +412,14 @@ export function useInsuranceClaims(filters?: InsuranceClaimFilters) {
   return useQuery({
     queryKey: insuranceQueryKeys.claimList(filters),
     queryFn: () => insuranceApi.listClaims(filters),
+    refetchInterval: (query) => {
+      const data = query.state.data as { results?: Array<{ status?: string }> } | undefined;
+      const hasInProgress = data?.results?.some((claim) => {
+        const status = String(claim.status || '').toLowerCase();
+        return INSURANCE_POLLABLE_STATUSES.has(status);
+      });
+      return hasInProgress ? 15000 : false;
+    },
   });
 }
 
@@ -412,6 +428,11 @@ export function useInsuranceClaim(id: number | undefined) {
     queryKey: insuranceQueryKeys.claimDetail(id!),
     queryFn: () => insuranceApi.getClaim(id!),
     enabled: !!id,
+    refetchInterval: (query) => {
+      const data = query.state.data as { status?: string } | undefined;
+      const status = String(data?.status || '').toLowerCase();
+      return INSURANCE_POLLABLE_STATUSES.has(status) ? 10000 : false;
+    },
   });
 }
 
