@@ -17,6 +17,12 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -410,7 +416,24 @@ export default function InsurancePage() {
                 <div className="flex items-center gap-3">
                   <ShieldCheck className="h-5 w-5 text-muted-foreground" />
                   <div>
-                    <p className="font-medium text-sm">Pre-authorizations</p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="font-medium text-sm">Pre-authorizations</p>
+                      <TooltipProvider delayDuration={250}>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Badge
+                              variant="outline"
+                              className="h-5 px-1.5 text-[10px] font-medium border-amber-300 text-amber-700 bg-amber-50"
+                            >
+                              HealthCloud pending
+                            </Badge>
+                          </TooltipTrigger>
+                          <TooltipContent side="top" className="max-w-[260px]">
+                            Not available for HealthCloud yet.
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
                     <p className="text-xs text-muted-foreground">Request & approve</p>
                   </div>
                 </div>
