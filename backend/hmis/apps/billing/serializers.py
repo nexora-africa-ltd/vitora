@@ -7,6 +7,7 @@ Following TDD - implemented to pass API tests.
 
 from decimal import Decimal
 
+from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
 
 from hmis.apps.billing.models import (
@@ -807,7 +808,12 @@ class PaymentSerializer(serializers.ModelSerializer):
         # Set received_by from request user
         validated_data["received_by"] = self.context["request"].user
         # Create payment and process it
-        payment = super().create(validated_data)
+        try:
+            payment = super().create(validated_data)
+        except DjangoValidationError as exc:
+            if hasattr(exc, "message_dict"):
+                raise serializers.ValidationError(exc.message_dict) from exc
+            raise serializers.ValidationError(exc.messages) from exc
         payment.process()
         return payment
 

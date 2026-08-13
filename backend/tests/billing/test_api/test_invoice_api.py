@@ -287,6 +287,77 @@ class TestInvoiceAPIEndpoints:
 
         assert response.status_code == status.HTTP_204_NO_CONTENT
 
+    def test_create_copay_proforma_from_draft_invoice(self, authenticated_client, sample_invoice):
+        """POST create-copay-proforma should create interim PROFORMA invoice."""
+        response = authenticated_client.post(
+            f"/api/billing/invoices/{sample_invoice.id}/create-copay-proforma/",
+            {"amount": "800.00", "reason": "Ongoing treatment copay"},
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data["status"] == Invoice.Status.PROFORMA
+        assert "Interim copay" in (response.data.get("notes") or "")
+
+    def test_finalize_and_apply_copay_applies_interim_payments(
+        self,
+        authenticated_client,
+        sample_invoice,
+        sample_invoice_item,
+        sample_payment_point,
+    ):
+        """Finalize-and-apply endpoint should reconcile interim proforma payments."""
+        from hmis.apps.billing.models import Payment
+
+        sample_invoice.calculate_totals()
+        sample_invoice.status = Invoice.Status.DRAFT
+        sample_invoice.save(update_fields=["status", "updated_at"])
+
+        proforma = Invoice.objects.create(
+            patient=sample_invoice.patient,
+            encounter=sample_invoice.encounter,
+            invoice_date=date.today(),
+            due_date=date.today() + timedelta(days=7),
+            status=Invoice.Status.PROFORMA,
+            payment_type=Invoice.PaymentType.CASH,
+            payer_type=Invoice.PayerType.CASH,
+            created_by=sample_invoice.created_by,
+            facility=sample_invoice.facility,
+            organization=sample_invoice.organization,
+            notes=f"Interim copay collection for draft invoice {sample_invoice.invoice_number}",
+        )
+        proforma_item = sample_invoice_item
+        proforma_item.pk = None
+        proforma_item.invoice = proforma
+        proforma_item.unit_price = Decimal("300.00")
+        proforma_item.line_total = Decimal("300.00")
+        proforma_item.save()
+        proforma.calculate_totals()
+
+        interim_payment = Payment.objects.create(
+            invoice=proforma,
+            method=Payment.Method.CASH,
+            amount=Decimal("300.00"),
+            payment_details={"interim_copay": True},
+            received_by=sample_invoice.created_by,
+        )
+        interim_payment.process()
+
+        response = authenticated_client.post(
+            f"/api/billing/invoices/{sample_invoice.id}/finalize-and-apply-copay/",
+            {},
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        sample_invoice.refresh_from_db()
+        assert sample_invoice.status in {
+            Invoice.Status.PENDING,
+            Invoice.Status.PARTIAL,
+            Invoice.Status.PAID,
+        }
+        assert sample_invoice.amount_paid >= Decimal("300.00")
+
     def test_apply_discount(self, authenticated_client, sample_invoice, sample_invoice_item):
         """Test POST /api/billing/invoices/{id}/apply-discount/ - Apply discount with reason."""
         # Ensure invoice has items and totals calculated

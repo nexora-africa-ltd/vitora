@@ -25,7 +25,8 @@ import {
 import {
   useInvoice,
   useCreatePayment,
-  useFinalizeInvoice,
+  useFinalizeAndApplyCopay,
+  useCreateCopayProforma,
   useCancelInvoice,
   useAddInvoiceItem,
   useRemoveInvoiceItem,
@@ -55,6 +56,7 @@ export default function InvoiceDetailPage() {
   const [showDiscountDialog, setShowDiscountDialog] = useState(false);
 
   const [showMpesaDialog, setShowMpesaDialog] = useState(false);
+  const [paymentTargetInvoice, setPaymentTargetInvoice] = useState<Invoice | null>(null);
   const [mpesaStatus, setMpesaStatus] = useState<
     'idle' | 'initiating' | 'waiting' | 'success' | 'failed'
   >('idle');
@@ -86,7 +88,8 @@ export default function InvoiceDetailPage() {
   );
 
   const createPayment = useCreatePayment();
-  const finalizeInvoice = useFinalizeInvoice();
+  const finalizeAndApplyCopay = useFinalizeAndApplyCopay();
+  const createCopayProforma = useCreateCopayProforma();
   const cancelInvoice = useCancelInvoice();
   const addInvoiceItem = useAddInvoiceItem();
   const removeInvoiceItem = useRemoveInvoiceItem();
@@ -122,7 +125,26 @@ export default function InvoiceDetailPage() {
   }, [mpesaQuery.data, mpesaStatus]);
 
   const handleRecordPayment = () => {
+    setPaymentTargetInvoice(null);
     setShowPaymentDialog(true);
+  };
+
+  const handleCollectCopay = async (inv: Invoice) => {
+    try {
+      const proforma = await createCopayProforma.mutateAsync({ id: inv.id });
+      setPaymentTargetInvoice(proforma);
+      setShowPaymentDialog(true);
+      toast({
+        title: 'Interim copay request ready',
+        description: `Collect payment against proforma ${proforma.invoice_number}.`,
+      });
+    } catch {
+      toast({
+        title: 'Error',
+        description: 'Failed to create copay proforma.',
+        variant: 'destructive',
+      });
+    }
   };
 
   const handleClaimSubmitted = (claim: Claim) => {
@@ -136,8 +158,22 @@ export default function InvoiceDetailPage() {
 
   const handlePaymentSubmit = async (data: PaymentCreateData) => {
     try {
-      const payment = await createPayment.mutateAsync(data);
+      const isInterimCopay = (paymentTargetInvoice?.status || '').toLowerCase() === 'proforma';
+      const payload: PaymentCreateData = isInterimCopay
+        ? {
+            ...data,
+            payment_details: {
+              ...(data.payment_details || {}),
+              interim_copay: true,
+              source_draft_invoice_id: invoice?.id,
+              source_draft_invoice_number: invoice?.invoice_number,
+            },
+          }
+        : data;
+
+      const payment = await createPayment.mutateAsync(payload);
       setShowPaymentDialog(false);
+      setPaymentTargetInvoice(null);
       setLastPaymentId(payment.id);
       setShowPaymentSuccessDialog(true);
       refetchInvoice();
@@ -161,7 +197,8 @@ export default function InvoiceDetailPage() {
     amount: number;
     paymentPointId: number;
   }) => {
-    if (!invoice) return;
+    const targetInvoice = paymentTargetInvoice || invoice;
+    if (!targetInvoice) return;
 
     setShowPaymentDialog(false);
     setShowMpesaDialog(true);
@@ -171,7 +208,7 @@ export default function InvoiceDetailPage() {
     setMpesaCheckoutRequestId(null);
     setMpesaPhoneNumber(data.phoneNumber);
     setMpesaAmount(data.amount);
-    setMpesaInvoiceNumber(invoice.invoice_number);
+    setMpesaInvoiceNumber(targetInvoice.invoice_number);
     setMpesaPaymentPointId(data.paymentPointId);
 
     try {
@@ -205,15 +242,16 @@ export default function InvoiceDetailPage() {
 
   const handleFinalize = async (inv: Invoice) => {
     try {
-      await finalizeInvoice.mutateAsync(inv.id);
+      await finalizeAndApplyCopay.mutateAsync(inv.id);
       toast({
         title: 'Invoice finalized',
-        description: 'Invoice has been finalized and sent to patient.',
+        description: 'Invoice finalized and interim copay payments applied where available.',
       });
+      refetchInvoice();
     } catch {
       toast({
         title: 'Error',
-        description: 'Failed to finalize invoice.',
+        description: 'Failed to finalize invoice and apply copay.',
         variant: 'destructive',
       });
     }
@@ -334,6 +372,7 @@ export default function InvoiceDetailPage() {
         onAddItem={handleAddItem}
         onRemoveItem={handleRemoveItem}
         onApplyDiscount={handleApplyDiscount}
+        onCollectCopay={handleCollectCopay}
         onClaimSubmitted={handleClaimSubmitted}
         linkedClaim={linkedClaim}
         linkedClaimDetail={linkedClaimDetail ?? null}
@@ -358,16 +397,27 @@ export default function InvoiceDetailPage() {
         isLoading={applyDiscount.isPending}
       />
 
-      <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
+      <Dialog
+        open={showPaymentDialog}
+        onOpenChange={(open) => {
+          setShowPaymentDialog(open);
+          if (!open) {
+            setPaymentTargetInvoice(null);
+          }
+        }}
+      >
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Record Payment</DialogTitle>
+            <DialogTitle>{paymentTargetInvoice ? 'Collect Interim Copay' : 'Record Payment'}</DialogTitle>
           </DialogHeader>
-          {invoice && (
+          {(paymentTargetInvoice || invoice) && (
             <PaymentForm
-              invoice={invoice}
+              invoice={(paymentTargetInvoice || invoice)!}
               onSubmit={handlePaymentSubmit}
-              onCancel={() => setShowPaymentDialog(false)}
+              onCancel={() => {
+                setShowPaymentDialog(false);
+                setPaymentTargetInvoice(null);
+              }}
               isLoading={createPayment.isPending}
               onMpesaPayment={handleMpesaPayment}
             />
@@ -391,11 +441,12 @@ export default function InvoiceDetailPage() {
         errorMessage={mpesaErrorMessage}
         receiptNumber={mpesaReceiptNumber}
         onInitiate={(phone) => {
-          if (!invoice) return;
+          const targetInvoice = paymentTargetInvoice || invoice;
+          if (!targetInvoice) return;
           // Retry uses the last known amount & the currently selected payment point on the form
           // (The backend will validate the phone and amount)
           handleMpesaPayment({
-            invoiceId: invoice.id,
+            invoiceId: targetInvoice.id,
             phoneNumber: phone,
             amount: mpesaAmount,
             paymentPointId: mpesaPaymentPointId,

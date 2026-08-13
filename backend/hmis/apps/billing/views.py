@@ -350,6 +350,23 @@ class InvoiceViewSet(PublicIdLookupMixin, TenantScopedViewMixin, viewsets.ModelV
 
         return queryset
 
+    @staticmethod
+    def _resolve_interim_copay_amount(invoice: Invoice) -> Decimal:
+        """Resolve interim copay amount from linked SHA/insurance claims."""
+        total = Decimal("0.00")
+
+        for claim in invoice.sha_claims.all():
+            total += Decimal(str(getattr(claim, "patient_copay", 0) or 0))
+
+        for claim in invoice.insurance_claims.all():
+            total += Decimal(str(getattr(claim, "copay_amount", 0) or 0))
+
+        if total > 0:
+            return total.quantize(Decimal("0.01"))
+
+        fallback = (invoice.total_amount - invoice.amount_paid).quantize(Decimal("0.01"))
+        return max(Decimal("0.00"), fallback)
+
     @action(detail=False, methods=["get"], url_path="dha")
     def dha(self, request):
         """List DHA invoice references derived from SHA claims."""
@@ -453,6 +470,183 @@ class InvoiceViewSet(PublicIdLookupMixin, TenantScopedViewMixin, viewsets.ModelV
 
         serializer = self.get_serializer(invoice)
         return Response(serializer.data)
+
+    @action(detail=True, methods=["post"], url_path="create-copay-proforma")
+    def create_copay_proforma(self, request, pk=None):
+        """Create an interim proforma invoice to collect copay during active treatment."""
+        source_invoice = self.get_object()
+        if source_invoice.status != Invoice.Status.DRAFT:
+            return Response(
+                {"error": "Copay proforma can only be created from a draft invoice."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        amount_raw = request.data.get("amount")
+        reason = str(request.data.get("reason") or "").strip()
+
+        if amount_raw in (None, ""):
+            amount = self._resolve_interim_copay_amount(source_invoice)
+        else:
+            try:
+                amount = Decimal(str(amount_raw))
+            except Exception:
+                return Response(
+                    {"error": "amount must be a valid decimal."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        if amount <= 0:
+            return Response(
+                {"error": "Resolved copay amount is zero. Nothing to collect."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        proforma = Invoice.objects.create(
+            patient=source_invoice.patient,
+            encounter=source_invoice.encounter,
+            invoice_date=date.today(),
+            due_date=date.today() + timedelta(days=7),
+            status=Invoice.Status.PROFORMA,
+            payment_type=source_invoice.payment_type,
+            payer_type=source_invoice.payer_type,
+            notes=(
+                f"Interim copay collection for draft invoice {source_invoice.invoice_number}."
+                + (f" Reason: {reason}." if reason else "")
+            ),
+            created_by=request.user,
+            facility=source_invoice.facility,
+            organization=source_invoice.organization,
+        )
+
+        InvoiceItem.objects.create(
+            invoice=proforma,
+            description=f"Interim patient copay for {source_invoice.invoice_number}",
+            quantity=Decimal("1.00"),
+            unit_price=amount,
+            line_total=amount,
+        )
+        proforma.calculate_totals()
+
+        AuditLog.log(
+            action="copay_proforma_created",
+            user=request.user,
+            resource_type="Invoice",
+            resource_id=proforma.id,
+            details={
+                "source_invoice_id": source_invoice.id,
+                "source_invoice_number": source_invoice.invoice_number,
+                "proforma_id": proforma.id,
+                "proforma_number": proforma.invoice_number,
+                "amount": str(amount),
+                "reason": reason,
+            },
+            facility=source_invoice.facility,
+            organization=source_invoice.organization,
+        )
+
+        return Response(self.get_serializer(proforma).data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=["post"], url_path="finalize-and-apply-copay")
+    def finalize_and_apply_copay(self, request, pk=None):
+        """Finalize invoice and apply completed interim-copay proforma payments."""
+        invoice = self.get_object()
+
+        if invoice.status in {
+            Invoice.Status.CANCELLED,
+            Invoice.Status.PAID,
+            Invoice.Status.WRITTEN_OFF,
+        }:
+            return Response(
+                {"error": f"Cannot finalize/apply copay for invoice in {invoice.status} status."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if invoice.status == Invoice.Status.DRAFT:
+            if not invoice.items.exists():
+                return Response(
+                    {"error": "Invoice must have at least one item"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            invoice.status = Invoice.Status.PENDING
+            invoice.save(update_fields=["status", "updated_at"])
+
+        invoice.refresh_from_db(fields=["amount_paid", "balance_due", "status", "updated_at"])
+
+        interim_qs = Payment.objects.select_related("invoice", "payment_point").filter(
+            status=Payment.Status.COMPLETED,
+            invoice__status=Invoice.Status.PROFORMA,
+            invoice__patient=invoice.patient,
+            invoice__facility=invoice.facility,
+            payment_details__interim_copay=True,
+        )
+        if invoice.encounter_id:
+            interim_qs = interim_qs.filter(invoice__encounter_id=invoice.encounter_id)
+
+        remaining = Decimal(str(invoice.balance_due or "0.00"))
+        applied_total = Decimal("0.00")
+
+        for interim in interim_qs.order_by("payment_date"):
+            if remaining <= 0:
+                break
+
+            details = dict(interim.payment_details or {})
+            reconciliation = dict(details.get("reconciliation") or {})
+            already_applied = Decimal(str(reconciliation.get("applied_total") or "0.00"))
+            available = Decimal(str(interim.amount or "0.00")) - already_applied
+            if available <= 0:
+                continue
+
+            apply_amount = min(available, remaining)
+            if apply_amount <= 0:
+                continue
+
+            allocation_payment = Payment.objects.create(
+                invoice=invoice,
+                payment_point=interim.payment_point,
+                method=interim.method,
+                amount=apply_amount,
+                payment_details={
+                    "allocation_only": True,
+                    "applied_from_payment_id": interim.id,
+                    "applied_from_proforma_invoice_id": interim.invoice_id,
+                    "interim_copay_reconciliation": True,
+                },
+                notes=f"Auto-applied interim copay from {interim.payment_reference}",
+                received_by=request.user,
+            )
+            allocation_payment.process()
+
+            already_applied += apply_amount
+            reconciliation["applied_total"] = str(already_applied.quantize(Decimal("0.01")))
+            reconciliation["last_applied_invoice_id"] = invoice.id
+            reconciliation["last_applied_invoice_number"] = invoice.invoice_number
+            details["reconciliation"] = reconciliation
+            interim.payment_details = details
+            interim.save(update_fields=["payment_details", "updated_at"])
+
+            applied_total += apply_amount
+            remaining -= apply_amount
+
+        invoice.refresh_from_db()
+
+        AuditLog.log(
+            action="copay_payment_applied_to_invoice",
+            user=request.user,
+            resource_type="Invoice",
+            resource_id=invoice.id,
+            details={
+                "invoice_number": invoice.invoice_number,
+                "applied_total": str(applied_total.quantize(Decimal("0.01"))),
+                "remaining_balance": str(
+                    Decimal(str(invoice.balance_due or "0.00")).quantize(Decimal("0.01"))
+                ),
+                "workflow": "finalize_and_apply_copay",
+            },
+            facility=invoice.facility,
+            organization=invoice.organization,
+        )
+
+        return Response(self.get_serializer(invoice).data)
 
     @action(detail=True, methods=["post"])
     def cancel(self, request, pk=None):

@@ -341,6 +341,39 @@ export function useFinalizeInvoice() {
 }
 
 /**
+ * Create interim copay proforma from a draft invoice.
+ */
+export function useCreateCopayProforma() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, amount, reason }: { id: number; amount?: string; reason?: string }) =>
+      billingApi.createCopayProforma(id, { amount, reason }),
+    onSuccess: (_, { id }) => {
+      queryClient.invalidateQueries({ queryKey: billingKeys.invoiceDetail(id) });
+      queryClient.invalidateQueries({ queryKey: billingKeys.invoices() });
+      queryClient.invalidateQueries({ queryKey: billingKeys.proformas() });
+    },
+  });
+}
+
+/**
+ * Finalize invoice and auto-apply interim copay payments.
+ */
+export function useFinalizeAndApplyCopay() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: number) => billingApi.finalizeAndApplyCopay(id),
+    onSuccess: (_, id) => {
+      queryClient.invalidateQueries({ queryKey: billingKeys.invoiceDetail(id) });
+      queryClient.invalidateQueries({ queryKey: billingKeys.invoices() });
+      queryClient.invalidateQueries({ queryKey: billingKeys.payments() });
+    },
+  });
+}
+
+/**
  * Cancel an invoice
  */
 export function useCancelInvoice() {

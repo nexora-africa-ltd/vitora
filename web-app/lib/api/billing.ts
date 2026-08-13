@@ -280,6 +280,19 @@ async function finalizeInvoice(id: IdParam): Promise<Invoice> {
   return parseResponse(InvoiceSchema, response.data, { context: 'billingApi.finalizeInvoice' });
 }
 
+async function createCopayProforma(
+  id: IdParam,
+  data?: { amount?: string; reason?: string }
+): Promise<Invoice> {
+  const response = await apiClient.post(`/api/billing/invoices/${id}/create-copay-proforma/`, data || {});
+  return parseResponse(InvoiceSchema, response.data, { context: 'billingApi.createCopayProforma' });
+}
+
+async function finalizeAndApplyCopay(id: IdParam): Promise<Invoice> {
+  const response = await apiClient.post(`/api/billing/invoices/${id}/finalize-and-apply-copay/`);
+  return parseResponse(InvoiceSchema, response.data, { context: 'billingApi.finalizeAndApplyCopay' });
+}
+
 async function cancelInvoice(id: IdParam, reason: string): Promise<Invoice> {
   const response = await apiClient.post(`/api/billing/invoices/${id}/cancel/`, {
     reason,
@@ -761,6 +774,8 @@ export const billingApi = {
   createInvoice,
   updateInvoice,
   finalizeInvoice,
+  createCopayProforma,
+  finalizeAndApplyCopay,
   cancelInvoice,
   addInvoiceItem,
   removeInvoiceItem,

@@ -89,6 +89,7 @@ interface InvoiceDetailProps {
   onAddItem?: (invoice: Invoice) => void;
   onRemoveItem?: (invoice: Invoice, itemId: number) => void;
   onApplyDiscount?: (invoice: Invoice) => void;
+  onCollectCopay?: (invoice: Invoice) => void;
   onClaimSubmitted?: (claim: Claim) => void;
   linkedClaim?: Claim | null;
   linkedClaimDetail?: Claim | null;
@@ -191,6 +192,7 @@ export function InvoiceDetail({
   onAddItem,
   onRemoveItem,
   onApplyDiscount,
+  onCollectCopay,
   onClaimSubmitted,
   linkedClaim,
   linkedClaimDetail,
@@ -929,6 +931,14 @@ export function InvoiceDetail({
             <Percent className="h-4 w-4 mr-2" />
             Discount
           </ActionButton>
+        )}
+
+        {/* Collect Copay (Draft only) */}
+        {canEdit && onCollectCopay && patientCopayAmount > 0 && (
+          <Button variant="outline" onClick={() => onCollectCopay(invoice)}>
+            <CreditCard className="h-4 w-4 mr-2" />
+            Collect Copay
+          </Button>
         )}
 
         {/* Finalize (Draft only) */}

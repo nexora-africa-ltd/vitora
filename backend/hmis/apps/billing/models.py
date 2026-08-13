@@ -1277,14 +1277,25 @@ class Payment(models.Model):
         if self.pk and self.status in [self.Status.REVERSED, self.Status.REFUNDED]:
             return
 
-        # Prevent payment on proforma invoices
+        # Allow only explicit interim-copay payments on proforma invoices.
         if self.invoice and self.invoice.status == Invoice.Status.PROFORMA:
-            raise ValidationError(
-                "Cannot create payment for proforma invoice. Convert to invoice first."
-            )
+            details = self.payment_details or {}
+            is_interim_copay = bool(details.get("interim_copay"))
+            if not is_interim_copay:
+                raise ValidationError(
+                    "Cannot create payment for proforma invoice unless payment_details.interim_copay=true."
+                )
 
         # Check invoice balance
-        if self.invoice and self.amount and self.amount > self.invoice.balance_due:
+        if (
+            self.invoice
+            and self.amount
+            and self.amount > self.invoice.balance_due
+            and not (
+                self.invoice.status == Invoice.Status.PROFORMA
+                and bool((self.payment_details or {}).get("interim_copay"))
+            )
+        ):
             raise ValidationError({"amount": "Payment amount exceeds invoice balance."})
 
         # Check invoice status
@@ -1318,6 +1329,12 @@ class Payment(models.Model):
         self.status = self.Status.COMPLETED
         self.processed_at = timezone.now()
         self.save(update_fields=["status", "processed_at", "updated_at"])
+
+        # Interim copay payments against proforma invoices are held as deposits and
+        # reconciled to finalized invoices later.
+        details = self.payment_details or {}
+        if self.invoice.status == Invoice.Status.PROFORMA and bool(details.get("interim_copay")):
+            return
 
         # Update invoice
         self.invoice.record_payment(self.amount)

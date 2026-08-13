@@ -116,6 +116,50 @@ class TestPaymentAPIEndpoints:
         assert response.status_code == status.HTTP_200_OK
         assert "receipt_number" in response.data
 
+    def test_reject_non_interim_payment_on_proforma(
+        self, authenticated_client, sample_invoice, sample_invoice_item
+    ):
+        """Payments on proforma invoices require interim_copay marker."""
+        sample_invoice.status = Invoice.Status.PROFORMA
+        sample_invoice.calculate_totals()
+        sample_invoice.save(update_fields=["status", "updated_at"])
+
+        response = authenticated_client.post(
+            "/api/billing/payments/",
+            {
+                "invoice": sample_invoice.id,
+                "method": Payment.Method.CASH,
+                "amount": "100.00",
+            },
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_allow_interim_copay_payment_on_proforma(
+        self, authenticated_client, sample_invoice, sample_invoice_item
+    ):
+        """Interim copay payments can be collected on proforma invoices."""
+        sample_invoice.status = Invoice.Status.PROFORMA
+        sample_invoice.calculate_totals()
+        sample_invoice.save(update_fields=["status", "updated_at"])
+
+        response = authenticated_client.post(
+            "/api/billing/payments/",
+            {
+                "invoice": sample_invoice.id,
+                "method": Payment.Method.CASH,
+                "amount": "100.00",
+                "payment_details": {"interim_copay": True},
+            },
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_201_CREATED
+        sample_invoice.refresh_from_db()
+        # Proforma status remains unchanged; payment is held for later reconciliation.
+        assert sample_invoice.status == Invoice.Status.PROFORMA
+
 
 class TestMpesaAPIEndpoints:
     """Test M-Pesa STK Push API endpoints."""
