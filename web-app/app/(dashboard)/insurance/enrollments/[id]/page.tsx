@@ -11,7 +11,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { usePatientInsurance, useUpdateEnrollment } from '@/lib/hooks/use-insurance';
+import {
+  useGetHealthcloudHealthId,
+  usePatientInsurance,
+  usePostHealthcloudProfile,
+  useUpdateEnrollment,
+} from '@/lib/hooks/use-insurance';
 import { useToast } from '@/lib/hooks/use-toast';
 import type { PatientInsuranceCreateInput } from '@/lib/types/insurance';
 
@@ -31,6 +36,33 @@ const STATUS_COLORS: Record<string, string> = {
   cancelled: 'bg-gray-100 text-gray-800',
 };
 
+function extractHealthIdentitySnapshot(payload: Record<string, unknown> | null | undefined): {
+  profileRequestId: string;
+  profileId: string;
+  serviceAccountNumber: string;
+  healthId: string;
+  postedAt: string;
+  checkedAt: string;
+} {
+  const raw = payload?.health_identity;
+  const identity = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
+  return {
+    profileRequestId: String(identity.profile_request_id || ''),
+    profileId: String(identity.profile_id || ''),
+    serviceAccountNumber: String(identity.service_account_number || ''),
+    healthId: String(identity.health_id || ''),
+    postedAt: String(identity.posted_at || ''),
+    checkedAt: String(identity.health_id_checked_at || ''),
+  };
+}
+
+function formatOptionalDate(value: string): string {
+  if (!value) return 'N/A';
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return value;
+  return parsed.toLocaleString();
+}
+
 export default function InsuranceEnrollmentDetailPage() {
   const router = useRouter();
   const { toast } = useToast();
@@ -39,6 +71,8 @@ export default function InsuranceEnrollmentDetailPage() {
 
   const { data: enrollment, isLoading, isError, refetch } = usePatientInsurance(Number.isFinite(enrollmentId) ? enrollmentId : undefined);
   const updateEnrollment = useUpdateEnrollment();
+  const postHealthcloudProfile = usePostHealthcloudProfile();
+  const getHealthcloudHealthId = useGetHealthcloudHealthId();
 
   const [isEditing, setIsEditing] = useState(false);
   const [notesDraft, setNotesDraft] = useState('');
@@ -48,6 +82,8 @@ export default function InsuranceEnrollmentDetailPage() {
   const [backPreview, setBackPreview] = useState<string | null>(null);
   const [removeFront, setRemoveFront] = useState(false);
   const [removeBack, setRemoveBack] = useState(false);
+  const [serviceName, setServiceName] = useState('SLADE_ADVANTAGE');
+  const [profileIdInput, setProfileIdInput] = useState('');
 
   useEffect(() => {
     if (!enrollment || isEditing) return;
@@ -56,6 +92,8 @@ export default function InsuranceEnrollmentDetailPage() {
     setBackFile(null);
     setRemoveFront(false);
     setRemoveBack(false);
+    const identity = extractHealthIdentitySnapshot(enrollment.last_eligibility_payload);
+    setProfileIdInput(identity.profileRequestId || identity.profileId);
   }, [enrollment, isEditing]);
 
   useEffect(() => {
@@ -135,6 +173,50 @@ export default function InsuranceEnrollmentDetailPage() {
     setNotesDraft(enrollment?.notes || '');
   };
 
+  const handlePostProfile = async () => {
+    if (!enrollment) return;
+    try {
+      const result = await postHealthcloudProfile.mutateAsync({
+        id: enrollment.id,
+        data: {
+          service_name: serviceName,
+          ...(profileIdInput ? { profile_id: profileIdInput } : {}),
+        },
+      });
+      const identity = result.identity as Record<string, unknown>;
+      setProfileIdInput(String(identity.id || identity.profile_id || profileIdInput));
+      toast({
+        title: 'Profile posted to Health CRM',
+        description: String(identity.service_account_number || 'Request accepted.'),
+      });
+      await refetch();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to post profile to Health CRM.';
+      toast({ title: 'Post profile failed', description: message, variant: 'destructive' });
+    }
+  };
+
+  const handlePollHealthId = async () => {
+    if (!enrollment) return;
+    try {
+      const result = await getHealthcloudHealthId.mutateAsync({
+        id: enrollment.id,
+        data: profileIdInput ? { profile_id: profileIdInput } : {},
+      });
+      const identity = result.identity as Record<string, unknown>;
+      toast({
+        title: 'Health ID polled',
+        description: identity.health_id
+          ? `Health ID: ${String(identity.health_id)}`
+          : 'Health ID not assigned yet. Continue polling or wait for webhook.',
+      });
+      await refetch();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to poll Health ID.';
+      toast({ title: 'Poll failed', description: message, variant: 'destructive' });
+    }
+  };
+
   if (!Number.isFinite(enrollmentId)) {
     return (
       <div className="space-y-4 sm:space-y-6">
@@ -188,6 +270,102 @@ export default function InsuranceEnrollmentDetailPage() {
 
       {enrollment && (
         <>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Health ID Workflow</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {(() => {
+                const identity = extractHealthIdentitySnapshot(enrollment.last_eligibility_payload);
+                const resolvedProfileId = identity.profileRequestId || identity.profileId;
+                const hasHealthId = !!identity.healthId;
+
+                return (
+                  <>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                      <div>
+                        <p className="text-xs text-muted-foreground">Profile Request ID</p>
+                        <p className="font-medium break-all">{identity.profileRequestId || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Profile ID</p>
+                        <p className="font-medium break-all">{identity.profileId || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Service Account Number</p>
+                        <p className="font-medium">{identity.serviceAccountNumber || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Health ID</p>
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium">{identity.healthId || 'Pending'}</p>
+                          <Badge
+                            className={
+                              hasHealthId
+                                ? 'bg-green-100 text-green-800'
+                                : 'bg-yellow-100 text-yellow-800'
+                            }
+                          >
+                            {hasHealthId ? 'Assigned' : 'Awaiting assignment'}
+                          </Badge>
+                        </div>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Profile Posted</p>
+                        <p className="font-medium">{formatOptionalDate(identity.postedAt)}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Last Health ID Check</p>
+                        <p className="font-medium">{formatOptionalDate(identity.checkedAt)}</p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <Label htmlFor="healthcrm-service-name">Service Name</Label>
+                        <Input
+                          id="healthcrm-service-name"
+                          value={serviceName}
+                          onChange={(e) => setServiceName(e.target.value)}
+                          placeholder="SLADE_ADVANTAGE"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor="healthcrm-profile-id">Profile ID (optional override)</Label>
+                        <Input
+                          id="healthcrm-profile-id"
+                          value={profileIdInput}
+                          onChange={(e) => setProfileIdInput(e.target.value)}
+                          placeholder={resolvedProfileId || 'Auto from enrollment snapshot'}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        variant="outline"
+                        onClick={() => void handlePostProfile()}
+                        disabled={postHealthcloudProfile.isPending}
+                      >
+                        {postHealthcloudProfile.isPending ? 'Posting...' : 'Post Profile to Health CRM'}
+                      </Button>
+                      <Button
+                        onClick={() => void handlePollHealthId()}
+                        disabled={getHealthcloudHealthId.isPending}
+                      >
+                        {getHealthcloudHealthId.isPending ? 'Polling...' : 'Poll Health ID'}
+                      </Button>
+                    </div>
+
+                    <p className="text-xs text-muted-foreground">
+                      Webhook endpoint (optional): <code>/api/insurance/healthcloud/webhooks/health-id/</code>
+                    </p>
+                  </>
+                );
+              })()}
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Enrollment Details</CardTitle>

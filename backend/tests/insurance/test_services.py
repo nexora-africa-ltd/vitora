@@ -572,6 +572,58 @@ class TestSlade360Adapter:
         assert "T" in captured["json_body"]["visit_end"]
         assert captured["json_body"]["visit_end"].endswith("Z")
 
+    @pytest.mark.django_db
+    def test_post_profile_to_crm_prefers_health_crm_host(self, provider_config):
+        provider_config.health_crm_base_url = "https://health-crm.multitenant.slade360.co.ke/v1"
+        provider_config.save(update_fields=["health_crm_base_url", "updated_at"])
+
+        adapter = Slade360Adapter(provider_config)
+        adapter.auth_service.get_auth_headers = MagicMock(
+            return_value={"Authorization": "Bearer token"}
+        )
+
+        captured: dict = {}
+
+        def _mock_post(path, *, json_body=None, headers=None, host=None, **kwargs):
+            captured["path"] = path
+            captured["host"] = host
+            return InsuranceResponse(status_code=200, headers={}, json={"id": "profile-1"})
+
+        adapter.client.post = _mock_post
+        result = adapter.post_profile_to_crm({"service_name": "SLADE_ADVANTAGE"})
+
+        assert result["id"] == "profile-1"
+        assert captured["path"] == "/identities/profile"
+        assert captured["host"] == "health_crm"
+
+    @pytest.mark.django_db
+    def test_get_health_id_prefers_health_crm_host(self, provider_config):
+        provider_config.health_crm_base_url = "https://health-crm.multitenant.slade360.co.ke/v1"
+        provider_config.save(update_fields=["health_crm_base_url", "updated_at"])
+
+        adapter = Slade360Adapter(provider_config)
+        adapter.auth_service.get_auth_headers = MagicMock(
+            return_value={"Authorization": "Bearer token"}
+        )
+
+        captured: dict = {}
+
+        def _mock_get(path, *, headers=None, host=None, **kwargs):
+            captured["path"] = path
+            captured["host"] = host
+            return InsuranceResponse(
+                status_code=200,
+                headers={},
+                json={"profile_id": "profile-1", "health_id": 1234010000000013},
+            )
+
+        adapter.client.get = _mock_get
+        result = adapter.get_health_id("profile-1")
+
+        assert result["profile_id"] == "profile-1"
+        assert captured["path"] == "/identities/profiles/profile-1/health_id"
+        assert captured["host"] == "health_crm"
+
 
 # ===================================================================
 # InsuranceHttpClient

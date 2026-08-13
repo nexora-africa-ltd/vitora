@@ -16,6 +16,7 @@ import json
 import logging
 import time
 from datetime import date
+from decimal import Decimal
 from typing import TYPE_CHECKING, Any
 
 from django.utils import timezone
@@ -92,7 +93,18 @@ class InsuranceEligibilityService:
         enrollment.last_eligibility_checked_at = timezone.now()
         enrollment.last_eligibility_eligible = result.eligible
         enrollment.last_eligibility_status = result.status
-        enrollment.last_eligibility_payload = result.raw_response or {}
+        previous_payload = (
+            enrollment.last_eligibility_payload
+            if isinstance(enrollment.last_eligibility_payload, dict)
+            else {}
+        )
+        latest_payload = result.raw_response if isinstance(result.raw_response, dict) else {}
+        merged_payload = dict(latest_payload)
+        previous_health_identity = previous_payload.get("health_identity")
+        if isinstance(previous_health_identity, dict) and "health_identity" not in merged_payload:
+            merged_payload["health_identity"] = previous_health_identity
+
+        enrollment.last_eligibility_payload = merged_payload
 
         update_fields = [
             "last_eligibility_checked_at",
@@ -531,6 +543,248 @@ class HealthCloudWorkflowService:
             provider_code=getattr(getattr(enrollment, "provider", None), "code", None),
         )
 
+    @staticmethod
+    def _stable_profile_id(enrollment: Any) -> str:
+        patient = getattr(enrollment, "patient", None)
+        patient_public_id = getattr(patient, "public_id", None)
+        if patient_public_id:
+            return str(patient_public_id)
+
+        patient_pk = getattr(patient, "pk", None)
+        if patient_pk:
+            return str(patient_pk)
+
+        return str(enrollment.pk)
+
+    @staticmethod
+    def _identity_contacts(enrollment: Any) -> list[dict[str, str]]:
+        patient = enrollment.patient
+        contacts: list[dict[str, str]] = []
+
+        def _append_contact(kind: str, value: Any) -> None:
+            cleaned = str(value or "").strip()
+            if not cleaned:
+                return
+            contacts.append(
+                {
+                    "contactType": kind,
+                    "contactValue": cleaned,
+                    "contact_type": kind,
+                    "contact_value": cleaned,
+                }
+            )
+
+        _append_contact("MOBILE", getattr(patient, "phone_number", ""))
+        _append_contact("EMAIL", getattr(patient, "email", ""))
+
+        primary_emergency_contact = patient.emergency_contacts.first()
+        if primary_emergency_contact is not None:
+            _append_contact("EMERGENCY", getattr(primary_emergency_contact, "phone_number", ""))
+
+        return contacts
+
+    @staticmethod
+    def _identity_identifiers(enrollment: Any) -> list[dict[str, str]]:
+        patient = enrollment.patient
+        identifiers: list[dict[str, str]] = []
+
+        def _append_identifier(kind: str, value: Any) -> None:
+            cleaned = str(value or "").strip()
+            if not cleaned:
+                return
+            identifiers.append(
+                {
+                    "identifierType": kind,
+                    "identifierValue": cleaned,
+                    "identifier_type": kind,
+                    "identifier_value": cleaned,
+                }
+            )
+
+        identification_type = str(getattr(patient, "identification_type", "") or "").strip().upper()
+        if identification_type:
+            _append_identifier(identification_type, getattr(patient, "identification_number", ""))
+        else:
+            _append_identifier("IDENTIFICATION", getattr(patient, "identification_number", ""))
+
+        _append_identifier("NATIONAL_ID", getattr(patient, "national_id", ""))
+        _append_identifier("MRN", getattr(patient, "mrn", ""))
+        _append_identifier("CR_NUMBER", getattr(patient, "cr_number", ""))
+        _append_identifier("SHA_NUMBER", getattr(patient, "sha_number", ""))
+
+        return identifiers
+
+    @staticmethod
+    def _clean_identity_payload_override(payload: dict[str, Any] | None) -> dict[str, Any]:
+        if not isinstance(payload, dict):
+            return {}
+
+        cleaned: dict[str, Any] = {}
+        for key, value in payload.items():
+            if value is None:
+                continue
+            if isinstance(value, str) and not value.strip():
+                continue
+            if isinstance(value, list) and not value:
+                continue
+            cleaned[key] = value
+        return cleaned
+
+    @staticmethod
+    def _to_iso_date(value: Any) -> str:
+        if value is None:
+            return ""
+        if hasattr(value, "isoformat"):
+            try:
+                return str(value.isoformat())
+            except Exception:
+                return str(value)
+        return str(value)
+
+    @staticmethod
+    def _default_identity_payload(enrollment: Any, config: Any) -> dict[str, Any]:
+        patient = enrollment.patient
+        return {
+            "profile_id": HealthCloudWorkflowService._stable_profile_id(enrollment),
+            "first_name": str(getattr(patient, "first_name", "") or "").strip(),
+            "last_name": str(getattr(patient, "last_name", "") or "").strip(),
+            "other_name": str(getattr(patient, "middle_name", "") or "").strip(),
+            "gender": (
+                "MALE"
+                if str(getattr(patient, "gender", "")).upper() == "M"
+                else "FEMALE"
+                if str(getattr(patient, "gender", "")).upper() == "F"
+                else "OTHER"
+            ),
+            "date_of_birth": HealthCloudWorkflowService._to_iso_date(
+                getattr(patient, "date_of_birth", None)
+            ),
+            "enrolment_date": HealthCloudWorkflowService._to_iso_date(
+                getattr(enrollment, "valid_from", None)
+            ),
+            "slade_code": str(getattr(config, "payer_slade_code", "") or ""),
+            "service_name": "SLADE_ADVANTAGE",
+            "contacts": HealthCloudWorkflowService._identity_contacts(enrollment),
+            "identifiers": HealthCloudWorkflowService._identity_identifiers(enrollment),
+        }
+
+    @staticmethod
+    def _merge_health_identity_snapshot(
+        enrollment: Any,
+        *,
+        profile_response: dict[str, Any] | None = None,
+        health_id_response: dict[str, Any] | None = None,
+    ) -> None:
+        payload = getattr(enrollment, "last_eligibility_payload", None)
+        merged = dict(payload) if isinstance(payload, dict) else {}
+        snapshot = merged.get("health_identity")
+        if not isinstance(snapshot, dict):
+            snapshot = {}
+
+        if isinstance(profile_response, dict):
+            if profile_response.get("id") is not None:
+                snapshot["profile_request_id"] = str(profile_response.get("id") or "")
+            if profile_response.get("profile_id") is not None:
+                snapshot["profile_id"] = str(profile_response.get("profile_id") or "")
+            if profile_response.get("service_account_number") is not None:
+                snapshot["service_account_number"] = str(
+                    profile_response.get("service_account_number") or ""
+                )
+            snapshot["profile_response"] = profile_response
+            snapshot["posted_at"] = timezone.now().isoformat()
+
+        if isinstance(health_id_response, dict):
+            if health_id_response.get("health_id") is not None:
+                snapshot["health_id"] = str(health_id_response.get("health_id") or "")
+            if health_id_response.get("profile_id") is not None:
+                snapshot["profile_id"] = str(health_id_response.get("profile_id") or "")
+            snapshot["health_id_response"] = health_id_response
+            snapshot["health_id_checked_at"] = timezone.now().isoformat()
+
+        merged["health_identity"] = snapshot
+        enrollment.last_eligibility_payload = merged
+        enrollment.save(update_fields=["last_eligibility_payload", "updated_at"])
+
+    def post_profile_to_crm(
+        self,
+        *,
+        enrollment: Any,
+        facility: Any,
+        organization: Any,
+        payload: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        config = _get_config(enrollment.provider, facility)
+        adapter = get_adapter(config)
+        self._require_operation(adapter, "post_profile_to_crm")
+
+        base_payload = self._default_identity_payload(enrollment, config)
+        base_payload.update(self._clean_identity_payload_override(payload))
+
+        if not str(base_payload.get("slade_code") or "").strip():
+            raise InsuranceValidationError(
+                "payer_slade_code is required to post profile to Health CRM.",
+                provider_code=getattr(config.provider, "code", None),
+            )
+        if not str(base_payload.get("service_name") or "").strip():
+            raise InsuranceValidationError(
+                "service_name is required to post profile to Health CRM.",
+                provider_code=getattr(config.provider, "code", None),
+            )
+
+        response = self._run_idempotent(
+            operation="healthcloud.identity.post_profile",
+            facility=facility,
+            organization=organization,
+            payload=base_payload,
+            runner=adapter.post_profile_to_crm,
+        )
+        self._merge_health_identity_snapshot(enrollment, profile_response=response)
+        return response
+
+    def get_health_id(
+        self,
+        *,
+        enrollment: Any,
+        facility: Any,
+        organization: Any,
+        profile_id: str = "",
+    ) -> dict[str, Any]:
+        config = _get_config(enrollment.provider, facility)
+        adapter = get_adapter(config)
+        self._require_operation(adapter, "get_health_id")
+
+        resolved_profile_id = str(profile_id or "").strip()
+        if not resolved_profile_id:
+            payload = getattr(enrollment, "last_eligibility_payload", None)
+            if isinstance(payload, dict):
+                identity_snapshot = payload.get("health_identity")
+                if isinstance(identity_snapshot, dict):
+                    resolved_profile_id = str(
+                        identity_snapshot.get("profile_request_id")
+                        or identity_snapshot.get("profile_id")
+                        or ""
+                    ).strip()
+
+        if not resolved_profile_id:
+            raise InsuranceValidationError(
+                "profile_id is required before polling Health ID.",
+                provider_code=getattr(config.provider, "code", None),
+            )
+
+        request_payload = {
+            "profile_id": resolved_profile_id,
+            "requested_at": timezone.now().isoformat(),
+        }
+        response = self._run_idempotent(
+            operation="healthcloud.identity.get_health_id",
+            facility=facility,
+            organization=organization,
+            payload=request_payload,
+            runner=lambda _payload: adapter.get_health_id(resolved_profile_id),
+        )
+        self._merge_health_identity_snapshot(enrollment, health_id_response=response)
+        return response
+
     def start_session(
         self,
         *,
@@ -552,9 +806,11 @@ class HealthCloudWorkflowService:
             patient=enrollment.patient,
             member_number=eligibility_result.member_number or enrollment.member_number,
             payer_slade_code=config.payer_slade_code,
-            beneficiary_id=(payload.get("member") or {}).get("id")
-            if isinstance(payload.get("member"), dict)
-            else None,
+            beneficiary_id=(
+                (payload.get("member") or {}).get("id")
+                if isinstance(payload.get("member"), dict)
+                else None
+            ),
             policy_number=self._extract_policy_number(payload),
             eligibility_payload=payload,
             workflow_step="eligibility_verified",
@@ -899,9 +1155,9 @@ class HealthCloudWorkflowService:
         payload = {
             "claim_id": claim.pk,
             "claim_number": claim.claim_number,
-            "member_number": claim.patient_insurance.member_number
-            if claim.patient_insurance
-            else "",
+            "member_number": (
+                claim.patient_insurance.member_number if claim.patient_insurance else ""
+            ),
             "payer_slade_code": config.payer_slade_code,
         }
         response = self._run_idempotent(
@@ -1166,6 +1422,138 @@ class HealthCloudWorkflowService:
 
         claim.save(update_fields=["approved_amount", "paid_amount", "status", "updated_at"])
         return response
+
+    @staticmethod
+    def _extract_claim_rows(payload: Any) -> list[dict[str, Any]]:
+        if isinstance(payload, list):
+            return [row for row in payload if isinstance(row, dict)]
+        if not isinstance(payload, dict):
+            return []
+        for key in ("claims", "results", "data", "items"):
+            value = payload.get(key)
+            if isinstance(value, list):
+                return [row for row in value if isinstance(row, dict)]
+        # Some payers return a single claim object.
+        if any(
+            k in payload
+            for k in (
+                "claim_id",
+                "claim_number",
+                "provider_invoice_no",
+                "approved_amount",
+                "balanced_paid_amount",
+            )
+        ):
+            return [payload]
+        return []
+
+    def get_remittance_claims(
+        self,
+        *,
+        remittance: Any,
+        facility: Any,
+        organization: Any,
+    ) -> dict[str, Any]:
+        from hmis.apps.insurance.models import InsuranceClaim, InsuranceRemittanceLine
+
+        config = _get_config(remittance.provider, facility)
+        adapter = get_adapter(config)
+        self._require_operation(adapter, "get_remittance_claims")
+
+        remittance_reference = (
+            str(getattr(remittance, "bank_reference", "") or "").strip()
+            or str(getattr(remittance, "payment_reference", "") or "").strip()
+            or str(getattr(remittance, "remittance_number", "") or "").strip()
+        )
+        if not remittance_reference:
+            raise InsuranceValidationError("Remittance has no usable reference for drill-down.")
+
+        request_payload = {
+            "remittance_id": remittance.pk,
+            "remittance_reference": remittance_reference,
+        }
+
+        response = self._run_idempotent(
+            operation="healthcloud.get_remittance_claims",
+            facility=facility,
+            organization=organization,
+            payload=request_payload,
+            runner=lambda _payload: adapter.get_remittance_claims(remittance_reference),
+            claim=None,
+            preauth=None,
+            authorization=None,
+        )
+
+        claim_rows = self._extract_claim_rows(response)
+        touched = 0
+
+        for row in claim_rows:
+            claim_number = str(
+                row.get("claim_number")
+                or row.get("claim_id")
+                or row.get("provider_invoice_no")
+                or ""
+            ).strip()
+            if not claim_number:
+                continue
+
+            claim = (
+                InsuranceClaim.objects.filter(
+                    facility=facility,
+                    claim_number=claim_number,
+                ).first()
+                or InsuranceClaim.objects.filter(
+                    facility=facility,
+                    external_claim_id=claim_number,
+                ).first()
+            )
+
+            approved_amount = row.get("approved_amount")
+            balanced_paid = row.get("balanced_paid_amount")
+            proposed = row.get("proposed_amount")
+            copay_amount = row.get("copay_amount")
+
+            paid_amount = Decimal(
+                str(balanced_paid if balanced_paid is not None else proposed or 0)
+            )
+            deductions = Decimal(str(copay_amount if copay_amount is not None else 0))
+            net_amount = paid_amount
+
+            InsuranceRemittanceLine.objects.update_or_create(
+                remittance=remittance,
+                claim_number=claim_number,
+                defaults={
+                    "claim": claim,
+                    "member_number": str(row.get("member_number") or ""),
+                    "paid_amount": paid_amount,
+                    "deductions": deductions,
+                    "net_amount": net_amount,
+                    "notes": str(row.get("notes") or ""),
+                },
+            )
+
+            if claim and approved_amount is not None:
+                claim.approved_amount = approved_amount
+                claim.paid_amount = paid_amount
+                if paid_amount > 0:
+                    claim.status = (
+                        claim.Status.PAID
+                        if paid_amount >= Decimal(str(approved_amount))
+                        else claim.Status.PARTIALLY_PAID
+                    )
+                claim.save(update_fields=["approved_amount", "paid_amount", "status", "updated_at"])
+
+            touched += 1
+
+        if touched:
+            remittance.reconcile()
+
+        return {
+            "remittance_reference": remittance_reference,
+            "claims": claim_rows,
+            "processed": touched,
+            "local_lines": remittance.lines.count(),
+        }
 
 
 # ---------------------------------------------------------------------------

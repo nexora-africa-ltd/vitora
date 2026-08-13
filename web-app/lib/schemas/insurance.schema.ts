@@ -252,6 +252,7 @@ export const InsuranceProviderConfigSchema = z.object({
   auth_base_url: z.string(),
   provider_edi_base_url: z.string(),
   provider_is_base_url: z.string(),
+  health_crm_base_url: z.string(),
   api_auth_type: ApiAuthTypeSchema,
   api_enabled: z.boolean(),
   healthcloud_enabled: z.boolean(),
@@ -326,6 +327,11 @@ export const VerifyViaHealthcloudResultSchema = z.object({
 export const HealthcloudSessionStartResultSchema = z.object({
   session: InsuranceVisitAuthorizationSchema,
   eligibility: VerifyViaHealthcloudResultSchema,
+});
+
+export const HealthcloudIdentityWorkflowResultSchema = z.object({
+  enrollment: PatientInsuranceSchema,
+  identity: z.record(z.string(), z.unknown()),
 });
 
 export const SladeDefaultsSeedResultSchema = z.object({
@@ -573,6 +579,27 @@ export const InsuranceRemittanceSchema = z.object({
   lines: z.array(InsuranceRemittanceLineSchema),
   created_at: z.string(),
   updated_at: z.string(),
+});
+
+export const RemittanceDrilldownClaimSchema = z.object({
+  claim_id: z.union([z.string(), z.number()]).optional(),
+  claim_number: z.string().optional(),
+  provider_invoice_no: z.string().optional(),
+  proposed_amount: z.union([z.string(), z.number()]).optional(),
+  approved_amount: z.union([z.string(), z.number()]).optional(),
+  balanced_paid_amount: z.union([z.string(), z.number()]).optional(),
+  balance_invoiced_amount: z.union([z.string(), z.number()]).optional(),
+  copay_amount: z.union([z.string(), z.number()]).optional(),
+}).passthrough();
+
+export const InsuranceRemittanceClaimsDrilldownSchema = z.object({
+  remittance: InsuranceRemittanceSchema,
+  drilldown: z.object({
+    remittance_reference: z.string(),
+    claims: z.array(RemittanceDrilldownClaimSchema),
+    processed: z.number(),
+    local_lines: z.number(),
+  }),
 });
 
 export const PayerTariffSchema = z.object({

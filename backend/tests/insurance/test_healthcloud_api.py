@@ -6,7 +6,12 @@ import pytest
 
 from hmis.apps.insurance.models import InsuranceProvider, InsuranceVisitAuthorization
 from hmis.apps.insurance.payer_mappings import infer_healthcloud_payer_slade_code
+from hmis.apps.insurance.services.insurance_services import (
+    HealthCloudWorkflowService,
+    InsuranceEligibilityService,
+)
 from hmis.apps.insurance.services.results import EligibilityResult
+from hmis.apps.patients.models import EmergencyContact
 
 
 def _enable_provider_config(provider_config):
@@ -301,6 +306,306 @@ def test_healthcloud_session_start_visit_contract_success(
     assert response.data["id"] == session.pk
     assert response.data["status"] == "authorized"
     assert response.data["auth_token"] == "AUTH-123"
+
+
+@pytest.mark.django_db
+def test_healthcloud_post_profile_contract_success(
+    admin_client,
+    monkeypatch,
+    patient_insurance,
+    provider_config,
+    sample_facility,
+    sample_organization,
+):
+    _enable_provider_config(provider_config)
+
+    def _mock_post_profile_to_crm(
+        self,
+        *,
+        enrollment,
+        facility,
+        organization,
+        payload=None,
+    ):
+        assert enrollment.pk == patient_insurance.pk
+        assert facility == sample_facility
+        assert organization == sample_organization
+        assert isinstance(payload, dict)
+        return {
+            "id": "85979e5f-3c20-4f5f-bf52-eec658bd27e9",
+            "profile_id": str(enrollment.pk),
+            "service_account_number": "GH-53847234",
+            "service_name": payload.get("service_name", "SLADE_ADVANTAGE"),
+        }
+
+    monkeypatch.setattr(
+        "hmis.apps.insurance.services.insurance_services.HealthCloudWorkflowService.post_profile_to_crm",
+        _mock_post_profile_to_crm,
+    )
+
+    url = f"/api/insurance/enrollments/{patient_insurance.pk}/healthcloud/post-profile/"
+    response = admin_client.post(
+        url,
+        {
+            "service_name": "SLADE_ADVANTAGE",
+        },
+        format="json",
+    )
+
+    assert response.status_code == 200
+    assert response.data["identity"]["id"] == "85979e5f-3c20-4f5f-bf52-eec658bd27e9"
+    assert response.data["identity"]["service_account_number"] == "GH-53847234"
+
+
+@pytest.mark.django_db
+def test_healthcloud_get_health_id_contract_success(
+    admin_client,
+    monkeypatch,
+    patient_insurance,
+    provider_config,
+    sample_facility,
+    sample_organization,
+):
+    _enable_provider_config(provider_config)
+
+    def _mock_get_health_id(
+        self,
+        *,
+        enrollment,
+        facility,
+        organization,
+        profile_id=None,
+    ):
+        assert enrollment.pk == patient_insurance.pk
+        assert facility == sample_facility
+        assert organization == sample_organization
+        assert profile_id == "85979e5f-3c20-4f5f-bf52-eec658bd27e9"
+        return {
+            "profile_id": profile_id,
+            "health_id": 1234010000000013,
+        }
+
+    monkeypatch.setattr(
+        "hmis.apps.insurance.services.insurance_services.HealthCloudWorkflowService.get_health_id",
+        _mock_get_health_id,
+    )
+
+    url = f"/api/insurance/enrollments/{patient_insurance.pk}/healthcloud/get-health-id/"
+    response = admin_client.post(
+        url,
+        {
+            "profile_id": "85979e5f-3c20-4f5f-bf52-eec658bd27e9",
+        },
+        format="json",
+    )
+
+    assert response.status_code == 200
+    assert response.data["identity"]["health_id"] == 1234010000000013
+
+
+@pytest.mark.django_db
+def test_healthcloud_post_profile_defaults_use_patient_identity_payload(
+    monkeypatch,
+    patient_insurance,
+    provider_config,
+    sample_facility,
+    sample_organization,
+):
+    _enable_provider_config(provider_config)
+
+    patient = patient_insurance.patient
+    patient.phone_number = "+254712345678"
+    patient.email = "john.doe@example.com"
+    patient.identification_type = "national_id"
+    patient.identification_number = "12345678"
+    patient.national_id = "12345678"
+    patient.save(
+        update_fields=[
+            "phone_number_encrypted",
+            "phone_number_hmac",
+            "email_encrypted",
+            "identification_type",
+            "identification_number_encrypted",
+            "identification_number_hmac",
+            "national_id_encrypted",
+            "national_id_hmac",
+            "updated_at",
+        ]
+    )
+    EmergencyContact.objects.create(
+        patient=patient,
+        full_name="Jane Doe",
+        relationship="spouse",
+        phone_number="+254700000001",
+    )
+
+    captured: dict = {}
+
+    class _Adapter:
+        def post_profile_to_crm(self, payload):
+            captured["payload"] = payload
+            return {"id": "85979e5f-3c20-4f5f-bf52-eec658bd27e9"}
+
+    monkeypatch.setattr(
+        "hmis.apps.insurance.services.insurance_services.get_adapter",
+        lambda _config: _Adapter(),
+    )
+
+    service = HealthCloudWorkflowService()
+    service.post_profile_to_crm(
+        enrollment=patient_insurance,
+        facility=sample_facility,
+        organization=sample_organization,
+        payload={"service_name": "SLADE_ADVANTAGE"},
+    )
+
+    identity_payload = captured["payload"]
+    assert identity_payload["profile_id"] == str(patient.public_id)
+    assert any(item.get("contactValue") == "+254712345678" for item in identity_payload["contacts"])
+    assert any(
+        item.get("contactValue") == "john.doe@example.com" for item in identity_payload["contacts"]
+    )
+    assert any(item.get("identifierType") == "MRN" for item in identity_payload["identifiers"])
+
+
+@pytest.mark.django_db
+def test_eligibility_verify_preserves_health_identity_snapshot(
+    monkeypatch,
+    patient_insurance,
+    provider_config,
+    sample_facility,
+):
+    _enable_provider_config(provider_config)
+    patient_insurance.last_eligibility_payload = {
+        "health_identity": {
+            "profile_request_id": "85979e5f-3c20-4f5f-bf52-eec658bd27e9",
+            "health_id": "1234010000000013",
+        }
+    }
+    patient_insurance.save(update_fields=["last_eligibility_payload", "updated_at"])
+
+    class _Adapter:
+        def verify_eligibility(self, enrollment):
+            assert enrollment.pk == patient_insurance.pk
+            return EligibilityResult(
+                eligible=True,
+                status="ACTIVE",
+                member_number=patient_insurance.member_number,
+                plan_name="Gold",
+                annual_balance=1000,
+                message="ok",
+                raw_response={"member": {"id": 636561}},
+            )
+
+    monkeypatch.setattr(
+        "hmis.apps.insurance.services.insurance_services.get_adapter",
+        lambda _config: _Adapter(),
+    )
+
+    service = InsuranceEligibilityService()
+    service.verify(patient_insurance, facility=sample_facility)
+
+    patient_insurance.refresh_from_db()
+    payload = patient_insurance.last_eligibility_payload
+    assert isinstance(payload, dict)
+    assert payload.get("member", {}).get("id") == 636561
+    assert payload.get("health_identity", {}).get("health_id") == "1234010000000013"
+
+
+@pytest.mark.django_db
+def test_health_id_webhook_updates_enrollment_snapshot(
+    admin_client,
+    patient_insurance,
+):
+    patient_insurance.last_eligibility_payload = {
+        "health_identity": {
+            "profile_request_id": "85979e5f-3c20-4f5f-bf52-eec658bd27e9",
+        }
+    }
+    patient_insurance.save(update_fields=["last_eligibility_payload", "updated_at"])
+
+    response = admin_client.post(
+        "/api/insurance/healthcloud/webhooks/health-id/",
+        {
+            "profile_id": "85979e5f-3c20-4f5f-bf52-eec658bd27e9",
+            "health_id": "1234010000000013",
+        },
+        format="json",
+    )
+
+    assert response.status_code == 200
+    patient_insurance.refresh_from_db()
+    snapshot = patient_insurance.last_eligibility_payload.get("health_identity", {})
+    assert str(snapshot.get("health_id")) == "1234010000000013"
+
+
+@pytest.mark.django_db
+def test_remittance_claims_drilldown_contract_success(
+    admin_client,
+    monkeypatch,
+    insurance_remittance,
+):
+    def _mock_get_remittance_claims(self, *, remittance, facility, organization):
+        assert remittance.pk == insurance_remittance.pk
+        return {
+            "remittance_reference": "BR-001",
+            "claims": [
+                {
+                    "claim_number": "IC-20260813-0001",
+                    "approved_amount": "2000.00",
+                    "balanced_paid_amount": "1500.00",
+                }
+            ],
+            "processed": 1,
+            "local_lines": 1,
+        }
+
+    monkeypatch.setattr(
+        "hmis.apps.insurance.services.insurance_services.HealthCloudWorkflowService.get_remittance_claims",
+        _mock_get_remittance_claims,
+    )
+
+    response = admin_client.get(
+        f"/api/insurance/remittances/{insurance_remittance.pk}/claims-drilldown/"
+    )
+
+    assert response.status_code == 200
+    assert response.data["drilldown"]["remittance_reference"] == "BR-001"
+    assert len(response.data["drilldown"]["claims"]) == 1
+
+
+@pytest.mark.django_db
+def test_healthcloud_preauth_submit_routes_to_service(
+    admin_client,
+    monkeypatch,
+    insurance_preauth,
+    provider_config,
+):
+    _enable_provider_config(provider_config)
+
+    class _Result:
+        success = True
+        raw_response = {"id": "preauth-123", "status": "SUBMITTED"}
+
+    def _mock_submit(self, preauth, *, user=None):
+        assert preauth.pk == insurance_preauth.pk
+        preauth.status = "submitted"
+        preauth.external_preauth_id = "preauth-123"
+        preauth.save(update_fields=["status", "external_preauth_id", "updated_at"])
+        return _Result()
+
+    monkeypatch.setattr(
+        "hmis.apps.insurance.services.insurance_services.InsurancePreauthService.submit",
+        _mock_submit,
+    )
+
+    response = admin_client.post(
+        f"/api/insurance/preauths/{insurance_preauth.pk}/submit/", format="json"
+    )
+
+    assert response.status_code == 200
+    assert response.data["preauth"]["status"] == "submitted"
+    assert response.data["upstream"]["id"] == "preauth-123"
 
 
 @pytest.mark.django_db

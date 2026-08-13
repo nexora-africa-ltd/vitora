@@ -26,6 +26,23 @@ const STATUS_COLORS: Record<string, string> = {
   cancelled: 'bg-gray-100 text-gray-800',
 };
 
+function getHealthIdChipState(enrollment: PatientInsurance): {
+  assigned: boolean;
+  healthId: string;
+} {
+  const payload = enrollment.last_eligibility_payload;
+  const identityRaw = payload?.health_identity;
+  const identity =
+    identityRaw && typeof identityRaw === 'object'
+      ? (identityRaw as Record<string, unknown>)
+      : undefined;
+  const healthId = String(identity?.health_id || '').trim();
+  return {
+    assigned: Boolean(healthId),
+    healthId,
+  };
+}
+
 export default function InsuranceEnrollmentsPage() {
   const router = useRouter();
   const canCreateRoute = useCreateRouteAccess();
@@ -136,6 +153,18 @@ export default function InsuranceEnrollmentsPage() {
             ),
           },
           {
+            key: 'health_id',
+            header: 'Health ID',
+            cell: (item) => {
+              const state = getHealthIdChipState(item);
+              return state.assigned ? (
+                <Badge className="bg-green-100 text-green-800">Assigned</Badge>
+              ) : (
+                <Badge className="bg-yellow-100 text-yellow-800">Pending</Badge>
+              );
+            },
+          },
+          {
             key: 'actions',
             header: 'Actions',
             cell: (item) => {
@@ -189,6 +218,14 @@ export default function InsuranceEnrollmentsPage() {
               <Badge className={STATUS_COLORS[item.status] || 'bg-gray-100 text-gray-800'}>
                 {item.status.replace('_', ' ')}
               </Badge>
+              {(() => {
+                const state = getHealthIdChipState(item);
+                return state.assigned ? (
+                  <Badge className="bg-green-100 text-green-800">Health ID assigned</Badge>
+                ) : (
+                  <Badge className="bg-yellow-100 text-yellow-800">Health ID pending</Badge>
+                );
+              })()}
               <div className="flex gap-2">
                 {(() => {
                   const existingSession = sessionsByEnrollment.get(item.id);

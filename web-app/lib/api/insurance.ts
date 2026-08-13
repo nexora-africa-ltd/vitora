@@ -14,6 +14,7 @@ import {
   InsuranceVisitAuthorizationSchema,
   InsuranceRemittanceSchema,
   HealthcloudReserveBalanceResultSchema,
+  InsuranceRemittanceClaimsDrilldownSchema,
   HealthcloudSyncStatusSchema,
   PaginatedInsuranceClaimsSchema,
   PaginatedInsurancePlansSchema,
@@ -29,8 +30,12 @@ import {
   VerifyViaHealthcloudResultSchema,
   SladeDefaultsSeedResultSchema,
   HealthcloudSessionStartResultSchema,
+  HealthcloudIdentityWorkflowResultSchema,
 } from '@/lib/schemas/insurance.schema';
 import type {
+  HealthcloudGetHealthIdInput,
+  HealthcloudIdentityWorkflowResult,
+  HealthcloudPostProfileInput,
   HealthcloudSessionRequestOTPInput,
   HealthcloudSessionStartResult,
   HealthcloudSessionStartVisitInput,
@@ -49,6 +54,7 @@ import type {
   InsuranceProviderCreateInput,
   InsuranceVisitAuthorization,
   InsuranceRemittance,
+  InsuranceRemittanceClaimsDrilldown,
   InsuranceRemittanceCreateInput,
   PaginatedInsuranceResponse,
   PatientInsurance,
@@ -259,6 +265,26 @@ async function startHealthcloudSession(id: number): Promise<HealthcloudSessionSt
   const response = await apiClient.post(`${BASE}/enrollments/${id}/healthcloud-session/start/`);
   return parseResponse(HealthcloudSessionStartResultSchema, response.data, {
     context: 'insuranceApi.startHealthcloudSession',
+  });
+}
+
+async function postHealthcloudProfile(
+  id: number,
+  data: HealthcloudPostProfileInput
+): Promise<HealthcloudIdentityWorkflowResult> {
+  const response = await apiClient.post(`${BASE}/enrollments/${id}/healthcloud/post-profile/`, data);
+  return parseResponse(HealthcloudIdentityWorkflowResultSchema, response.data, {
+    context: 'insuranceApi.postHealthcloudProfile',
+  });
+}
+
+async function getHealthcloudHealthId(
+  id: number,
+  data: HealthcloudGetHealthIdInput
+): Promise<HealthcloudIdentityWorkflowResult> {
+  const response = await apiClient.post(`${BASE}/enrollments/${id}/healthcloud/get-health-id/`, data);
+  return parseResponse(HealthcloudIdentityWorkflowResultSchema, response.data, {
+    context: 'insuranceApi.getHealthcloudHealthId',
   });
 }
 
@@ -618,6 +644,15 @@ async function reconcileRemittance(id: number): Promise<InsuranceRemittance> {
   });
 }
 
+async function getRemittanceClaimsDrilldown(
+  id: number
+): Promise<InsuranceRemittanceClaimsDrilldown> {
+  const response = await apiClient.get(`${BASE}/remittances/${id}/claims-drilldown/`);
+  return parseResponse(InsuranceRemittanceClaimsDrilldownSchema, response.data, {
+    context: 'insuranceApi.getRemittanceClaimsDrilldown',
+  });
+}
+
 async function getHealthcloudSyncStatus(params?: {
   include_failures?: boolean;
   include_sync_items?: boolean;
@@ -706,6 +741,8 @@ export const insuranceApi = {
   startHealthcloudSession,
   requestHealthcloudSessionOtp,
   startHealthcloudSessionVisit,
+  postHealthcloudProfile,
+  getHealthcloudHealthId,
 
   // Provider configs
   listProviderConfigs,
@@ -753,6 +790,7 @@ export const insuranceApi = {
   getRemittance,
   createRemittance,
   reconcileRemittance,
+  getRemittanceClaimsDrilldown,
   getHealthcloudSyncStatus,
 
   // Tariffs

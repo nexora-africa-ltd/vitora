@@ -47,6 +47,7 @@ export default function InsuranceProviderConfigsPage() {
   const [authBaseUrl, setAuthBaseUrl] = useState('https://accounts.multitenant.slade360.co.ke');
   const [providerEdiBaseUrl, setProviderEdiBaseUrl] = useState('https://provider-edi-api.multitenant.slade360.co.ke/v1');
   const [providerIsBaseUrl, setProviderIsBaseUrl] = useState('https://is-api.multitenant.slade360.co.ke/v1');
+  const [healthCrmBaseUrl, setHealthCrmBaseUrl] = useState('https://is-api.multitenant.slade360.co.ke/v1');
   const [payerSladeCode, setPayerSladeCode] = useState('');
   const [apiEnabled, setApiEnabled] = useState(true);
   const [healthcloudEnabled, setHealthcloudEnabled] = useState(true);
@@ -83,6 +84,7 @@ export default function InsuranceProviderConfigsPage() {
         auth_base_url: authBaseUrl,
         provider_edi_base_url: providerEdiBaseUrl,
         provider_is_base_url: providerIsBaseUrl,
+        health_crm_base_url: healthCrmBaseUrl,
         payer_slade_code: payerSladeCode ? Number(payerSladeCode) : null,
         api_enabled: apiEnabled,
         healthcloud_enabled: healthcloudEnabled,
@@ -143,6 +145,10 @@ export default function InsuranceProviderConfigsPage() {
           <div>
             <Label>Provider IS Base URL</Label>
             <Input value={providerIsBaseUrl} onChange={(e) => setProviderIsBaseUrl(e.target.value)} />
+          </div>
+          <div>
+            <Label>Health CRM Base URL</Label>
+            <Input value={healthCrmBaseUrl} onChange={(e) => setHealthCrmBaseUrl(e.target.value)} />
           </div>
           <div className="flex items-center gap-2">
             <Checkbox checked={apiEnabled} onCheckedChange={(v) => setApiEnabled(Boolean(v))} />

@@ -76,6 +76,7 @@ def seed_slade_defaults(
                     "auth_base_url": "https://accounts.multitenant.slade360.co.ke",
                     "provider_edi_base_url": "https://provider-edi-api.multitenant.slade360.co.ke/v1",
                     "provider_is_base_url": "https://is-api.multitenant.slade360.co.ke/v1",
+                    "health_crm_base_url": "https://is-api.multitenant.slade360.co.ke/v1",
                     "api_base_url": "https://provider-edi-api.multitenant.slade360.co.ke/v1",
                     "payer_slade_code": payer_code,
                     "require_visit_authorization": True,

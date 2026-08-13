@@ -5,6 +5,7 @@ from django.urls import include, path
 from rest_framework import routers
 
 from hmis.apps.insurance.views import (
+    HealthCloudHealthIdWebhookView,
     InsuranceClaimItemViewSet,
     InsuranceClaimViewSet,
     InsurancePlanViewSet,
@@ -40,6 +41,11 @@ router.register(r"tariffs", PayerTariffViewSet, basename="payer-tariff")
 app_name = "insurance"
 
 urlpatterns = [
+    path(
+        "healthcloud/webhooks/health-id/",
+        HealthCloudHealthIdWebhookView.as_view(),
+        name="insurance-healthcloud-health-id-webhook",
+    ),
     path(
         "enrollments/verify-via-healthcloud-preview/",
         PatientInsuranceViewSet.as_view({"post": "verify_via_healthcloud_preview"}),

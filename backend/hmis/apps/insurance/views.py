@@ -14,8 +14,9 @@ from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError as DRFValidationError
-from rest_framework.permissions import IsAdminUser, IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from hmis.apps.core.mixins import ReadOnCreateMixin, TenantScopedViewMixin, resolve_request_tenant
 from hmis.apps.core.models import AuditLog
@@ -47,6 +48,8 @@ from hmis.apps.insurance.models import (
     PayerTariff,
 )
 from hmis.apps.insurance.serializers import (
+    HealthCloudGetHealthIdSerializer,
+    HealthCloudPostProfileSerializer,
     HealthCloudSessionRequestOTPSerializer,
     HealthCloudSessionStartVisitSerializer,
     InsuranceClaimAppealSerializer,
@@ -92,6 +95,7 @@ from hmis.apps.insurance.services.errors import InsuranceApiError
 from hmis.apps.insurance.services.insurance_services import (
     HealthCloudWorkflowService,
     InsuranceEligibilityService,
+    InsurancePreauthService,
 )
 
 logger = logging.getLogger(__name__)
@@ -468,6 +472,74 @@ class PatientInsuranceViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets
             {
                 "session": InsuranceVisitAuthorizationSerializer(session).data,
                 "eligibility": self._eligibility_payload(result),
+            }
+        )
+
+    @action(detail=True, methods=["post"], url_path="healthcloud/post-profile")
+    def healthcloud_post_profile(self, request, pk=None):
+        enrollment = self.get_object()
+        try:
+            self._ensure_healthcloud_enabled(enrollment)
+        except ValidationError as exc:
+            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        serializer = HealthCloudPostProfileSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        service = HealthCloudWorkflowService()
+        try:
+            identity = service.post_profile_to_crm(
+                enrollment=enrollment,
+                facility=getattr(request, "facility", None),
+                organization=getattr(request, "organization", None),
+                payload=dict(serializer.validated_data),
+            )
+        except Exception as exc:
+            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        refreshed = PatientInsurance.objects.select_related(
+            "patient", "plan", "plan__provider", "provider"
+        ).get(pk=enrollment.pk)
+        return Response(
+            {
+                "enrollment": PatientInsuranceSerializer(
+                    refreshed, context={"request": request}
+                ).data,
+                "identity": identity,
+            }
+        )
+
+    @action(detail=True, methods=["post"], url_path="healthcloud/get-health-id")
+    def healthcloud_get_health_id(self, request, pk=None):
+        enrollment = self.get_object()
+        try:
+            self._ensure_healthcloud_enabled(enrollment)
+        except ValidationError as exc:
+            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        serializer = HealthCloudGetHealthIdSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        service = HealthCloudWorkflowService()
+        try:
+            identity = service.get_health_id(
+                enrollment=enrollment,
+                facility=getattr(request, "facility", None),
+                organization=getattr(request, "organization", None),
+                profile_id=serializer.validated_data.get("profile_id", ""),
+            )
+        except Exception as exc:
+            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        refreshed = PatientInsurance.objects.select_related(
+            "patient", "plan", "plan__provider", "provider"
+        ).get(pk=enrollment.pk)
+        return Response(
+            {
+                "enrollment": PatientInsuranceSerializer(
+                    refreshed, context={"request": request}
+                ).data,
+                "identity": identity,
             }
         )
 
@@ -1453,11 +1525,65 @@ class InsurancePreauthViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets
     @action(detail=True, methods=["post"])
     def submit(self, request, pk=None):
         preauth = self.get_object()
+        config = InsuranceProviderConfig.objects.filter(
+            provider=preauth.provider,
+            facility=getattr(request, "facility", None),
+        ).first()
+
+        # For HealthCloud-enabled configs, submit through adapter orchestration.
+        if config and config.api_enabled and config.healthcloud_enabled:
+            service = InsurancePreauthService()
+            try:
+                result = service.submit(preauth, user=request.user)
+            except Exception as e:
+                return Response(
+                    {
+                        "error": str(e),
+                        "action": (
+                            "HealthCloud preauth endpoint may not be enabled for this payer. "
+                            "Confirm contract endpoint path/tenant and retry."
+                        ),
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            if not result.success:
+                return Response(
+                    {
+                        "error": result.message or "Preauth submission failed.",
+                        "upstream": result.raw_response,
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            return Response(
+                {
+                    "preauth": InsurancePreauthSerializer(preauth).data,
+                    "upstream": result.raw_response,
+                }
+            )
+
         try:
             preauth.submit(user=request.user)
         except ValidationError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         return Response(InsurancePreauthSerializer(preauth).data)
+
+    @action(detail=True, methods=["post"], url_path="check-status")
+    def check_status(self, request, pk=None):
+        preauth = self.get_object()
+        service = InsurancePreauthService()
+        try:
+            result = service.check_status(preauth)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(
+            {
+                "preauth": InsurancePreauthSerializer(preauth).data,
+                "upstream": result.raw_response,
+                "status": result.status,
+            }
+        )
 
     @action(detail=True, methods=["post"])
     def approve(self, request, pk=None):
@@ -1536,6 +1662,31 @@ class InsuranceRemittanceViewSet(ReadOnCreateMixin, TenantScopedViewMixin, views
         except ValidationError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         return Response(InsuranceRemittanceSerializer(remittance).data)
+
+    @action(detail=True, methods=["get"], url_path="claims-drilldown")
+    def claims_drilldown(self, request, pk=None):
+        remittance = self.get_object()
+        service = HealthCloudWorkflowService()
+        try:
+            payload = service.get_remittance_claims(
+                remittance=remittance,
+                facility=getattr(request, "facility", None),
+                organization=getattr(request, "organization", None),
+            )
+        except Exception as exc:
+            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        refreshed = (
+            InsuranceRemittance.objects.select_related("provider")
+            .prefetch_related("lines")
+            .get(pk=remittance.pk)
+        )
+        return Response(
+            {
+                "remittance": InsuranceRemittanceSerializer(refreshed).data,
+                "drilldown": payload,
+            }
+        )
 
     @action(detail=False, methods=["get"], url_path="healthcloud-sync-status")
     def healthcloud_sync_status(self, request):
@@ -1764,3 +1915,74 @@ class PayerTariffViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.Mode
         if self.action == "create":
             return PayerTariffCreateSerializer
         return PayerTariffSerializer
+
+
+class HealthCloudHealthIdWebhookView(APIView):
+    """Receive optional HealthCloud webhook callback for health ID assignment.
+
+    Endpoint:
+        POST /api/insurance/healthcloud/webhooks/health-id/
+
+    Expected body (flexible):
+        {
+          "profile_id": "uuid-or-local-id",
+          "health_id": "1234010000000013"
+        }
+    """
+
+    permission_classes = [AllowAny]
+
+    @staticmethod
+    def _resolve_enrollment(profile_id: str):
+        profile_id = str(profile_id or "").strip()
+        if not profile_id:
+            return None
+
+        if profile_id.isdigit():
+            return PatientInsurance.objects.filter(pk=int(profile_id)).first()
+
+        return (
+            PatientInsurance.objects.filter(
+                last_eligibility_payload__health_identity__profile_request_id=profile_id
+            ).first()
+            or PatientInsurance.objects.filter(
+                last_eligibility_payload__health_identity__profile_id=profile_id
+            ).first()
+        )
+
+    def post(self, request):
+        payload = request.data if isinstance(request.data, dict) else {}
+        profile_id = str(payload.get("profile_id") or payload.get("id") or "").strip()
+        health_id = str(payload.get("health_id") or "").strip()
+
+        if not profile_id:
+            return Response(
+                {"error": "profile_id is required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        enrollment = self._resolve_enrollment(profile_id)
+        if enrollment is None:
+            return Response(
+                {"error": "Enrollment not found for profile_id", "profile_id": profile_id},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        workflow_service = HealthCloudWorkflowService()
+        workflow_service._merge_health_identity_snapshot(
+            enrollment,
+            health_id_response={
+                "profile_id": profile_id,
+                "health_id": health_id,
+                "webhook_payload": payload,
+            },
+        )
+
+        return Response(
+            {
+                "status": "ok",
+                "profile_id": profile_id,
+                "health_id": health_id,
+                "enrollment_id": enrollment.pk,
+            }
+        )

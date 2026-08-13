@@ -308,6 +308,7 @@ export interface InsuranceProviderConfig {
   auth_base_url: string;
   provider_edi_base_url: string;
   provider_is_base_url: string;
+  health_crm_base_url: string;
   api_auth_type: ApiAuthType;
   api_enabled: boolean;
   healthcloud_enabled: boolean;
@@ -340,6 +341,7 @@ export interface InsuranceProviderConfigCreateInput {
   auth_base_url?: string;
   provider_edi_base_url?: string;
   provider_is_base_url?: string;
+  health_crm_base_url?: string;
   healthcloud_enabled?: boolean;
   payer_slade_code?: number | null;
   require_visit_authorization?: boolean;
@@ -477,6 +479,29 @@ export interface VerifyViaHealthcloudResult {
 export interface HealthcloudSessionStartResult {
   session: InsuranceVisitAuthorization;
   eligibility: VerifyViaHealthcloudResult;
+}
+
+export interface HealthcloudPostProfileInput {
+  profile_id?: string;
+  first_name?: string;
+  last_name?: string;
+  other_name?: string;
+  gender?: 'MALE' | 'FEMALE' | 'OTHER';
+  date_of_birth?: string;
+  enrolment_date?: string;
+  slade_code?: string;
+  service_name?: string;
+  contacts?: Array<Record<string, unknown>>;
+  identifiers?: Array<Record<string, unknown>>;
+}
+
+export interface HealthcloudGetHealthIdInput {
+  profile_id?: string;
+}
+
+export interface HealthcloudIdentityWorkflowResult {
+  enrollment: PatientInsurance;
+  identity: Record<string, unknown>;
 }
 
 export interface HealthcloudSessionRequestOTPInput {
@@ -772,6 +797,28 @@ export interface InsuranceRemittanceCreateInput {
   bank_reference?: string;
   received_at?: string | null;
   notes?: string;
+}
+
+export interface RemittanceDrilldownClaim {
+  claim_id?: string | number;
+  claim_number?: string;
+  provider_invoice_no?: string;
+  proposed_amount?: string | number;
+  approved_amount?: string | number;
+  balanced_paid_amount?: string | number;
+  balance_invoiced_amount?: string | number;
+  copay_amount?: string | number;
+  [key: string]: unknown;
+}
+
+export interface InsuranceRemittanceClaimsDrilldown {
+  remittance: InsuranceRemittance;
+  drilldown: {
+    remittance_reference: string;
+    claims: RemittanceDrilldownClaim[];
+    processed: number;
+    local_lines: number;
+  };
 }
 
 export interface PayerTariff {

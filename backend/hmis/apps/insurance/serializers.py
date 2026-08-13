@@ -489,6 +489,7 @@ class InsuranceProviderConfigSerializer(serializers.ModelSerializer):
             "auth_base_url",
             "provider_edi_base_url",
             "provider_is_base_url",
+            "health_crm_base_url",
             "api_auth_type",
             "api_credentials",
             "api_key",
@@ -1199,6 +1200,27 @@ class RequestOTPSerializer(serializers.Serializer):
 class HealthCloudSessionRequestOTPSerializer(serializers.Serializer):
     session_id = serializers.IntegerField(min_value=1)
     contact_id = serializers.IntegerField(min_value=1)
+
+
+class HealthCloudPostProfileSerializer(serializers.Serializer):
+    profile_id = serializers.CharField(required=False, allow_blank=True)
+    first_name = serializers.CharField(required=False, allow_blank=True)
+    last_name = serializers.CharField(required=False, allow_blank=True)
+    other_name = serializers.CharField(required=False, allow_blank=True)
+    gender = serializers.ChoiceField(
+        choices=["MALE", "FEMALE", "OTHER"],
+        required=False,
+    )
+    date_of_birth = serializers.CharField(required=False, allow_blank=True)
+    enrolment_date = serializers.CharField(required=False, allow_blank=True)
+    slade_code = serializers.CharField(required=False, allow_blank=True)
+    service_name = serializers.CharField(required=False, allow_blank=True)
+    contacts = serializers.ListField(required=False)
+    identifiers = serializers.ListField(required=False)
+
+
+class HealthCloudGetHealthIdSerializer(serializers.Serializer):
+    profile_id = serializers.CharField(required=False, allow_blank=True, default="")
 
 
 class StartVisitSerializer(serializers.Serializer):

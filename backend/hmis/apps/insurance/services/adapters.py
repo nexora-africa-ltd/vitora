@@ -139,9 +139,9 @@ class GenericSmartClaimsAdapter(InsuranceApiAdapter):
             member_name=data.get("member_name", ""),
             plan_name=data.get("plan_name", ""),
             status=data.get("status", ""),
-            copay_percent=Decimal(str(data["copay_percent"]))
-            if data.get("copay_percent")
-            else None,
+            copay_percent=(
+                Decimal(str(data["copay_percent"])) if data.get("copay_percent") else None
+            ),
             annual_balance=Decimal(str(data["balance"])) if data.get("balance") else None,
             valid_from=_parse_date(data.get("valid_from")),
             valid_to=_parse_date(data.get("valid_to")),
@@ -153,9 +153,9 @@ class GenericSmartClaimsAdapter(InsuranceApiAdapter):
         response = self.client.post(
             "/preauth/submit",
             json_body={
-                "member_number": preauth.patient_insurance.member_number
-                if preauth.patient_insurance
-                else "",
+                "member_number": (
+                    preauth.patient_insurance.member_number if preauth.patient_insurance else ""
+                ),
                 "preauth_type": preauth.preauth_type,
                 "diagnosis_codes": preauth.diagnosis_codes or [],
                 "requested_services": preauth.requested_services or [],
@@ -168,9 +168,9 @@ class GenericSmartClaimsAdapter(InsuranceApiAdapter):
             success=True,
             external_preauth_id=data.get("preauth_id", ""),
             status=data.get("status", "SUBMITTED"),
-            approved_amount=Decimal(str(data["approved_amount"]))
-            if data.get("approved_amount")
-            else None,
+            approved_amount=(
+                Decimal(str(data["approved_amount"])) if data.get("approved_amount") else None
+            ),
             message=data.get("message", ""),
             raw_response=data,
         )
@@ -184,9 +184,9 @@ class GenericSmartClaimsAdapter(InsuranceApiAdapter):
             success=True,
             external_preauth_id=data.get("preauth_id", preauth.external_preauth_id or ""),
             status=data.get("status", ""),
-            approved_amount=Decimal(str(data["approved_amount"]))
-            if data.get("approved_amount")
-            else None,
+            approved_amount=(
+                Decimal(str(data["approved_amount"])) if data.get("approved_amount") else None
+            ),
             rejection_reason=data.get("rejection_reason", ""),
             message=data.get("message", ""),
             raw_response=data,
@@ -209,9 +209,9 @@ class GenericSmartClaimsAdapter(InsuranceApiAdapter):
             "/claims/submit",
             json_body={
                 "claim_number": claim.claim_number,
-                "member_number": claim.patient_insurance.member_number
-                if claim.patient_insurance
-                else "",
+                "member_number": (
+                    claim.patient_insurance.member_number if claim.patient_insurance else ""
+                ),
                 "claim_type": claim.claim_type,
                 "diagnosis_codes": claim.diagnosis_codes or [],
                 "service_date": claim.service_date.isoformat() if claim.service_date else "",
@@ -238,9 +238,9 @@ class GenericSmartClaimsAdapter(InsuranceApiAdapter):
             success=True,
             external_claim_id=data.get("claim_id", claim.external_claim_id or ""),
             status=data.get("status", ""),
-            approved_amount=Decimal(str(data["approved_amount"]))
-            if data.get("approved_amount")
-            else None,
+            approved_amount=(
+                Decimal(str(data["approved_amount"])) if data.get("approved_amount") else None
+            ),
             paid_amount=Decimal(str(data["paid_amount"])) if data.get("paid_amount") else None,
             rejection_reason=data.get("rejection_reason", ""),
             query_details=data.get("query_details", ""),
@@ -380,17 +380,112 @@ class Slade360Adapter(InsuranceApiAdapter):
         )
 
     def submit_preauth(self, preauth: InsurancePreauth) -> PreauthResult:  # noqa: ARG002
+        payload = {
+            "member_number": (
+                preauth.patient_insurance.member_number if preauth.patient_insurance else ""
+            ),
+            "preauth_type": str(preauth.preauth_type or "").upper(),
+            "diagnosis_codes": preauth.diagnosis_codes or [],
+            "requested_services": preauth.requested_services or [],
+            "estimated_cost": str(preauth.estimated_cost) if preauth.estimated_cost else "0",
+            "clinical_notes": preauth.clinical_notes or "",
+        }
+
+        endpoint_attempts = [
+            ("provider_edi", "/preauth/submit", payload),
+            ("provider_edi", "/preauths/submit", payload),
+            ("provider_edi", "/preauths/", payload),
+            ("provider_is", "/preauth/submit", payload),
+            ("provider_is", "/preauths/", payload),
+        ]
+
+        last_error: InsuranceApiError | None = None
+        for host, path, body in endpoint_attempts:
+            try:
+                response = self.client.post(
+                    path,
+                    json_body=body,
+                    headers=self.auth_service.get_auth_headers(),
+                    host=host,
+                )
+                data: dict[str, Any] = response.json or {}
+                return PreauthResult(
+                    success=True,
+                    external_preauth_id=str(data.get("preauth_id") or data.get("id") or ""),
+                    status=str(data.get("status") or "SUBMITTED"),
+                    approved_amount=(
+                        Decimal(str(data["approved_amount"]))
+                        if data.get("approved_amount") is not None
+                        else None
+                    ),
+                    rejection_reason=str(data.get("rejection_reason") or ""),
+                    message=str(data.get("message") or "Preauth submitted to HealthCloud"),
+                    raw_response=data,
+                )
+            except InsuranceApiError as exc:
+                last_error = exc
+                continue
+
+        if last_error:
+            raise last_error
+
         return PreauthResult(
             success=False,
-            message="HealthCloud preauthorization endpoint is not available in current public API set.",
+            message="HealthCloud preauthorization endpoint is not configured.",
         )
 
     def check_preauth_status(self, preauth: InsurancePreauth) -> PreauthResult:
+        if not preauth.external_preauth_id:
+            raise InsuranceValidationError("Preauth has no external_preauth_id.")
+
+        preauth_id = str(preauth.external_preauth_id)
+        endpoint_attempts = [
+            ("provider_edi", f"/preauth/{preauth_id}/status", None),
+            ("provider_edi", f"/preauths/{preauth_id}/status", None),
+            ("provider_edi", "/preauth/status", {"preauth_id": preauth_id}),
+            ("provider_is", f"/preauth/{preauth_id}/status", None),
+        ]
+
+        last_error: InsuranceApiError | None = None
+        for host, path, params in endpoint_attempts:
+            try:
+                response = self.client.get(
+                    path,
+                    params=params,
+                    headers=self.auth_service.get_auth_headers(),
+                    host=host,
+                )
+                data: dict[str, Any] = response.json or {}
+                return PreauthResult(
+                    success=True,
+                    external_preauth_id=str(
+                        data.get("preauth_id")
+                        or data.get("id")
+                        or preauth.external_preauth_id
+                        or ""
+                    ),
+                    status=str(data.get("status") or preauth.status),
+                    approved_amount=(
+                        Decimal(str(data["approved_amount"]))
+                        if data.get("approved_amount") is not None
+                        else None
+                    ),
+                    rejection_reason=str(data.get("rejection_reason") or ""),
+                    message=str(data.get("message") or "Preauth status refreshed"),
+                    raw_response=data,
+                )
+            except InsuranceApiError as exc:
+                last_error = exc
+                continue
+
+        if last_error:
+            raise last_error
+
         return PreauthResult(
             success=True,
             external_preauth_id=preauth.external_preauth_id or "",
             status=preauth.status,
-            message="No HealthCloud preauth status endpoint configured.",
+            message="Preauth status unchanged.",
         )
 
     def submit_claim(self, claim: InsuranceClaim) -> ClaimResult:
@@ -426,16 +521,18 @@ class Slade360Adapter(InsuranceApiAdapter):
         payload = {
             "payer_code": self.payer_slade_code,
             "payer_name": claim.provider.name if claim.provider else "",
-            "patient_name": f"{claim.patient.first_name} {claim.patient.last_name}"
-            if claim.patient
-            else "",
+            "patient_name": (
+                f"{claim.patient.first_name} {claim.patient.last_name}" if claim.patient else ""
+            ),
             "member_number": member_number,
-            "service_type": "INPATIENT"
-            if str(claim.claim_type or "").lower() == "inpatient"
-            else "OUTPATIENT",
-            "scheme_name": claim.patient_insurance.plan.name
-            if claim.patient_insurance and claim.patient_insurance.plan
-            else "",
+            "service_type": (
+                "INPATIENT" if str(claim.claim_type or "").lower() == "inpatient" else "OUTPATIENT"
+            ),
+            "scheme_name": (
+                claim.patient_insurance.plan.name
+                if claim.patient_insurance and claim.patient_insurance.plan
+                else ""
+            ),
             "visit_number": claim.encounter.id if claim.encounter_id else claim.claim_number,
             "visit_start": visit_start_dt.isoformat().replace("+00:00", "Z"),
             "visit_end": visit_end_dt.isoformat().replace("+00:00", "Z"),
@@ -511,6 +608,59 @@ class Slade360Adapter(InsuranceApiAdapter):
         return []
 
     # ----- HealthCloud-specific workflow helpers (Sprint 1 plumbing) -----
+
+    def post_profile_to_crm(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """Submit a beneficiary profile to Health CRM for health ID assignment."""
+        endpoint_attempts = [
+            ("health_crm", "/identities/profile"),
+            ("health_crm", "/identities/profile/"),
+            ("provider_is", "/identities/profile"),
+            ("provider_edi", "/identities/profile"),
+        ]
+
+        last_error: InsuranceApiError | None = None
+        for host, path in endpoint_attempts:
+            try:
+                response = self.client.post(
+                    path,
+                    json_body=payload,
+                    headers=self.auth_service.get_auth_headers(),
+                    host=host,
+                )
+                return response.json or {}
+            except InsuranceApiError as exc:
+                last_error = exc
+                continue
+
+        if last_error:
+            raise last_error
+        return {}
+
+    def get_health_id(self, profile_id: str) -> dict[str, Any]:
+        """Poll Health CRM for a resolved health_id by profile UUID."""
+        endpoint_attempts = [
+            ("health_crm", f"/identities/profiles/{profile_id}/health_id"),
+            ("health_crm", f"/identities/profiles/{profile_id}/health_id/"),
+            ("provider_is", f"/identities/profiles/{profile_id}/health_id"),
+            ("provider_edi", f"/identities/profiles/{profile_id}/health_id"),
+        ]
+
+        last_error: InsuranceApiError | None = None
+        for host, path in endpoint_attempts:
+            try:
+                response = self.client.get(
+                    path,
+                    headers=self.auth_service.get_auth_headers(),
+                    host=host,
+                )
+                return response.json or {}
+            except InsuranceApiError as exc:
+                last_error = exc
+                continue
+
+        if last_error:
+            raise last_error
+        return {}
 
     def request_otp(self, contact_id: int) -> dict[str, Any]:
         response = self.client.post(
@@ -645,6 +795,47 @@ class Slade360Adapter(InsuranceApiAdapter):
             raise last_not_found
 
         return {}
+
+    def get_remittance_claims(self, remittance_reference: str) -> dict[str, Any]:
+        """Fetch claims settled under one remittance reference with fallbacks."""
+        reference = str(remittance_reference or "").strip()
+        if not reference:
+            raise InsuranceValidationError("remittance_reference is required")
+
+        endpoint_attempts = [
+            ("provider_edi", f"/remittances/{reference}/claims/", None),
+            (
+                "provider_edi",
+                "/remittances/claims/",
+                {"remittance_reference": reference},
+            ),
+            (
+                "provider_edi",
+                "/remittances/claim_remittance/",
+                {"bank_reference": reference},
+            ),
+            ("provider_is", f"/remittances/{reference}/claims/", None),
+        ]
+
+        last_error: InsuranceApiError | None = None
+        for host, path, params in endpoint_attempts:
+            try:
+                response = self.client.get(
+                    path,
+                    params=params,
+                    headers=self.auth_service.get_auth_headers(),
+                    host=host,
+                )
+                body = response.json
+                return body if isinstance(body, dict) else {"claims": body or []}
+            except InsuranceApiError as exc:
+                last_error = exc
+                continue
+
+        if last_error:
+            raise last_error
+
+        return {"claims": []}
 
 
 # ---------------------------------------------------------------------------

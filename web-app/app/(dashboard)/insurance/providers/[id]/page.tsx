@@ -194,6 +194,10 @@ function FacilityConfigCard({
   const [form, setForm] = useState<Partial<InsuranceProviderConfigCreateInput>>({
     provider: providerId,
     api_base_url: config?.api_base_url ?? '',
+    auth_base_url: config?.auth_base_url ?? '',
+    provider_edi_base_url: config?.provider_edi_base_url ?? '',
+    provider_is_base_url: config?.provider_is_base_url ?? '',
+    health_crm_base_url: config?.health_crm_base_url ?? '',
     api_auth_type: config?.api_auth_type ?? 'none',
     api_enabled: config?.api_enabled ?? false,
     submission_format: config?.submission_format ?? 'manual',
@@ -280,6 +284,12 @@ function FacilityConfigCard({
                 <p className="font-medium font-mono text-xs">{config!.api_base_url}</p>
               </div>
             )}
+            {config!.health_crm_base_url && (
+              <div className="col-span-full">
+                <p className="text-muted-foreground text-xs">Health CRM Base URL</p>
+                <p className="font-medium font-mono text-xs">{config!.health_crm_base_url}</p>
+              </div>
+            )}
             <div>
               <p className="text-muted-foreground text-xs">Auth Type</p>
               <p className="font-medium capitalize">{config!.api_auth_type.replace('_', ' ')}</p>
@@ -347,6 +357,14 @@ function FacilityConfigCard({
                   placeholder="https://api.example.com/v1"
                   value={form.api_base_url ?? ''}
                   onChange={e => setForm(f => ({ ...f, api_base_url: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label>Health CRM Base URL</Label>
+                <Input
+                  placeholder="https://health-crm.example.com/v1"
+                  value={form.health_crm_base_url ?? ''}
+                  onChange={e => setForm(f => ({ ...f, health_crm_base_url: e.target.value }))}
                 />
               </div>
               <div className="space-y-1">

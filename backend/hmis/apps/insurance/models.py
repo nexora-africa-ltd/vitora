@@ -432,6 +432,10 @@ class InsuranceProviderConfig(FacilityScopedModel):
         blank=True,
         help_text="Provider IS host for claim/invoice/visit APIs",
     )
+    health_crm_base_url = models.URLField(
+        blank=True,
+        help_text="Health CRM host for identity profile and health ID APIs",
+    )
     api_auth_type = models.CharField(
         max_length=20,
         choices=ApiAuthType.choices,
@@ -543,6 +547,8 @@ class InsuranceProviderConfig(FacilityScopedModel):
             hosts["provider_edi"] = self.provider_edi_base_url
         if self.provider_is_base_url:
             hosts["provider_is"] = self.provider_is_base_url
+        if self.health_crm_base_url:
+            hosts["health_crm"] = self.health_crm_base_url
         if self.api_base_url:
             hosts["default"] = self.api_base_url
         return hosts

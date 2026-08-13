@@ -5,6 +5,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { insuranceApi } from '@/lib/api/insurance';
 import type {
+  HealthcloudGetHealthIdInput,
+  HealthcloudPostProfileInput,
   HealthcloudSessionRequestOTPInput,
   HealthcloudSessionStartVisitInput,
   InsuranceClaimCreateInput,
@@ -329,6 +331,32 @@ export function useStartHealthcloudSessionVisit() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: insuranceQueryKeys.authorizations() });
       queryClient.invalidateQueries({ queryKey: insuranceQueryKeys.authorizationDetail(data.id) });
+    },
+  });
+}
+
+export function usePostHealthcloudProfile() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: HealthcloudPostProfileInput }) =>
+      insuranceApi.postHealthcloudProfile(id, data),
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: insuranceQueryKeys.enrollments() });
+      queryClient.invalidateQueries({ queryKey: insuranceQueryKeys.enrollmentDetail(variables.id) });
+      queryClient.setQueryData(insuranceQueryKeys.enrollmentDetail(variables.id), data.enrollment);
+    },
+  });
+}
+
+export function useGetHealthcloudHealthId() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: HealthcloudGetHealthIdInput }) =>
+      insuranceApi.getHealthcloudHealthId(id, data),
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: insuranceQueryKeys.enrollments() });
+      queryClient.invalidateQueries({ queryKey: insuranceQueryKeys.enrollmentDetail(variables.id) });
+      queryClient.setQueryData(insuranceQueryKeys.enrollmentDetail(variables.id), data.enrollment);
     },
   });
 }
@@ -762,6 +790,16 @@ export function useReconcileRemittance() {
     onSuccess: (_data, id) => {
       queryClient.invalidateQueries({ queryKey: insuranceQueryKeys.remittances() });
       queryClient.invalidateQueries({ queryKey: insuranceQueryKeys.remittanceDetail(id) });
+    },
+  });
+}
+
+export function useRemittanceClaimsDrilldown() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => insuranceApi.getRemittanceClaimsDrilldown(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: insuranceQueryKeys.remittances() });
     },
   });
 }
