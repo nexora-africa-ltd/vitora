@@ -525,6 +525,60 @@ export interface HealthcloudSyncStatus {
     reconciled: number;
     disputed: number;
   };
+  failed_items?: Array<{
+    id: number;
+    operation: string;
+    status: string;
+    attempt_count: number;
+    claim_id: number | null;
+    claim_number: string;
+    preauth_id: number | null;
+    authorization_id: number | null;
+    correlation_id: string;
+    error: string;
+    bucket: {
+      code: string;
+      label: string;
+    };
+    created_at: string;
+    updated_at: string;
+  }>;
+  failure_buckets?: Array<{
+    code: string;
+    label: string;
+    count: number;
+  }>;
+  sync_items?: Array<{
+    id: number;
+    operation: string;
+    status: string;
+    attempt_count: number;
+    claim_id: number | null;
+    claim_number: string;
+    preauth_id: number | null;
+    authorization_id: number | null;
+    correlation_id: string;
+    error: string;
+    bucket: {
+      code: string;
+      label: string;
+    };
+    created_at: string;
+    updated_at: string;
+  }>;
+  remittance_items?: Array<{
+    id: number;
+    remittance_number: string;
+    provider_id: number;
+    provider_name: string;
+    status: string;
+    total_amount: string;
+    reconciled_amount: string;
+    payment_reference: string;
+    bank_reference: string;
+    remittance_date: string;
+    updated_at: string;
+  }>;
 }
 
 export interface InsuranceClaimItem {

@@ -16,6 +16,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { SHAVerificationModal } from '@/components/billing/sha';
 import { SHAClaimsPanel } from '@/components/insurance/SHAClaimsPanel';
@@ -70,9 +76,22 @@ function StatCard({
   );
 }
 
+function formatDateTime(value: string): string {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return value;
+  return parsed.toLocaleString();
+}
+
+type SyncDrilldownTarget = {
+  kind: 'sync' | 'remittance';
+  filter: string;
+  title: string;
+};
+
 export default function InsurancePage() {
   const router = useRouter();
   const { facility } = useFacility();
+  const [drilldownTarget, setDrilldownTarget] = React.useState<SyncDrilldownTarget | null>(null);
 
   const { data: providersData, isLoading: providersLoading } = useInsuranceProviders({ page: 1 });
   const { data: claimsData, isLoading: claimsLoading } = useInsuranceClaims({ page: 1 });
@@ -83,7 +102,38 @@ export default function InsurancePage() {
   });
   const { data: syncStatus, isLoading: syncLoading } = useHealthcloudSyncStatus({
     enabled: !!facility?.id,
+    includeFailures: true,
+    includeSyncItems: true,
+    includeRemittanceItems: true,
+    limit: 30,
   });
+
+  const syncItems = React.useMemo(() => syncStatus?.sync_items || [], [syncStatus?.sync_items]);
+  const remittanceItems = React.useMemo(
+    () => syncStatus?.remittance_items || [],
+    [syncStatus?.remittance_items]
+  );
+  const failureBuckets = syncStatus?.failure_buckets || [];
+
+  const filteredSyncItems = React.useMemo(() => {
+    if (!drilldownTarget || drilldownTarget.kind !== 'sync') return [];
+    if (drilldownTarget.filter === 'all') return syncItems;
+    return syncItems.filter((item) => item.status === drilldownTarget.filter);
+  }, [drilldownTarget, syncItems]);
+
+  const filteredRemittanceItems = React.useMemo(() => {
+    if (!drilldownTarget || drilldownTarget.kind !== 'remittance') return [];
+    if (drilldownTarget.filter === 'all') return remittanceItems;
+    return remittanceItems.filter((item) => item.status === drilldownTarget.filter);
+  }, [drilldownTarget, remittanceItems]);
+
+  const openSyncDrilldown = (filter: string, title: string) => {
+    setDrilldownTarget({ kind: 'sync', filter, title });
+  };
+
+  const openRemittanceDrilldown = (filter: string, title: string) => {
+    setDrilldownTarget({ kind: 'remittance', filter, title });
+  };
 
   const totalProviders = providersData?.count ?? 0;
   const totalClaims = claimsData?.count ?? 0;
@@ -169,17 +219,36 @@ export default function InsurancePage() {
               ) : syncStatus ? (
                 <>
                   <div className="flex flex-wrap gap-2">
-                    <Badge variant="secondary">Sync Total: {syncStatus.sync.total}</Badge>
-                    <Badge variant="outline">Success: {syncStatus.sync.success}</Badge>
-                    <Badge className="bg-yellow-100 text-yellow-800">Pending: {syncStatus.sync.pending}</Badge>
-                    <Badge className="bg-red-100 text-red-800">Failed: {syncStatus.sync.failed}</Badge>
+                    <Button variant="ghost" size="sm" className="h-auto p-0" onClick={() => openSyncDrilldown('all', 'Sync Total')}>
+                      <Badge variant="secondary" className="hover:bg-secondary/80">Sync Total: {syncStatus.sync.total}</Badge>
+                    </Button>
+                    <Button variant="ghost" size="sm" className="h-auto p-0" onClick={() => openSyncDrilldown('success', 'Sync Success')}>
+                      <Badge variant="outline" className="hover:bg-accent">Success: {syncStatus.sync.success}</Badge>
+                    </Button>
+                    <Button variant="ghost" size="sm" className="h-auto p-0" onClick={() => openSyncDrilldown('pending', 'Sync Pending')}>
+                      <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-200">Pending: {syncStatus.sync.pending}</Badge>
+                    </Button>
+                    <Button variant="ghost" size="sm" className="h-auto p-0" onClick={() => openSyncDrilldown('failed', 'Sync Failed')}>
+                      <Badge className="bg-red-100 text-red-800 hover:bg-red-200">Failed: {syncStatus.sync.failed}</Badge>
+                    </Button>
                   </div>
+                  <p className="text-xs text-muted-foreground">Click any pill to drill into records behind the metric.</p>
                   <div className="flex flex-wrap gap-2">
-                    <Badge variant="secondary">Remittances: {syncStatus.remittances.total}</Badge>
-                    <Badge className="bg-blue-100 text-blue-800">Received: {syncStatus.remittances.received}</Badge>
-                    <Badge className="bg-amber-100 text-amber-800">Partial: {syncStatus.remittances.partial}</Badge>
-                    <Badge className="bg-green-100 text-green-800">Reconciled: {syncStatus.remittances.reconciled}</Badge>
-                    <Badge className="bg-red-100 text-red-800">Disputed: {syncStatus.remittances.disputed}</Badge>
+                    <Button variant="ghost" size="sm" className="h-auto p-0" onClick={() => openRemittanceDrilldown('all', 'Remittances Total')}>
+                      <Badge variant="secondary" className="hover:bg-secondary/80">Remittances: {syncStatus.remittances.total}</Badge>
+                    </Button>
+                    <Button variant="ghost" size="sm" className="h-auto p-0" onClick={() => openRemittanceDrilldown('received', 'Remittances Received')}>
+                      <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-200">Received: {syncStatus.remittances.received}</Badge>
+                    </Button>
+                    <Button variant="ghost" size="sm" className="h-auto p-0" onClick={() => openRemittanceDrilldown('partial', 'Remittances Partial')}>
+                      <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-200">Partial: {syncStatus.remittances.partial}</Badge>
+                    </Button>
+                    <Button variant="ghost" size="sm" className="h-auto p-0" onClick={() => openRemittanceDrilldown('reconciled', 'Remittances Reconciled')}>
+                      <Badge className="bg-green-100 text-green-800 hover:bg-green-200">Reconciled: {syncStatus.remittances.reconciled}</Badge>
+                    </Button>
+                    <Button variant="ghost" size="sm" className="h-auto p-0" onClick={() => openRemittanceDrilldown('disputed', 'Remittances Disputed')}>
+                      <Badge className="bg-red-100 text-red-800 hover:bg-red-200">Disputed: {syncStatus.remittances.disputed}</Badge>
+                    </Button>
                   </div>
                 </>
               ) : (
@@ -187,6 +256,86 @@ export default function InsurancePage() {
               )}
             </CardContent>
           </Card>
+
+          <Dialog open={!!drilldownTarget} onOpenChange={(open) => !open && setDrilldownTarget(null)}>
+            <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>{drilldownTarget?.title || 'HealthCloud Drilldown'}</DialogTitle>
+              </DialogHeader>
+
+              <div className="space-y-4">
+                {drilldownTarget?.kind === 'sync' && failureBuckets.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {failureBuckets.map((bucket) => (
+                      <Badge key={bucket.code} variant="outline">
+                        {bucket.label}: {bucket.count}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+
+                {drilldownTarget?.kind === 'sync' && (
+                  filteredSyncItems.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No sync records found for this pill.</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {filteredSyncItems.map((item) => (
+                        <div key={item.id} className="rounded-lg border p-3 space-y-2">
+                          <div className="flex flex-wrap gap-2 items-center">
+                            <Badge className="bg-slate-100 text-slate-800">{item.operation}</Badge>
+                            <Badge variant="outline">Status: {item.status}</Badge>
+                            <Badge variant="secondary">Attempts: {item.attempt_count}</Badge>
+                            {item.status === 'failed' && <Badge className="bg-red-100 text-red-800">{item.bucket.label}</Badge>}
+                          </div>
+                          {item.status === 'failed' && (
+                            <p className="text-sm text-muted-foreground">{item.error}</p>
+                          )}
+                          <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                            <span>Claim: {item.claim_number || item.claim_id || 'N/A'}</span>
+                            <span>Sync ID: {item.id}</span>
+                            <span>Updated: {formatDateTime(item.updated_at)}</span>
+                            {item.correlation_id && <span>Correlation: {item.correlation_id}</span>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )
+                )}
+
+                {drilldownTarget?.kind === 'remittance' && (
+                  filteredRemittanceItems.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No remittance records found for this pill.</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {filteredRemittanceItems.map((item) => (
+                        <div key={item.id} className="rounded-lg border p-3 space-y-2">
+                          <div className="flex flex-wrap gap-2 items-center">
+                            <Badge className="bg-blue-100 text-blue-800">{item.remittance_number}</Badge>
+                            <Badge variant="outline">{item.provider_name}</Badge>
+                            <Badge variant="secondary">Status: {item.status}</Badge>
+                          </div>
+                          <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                            <span>Total: KES {Number(item.total_amount).toLocaleString()}</span>
+                            <span>Reconciled: KES {Number(item.reconciled_amount).toLocaleString()}</span>
+                            <span>Date: {item.remittance_date}</span>
+                            <span>Updated: {formatDateTime(item.updated_at)}</span>
+                            {item.payment_reference && <span>Payment Ref: {item.payment_reference}</span>}
+                            {item.bank_reference && <span>Bank Ref: {item.bank_reference}</span>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )
+                )}
+
+                {drilldownTarget?.kind !== 'sync' && drilldownTarget?.kind !== 'remittance' && (
+                  <div className="space-y-3">
+                    <p className="text-sm text-muted-foreground">Select a drilldown pill to view details.</p>
+                  </div>
+                )}
+              </div>
+            </DialogContent>
+          </Dialog>
 
           <Card>
             <CardHeader className="pb-2 flex flex-row items-center justify-between">

@@ -358,6 +358,76 @@ export const HealthcloudSyncStatusSchema = z.object({
     reconciled: z.number(),
     disputed: z.number(),
   }),
+  failed_items: z
+    .array(
+      z.object({
+        id: z.number(),
+        operation: z.string(),
+        status: z.string(),
+        attempt_count: z.number(),
+        claim_id: z.number().nullable(),
+        claim_number: z.string(),
+        preauth_id: z.number().nullable(),
+        authorization_id: z.number().nullable(),
+        correlation_id: z.string(),
+        error: z.string(),
+        bucket: z.object({
+          code: z.string(),
+          label: z.string(),
+        }),
+        created_at: z.string(),
+        updated_at: z.string(),
+      })
+    )
+    .optional(),
+  failure_buckets: z
+    .array(
+      z.object({
+        code: z.string(),
+        label: z.string(),
+        count: z.number(),
+      })
+    )
+    .optional(),
+  sync_items: z
+    .array(
+      z.object({
+        id: z.number(),
+        operation: z.string(),
+        status: z.string(),
+        attempt_count: z.number(),
+        claim_id: z.number().nullable(),
+        claim_number: z.string(),
+        preauth_id: z.number().nullable(),
+        authorization_id: z.number().nullable(),
+        correlation_id: z.string(),
+        error: z.string(),
+        bucket: z.object({
+          code: z.string(),
+          label: z.string(),
+        }),
+        created_at: z.string(),
+        updated_at: z.string(),
+      })
+    )
+    .optional(),
+  remittance_items: z
+    .array(
+      z.object({
+        id: z.number(),
+        remittance_number: z.string(),
+        provider_id: z.number(),
+        provider_name: z.string(),
+        status: z.string(),
+        total_amount: z.string(),
+        reconciled_amount: z.string(),
+        payment_reference: z.string(),
+        bank_reference: z.string(),
+        remittance_date: z.string(),
+        updated_at: z.string(),
+      })
+    )
+    .optional(),
 });
 
 export const InsuranceClaimItemSchema = z.object({

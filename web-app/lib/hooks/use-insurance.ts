@@ -81,7 +81,13 @@ export const insuranceQueryKeys = {
   remittanceList: (params?: Record<string, unknown>) =>
     [...insuranceQueryKeys.remittances(), 'list', params] as const,
   remittanceDetail: (id: number) => [...insuranceQueryKeys.remittances(), id] as const,
-  healthcloudSyncStatus: () => [...insuranceQueryKeys.remittances(), 'healthcloud-sync-status'] as const,
+  healthcloudSyncStatus: (params?: {
+    include_failures?: boolean;
+    include_sync_items?: boolean;
+    include_remittance_items?: boolean;
+    limit?: number;
+  }) =>
+    [...insuranceQueryKeys.remittances(), 'healthcloud-sync-status', params] as const,
 
   tariffs: () => [...insuranceQueryKeys.all, 'tariffs'] as const,
   tariffList: (params?: Record<string, unknown>) =>
@@ -559,7 +565,7 @@ export function useRefreshClaimExternalStatus() {
     onSuccess: (_data, id) => {
       queryClient.invalidateQueries({ queryKey: insuranceQueryKeys.claims() });
       queryClient.invalidateQueries({ queryKey: insuranceQueryKeys.claimDetail(id) });
-      queryClient.invalidateQueries({ queryKey: insuranceQueryKeys.healthcloudSyncStatus() });
+      queryClient.invalidateQueries({ queryKey: insuranceQueryKeys.remittances() });
     },
   });
 }
@@ -571,7 +577,6 @@ export function useCheckClaimRemittance() {
     onSuccess: (_data, id) => {
       queryClient.invalidateQueries({ queryKey: insuranceQueryKeys.claimDetail(id) });
       queryClient.invalidateQueries({ queryKey: insuranceQueryKeys.remittances() });
-      queryClient.invalidateQueries({ queryKey: insuranceQueryKeys.healthcloudSyncStatus() });
     },
   });
 }
@@ -719,10 +724,23 @@ export function useInsuranceRemittance(id: number | undefined) {
   });
 }
 
-export function useHealthcloudSyncStatus(options?: { enabled?: boolean }) {
+export function useHealthcloudSyncStatus(options?: {
+  enabled?: boolean;
+  includeFailures?: boolean;
+  includeSyncItems?: boolean;
+  includeRemittanceItems?: boolean;
+  limit?: number;
+}) {
+  const queryParams = {
+    include_failures: options?.includeFailures ?? false,
+    include_sync_items: options?.includeSyncItems ?? false,
+    include_remittance_items: options?.includeRemittanceItems ?? false,
+    limit: options?.limit ?? 20,
+  };
+
   return useQuery({
-    queryKey: insuranceQueryKeys.healthcloudSyncStatus(),
-    queryFn: () => insuranceApi.getHealthcloudSyncStatus(),
+    queryKey: insuranceQueryKeys.healthcloudSyncStatus(queryParams),
+    queryFn: () => insuranceApi.getHealthcloudSyncStatus(queryParams),
     enabled: options?.enabled ?? true,
   });
 }

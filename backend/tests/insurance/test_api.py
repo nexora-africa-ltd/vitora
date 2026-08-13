@@ -439,6 +439,99 @@ class TestInsuranceRemittanceAPI:
         )
         assert response.status_code == status.HTTP_200_OK
 
+    def test_healthcloud_sync_status_includes_failure_drilldown(
+        self,
+        authenticated_client,
+        insurance_remittance,
+        insurance_claim,
+    ):
+        from hmis.apps.insurance.models import InsuranceExternalSync
+
+        InsuranceExternalSync.objects.create(
+            facility=insurance_remittance.facility,
+            organization=insurance_remittance.organization,
+            operation="healthcloud.check_claim_status",
+            status=InsuranceExternalSync.Status.FAILED,
+            claim=insurance_claim,
+            last_error="[JUBILEE] GET /claims/abc/ HTTP 404: {'detail': 'No Claim matches the given query.'}",
+            attempt_count=2,
+        )
+        InsuranceExternalSync.objects.create(
+            facility=insurance_remittance.facility,
+            organization=insurance_remittance.organization,
+            operation="healthcloud.get_claim_remittance",
+            status=InsuranceExternalSync.Status.FAILED,
+            claim=insurance_claim,
+            last_error="[JUBILEE] GET /remittances/claim_remittance/ HTTP 404: <html><body>Not Found</body></html>",
+            attempt_count=1,
+        )
+
+        response = authenticated_client.get(
+            "/api/insurance/remittances/healthcloud-sync-status/?include_failures=1&limit=1"
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["sync"]["failed"] >= 2
+        assert len(response.data["failed_items"]) == 1
+        assert len(response.data["failure_buckets"]) >= 1
+        assert "error" in response.data["failed_items"][0]
+        assert "<html>" not in response.data["failed_items"][0]["error"]
+
+    def test_healthcloud_sync_status_defaults_to_summary_only(
+        self,
+        authenticated_client,
+        insurance_remittance,
+    ):
+        from hmis.apps.insurance.models import InsuranceExternalSync
+
+        InsuranceExternalSync.objects.create(
+            facility=insurance_remittance.facility,
+            organization=insurance_remittance.organization,
+            operation="healthcloud.submit_claim",
+            status=InsuranceExternalSync.Status.FAILED,
+            last_error="Timeout while contacting upstream",
+            attempt_count=1,
+        )
+
+        response = authenticated_client.get("/api/insurance/remittances/healthcloud-sync-status/")
+
+        assert response.status_code == status.HTTP_200_OK
+        assert "failed_items" not in response.data
+        assert "failure_buckets" not in response.data
+
+    def test_healthcloud_sync_status_includes_sync_and_remittance_items(
+        self,
+        authenticated_client,
+        insurance_remittance,
+        insurance_claim,
+    ):
+        from hmis.apps.insurance.models import InsuranceExternalSync
+
+        InsuranceExternalSync.objects.create(
+            facility=insurance_remittance.facility,
+            organization=insurance_remittance.organization,
+            operation="healthcloud.submit_claim",
+            status=InsuranceExternalSync.Status.SUCCESS,
+            claim=insurance_claim,
+            attempt_count=1,
+        )
+
+        response = authenticated_client.get(
+            "/api/insurance/remittances/healthcloud-sync-status/?include_sync_items=1&include_remittance_items=1&limit=5"
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert "sync_items" in response.data
+        assert "remittance_items" in response.data
+        assert isinstance(response.data["sync_items"], list)
+        assert isinstance(response.data["remittance_items"], list)
+        assert response.data["remittance_items"][0]["status"] in {
+            "received",
+            "partial",
+            "reconciled",
+            "disputed",
+        }
+
 
 # ===================================================================
 # PayerTariff API

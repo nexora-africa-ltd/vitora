@@ -618,8 +618,15 @@ async function reconcileRemittance(id: number): Promise<InsuranceRemittance> {
   });
 }
 
-async function getHealthcloudSyncStatus(): Promise<HealthcloudSyncStatus> {
-  const response = await apiClient.get(`${BASE}/remittances/healthcloud-sync-status/`);
+async function getHealthcloudSyncStatus(params?: {
+  include_failures?: boolean;
+  include_sync_items?: boolean;
+  include_remittance_items?: boolean;
+  limit?: number;
+}): Promise<HealthcloudSyncStatus> {
+  const response = await apiClient.get(`${BASE}/remittances/healthcloud-sync-status/`, {
+    params,
+  });
   return parseResponse(HealthcloudSyncStatusSchema, response.data, {
     context: 'insuranceApi.getHealthcloudSyncStatus',
   });

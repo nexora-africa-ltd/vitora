@@ -1550,32 +1550,173 @@ class InsuranceRemittanceViewSet(ReadOnCreateMixin, TenantScopedViewMixin, views
         failed_sync = sync_qs.filter(status=InsuranceExternalSync.Status.FAILED).count()
         success_sync = sync_qs.filter(status=InsuranceExternalSync.Status.SUCCESS).count()
 
-        return Response(
-            {
-                "facility_id": facility.pk,
-                "sync": {
-                    "pending": pending_sync,
-                    "failed": failed_sync,
-                    "success": success_sync,
-                    "total": sync_qs.count(),
-                },
-                "remittances": {
-                    "total": remittances_qs.count(),
-                    "received": remittances_qs.filter(
-                        status=InsuranceRemittance.Status.RECEIVED
-                    ).count(),
-                    "partial": remittances_qs.filter(
-                        status=InsuranceRemittance.Status.PARTIAL
-                    ).count(),
-                    "reconciled": remittances_qs.filter(
-                        status=InsuranceRemittance.Status.RECONCILED
-                    ).count(),
-                    "disputed": remittances_qs.filter(
-                        status=InsuranceRemittance.Status.DISPUTED
-                    ).count(),
-                },
-            }
+        include_failures_raw = str(request.query_params.get("include_failures", "")).strip().lower()
+        include_failures = include_failures_raw in {"1", "true", "yes"}
+        include_sync_items_raw = (
+            str(request.query_params.get("include_sync_items", "")).strip().lower()
         )
+        include_sync_items = include_sync_items_raw in {"1", "true", "yes"}
+        include_remittance_items_raw = (
+            str(request.query_params.get("include_remittance_items", "")).strip().lower()
+        )
+        include_remittance_items = include_remittance_items_raw in {"1", "true", "yes"}
+        try:
+            limit = int(request.query_params.get("limit", 20))
+        except (TypeError, ValueError):
+            limit = 20
+        limit = max(1, min(limit, 100))
+
+        def _strip_html(value: str) -> str:
+            no_tags = re.sub(r"<[^>]+>", " ", value)
+            return re.sub(r"\s+", " ", no_tags).strip()
+
+        def _clean_error(value: str) -> str:
+            text = str(value or "").strip()
+            if not text:
+                return "Unknown sync failure"
+            if "<" in text and ">" in text:
+                text = _strip_html(text)
+            return text[:300]
+
+        def _bucket_failure(error_message: str) -> tuple[str, str]:
+            lower = error_message.lower()
+            if "timeout" in lower or "transport" in lower:
+                return ("transport_timeout", "Transport/Timeout")
+            if "http 401" in lower or "http 403" in lower or "unauthorized" in lower:
+                return ("auth", "Authentication/Authorization")
+            if "http 404" in lower and "claim_remittance" in lower:
+                return ("contract_mismatch", "Contract Mismatch")
+            if "http 404" in lower:
+                return ("not_found", "Not Found")
+            if "http 400" in lower or "http 422" in lower or "validation" in lower:
+                return ("validation", "Validation")
+            if "http 5" in lower:
+                return ("upstream_server", "Upstream Server")
+            return ("unknown", "Unknown")
+
+        payload = {
+            "facility_id": facility.pk,
+            "sync": {
+                "pending": pending_sync,
+                "failed": failed_sync,
+                "success": success_sync,
+                "total": sync_qs.count(),
+            },
+            "remittances": {
+                "total": remittances_qs.count(),
+                "received": remittances_qs.filter(
+                    status=InsuranceRemittance.Status.RECEIVED
+                ).count(),
+                "partial": remittances_qs.filter(status=InsuranceRemittance.Status.PARTIAL).count(),
+                "reconciled": remittances_qs.filter(
+                    status=InsuranceRemittance.Status.RECONCILED
+                ).count(),
+                "disputed": remittances_qs.filter(
+                    status=InsuranceRemittance.Status.DISPUTED
+                ).count(),
+            },
+        }
+
+        if include_failures:
+            failed_entries = list(
+                sync_qs.filter(status=InsuranceExternalSync.Status.FAILED)
+                .select_related("claim", "preauth", "authorization")
+                .order_by("-updated_at")[:limit]
+            )
+            failed_items = []
+            buckets: dict[str, dict[str, int | str]] = {}
+
+            for item in failed_entries:
+                message = _clean_error(item.last_error)
+                bucket_code, bucket_label = _bucket_failure(message)
+                if bucket_code not in buckets:
+                    buckets[bucket_code] = {
+                        "code": bucket_code,
+                        "label": bucket_label,
+                        "count": 0,
+                    }
+                buckets[bucket_code]["count"] = int(buckets[bucket_code]["count"]) + 1
+
+                failed_items.append(
+                    {
+                        "id": item.id,
+                        "operation": item.operation,
+                        "status": item.status,
+                        "attempt_count": item.attempt_count,
+                        "claim_id": item.claim_id,
+                        "claim_number": item.claim.claim_number if item.claim_id else "",
+                        "preauth_id": item.preauth_id,
+                        "authorization_id": item.authorization_id,
+                        "correlation_id": item.correlation_id,
+                        "error": message,
+                        "bucket": {
+                            "code": bucket_code,
+                            "label": bucket_label,
+                        },
+                        "created_at": item.created_at,
+                        "updated_at": item.updated_at,
+                    }
+                )
+
+            payload["failed_items"] = failed_items
+            payload["failure_buckets"] = sorted(
+                buckets.values(),
+                key=lambda entry: int(entry["count"]),
+                reverse=True,
+            )
+
+        if include_sync_items:
+            sync_items = []
+            for item in sync_qs.select_related("claim", "preauth", "authorization").order_by(
+                "-updated_at"
+            )[:limit]:
+                message = _clean_error(item.last_error)
+                bucket_code, bucket_label = _bucket_failure(message)
+                sync_items.append(
+                    {
+                        "id": item.id,
+                        "operation": item.operation,
+                        "status": item.status,
+                        "attempt_count": item.attempt_count,
+                        "claim_id": item.claim_id,
+                        "claim_number": item.claim.claim_number if item.claim_id else "",
+                        "preauth_id": item.preauth_id,
+                        "authorization_id": item.authorization_id,
+                        "correlation_id": item.correlation_id,
+                        "error": message,
+                        "bucket": {
+                            "code": bucket_code,
+                            "label": bucket_label,
+                        },
+                        "created_at": item.created_at,
+                        "updated_at": item.updated_at,
+                    }
+                )
+            payload["sync_items"] = sync_items
+
+        if include_remittance_items:
+            remittance_items = []
+            for item in remittances_qs.select_related("provider").order_by("-remittance_date")[
+                :limit
+            ]:
+                remittance_items.append(
+                    {
+                        "id": item.id,
+                        "remittance_number": item.remittance_number,
+                        "provider_id": item.provider_id,
+                        "provider_name": item.provider.name if item.provider_id else "",
+                        "status": item.status,
+                        "total_amount": str(item.total_amount),
+                        "reconciled_amount": str(item.reconciled_amount),
+                        "payment_reference": item.payment_reference,
+                        "bank_reference": item.bank_reference,
+                        "remittance_date": item.remittance_date,
+                        "updated_at": item.updated_at,
+                    }
+                )
+            payload["remittance_items"] = remittance_items
+
+        return Response(payload)
 
 
 # ---------------------------------------------------------------------------
