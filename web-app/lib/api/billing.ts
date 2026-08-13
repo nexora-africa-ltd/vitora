@@ -34,6 +34,7 @@ import {
   UnbilledServiceSchema,
   PaginatedServiceCategorySchema,
   PaginatedServiceSchema,
+  PaginatedBillingCatalogItemSchema,
   PaginatedInvoiceSchema,
   PaginatedDHAInvoiceSchema,
   PaginatedPaymentSchema,
@@ -59,6 +60,7 @@ import type {
   ServiceListParams,
   PaginatedServiceCategories,
   PaginatedServices,
+  PaginatedBillingCatalogItems,
   // Invoice types
   Invoice,
   InvoiceItem,
@@ -198,6 +200,21 @@ async function getServices(params?: ServiceListParams): Promise<PaginatedService
   const url = `/api/billing/services/?${queryString}`;
   const response = await apiClient.get(url);
   return parseResponse(PaginatedServiceSchema, response.data, { context: 'billingApi.getServices' });
+}
+
+async function getCatalogItems(params?: {
+  search?: string;
+  kind?: string;
+  is_active?: boolean;
+  page?: number;
+  page_size?: number;
+}): Promise<PaginatedBillingCatalogItems> {
+  const queryString = params ? buildQueryString(params) : '';
+  const url = queryString
+    ? `/api/billing/catalog-items/?${queryString}`
+    : '/api/billing/catalog-items/';
+  const response = await apiClient.get(url);
+  return parseResponse(PaginatedBillingCatalogItemSchema, response.data, { context: 'billingApi.getCatalogItems' });
 }
 
 async function getService(id: number): Promise<Service> {
@@ -731,6 +748,7 @@ export const billingApi = {
 
   // Services
   getServices,
+  getCatalogItems,
   getService,
   createService,
   updateService,

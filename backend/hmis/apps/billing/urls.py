@@ -20,6 +20,7 @@ from hmis.apps.billing.sha_views import (
     TerminologySearchView,
 )
 from hmis.apps.billing.views import (
+    CatalogItemViewSet,
     CreditNoteViewSet,
     FacilityBillingConfigViewSet,
     InvoiceViewSet,
@@ -36,6 +37,7 @@ from hmis.apps.billing.views import (
 router = routers.DefaultRouter()
 router.register(r"service-categories", ServiceCategoryViewSet, basename="servicecategory")
 router.register(r"services", ServiceViewSet, basename="service")
+router.register(r"catalog-items", CatalogItemViewSet, basename="catalog-item")
 router.register(r"invoices", InvoiceViewSet, basename="invoice")
 router.register(r"payments", PaymentViewSet, basename="payment")
 router.register(r"payment-points", PaymentPointViewSet, basename="paymentpoint")

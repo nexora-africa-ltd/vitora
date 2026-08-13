@@ -91,6 +91,25 @@ export const ServiceSchema = z.object({
 
 export type ServiceSchemaType = z.infer<typeof ServiceSchema>;
 
+export const BillingCatalogItemKindSchema = z.enum([
+  'service',
+  'procedure_catalog',
+  'lab_test_catalog',
+  'imaging_procedure',
+]);
+
+export const BillingCatalogItemSchema = z.object({
+  kind: BillingCatalogItemKindSchema,
+  id: z.number(),
+  code: z.string(),
+  name: z.string(),
+  description: z.string(),
+  unit_price: z.string(),
+  sha_code: z.string(),
+  item_type: z.string(),
+  service_id: z.number().nullable(),
+});
+
 // =============================================================================
 // INVOICE ITEM SCHEMA (defined before Invoice for nesting)
 // =============================================================================
@@ -562,6 +581,13 @@ export const PaginatedServiceSchema = z.object({
   results: z.array(ServiceSchema),
 });
 
+export const PaginatedBillingCatalogItemSchema = z.object({
+  count: z.number(),
+  next: z.string().nullable(),
+  previous: z.string().nullable(),
+  results: z.array(BillingCatalogItemSchema),
+});
+
 export const PaginatedInvoiceSchema = z.object({
   count: z.number(),
   next: z.string().nullable(),
@@ -761,6 +787,7 @@ export type DiscountType = z.infer<typeof DiscountTypeSchema>;
 // Entity types
 export type ServiceCategory = z.infer<typeof ServiceCategorySchema>;
 export type Service = z.infer<typeof ServiceSchema>;
+export type BillingCatalogItem = z.infer<typeof BillingCatalogItemSchema>;
 export type InvoiceItem = z.infer<typeof InvoiceItemSchema>;
 export type Invoice = z.infer<typeof InvoiceSchema>;
 export type DHAInvoiceRow = z.infer<typeof DHAInvoiceRowSchema>;
@@ -789,6 +816,7 @@ export type SHAServiceLevel = z.infer<typeof SHAServiceLevelSchema>;
 // Paginated types
 export type PaginatedServiceCategories = z.infer<typeof PaginatedServiceCategorySchema>;
 export type PaginatedServices = z.infer<typeof PaginatedServiceSchema>;
+export type PaginatedBillingCatalogItems = z.infer<typeof PaginatedBillingCatalogItemSchema>;
 export type PaginatedInvoices = z.infer<typeof PaginatedInvoiceSchema>;
 export type PaginatedDHAInvoices = z.infer<typeof PaginatedDHAInvoiceSchema>;
 export type PaginatedPayments = z.infer<typeof PaginatedPaymentSchema>;

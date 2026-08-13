@@ -32,12 +32,12 @@ import {
 import { Check, ChevronsUpDown, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/lib/utils/format';
-import type { Service, InvoiceItemCreateData } from '@/lib/types/billing';
+import type { BillingCatalogItem, InvoiceItemCreateData } from '@/lib/types/billing';
 
 interface AddInvoiceItemDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  services: Service[];
+  catalogItems: BillingCatalogItem[];
   onSubmit: (data: InvoiceItemCreateData) => void;
   isLoading?: boolean;
 }
@@ -45,51 +45,73 @@ interface AddInvoiceItemDialogProps {
 export function AddInvoiceItemDialog({
   open,
   onOpenChange,
-  services,
+  catalogItems,
   onSubmit,
   isLoading = false,
 }: AddInvoiceItemDialogProps) {
   const [serviceOpen, setServiceOpen] = useState(false);
-  const [selectedService, setSelectedService] = useState<Service | null>(null);
+  const [selectedItem, setSelectedItem] = useState<BillingCatalogItem | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [unitPrice, setUnitPrice] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
 
-  const handleServiceSelect = (service: Service) => {
-    setSelectedService(service);
-    setUnitPrice(service.unit_price);
+  const handleCatalogItemSelect = (item: BillingCatalogItem) => {
+    setSelectedItem(item);
+    setUnitPrice(item.unit_price);
     setServiceOpen(false);
   };
 
+  const defaultUnitPrice = selectedItem ? parseFloat(selectedItem.unit_price || '0') : 0;
+  const typedUnitPrice = parseFloat(unitPrice || '0');
+  const useOverride = selectedItem
+    ? Number.isFinite(typedUnitPrice) && Math.abs(typedUnitPrice - defaultUnitPrice) > 0.0001
+    : false;
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedService) return;
+    if (!selectedItem) return;
 
-    onSubmit({
-      description: selectedService.name,
-      service: selectedService.id,
+    const payload: InvoiceItemCreateData = {
+      catalog_ref: {
+        kind: selectedItem.kind,
+        id: selectedItem.id,
+      },
       quantity,
-      unit_price: unitPrice,
-    });
+    };
+
+    if (useOverride) {
+      payload.price_mode = 'override';
+      payload.unit_price_override = unitPrice;
+      payload.override_reason = 'Manual invoice price override';
+    }
+
+    onSubmit(payload);
   };
 
   const handleClose = () => {
-    setSelectedService(null);
+    setSelectedItem(null);
     setQuantity(1);
     setUnitPrice('');
     setSearchQuery('');
     onOpenChange(false);
   };
 
-  const filteredServices = services.filter(
-    (service) =>
-      service.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      service.code?.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredCatalogItems = catalogItems.filter(
+    (item) =>
+      item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.code?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const totalAmount = selectedService
+  const totalAmount = selectedItem
     ? parseFloat(unitPrice || '0') * quantity
     : 0;
+
+  const kindLabel: Record<BillingCatalogItem['kind'], string> = {
+    service: 'Service',
+    procedure_catalog: 'Procedure',
+    lab_test_catalog: 'Lab',
+    imaging_procedure: 'Imaging',
+  };
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -97,14 +119,14 @@ export function AddInvoiceItemDialog({
         <DialogHeader>
           <DialogTitle>Add Line Item</DialogTitle>
           <DialogDescription>
-            Search and select a service to add to the invoice
+            Search and select a billable catalog item to add to the invoice
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Service Selector */}
+          {/* Catalog Selector */}
           <div className="space-y-2">
-            <Label>Service *</Label>
+            <Label>Catalog Item *</Label>
             <Popover open={serviceOpen} onOpenChange={setServiceOpen}>
               <PopoverTrigger asChild>
                 <Button
@@ -113,10 +135,10 @@ export function AddInvoiceItemDialog({
                   aria-expanded={serviceOpen}
                   className="w-full justify-between"
                 >
-                  {selectedService ? (
-                    <span className="truncate">{selectedService.name}</span>
+                  {selectedItem ? (
+                    <span className="truncate">{selectedItem.name}</span>
                   ) : (
-                    <span className="text-secondary-foreground">Select service...</span>
+                    <span className="text-secondary-foreground">Select catalog item...</span>
                   )}
                   <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
@@ -124,37 +146,35 @@ export function AddInvoiceItemDialog({
               <PopoverContent className="w-[400px] p-0" align="start">
                 <Command>
                   <CommandInput
-                    placeholder="Search services..."
+                    placeholder="Search services, procedures, lab, imaging..."
                     value={searchQuery}
                     onValueChange={setSearchQuery}
                   />
                   <CommandList>
-                    <CommandEmpty>No services found.</CommandEmpty>
+                    <CommandEmpty>No catalog items found.</CommandEmpty>
                     <CommandGroup>
-                      {filteredServices.map((service) => (
+                      {filteredCatalogItems.map((item) => (
                         <CommandItem
-                          key={service.id}
-                          value={service.name}
-                          onSelect={() => handleServiceSelect(service)}
+                          key={`${item.kind}-${item.id}`}
+                          value={`${item.name} ${item.code}`}
+                          onSelect={() => handleCatalogItemSelect(item)}
                         >
                           <Check
                             className={cn(
                               'mr-2 h-4 w-4',
-                              selectedService?.id === service.id
+                              selectedItem?.id === item.id && selectedItem?.kind === item.kind
                                 ? 'opacity-100'
                                 : 'opacity-0'
                             )}
                           />
                           <div className="flex-1">
-                            <div className="font-medium">{service.name}</div>
-                            {service.code && (
-                              <div className="text-xs text-primary-foreground">
-                                {service.code}
-                              </div>
-                            )}
+                            <div className="font-medium">{item.name}</div>
+                            <div className="text-xs text-primary-foreground">
+                              {kindLabel[item.kind]} {item.code ? `- ${item.code}` : ''}
+                            </div>
                           </div>
                           <div className="text-sm text-secondary-foreground">
-                            {formatCurrency(parseFloat(service.unit_price))}
+                            {formatCurrency(parseFloat(item.unit_price))}
                           </div>
                         </CommandItem>
                       ))}
@@ -189,10 +209,15 @@ export function AddInvoiceItemDialog({
               onChange={(e) => setUnitPrice(e.target.value)}
               placeholder="0.00"
             />
+            {selectedItem && useOverride && (
+              <p className="text-xs text-amber-700">
+                Price differs from catalog default; this will be sent as an override.
+              </p>
+            )}
           </div>
 
           {/* Total */}
-          {selectedService && (
+          {selectedItem && (
             <div className="rounded-md bg-muted p-3">
               <div className="flex justify-between text-sm">
                 <span>Total Amount:</span>
@@ -212,7 +237,7 @@ export function AddInvoiceItemDialog({
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={!selectedService || isLoading}>
+            <Button type="submit" disabled={!selectedItem || isLoading}>
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Add Item
             </Button>

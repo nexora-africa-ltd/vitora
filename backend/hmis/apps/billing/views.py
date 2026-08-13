@@ -42,6 +42,7 @@ from hmis.apps.billing.models import (
     SHAClaimItem,
 )
 from hmis.apps.billing.serializers import (
+    BillingCatalogItemSerializer,
     CreditNoteSerializer,
     InvoiceItemSerializer,
     InvoicePayerCreateSerializer,
@@ -106,6 +107,191 @@ class ServiceViewSet(viewsets.ModelViewSet):
         """Soft delete - mark service as unavailable instead of deleting."""
         instance.is_active = False
         instance.save()
+
+
+class CatalogItemViewSet(TenantScopedViewMixin, viewsets.GenericViewSet):
+    """Read-only aggregate catalog for billable items across domains."""
+
+    queryset = Service.objects.none()
+    permission_classes = [IsAuthenticated, ReadRequiresModelPermission]
+
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                "search",
+                OpenApiTypes.STR,
+                location="query",
+                description="Search by code or name across all billable catalogs.",
+            ),
+            OpenApiParameter(
+                "kind",
+                OpenApiTypes.STR,
+                location="query",
+                description=(
+                    "Optional comma-separated kinds: service, procedure_catalog, "
+                    "lab_test_catalog, imaging_procedure"
+                ),
+            ),
+            OpenApiParameter(
+                "is_active",
+                OpenApiTypes.BOOL,
+                location="query",
+                description="Filter active/inactive rows (defaults to true).",
+            ),
+        ],
+        responses=inline_serializer(
+            name="PaginatedBillingCatalogItems",
+            fields={
+                "count": serializers.IntegerField(),
+                "next": serializers.CharField(allow_null=True),
+                "previous": serializers.CharField(allow_null=True),
+                "results": BillingCatalogItemSerializer(many=True),
+            },
+        ),
+    )
+    def list(self, request, *args, **kwargs):
+        from hmis.apps.imaging.models import ImagingProcedure
+        from hmis.apps.laboratory.models import TestCatalog
+        from hmis.apps.procedures.models import ProcedureCatalog
+
+        search = str(request.query_params.get("search") or "").strip().lower()
+        raw_kinds = str(request.query_params.get("kind") or "").strip().lower()
+        requested_kinds = {token.strip() for token in raw_kinds.split(",") if token.strip()}
+        allowed_kinds = {
+            "service",
+            "procedure_catalog",
+            "lab_test_catalog",
+            "imaging_procedure",
+        }
+        if requested_kinds:
+            requested_kinds = requested_kinds.intersection(allowed_kinds)
+        else:
+            requested_kinds = allowed_kinds
+
+        is_active_raw = request.query_params.get("is_active")
+        only_active = True
+        if is_active_raw is not None:
+            only_active = str(is_active_raw).strip().lower() in {"1", "true", "yes"}
+
+        facility = getattr(request, "facility", None)
+        rows = []
+
+        def _matches(code: str, name: str) -> bool:
+            if not search:
+                return True
+            return search in (code or "").lower() or search in (name or "").lower()
+
+        if "service" in requested_kinds:
+            services = Service.objects.all()
+            if only_active:
+                services = services.filter(is_active=True)
+            for service in services:
+                if not _matches(service.code, service.name):
+                    continue
+                rows.append(
+                    {
+                        "kind": "service",
+                        "id": service.id,
+                        "code": service.code,
+                        "name": service.name,
+                        "description": service.description or "",
+                        "unit_price": service.unit_price,
+                        "sha_code": service.sha_code or "",
+                        "item_type": InvoiceItem.ItemType.SERVICE,
+                        "service_id": service.id,
+                    }
+                )
+
+        if "procedure_catalog" in requested_kinds:
+            procedures = ProcedureCatalog.objects.select_related("billing_service").all()
+            if facility is not None:
+                procedures = procedures.filter(facility=facility)
+            if only_active:
+                procedures = procedures.filter(is_active=True)
+            for procedure in procedures:
+                if not _matches(procedure.code, procedure.name):
+                    continue
+                linked_service = procedure.billing_service if procedure.billing_service_id else None
+                unit_price = (
+                    getattr(linked_service, "unit_price", None)
+                    if linked_service is not None
+                    else procedure.base_fee
+                )
+                if unit_price is None:
+                    continue
+                rows.append(
+                    {
+                        "kind": "procedure_catalog",
+                        "id": procedure.id,
+                        "code": procedure.code,
+                        "name": procedure.name,
+                        "description": procedure.description or "",
+                        "unit_price": unit_price,
+                        "sha_code": (
+                            (linked_service.sha_code if linked_service else "")
+                            or procedure.sha_tariff_code
+                            or ""
+                        ),
+                        "item_type": InvoiceItem.ItemType.SERVICE,
+                        "service_id": linked_service.id if linked_service else None,
+                    }
+                )
+
+        if "lab_test_catalog" in requested_kinds:
+            tests = TestCatalog.objects.all()
+            if facility is not None:
+                tests = tests.filter(facility=facility)
+            if only_active:
+                tests = tests.filter(is_active=True)
+            for test in tests:
+                if not _matches(test.code, test.name):
+                    continue
+                rows.append(
+                    {
+                        "kind": "lab_test_catalog",
+                        "id": test.id,
+                        "code": test.code,
+                        "name": test.name,
+                        "description": "",
+                        "unit_price": test.cost,
+                        "sha_code": test.loinc_code or "",
+                        "item_type": InvoiceItem.ItemType.LAB,
+                        "service_id": None,
+                    }
+                )
+
+        if "imaging_procedure" in requested_kinds:
+            imaging = ImagingProcedure.objects.all()
+            if facility is not None:
+                imaging = imaging.filter(facility=facility)
+            if only_active:
+                imaging = imaging.filter(is_active=True)
+            for procedure in imaging:
+                if not _matches(procedure.code, procedure.name):
+                    continue
+                rows.append(
+                    {
+                        "kind": "imaging_procedure",
+                        "id": procedure.id,
+                        "code": procedure.code,
+                        "name": procedure.name,
+                        "description": "",
+                        "unit_price": procedure.cost,
+                        "sha_code": procedure.sha_intervention_code or "",
+                        "item_type": InvoiceItem.ItemType.IMAGING,
+                        "service_id": None,
+                    }
+                )
+
+        rows.sort(key=lambda row: (row["kind"], row["name"].lower(), row["code"].lower()))
+
+        page = self.paginate_queryset(rows)
+        if page is not None:
+            serializer = BillingCatalogItemSerializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = BillingCatalogItemSerializer(rows, many=True)
+        return Response(serializer.data)
 
 
 class InvoiceViewSet(PublicIdLookupMixin, TenantScopedViewMixin, viewsets.ModelViewSet):

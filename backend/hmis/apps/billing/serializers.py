@@ -21,6 +21,13 @@ from hmis.apps.billing.models import (
     Service,
     ServiceCategory,
 )
+from hmis.apps.billing.services.price_resolver import (
+    BillingPriceResolver,
+    CatalogItemInactive,
+    CatalogItemNotFound,
+    PriceNotConfigured,
+    ResolvePriceRequest,
+)
 from hmis.apps.core.qr_utils import (
     generate_invoice_qr_url,
     generate_qr_data_uri,
@@ -94,6 +101,22 @@ class ServiceSerializer(serializers.ModelSerializer):
         return super().create(validated_data)
 
 
+class BillingCatalogItemSerializer(serializers.Serializer):
+    """Unified billable-catalog row for invoice item creation UX."""
+
+    kind = serializers.ChoiceField(
+        choices=["service", "procedure_catalog", "lab_test_catalog", "imaging_procedure"]
+    )
+    id = serializers.IntegerField()
+    code = serializers.CharField()
+    name = serializers.CharField()
+    description = serializers.CharField(allow_blank=True)
+    unit_price = serializers.DecimalField(max_digits=10, decimal_places=2, coerce_to_string=True)
+    sha_code = serializers.CharField(allow_blank=True)
+    item_type = serializers.CharField()
+    service_id = serializers.IntegerField(allow_null=True)
+
+
 class InvoiceItemSerializer(serializers.ModelSerializer):
     """Serializer for InvoiceItem model."""
 
@@ -106,6 +129,26 @@ class InvoiceItemSerializer(serializers.ModelSerializer):
     # Alias discount_amount as discount_percentage for frontend compatibility
     discount_percentage = serializers.DecimalField(
         source="discount_amount", max_digits=10, decimal_places=2, read_only=True
+    )
+    catalog_ref = serializers.JSONField(write_only=True, required=False)
+    price_mode = serializers.ChoiceField(
+        choices=["catalog", "override"],
+        write_only=True,
+        required=False,
+        default="catalog",
+    )
+    unit_price_override = serializers.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        write_only=True,
+        required=False,
+        allow_null=True,
+    )
+    override_reason = serializers.CharField(
+        write_only=True,
+        required=False,
+        allow_blank=True,
+        max_length=200,
     )
 
     class Meta:
@@ -132,12 +175,20 @@ class InvoiceItemSerializer(serializers.ModelSerializer):
             "is_covered_by_insurance",
             "insurance_approved_amount",
             "sha_code",
+            "catalog_ref",
+            "price_mode",
+            "unit_price_override",
+            "override_reason",
             "is_converted",
             "converted_at",
             "converted_from_item",
             "created_at",
             "updated_at",
         ]
+        extra_kwargs = {
+            "description": {"required": False},
+            "unit_price": {"required": False},
+        }
         read_only_fields = [
             "id",
             "invoice",
@@ -150,6 +201,132 @@ class InvoiceItemSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
+
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        catalog_ref = attrs.get("catalog_ref")
+
+        if catalog_ref is not None:
+            if not isinstance(catalog_ref, dict):
+                raise serializers.ValidationError(
+                    {"catalog_ref": "catalog_ref must be an object with kind and id."}
+                )
+
+            kind = str(catalog_ref.get("kind") or "").strip()
+            if kind not in {
+                "service",
+                "procedure_catalog",
+                "lab_test_catalog",
+                "imaging_procedure",
+            }:
+                raise serializers.ValidationError(
+                    {
+                        "catalog_ref": "catalog_ref.kind must be one of: service, procedure_catalog, lab_test_catalog, imaging_procedure."
+                    }
+                )
+
+            try:
+                catalog_id = int(catalog_ref.get("id"))
+            except (TypeError, ValueError) as exc:
+                raise serializers.ValidationError(
+                    {"catalog_ref": "catalog_ref.id must be an integer."}
+                ) from exc
+
+            if catalog_id <= 0:
+                raise serializers.ValidationError(
+                    {"catalog_ref": "catalog_ref.id must be greater than 0."}
+                )
+
+            attrs["catalog_ref"] = {"kind": kind, "id": catalog_id}
+
+            if attrs.get("price_mode") == "override":
+                unit_price_override = attrs.get("unit_price_override")
+                if unit_price_override is None:
+                    raise serializers.ValidationError(
+                        {
+                            "unit_price_override": "unit_price_override is required when price_mode is override."
+                        }
+                    )
+                if unit_price_override <= 0:
+                    raise serializers.ValidationError(
+                        {"unit_price_override": "unit_price_override must be greater than zero."}
+                    )
+
+            if attrs.get("unit_price") is not None:
+                raise serializers.ValidationError(
+                    {
+                        "unit_price": "Do not send unit_price with catalog_ref. Use price_mode=override and unit_price_override."
+                    }
+                )
+        else:
+            service = attrs.get("service")
+            if service is None and attrs.get("unit_price") is None:
+                raise serializers.ValidationError(
+                    {
+                        "unit_price": "unit_price is required when no service or catalog_ref is provided."
+                    }
+                )
+            if not attrs.get("description") and service is None:
+                raise serializers.ValidationError(
+                    {
+                        "description": "description is required when no service or catalog_ref is provided."
+                    }
+                )
+
+        return attrs
+
+    def create(self, validated_data):
+        catalog_ref = validated_data.pop("catalog_ref", None)
+        price_mode = validated_data.pop("price_mode", "catalog")
+        unit_price_override = validated_data.pop("unit_price_override", None)
+        validated_data.pop("override_reason", None)
+        invoice = validated_data.get("invoice")
+
+        if catalog_ref is not None and invoice is not None:
+            resolver = BillingPriceResolver()
+            quantity = validated_data.get("quantity") or Decimal("1.00")
+
+            try:
+                resolution = resolver.resolve(
+                    ResolvePriceRequest(
+                        facility_id=getattr(invoice, "facility_id", None),
+                        catalog_kind=catalog_ref["kind"],
+                        catalog_id=catalog_ref["id"],
+                        quantity=quantity,
+                        price_mode=price_mode,
+                        unit_price_override=unit_price_override,
+                        invoice_id=invoice.id,
+                        encounter_id=getattr(invoice, "encounter_id", None),
+                        user_id=getattr(
+                            getattr(self.context.get("request"), "user", None), "id", None
+                        ),
+                    )
+                )
+            except CatalogItemNotFound as exc:
+                raise serializers.ValidationError({"catalog_ref": str(exc)}) from exc
+            except CatalogItemInactive as exc:
+                raise serializers.ValidationError({"catalog_ref": str(exc)}) from exc
+            except PriceNotConfigured as exc:
+                raise serializers.ValidationError({"catalog_ref": str(exc)}) from exc
+            except ValueError as exc:
+                raise serializers.ValidationError({"catalog_ref": str(exc)}) from exc
+
+            validated_data["item_type"] = resolution.item_type
+            validated_data["unit_price"] = resolution.unit_price
+            if not validated_data.get("description"):
+                validated_data["description"] = resolution.description
+            if not validated_data.get("sha_code"):
+                validated_data["sha_code"] = resolution.sha_code
+            if resolution.service_id and not validated_data.get("service"):
+                validated_data["service_id"] = resolution.service_id
+
+        service = validated_data.get("service")
+        if service is not None:
+            validated_data.setdefault("description", service.name)
+            if validated_data.get("unit_price") is None:
+                validated_data["unit_price"] = service.unit_price
+
+        return super().create(validated_data)
 
     def get_lab_order_name(self, obj) -> str | None:
         """Return lab order test name if available."""

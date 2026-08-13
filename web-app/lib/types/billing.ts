@@ -26,6 +26,7 @@ export type {
   // Entity types
   ServiceCategory,
   Service,
+  BillingCatalogItem,
   InvoiceItem,
   Invoice,
   DHAInvoiceRow,
@@ -51,6 +52,7 @@ export type {
   // Paginated types
   PaginatedServiceCategories,
   PaginatedServices,
+  PaginatedBillingCatalogItems,
   PaginatedInvoices,
   PaginatedDHAInvoices,
   PaginatedPayments,
@@ -108,9 +110,16 @@ export interface InvoiceUpdateData {
 }
 
 export interface InvoiceItemCreateData {
-  description: string;
+  description?: string;
   quantity: number;
-  unit_price: string;
+  unit_price?: string;
+  catalog_ref?: {
+    kind: 'service' | 'procedure_catalog' | 'lab_test_catalog' | 'imaging_procedure';
+    id: number;
+  };
+  price_mode?: 'catalog' | 'override';
+  unit_price_override?: string;
+  override_reason?: string;
   discount_percentage?: string;
   service?: number;
   drug?: number;

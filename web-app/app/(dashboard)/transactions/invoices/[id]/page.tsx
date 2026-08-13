@@ -33,7 +33,7 @@ import {
   useMpesaSTKPush,
   useMpesaQuery,
   usePaymentReceipt,
-  useServices,
+  useBillingCatalogItems,
 } from '@/lib/hooks/billing';
 import { useClaim, useClaims } from '@/lib/hooks/use-sha';
 import { billingApi } from '@/lib/api/billing';
@@ -68,7 +68,10 @@ export default function InvoiceDetailPage() {
 
   const { data: invoice, isLoading, refetch: refetchInvoice } = useInvoice(invoiceId);
   const invoiceNumericId = invoice?.id ?? 0;
-  const { data: servicesData } = useServices();
+  const { data: catalogItemsData } = useBillingCatalogItems({
+    is_active: true,
+    page_size: 200,
+  });
 
   const { data: claimsData, refetch: refetchClaims } = useClaims(
     { invoice: invoiceNumericId },
@@ -341,7 +344,7 @@ export default function InvoiceDetailPage() {
       <AddInvoiceItemDialog
         open={showAddItemDialog}
         onOpenChange={setShowAddItemDialog}
-        services={servicesData?.results || []}
+        catalogItems={catalogItemsData?.results || []}
         onSubmit={handleAddItemSubmit}
         isLoading={addInvoiceItem.isPending}
       />

@@ -13,6 +13,7 @@ from rest_framework import status
 from rest_framework.test import APIClient
 
 from hmis.apps.billing.models import Invoice
+from hmis.apps.procedures.models import ProcedureCatalog
 from tests.conftest import ensure_staff_profile
 
 pytestmark = pytest.mark.django_db
@@ -175,6 +176,60 @@ class TestInvoiceAPIEndpoints:
 
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data["service"] == sample_service.id
+
+    def test_add_invoice_item_uses_service_catalog_price_when_unit_price_missing(
+        self, authenticated_client, sample_invoice, sample_service
+    ):
+        """POST /items should default unit price/description from selected service."""
+        data = {
+            "service": sample_service.id,
+            "quantity": "1.00",
+        }
+
+        response = authenticated_client.post(
+            f"/api/billing/invoices/{sample_invoice.id}/items/", data, format="json"
+        )
+
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data["service"] == sample_service.id
+        assert Decimal(response.data["unit_price"]) == sample_service.unit_price
+        assert response.data["description"] == sample_service.name
+
+    def test_add_invoice_item_from_procedure_catalog_ref(
+        self,
+        authenticated_client,
+        sample_invoice,
+        sample_service,
+        sample_facility,
+        sample_organization,
+    ):
+        """POST /items should resolve price from procedure catalog via billing service."""
+        procedure = ProcedureCatalog.objects.create(
+            code="PROC-APP-001",
+            name="Appendectomy",
+            category=ProcedureCatalog.Category.SURGICAL,
+            body_system=ProcedureCatalog.BodySystem.DIGESTIVE,
+            risk_level=ProcedureCatalog.RiskLevel.MEDIUM,
+            typical_duration_minutes=60,
+            consent_required=True,
+            billing_service=sample_service,
+            base_fee=Decimal("9000.00"),
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+        data = {
+            "catalog_ref": {"kind": "procedure_catalog", "id": procedure.id},
+            "quantity": "1.00",
+        }
+
+        response = authenticated_client.post(
+            f"/api/billing/invoices/{sample_invoice.id}/items/", data, format="json"
+        )
+
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data["service"] == sample_service.id
+        assert Decimal(response.data["unit_price"]) == sample_service.unit_price
+        assert response.data["description"] == f"Procedure: {procedure.name}"
 
     def test_remove_invoice_item(self, authenticated_client, sample_invoice, sample_invoice_item):
         """Test DELETE /api/billing/invoices/{id}/items/{item_id}/ - Remove item and recalculate."""

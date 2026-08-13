@@ -50,6 +50,7 @@ import type {
   PaginatedDHAInvoices,
   PaginatedPayments,
   PaginatedServices,
+  PaginatedBillingCatalogItems,
   PaginatedServiceCategories,
   PaginatedCreditNotes,
   FacilityBillingConfigCreateData,
@@ -90,6 +91,9 @@ export const billingKeys = {
   services: () => [...billingKeys.all, 'services'] as const,
   servicesList: (params?: ServiceListParams) => [...billingKeys.services(), 'list', params] as const,
   serviceDetail: (id: number) => [...billingKeys.services(), 'detail', id] as const,
+  catalogItems: () => [...billingKeys.all, 'catalog-items'] as const,
+  catalogItemsList: (params?: { search?: string; kind?: string; is_active?: boolean; page?: number; page_size?: number }) =>
+    [...billingKeys.catalogItems(), 'list', params] as const,
 
   // Categories
   categories: () => [...billingKeys.all, 'categories'] as const,
@@ -599,6 +603,22 @@ export function useServices(params?: ServiceListParams) {
   return useQuery({
     queryKey: billingKeys.servicesList(params),
     queryFn: () => billingApi.getServices(params),
+  });
+}
+
+/**
+ * Fetch aggregated billing catalog items (services + clinical catalogs)
+ */
+export function useBillingCatalogItems(params?: {
+  search?: string;
+  kind?: string;
+  is_active?: boolean;
+  page?: number;
+  page_size?: number;
+}) {
+  return useQuery<PaginatedBillingCatalogItems>({
+    queryKey: billingKeys.catalogItemsList(params),
+    queryFn: () => billingApi.getCatalogItems(params),
   });
 }
 
