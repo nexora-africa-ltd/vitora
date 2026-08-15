@@ -5,7 +5,14 @@
  * The frontend never calls TibaBot directly.
  */
 
-import { apiClient } from '@/lib/api/client';
+import {
+  apiClient,
+  getActiveFacilityId,
+  getActiveOrganizationId,
+  getApiBaseUrl,
+} from '@/lib/api/client';
+import { tokenStorage } from '@/lib/auth/storage';
+import { isDesktop } from '@/lib/desktop';
 import {
   AIICD10SuggestResponseSchema,
   AIStatusSchema,
@@ -138,6 +145,21 @@ import type {
   FacilityKBDocumentDeleteResponse,
 } from '@/lib/types/ai';
 
+export interface AIClinicalChatStreamHandlers {
+  onSession?: (sessionId: string) => void;
+  onChunk?: (chunk: string) => void;
+  onDone?: (response: AIClinicalChatResponse) => void;
+  onError?: (errorMessage: string) => void;
+}
+
+function readCookie(name: string): string | null {
+  if (typeof document === 'undefined') return null;
+  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const match = document.cookie.match(new RegExp(`(?:^|; )${escaped}=([^;]*)`));
+  const value = match?.[1];
+  return value ? decodeURIComponent(value) : null;
+}
+
 export const aiApi = {
   // ===========================================================================
   // Phase 1 — ICD-10
@@ -194,6 +216,174 @@ export const aiApi = {
     return parseResponse(AIClinicalChatResponseSchema, response.data, {
       context: 'aiApi.clinicalChat',
     });
+  },
+
+  /**
+   * Stream a clinical chat response over SSE.
+   *
+   * Sends the same payload as clinicalChat, plus `stream: true`, and parses
+   * chunk/done/error events from the backend SSE proxy.
+   */
+  clinicalChatStream: async (
+    data: AIClinicalChatRequest,
+    handlers: AIClinicalChatStreamHandlers = {}
+  ): Promise<AIClinicalChatResponse> => {
+    const endpoint = '/api/ai/clinical/chat/';
+    const baseUrl = getApiBaseUrl().replace(/\/$/, '');
+    const url = `${baseUrl}${endpoint}`;
+
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+
+    const csrfToken = readCookie('csrftoken');
+    if (csrfToken) {
+      headers['X-CSRFToken'] = csrfToken;
+    }
+
+    const activeFacilityId = getActiveFacilityId();
+    if (activeFacilityId != null) {
+      headers['X-Facility-Id'] = String(activeFacilityId);
+    }
+
+    const activeOrganizationId = getActiveOrganizationId();
+    if (activeOrganizationId != null) {
+      headers['X-Organization-Id'] = String(activeOrganizationId);
+    }
+
+    if (isDesktop()) {
+      const accessToken = tokenStorage.getAccessToken();
+      if (accessToken) {
+        headers.Authorization = `Bearer ${accessToken}`;
+      }
+      headers['X-Vitora-Client'] = 'desktop/0.1.0';
+    }
+
+    const response = await fetch(url, {
+      method: 'POST',
+      credentials: 'include',
+      headers,
+      body: JSON.stringify({ ...data, stream: true }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Stream request failed (${response.status})`);
+    }
+
+    if (!response.body) {
+      throw new Error('No stream body returned from server');
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let finalResponse: AIClinicalChatResponse | null = null;
+
+    const processEvent = (rawEvent: string) => {
+      if (!rawEvent.trim()) return;
+
+      let eventName = 'message';
+      const dataLines: string[] = [];
+
+      for (const line of rawEvent.split(/\r?\n/)) {
+        if (!line) continue;
+        if (line.startsWith(':')) continue;
+        if (line.startsWith('event:')) {
+          eventName = line.slice('event:'.length).trim() || 'message';
+          continue;
+        }
+        if (line.startsWith('data:')) {
+          dataLines.push(line.slice('data:'.length).trimStart());
+        }
+      }
+
+      if (dataLines.length === 0) return;
+
+      const payloadText = dataLines.join('\n');
+      let payload: unknown = payloadText;
+      try {
+        payload = JSON.parse(payloadText);
+      } catch {
+        // Keep plain text payload.
+      }
+
+      if (typeof payload === 'object' && payload !== null) {
+        const streamPayload = payload as Record<string, unknown>;
+        const payloadType = typeof streamPayload.type === 'string' ? streamPayload.type : '';
+
+        if (payloadType === 'session' && typeof streamPayload.session_id === 'string') {
+          handlers.onSession?.(streamPayload.session_id);
+          return;
+        }
+
+        if (payloadType === 'chunk' && typeof streamPayload.content === 'string') {
+          if (process.env.NODE_ENV !== 'production') {
+            console.debug('[TibaBot stream chunk]', {
+              session_id: streamPayload.session_id,
+              length: streamPayload.content.length,
+            });
+          }
+          handlers.onChunk?.(streamPayload.content);
+          return;
+        }
+
+        if (payloadType === 'error') {
+          handlers.onError?.(
+            typeof streamPayload.error === 'string'
+              ? streamPayload.error
+              : 'AI service error.'
+          );
+          return;
+        }
+
+        if (payloadType === 'done') {
+          if (process.env.NODE_ENV !== 'production') {
+            console.debug('[TibaBot stream]', {
+              stream_mode:
+                typeof streamPayload.stream_mode === 'string'
+                  ? streamPayload.stream_mode
+                  : 'unknown',
+              session_id: streamPayload.session_id,
+            });
+          }
+
+          const donePayload = { ...streamPayload };
+          delete donePayload.type;
+          finalResponse = parseResponse(AIClinicalChatResponseSchema, donePayload, {
+            context: 'aiApi.clinicalChatStream',
+          });
+          handlers.onDone?.(finalResponse);
+          return;
+        }
+      }
+
+      if (eventName === 'token' && typeof payload === 'string') {
+        handlers.onChunk?.(payload);
+      }
+    };
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+
+      const events = buffer.split(/\r?\n\r?\n/);
+      buffer = events.pop() || '';
+      for (const rawEvent of events) {
+        processEvent(rawEvent);
+      }
+    }
+
+    if (buffer.trim()) {
+      processEvent(buffer);
+    }
+
+    if (finalResponse) {
+      return finalResponse;
+    }
+
+    throw new Error('Stream ended before final response was emitted');
   },
 
   /**

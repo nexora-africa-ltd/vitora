@@ -301,6 +301,11 @@ class ClinicalChatRequestSerializer(serializers.Serializer):
             "'educational' → full reasoning, explains 'why'."
         ),
     )
+    stream = serializers.BooleanField(
+        required=False,
+        default=False,
+        help_text="When true, response is streamed as SSE chunks.",
+    )
 
 
 class ClinicalAssistRequestSerializer(serializers.Serializer):

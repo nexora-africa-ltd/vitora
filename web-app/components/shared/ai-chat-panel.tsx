@@ -22,7 +22,6 @@ import {
   Trash2,
   Stethoscope,
   ExternalLink,
-  Loader2,
   Gauge,
   ThumbsUp,
   ThumbsDown,
@@ -83,14 +82,158 @@ interface MessageBubbleProps {
   /** Current feedback state for this message (null = not rated) */
   feedbackGiven?: AIFeedbackDirection | null;
   /** Called when user clicks thumbs up or down */
-  onFeedback?: (direction: AIFeedbackDirection) => void;
+  onFeedback?: (messageId: string, direction: AIFeedbackDirection) => void;
 }
 
-function MessageBubble({ message, feedbackGiven, onFeedback }: MessageBubbleProps) {
+interface ChatComposerProps {
+  isAvailable: boolean;
+  isSending: boolean;
+  verbosity: AIVerbosity;
+  setVerbosity: (v: AIVerbosity) => void;
+  onSendMessage: (message: string) => void;
+}
+
+const ChatComposer = React.memo(function ChatComposer({
+  isAvailable,
+  isSending,
+  verbosity,
+  setVerbosity,
+  onSendMessage,
+}: ChatComposerProps) {
+  const [inputValue, setInputValue] = useState('');
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  const resizeTextarea = useCallback(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    const maxHeight = 180;
+    const nextHeight = Math.min(el.scrollHeight, maxHeight);
+    el.style.height = `${nextHeight}px`;
+    el.style.overflowY = el.scrollHeight > maxHeight ? 'auto' : 'hidden';
+  }, []);
+
+  useEffect(() => {
+    const raf = requestAnimationFrame(() => resizeTextarea());
+    return () => cancelAnimationFrame(raf);
+  }, [inputValue, resizeTextarea]);
+
+  const handleSend = useCallback(() => {
+    const trimmed = inputValue.trim();
+    if (!trimmed || isSending) return;
+    onSendMessage(trimmed);
+    setInputValue('');
+    requestAnimationFrame(() => resizeTextarea());
+  }, [inputValue, isSending, onSendMessage, resizeTextarea]);
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        handleSend();
+      }
+    },
+    [handleSend]
+  );
+
+  return (
+    <div className="p-3">
+      <div className="flex items-center gap-1.5 mb-2">
+        <Gauge className="h-3 w-3 text-muted-foreground shrink-0" />
+        <div className="flex gap-0.5 flex-wrap">
+          {(['concise', 'standard', 'educational'] as AIVerbosity[]).map((v) => {
+            const opt = AI_VERBOSITY_OPTIONS.find((o) => o.value === v);
+            return (
+              <button
+                key={v}
+                type="button"
+                onClick={() => setVerbosity(v)}
+                className={cn(
+                  'px-2 py-0.5 rounded text-[10px] font-medium transition-colors',
+                  verbosity === v
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                )}
+                title={opt?.description}
+              >
+                {opt?.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="flex items-end gap-2">
+        <textarea
+          ref={inputRef}
+          value={inputValue}
+          onChange={(e) => {
+            setInputValue(e.target.value);
+          }}
+          onKeyDown={handleKeyDown}
+          placeholder={isAvailable ? 'Ask a clinical question...' : 'TibaBot is unavailable'}
+          disabled={!isAvailable || isSending}
+          className={cn(
+            'flex-1 resize-none rounded-lg border bg-background px-3 py-2',
+            'text-sm placeholder:text-muted-foreground',
+            'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
+            'disabled:cursor-not-allowed disabled:opacity-50',
+            'min-h-[40px] max-h-[180px]'
+          )}
+          rows={1}
+        />
+        <Button
+          size={isSending ? 'sm' : 'icon'}
+          className={cn('shrink-0', isSending ? 'h-10 px-3 text-xs' : 'h-10 w-10')}
+          onClick={handleSend}
+          disabled={!inputValue.trim() || !isAvailable || isSending}
+        >
+          {isSending ? 'TibaBot is thinking...' : <Send className="h-4 w-4" />}
+        </Button>
+      </div>
+      <p className="mt-1.5 text-[10px] text-muted-foreground text-center">
+        Advisory only — always verify with clinical guidelines
+      </p>
+    </div>
+  );
+});
+
+const INITIAL_VISIBLE_MESSAGES = 60;
+const LOAD_MORE_STEP = 40;
+
+const STREAMING_STATUS_MESSAGES = [
+  'TibaBot is thinking...',
+  'TibaBot is processing your request...',
+  'Reviewing symptoms and context...',
+  'Cross-checking clinical guidance...',
+  'Looking for relevant differentials...',
+  'Checking safety considerations...',
+  'Preparing a concise clinical summary...',
+  'Verifying recommendations...',
+  'Almost there...',
+  'Finalizing response...',
+  'One moment while I double-check...',
+] as const;
+
+const MessageBubble = React.memo(function MessageBubble({ message, feedbackGiven, onFeedback }: MessageBubbleProps) {
   const isUser = message.role === 'user';
   const isSystem = message.role === 'system';
   const isAssistant = message.role === 'assistant';
   const showFeedback = isAssistant && !message.isStreaming && onFeedback;
+  const [streamingStatusIndex, setStreamingStatusIndex] = useState(0);
+
+  useEffect(() => {
+    if (!message.isStreaming) {
+      setStreamingStatusIndex(0);
+      return;
+    }
+
+    const timer = window.setInterval(() => {
+      setStreamingStatusIndex((prev) => (prev + 1) % STREAMING_STATUS_MESSAGES.length);
+    }, 1800);
+
+    return () => window.clearInterval(timer);
+  }, [message.isStreaming]);
 
   return (
     <div
@@ -110,12 +253,14 @@ function MessageBubble({ message, feedbackGiven, onFeedback }: MessageBubbleProp
         >
           {/* Streaming indicator */}
           {message.isStreaming && (
-            <span className="inline-flex items-center gap-1 text-muted-foreground">
-              <Loader2 className="h-3 w-3 animate-spin" />
+            <span className="mb-1 inline-flex items-center text-[11px] font-medium text-muted-foreground">
+              {STREAMING_STATUS_MESSAGES[streamingStatusIndex]}
             </span>
           )}
           {isUser ? (
             <span className="whitespace-pre-wrap break-words">{message.content}</span>
+          ) : message.isStreaming ? (
+            <div className="whitespace-pre-wrap break-words">{message.content}</div>
           ) : (
             <div className="tibabot-markdown break-words overflow-hidden">
               <Markdown
@@ -165,14 +310,9 @@ function MessageBubble({ message, feedbackGiven, onFeedback }: MessageBubbleProp
         {/* Feedback buttons — only on assistant messages that are done streaming */}
         {showFeedback && (
           <div className="flex items-center gap-1 mt-1 ml-1">
-            {message.model && (
-              <span className="text-[10px] font-medium text-muted-foreground/60 mr-1.5">
-                {message.model}
-              </span>
-            )}
             <button
               type="button"
-              onClick={() => onFeedback('up')}
+              onClick={() => onFeedback(message.id, 'up')}
               disabled={feedbackGiven != null}
               className={cn(
                 'p-1 rounded transition-colors',
@@ -188,7 +328,7 @@ function MessageBubble({ message, feedbackGiven, onFeedback }: MessageBubbleProp
             </button>
             <button
               type="button"
-              onClick={() => onFeedback('down')}
+              onClick={() => onFeedback(message.id, 'down')}
               disabled={feedbackGiven != null}
               className={cn(
                 'p-1 rounded transition-colors',
@@ -212,7 +352,7 @@ function MessageBubble({ message, feedbackGiven, onFeedback }: MessageBubbleProp
       </div>
     </div>
   );
-}
+});
 
 // =============================================================================
 // Component
@@ -246,10 +386,11 @@ export function AIChatPanel({
     setContextEnrichment,
   } = useAIChatContext();
 
-  const [inputValue, setInputValue] = useState('');
   const [feedbackMap, setFeedbackMap] = useState<Record<string, AIFeedbackDirection>>({});
+  const [visibleMessageCount, setVisibleMessageCount] = useState(INITIAL_VISIBLE_MESSAGES);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const activeStreamingMessageIdRef = useRef<string | null>(null);
+  const didInitialScrollRef = useRef(false);
 
   const feedbackMutation = useAIFeedback();
 
@@ -263,6 +404,17 @@ export function AIChatPanel({
     () => assessContextSufficiency(mergedPatient, mergedEncounter),
     [mergedPatient, mergedEncounter]
   );
+
+  const visibleMessages = useMemo(
+    () => messages.slice(-visibleMessageCount),
+    [messages, visibleMessageCount]
+  );
+
+  useEffect(() => {
+    if (messages.length === 0 && visibleMessageCount !== INITIAL_VISIBLE_MESSAGES) {
+      setVisibleMessageCount(INITIAL_VISIBLE_MESSAGES);
+    }
+  }, [messages.length, visibleMessageCount]);
 
   // Proactive insights — auto-triggered when encounter context is present
   const {
@@ -278,41 +430,60 @@ export function AIChatPanel({
     enabled: isEncounterAware,
   });
 
-  // Auto-scroll to bottom on new messages
+  // Scroll behavior:
+  // - Keep streaming responses anchored from the top of the assistant message.
+  // - Do not snap to bottom when the assistant finishes (reduces "jump to end").
+  // - Allow user messages to scroll to bottom so the pending reply is visible.
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+    const lastMessage = messages[messages.length - 1];
+    if (!lastMessage) return;
 
-  // Handle send
-  const handleSend = useCallback(() => {
-    const trimmed = inputValue.trim();
-    if (!trimmed || isSending) return;
-    onSendMessage(trimmed);
-    setInputValue('');
-  }, [inputValue, isSending, onSendMessage]);
+    if (!didInitialScrollRef.current) {
+      didInitialScrollRef.current = true;
+      messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+      return;
+    }
 
-  // Handle Enter to send (Shift+Enter for newline)
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-      if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        handleSend();
+    if (lastMessage.role === 'assistant' && lastMessage.isStreaming) {
+      if (activeStreamingMessageIdRef.current !== lastMessage.id) {
+        activeStreamingMessageIdRef.current = lastMessage.id;
+        const node = document.querySelector<HTMLElement>(`[data-message-id="${lastMessage.id}"]`);
+        node?.scrollIntoView({ behavior: 'auto', block: 'start' });
       }
-    },
-    [handleSend]
-  );
+      return;
+    }
+
+    if (
+      activeStreamingMessageIdRef.current &&
+      lastMessage.role === 'assistant' &&
+      lastMessage.id === activeStreamingMessageIdRef.current &&
+      !lastMessage.isStreaming
+    ) {
+      activeStreamingMessageIdRef.current = null;
+      return;
+    }
+
+    activeStreamingMessageIdRef.current = null;
+
+    if (lastMessage.role === 'user') {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages]);
 
   // New session
   const handleNewSession = useCallback(() => {
     setActiveSessionId(null);
     clearMessages();
     setFeedbackMap({});
-    inputRef.current?.focus();
+    setVisibleMessageCount(INITIAL_VISIBLE_MESSAGES);
   }, [setActiveSessionId, clearMessages]);
 
   // Handle feedback on a message
   const handleFeedback = useCallback(
-    (msg: AIChatMessage, direction: AIFeedbackDirection) => {
+    (messageId: string, direction: AIFeedbackDirection) => {
+      const msg = messages.find((m) => m.id === messageId);
+      if (!msg) return;
+
       // Find the preceding user message to include as user_query
       const msgIndex = messages.findIndex((m) => m.id === msg.id);
       const userMsg = msgIndex > 0
@@ -430,13 +601,31 @@ export function AIChatPanel({
             </div>
           )}
 
-          {messages.map((msg) => (
-            <MessageBubble
-              key={msg.id}
-              message={msg}
-              feedbackGiven={feedbackMap[msg.id] ?? null}
-              onFeedback={(dir) => handleFeedback(msg, dir)}
-            />
+          {messages.length > visibleMessages.length && (
+            <div className="flex justify-center">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 px-2.5 text-[11px]"
+                onClick={() =>
+                  setVisibleMessageCount((prev) =>
+                    Math.min(messages.length, prev + LOAD_MORE_STEP)
+                  )
+                }
+              >
+                Load earlier messages
+              </Button>
+            </div>
+          )}
+
+          {visibleMessages.map((msg) => (
+            <div key={msg.id} data-message-id={msg.id}>
+              <MessageBubble
+                message={msg}
+                feedbackGiven={feedbackMap[msg.id] ?? null}
+                onFeedback={handleFeedback}
+              />
+            </div>
           ))}
           <div ref={messagesEndRef} />
         </div>
@@ -522,7 +711,7 @@ export function AIChatPanel({
       )}
 
       {/* Quick Actions (context-sensitive) — hidden once a conversation starts */}
-      {quickActions.length > 0 && isAvailable && messages.length === 0 && (
+      {quickActions.length > 0 && isAvailable && visibleMessages.length === 0 && (
         <>
           <div className="flex flex-wrap gap-1.5 px-3 py-2">
             {quickActions.map((action) => (
@@ -541,72 +730,13 @@ export function AIChatPanel({
         </>
       )}
 
-      {/* Input area */}
-      <div className="p-3">
-        {/* Verbosity selector */}
-        <div className="flex items-center gap-1.5 mb-2">
-          <Gauge className="h-3 w-3 text-muted-foreground shrink-0" />
-          <div className="flex gap-0.5 flex-wrap">
-            {(['concise', 'standard', 'educational'] as AIVerbosity[]).map((v) => {
-              const opt = AI_VERBOSITY_OPTIONS.find((o) => o.value === v);
-              return (
-                <button
-                  key={v}
-                  type="button"
-                  onClick={() => setVerbosity(v)}
-                  className={cn(
-                    'px-2 py-0.5 rounded text-[10px] font-medium transition-colors',
-                    verbosity === v
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-muted text-muted-foreground hover:bg-muted/80'
-                  )}
-                  title={opt?.description}
-                >
-                  {opt?.label}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        <div className="flex items-end gap-2">
-          <textarea
-            ref={inputRef}
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder={
-              isAvailable
-                ? 'Ask a clinical question...'
-                : 'TibaBot is unavailable'
-            }
-            disabled={!isAvailable || isSending}
-            className={cn(
-              'flex-1 resize-none rounded-lg border bg-background px-3 py-2',
-              'text-sm placeholder:text-muted-foreground',
-              'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
-              'disabled:cursor-not-allowed disabled:opacity-50',
-              'min-h-[40px] max-h-[120px]'
-            )}
-            rows={1}
-          />
-          <Button
-            size="icon"
-            className="h-10 w-10 shrink-0"
-            onClick={handleSend}
-            disabled={!inputValue.trim() || !isAvailable || isSending}
-          >
-            {isSending ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Send className="h-4 w-4" />
-            )}
-          </Button>
-        </div>
-        <p className="mt-1.5 text-[10px] text-muted-foreground text-center">
-          Advisory only — always verify with clinical guidelines
-        </p>
-      </div>
+      <ChatComposer
+        isAvailable={isAvailable}
+        isSending={isSending}
+        verbosity={verbosity}
+        setVerbosity={setVerbosity}
+        onSendMessage={onSendMessage}
+      />
     </div>
   );
 }

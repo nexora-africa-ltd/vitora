@@ -19,6 +19,8 @@ import logging
 import re
 from typing import Any
 
+from django.conf import settings
+from django.http import StreamingHttpResponse
 from django.utils import timezone
 from rest_framework import permissions, status
 from rest_framework.parsers import MultiPartParser
@@ -334,7 +336,7 @@ class AISuggestionAuditView(AIFeatureGatedMixin, APIView):
 
     permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
 
-    def post(self, request: Request) -> Response:
+    def post(self, request: Request) -> Response | StreamingHttpResponse:
         serializer = AISuggestionAuditRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
@@ -552,6 +554,7 @@ class ClinicalChatView(AIFeatureGatedMixin, APIView):
         serializer.is_valid(raise_exception=True)
 
         data = serializer.validated_data
+        stream_requested = bool(data.pop("stream", False))
 
         # Resolve verbosity: query-param > body > default
         data["verbosity"] = _resolve_verbosity(request, data.get("verbosity"))
@@ -611,6 +614,14 @@ class ClinicalChatView(AIFeatureGatedMixin, APIView):
         )
 
         is_first_message = session.messages.filter(role="user").count() == 1
+
+        if stream_requested:
+            return self._build_streaming_response(
+                request=request,
+                session=session,
+                data=data,
+                is_first_message=is_first_message,
+            )
 
         # Audit log
         AuditLog.log(
@@ -680,6 +691,188 @@ class ClinicalChatView(AIFeatureGatedMixin, APIView):
             content=str(assistant_content) if assistant_content else "",
             model=model_id,
         )
+
+    def _build_streaming_response(
+        self,
+        request: Request,
+        session: ChatSession,
+        data: dict[str, Any],
+        is_first_message: bool,
+    ) -> StreamingHttpResponse:
+        """Proxy TibaBot SSE chunks to the client and persist final assistant output."""
+
+        def _sse(payload: dict[str, Any]) -> str:
+            return f"data: {json.dumps(payload)}\n\n"
+
+        def _extract_chunk(event_name: str, payload: Any) -> str:
+            if isinstance(payload, dict):
+                payload_type = str(payload.get("type", "")).lower()
+                if payload_type == "chunk":
+                    return str(payload.get("content", "") or "")
+                if payload_type == "token":
+                    return str(payload.get("text", payload.get("content", "")) or "")
+                if event_name in {"token", "chunk", "message"} and payload.get("content"):
+                    return str(payload.get("content", "") or "")
+                if event_name in {"token", "chunk", "message"} and payload.get("text"):
+                    return str(payload.get("text", "") or "")
+            if isinstance(payload, str) and event_name in {"token", "chunk", "message"}:
+                return payload
+            return ""
+
+        def _extract_model(payload: Any) -> str | None:
+            if isinstance(payload, dict):
+                model = payload.get("model_used") or payload.get("model")
+                if model:
+                    return str(model)
+            return None
+
+        def _is_done_event(event_name: str, payload: Any) -> bool:
+            if event_name in {"done", "complete", "end"}:
+                return True
+            if isinstance(payload, dict):
+                payload_type = str(payload.get("type", "")).lower()
+                if payload_type in {"done", "complete", "end", "final"}:
+                    return True
+                return bool(payload.get("done") is True)
+            return False
+
+        def _extract_final_content(payload: Any) -> str:
+            if not isinstance(payload, dict):
+                return ""
+            if payload.get("content"):
+                return str(payload.get("content"))
+            message = payload.get("message")
+            if isinstance(message, dict) and message.get("content"):
+                return str(message.get("content"))
+            if isinstance(message, str):
+                return message
+            if payload.get("response"):
+                return str(payload.get("response"))
+            return ""
+
+        def event_stream():
+            chunks: list[str] = []
+            model_id: str | None = None
+            fallback_error: str | None = None
+            stream_mode = "streamed"
+
+            yield _sse({"type": "session", "session_id": str(session.id)})
+
+            try:
+                client = get_tibabot_client()
+                for event in client.clinical_chat_stream(dict(data)):
+                    event_name = str(event.get("event", "message")).lower()
+                    payload = event.get("data")
+
+                    maybe_model = _extract_model(payload)
+                    if maybe_model:
+                        model_id = maybe_model
+
+                    chunk = _extract_chunk(event_name, payload)
+                    if chunk:
+                        chunks.append(chunk)
+                        yield _sse({"type": "chunk", "content": chunk})
+
+                    if _is_done_event(event_name, payload):
+                        final_content = _extract_final_content(payload)
+                        if final_content and not chunks:
+                            chunks.append(final_content)
+                            yield _sse({"type": "chunk", "content": final_content})
+
+            except TibaBotUnavailableError:
+                fallback_error = "AI service temporarily unavailable."
+                stream_mode = "fallback"
+                fallback_content = "TibaBot is currently unavailable. Please try again later."
+                chunks = [fallback_content]
+                yield _sse({"type": "error", "error": fallback_error})
+                yield _sse({"type": "chunk", "content": fallback_content})
+            except TibaBotError:
+                fallback_error = "AI service error."
+                stream_mode = "fallback"
+                fallback_content = "An error occurred with the AI service."
+                chunks = [fallback_content]
+                yield _sse({"type": "error", "error": fallback_error})
+                yield _sse({"type": "chunk", "content": fallback_content})
+
+            # Upstream may return HTTP 200 but fail to emit chunk/done events.
+            # In that case, fall back to non-streaming chat so clinicians still
+            # get a response instead of a silent or empty stream.
+            if not chunks and not fallback_error:
+                try:
+                    stream_mode = "fallback"
+                    client = get_tibabot_client()
+                    result = client.clinical_chat(dict(data))
+
+                    tibabot_msg = result.get("message", {}) if isinstance(result, dict) else {}
+                    assistant_content = ""
+                    if isinstance(tibabot_msg, dict):
+                        assistant_content = str(tibabot_msg.get("content", "") or "")
+                    elif isinstance(tibabot_msg, str):
+                        assistant_content = tibabot_msg
+                    if not assistant_content and isinstance(result, dict):
+                        assistant_content = str(
+                            result.get("response", result.get("content", "")) or ""
+                        )
+
+                    if assistant_content:
+                        chunks = [assistant_content]
+                        maybe_model = result.get("model_used") or result.get("model")
+                        if maybe_model:
+                            model_id = str(maybe_model)
+                        yield _sse({"type": "chunk", "content": assistant_content})
+                except (TibaBotUnavailableError, TibaBotError):
+                    fallback_error = "AI service error."
+                    stream_mode = "fallback"
+                    fallback_content = "An error occurred with the AI service."
+                    chunks = [fallback_content]
+                    yield _sse({"type": "error", "error": fallback_error})
+                    yield _sse({"type": "chunk", "content": fallback_content})
+
+            final_content = "".join(chunks)
+            if not final_content.strip():
+                final_content = "I could not generate a response. Please try again."
+
+            assistant_msg = ChatMessage.objects.create(
+                session=session,
+                role="assistant",
+                content=final_content,
+            )
+
+            if is_first_message:
+                try:
+                    inferred = get_tibabot_client().generate_chat_title(
+                        data["message"], final_content
+                    )
+                except Exception:
+                    inferred = None
+                session.title = (
+                    inferred if isinstance(inferred, str) and inferred else data["message"][:120]
+                )
+                session.save(update_fields=["title"])
+
+            done_payload: dict[str, Any] = {
+                "type": "done",
+                "session_id": str(session.id),
+                "message": {
+                    "id": str(assistant_msg.id),
+                    "role": "assistant",
+                    "content": final_content,
+                    "timestamp": assistant_msg.timestamp.isoformat(),
+                },
+            }
+            if model_id:
+                done_payload["model"] = model_id
+            if fallback_error:
+                done_payload["error"] = fallback_error
+            if settings.DEBUG:
+                done_payload["stream_mode"] = stream_mode
+
+            yield _sse(done_payload)
+
+        response = StreamingHttpResponse(event_stream(), content_type="text/event-stream")
+        response["Cache-Control"] = "no-cache"
+        response["X-Accel-Buffering"] = "no"
+        return response
 
     # ------------------------------------------------------------------
     # Helpers

@@ -25,7 +25,8 @@ import { useSubscription } from '@/lib/hooks/use-subscription';
 import { useFacility } from '@/lib/context/facility-context';
 import { TibaBotStatusIndicator, TibaBotStatusStyles } from './tibabot-status-indicator';
 import { AIChatPanel } from './ai-chat-panel';
-import { useAIClinicalChat, useAIClinicalAssist } from '@/lib/hooks/use-ai';
+import { useAIClinicalAssist } from '@/lib/hooks/use-ai';
+import { aiApi } from '@/lib/api/ai';
 import {
   assessContextSufficiency,
   buildContextGuidanceMessage,
@@ -189,8 +190,7 @@ export function AIChatWidget() {
     [patientContext, encounterContext, contextEnrichment]
   );
 
-  // Chat mutation
-  const chatMutation = useAIClinicalChat();
+  const [isChatStreaming, setIsChatStreaming] = useState(false);
   const assistMutation = useAIClinicalAssist();
 
   // Permission check — only show for users with clinical chat permission
@@ -221,33 +221,97 @@ export function AIChatWidget() {
         isStreaming: true,
       });
 
+      setIsChatStreaming(true);
+
+      let streamedContent = '';
+      let pendingChunkBuffer = '';
+      let streamPump: ReturnType<typeof setInterval> | null = null;
+
+      const flushPendingChunks = () => {
+        if (!pendingChunkBuffer) return;
+        streamedContent += pendingChunkBuffer;
+        pendingChunkBuffer = '';
+        updateStreamingMessage(assistantMsgId, streamedContent, undefined, undefined, false);
+      };
+
+      const stopStreamPump = () => {
+        if (streamPump) {
+          clearInterval(streamPump);
+          streamPump = null;
+        }
+      };
+
+      const startStreamPump = () => {
+        if (streamPump) return;
+        streamPump = setInterval(() => {
+          if (!pendingChunkBuffer) return;
+
+          const step = Math.max(8, Math.min(56, Math.ceil(pendingChunkBuffer.length / 5)));
+          streamedContent += pendingChunkBuffer.slice(0, step);
+          pendingChunkBuffer = pendingChunkBuffer.slice(step);
+          updateStreamingMessage(assistantMsgId, streamedContent, undefined, undefined, false);
+        }, 28);
+      };
+
+      const waitForBufferDrain = async () => {
+        if (pendingChunkBuffer) startStreamPump();
+
+        const deadline = Date.now() + 1800;
+        while (pendingChunkBuffer && Date.now() < deadline) {
+          await new Promise((resolve) => setTimeout(resolve, 30));
+        }
+        flushPendingChunks();
+      };
+
       try {
-        const response = await chatMutation.mutateAsync({
+        const response = await aiApi.clinicalChatStream({
           message,
           session_id: activeSessionId ?? undefined,
           patient_context: mergedPatient ?? undefined,
           encounter_context: mergedEncounter ?? undefined,
           page_context: pageContext ?? undefined,
           verbosity,
+        }, {
+          onSession: (sessionId) => {
+            if (!activeSessionId && sessionId) {
+              setActiveSessionId(sessionId);
+            }
+          },
+          onChunk: (chunk) => {
+            pendingChunkBuffer += chunk;
+            startStreamPump();
+          },
+          onError: (errorMessage) => {
+            if (!streamedContent) {
+              updateStreamingMessage(assistantMsgId, `⚠️ ${errorMessage}`, false);
+            }
+          },
         });
+
+        await waitForBufferDrain();
+        stopStreamPump();
 
         // Set session ID if this is a new conversation
         if (!activeSessionId && response.session_id) {
           setActiveSessionId(response.session_id);
         }
 
-        // Update placeholder with actual response
-        updateStreamingMessage(assistantMsgId, response.message.content, true, response.model);
+        // Finalize message after staged rendering is drained.
+        updateStreamingMessage(assistantMsgId, response.message.content || streamedContent, true);
       } catch (error) {
+        stopStreamPump();
         // Update placeholder with backend error message (permission, rate-limit, etc.)
         updateStreamingMessage(
           assistantMsgId,
           formatChatError(error, 'Sorry, I couldn\'t process your request. Please try again.'),
           true,
         );
+      } finally {
+        stopStreamPump();
+        setIsChatStreaming(false);
       }
     },
-    [activeSessionId, addMessage, updateStreamingMessage, chatMutation, setActiveSessionId, mergedPatient, mergedEncounter, pageContext, verbosity]
+    [activeSessionId, addMessage, updateStreamingMessage, setActiveSessionId, mergedPatient, mergedEncounter, pageContext, verbosity]
   );
 
   // Handle "Ask about this patient"
@@ -563,7 +627,7 @@ export function AIChatWidget() {
               onSendMessage={handleSendMessage}
               onAskAboutPatient={handleAskAboutPatient}
               onQuickAction={handleQuickAction}
-              isSending={chatMutation.isPending || assistMutation.isPending}
+              isSending={isChatStreaming || assistMutation.isPending}
               headerDragHandlers={{
                 onPointerDown: handleHeaderPointerDown,
                 onPointerMove: handleHeaderPointerMove,

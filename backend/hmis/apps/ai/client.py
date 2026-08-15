@@ -10,8 +10,10 @@ Handles communication with the TibaBot AI service, including:
 - Dual-layer auth: X-API-Key (facility) + Authorization: Bearer (user identity)
 """
 
+import json
 import logging
 import threading
+from collections.abc import Iterator
 from contextlib import contextmanager
 from typing import Any, ClassVar
 
@@ -301,6 +303,116 @@ class TibaBotClient:
                 status_code=status,
             ) from e
 
+    def _request_sse(
+        self,
+        method: str,
+        endpoint: str,
+        data: dict[str, Any] | None = None,
+        params: dict[str, Any] | None = None,
+    ) -> Iterator[dict[str, Any]]:
+        """Make an HTTP SSE request to TibaBot and yield parsed events."""
+        url = f"{self.base_url.rstrip('/')}/{endpoint.lstrip('/')}"
+
+        headers: dict[str, str] = {"Accept": "text/event-stream"}
+        user = _get_current_user()
+        if user is not None:
+            token = mint_tibabot_jwt(user)
+            if token:
+                headers["Authorization"] = f"Bearer {token}"
+
+            facility_key = _resolve_facility_api_key(user)
+            if facility_key:
+                headers["X-API-Key"] = facility_key
+
+        try:
+            with self.session.request(
+                method=method,
+                url=url,
+                json=data,
+                params=params,
+                timeout=self.timeout,
+                headers=headers,
+                stream=True,
+            ) as response:
+                response.raise_for_status()
+
+                event_name = "message"
+                data_lines: list[str] = []
+
+                for raw_line in response.iter_lines(decode_unicode=True):
+                    if raw_line is None:
+                        continue
+
+                    line = raw_line.rstrip("\r")
+                    if not line:
+                        if data_lines:
+                            payload_text = "\n".join(data_lines)
+                            try:
+                                payload: Any = json.loads(payload_text)
+                            except json.JSONDecodeError:
+                                payload = payload_text
+                            yield {"event": event_name or "message", "data": payload}
+                            data_lines = []
+                            event_name = "message"
+                        continue
+
+                    if line.startswith(":"):
+                        continue
+                    if line.startswith("event:"):
+                        event_name = line[len("event:") :].strip() or "message"
+                        continue
+                    if line.startswith("data:"):
+                        data_lines.append(line[len("data:") :].lstrip())
+
+                if data_lines:
+                    payload_text = "\n".join(data_lines)
+                    try:
+                        payload = json.loads(payload_text)
+                    except json.JSONDecodeError:
+                        payload = payload_text
+                    yield {"event": event_name or "message", "data": payload}
+
+        except requests.exceptions.ConnectionError as e:
+            logger.warning("TibaBot SSE connection failed: %s", e)
+            raise TibaBotUnavailableError("TibaBot AI service is currently unavailable.") from e
+
+        except requests.exceptions.Timeout as e:
+            logger.warning("TibaBot SSE request timed out after %ds", self.timeout)
+            raise TibaBotUnavailableError("TibaBot AI service request timed out.") from e
+
+        except requests.exceptions.RetryError as e:
+            logger.warning("TibaBot SSE max retries exceeded: %s", e)
+            raise TibaBotUnavailableError(f"TibaBot service unavailable after retries: {e}") from e
+
+        except requests.exceptions.HTTPError as e:
+            status = e.response.status_code if e.response is not None else None
+            response_body = ""
+            if e.response is not None:
+                try:
+                    response_body = e.response.text[:500]
+                except Exception:
+                    pass
+            if status and status >= 500:
+                logger.warning(
+                    "TibaBot SSE server error: status=%s body=%s",
+                    status,
+                    response_body,
+                )
+                raise TibaBotUnavailableError(
+                    f"TibaBot server error (HTTP {status}): {response_body or 'no response body'}",
+                    status_code=status,
+                ) from e
+            logger.error(
+                "TibaBot SSE API error: %s %s — response: %s",
+                status,
+                e,
+                response_body,
+            )
+            raise TibaBotError(
+                f"TibaBot API error: {e}",
+                status_code=status,
+            ) from e
+
     def suggest_icd10(self, clinical_text: str) -> dict[str, Any]:
         """
         Get ICD-10 code suggestions for clinical text.
@@ -376,6 +488,18 @@ class TibaBotClient:
             method="POST",
             endpoint="/clinical/chat",
             data=payload,
+        )
+
+    def clinical_chat_stream(self, payload: dict[str, Any]) -> Iterator[dict[str, Any]]:
+        """Send a clinical chat request and stream SSE events."""
+        if "message" in payload:
+            payload["message"] = sanitize_clinical_text(payload["message"])
+
+        stream_payload = {**payload, "stream": True}
+        return self._request_sse(
+            method="POST",
+            endpoint="/clinical/chat",
+            data=stream_payload,
         )
 
     def clinical_assist(self, payload: dict[str, Any]) -> dict[str, Any]:
