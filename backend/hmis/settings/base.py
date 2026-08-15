@@ -498,9 +498,9 @@ SIMPLE_JWT = {
     "USER_ID_CLAIM": "user_id",
     "AUTH_TOKEN_CLASSES": ("rest_framework_simplejwt.tokens.AccessToken",),
     "TOKEN_TYPE_CLAIM": "token_type",
-    # PowerSync integration: custom serializer adds facility_id, organization_id,
-    # iss, and aud claims to JWT tokens for sync rule evaluation.
-    "TOKEN_OBTAIN_SERIALIZER": "hmis.apps.core.powersync_tokens.PowerSyncTokenObtainPairSerializer",
+    # Default auth tokens for /api/token/ should remain generic application JWTs.
+    # PowerSync-specific claims are issued only via /api/powersync/credentials/.
+    "TOKEN_OBTAIN_SERIALIZER": "rest_framework_simplejwt.serializers.TokenObtainPairSerializer",
 }
 
 # CORS settings (for development, will be more restrictive in production)

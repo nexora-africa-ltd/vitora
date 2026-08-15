@@ -67,10 +67,10 @@ class TestPowerSyncTokenClaims:
         # Should have 3 parts (header.payload.signature)
         assert jwt_string.count(".") == 2
 
-    def test_login_endpoint_returns_powersync_claims(
-        self, api_client, test_user, test_staff_profile, sample_facility, sample_organization
+    def test_login_endpoint_uses_generic_jwt_claims(
+        self, api_client, test_user, test_staff_profile
     ):
-        """POST /api/token/ should return tokens with PowerSync claims embedded."""
+        """POST /api/token/ should return generic auth JWTs (no PowerSync audience)."""
         import jwt
         from django.conf import settings
 
@@ -84,18 +84,18 @@ class TestPowerSyncTokenClaims:
 
         # May get 200 (success) or MFA challenge — both are valid
         if response.status_code == 200 and "access" in response.data:
-            # Decode the access token to verify claims
+            # Decode without audience verification (generic token has no aud by default)
             decoded = jwt.decode(
                 response.data["access"],
                 settings.SECRET_KEY,
                 algorithms=["HS256"],
-                audience="powersync",
-                issuer="vitora-hmis",
+                options={"verify_aud": False},
             )
-            assert decoded["facility_id"] == sample_facility.id
-            assert decoded["organization_id"] == sample_organization.id
-            assert decoded["iss"] == "vitora-hmis"
-            assert decoded["aud"] == "powersync"
+            assert decoded["token_type"] == "access"
+            assert decoded["user_id"] == str(test_user.id)
+            assert "aud" not in decoded
+            assert "facility_id" not in decoded
+            assert "organization_id" not in decoded
 
 
 class TestPowerSyncCredentialsMultiOrg:
