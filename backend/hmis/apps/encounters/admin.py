@@ -8,12 +8,15 @@ from django.contrib import admin
 from hmis.apps.core.mixins import TenantScopedAdminMixin
 
 from .models import (
+    ChronicCondition,
     Diagnosis,
     Encounter,
     ICD10Code,
     Medication,
     TreatmentPlan,
     TreatmentPlanTemplate,
+    VitalFlagSuggestion,
+    VitalFlagSuggestionAction,
 )
 
 
@@ -212,4 +215,102 @@ class MedicationAdmin(admin.ModelAdmin):
         "updated_at",
     )
     search_fields = ("name",)
+    date_hierarchy = "created_at"
+
+
+@admin.register(VitalFlagSuggestion)
+class VitalFlagSuggestionAdmin(TenantScopedAdminMixin, admin.ModelAdmin):
+    """Admin for clinician-reviewable vitals flag suggestions."""
+
+    list_display = (
+        "id",
+        "flag_key",
+        "severity",
+        "status",
+        "patient",
+        "encounter",
+        "facility",
+        "mapping_status",
+        "detected_at",
+        "resolved_at",
+    )
+    list_filter = (
+        "severity",
+        "status",
+        "source_type",
+        "mapping_status",
+        "facility",
+        "organization",
+    )
+    search_fields = (
+        "flag_key",
+        "patient__mrn",
+        "patient__first_name",
+        "patient__last_name",
+        "encounter__id",
+    )
+    readonly_fields = ("detected_at", "acknowledged_at", "resolved_at", "created_at", "updated_at")
+    raw_id_fields = (
+        "patient",
+        "encounter",
+        "triage_assessment",
+        "suggested_icd10",
+        "selected_icd10",
+        "resolved_by",
+        "linked_diagnosis",
+        "linked_chronic_condition",
+        "facility",
+        "organization",
+    )
+    date_hierarchy = "detected_at"
+
+
+@admin.register(VitalFlagSuggestionAction)
+class VitalFlagSuggestionActionAdmin(admin.ModelAdmin):
+    """Admin for immutable VitalFlagSuggestion action log."""
+
+    list_display = (
+        "id",
+        "suggestion",
+        "action_type",
+        "from_status",
+        "to_status",
+        "actor",
+        "created_at",
+    )
+    list_filter = ("action_type", "to_status", "created_at")
+    search_fields = (
+        "suggestion__flag_key",
+        "suggestion__patient__mrn",
+        "suggestion__patient__first_name",
+        "suggestion__patient__last_name",
+        "actor__username",
+    )
+    raw_id_fields = ("suggestion", "actor")
+    readonly_fields = ("created_at",)
+    date_hierarchy = "created_at"
+
+
+@admin.register(ChronicCondition)
+class ChronicConditionStructuredAdmin(TenantScopedAdminMixin, admin.ModelAdmin):
+    """Admin for structured chronic condition records."""
+
+    list_display = (
+        "id",
+        "condition_name",
+        "status",
+        "patient",
+        "encounter",
+        "facility",
+        "created_at",
+    )
+    list_filter = ("status", "facility", "organization")
+    search_fields = (
+        "condition_name",
+        "icd10_code",
+        "patient__mrn",
+        "patient__first_name",
+        "patient__last_name",
+    )
+    raw_id_fields = ("patient", "encounter", "recorded_by", "facility", "organization")
     date_hierarchy = "created_at"

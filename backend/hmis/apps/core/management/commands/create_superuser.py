@@ -1,18 +1,42 @@
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
-"""
-Management command to create a superuser for Vitora HMIS.
-Used for initial setup and admin access.
+"""Create or reconcile a local Django superuser for Vitora HMIS.
 
-On hub deployments, this also auto-creates a StaffProfile linked to the
-hub's organization and facility (from HUB_ORGANIZATION_ID / HUB_FACILITY_ID
-env vars, or from the first org/facility in the DB).
+Purpose:
+- Bootstraps admin access during setup and hub activation workflows.
+- Optionally creates/updates a linked ``StaffProfile`` for the user.
 
-Cloud-aware conflict prevention:
-  - Reads ``cloud_users.json`` manifest (written by ``seed_from_activation``)
-    to detect username collisions with cloud accounts.
-  - When cloud admin accounts exist, offers to skip local creation.
-  - On hub settings, uses ``HUB_USER_PK_OFFSET`` to avoid PK collisions
-    with cloud-assigned user IDs.
+Primary operations:
+- Create a new superuser (default behavior).
+- Promote/update an existing user with superuser/staff/active flags.
+- Reset password for an existing account when requested.
+- Auto-create missing ``StaffProfile`` unless disabled.
+
+Cloud/hub safeguards:
+- Reads ``$HUB_DATA_DIR/cloud_users.json`` (from ``seed_from_activation``)
+  to detect cloud username/admin collisions.
+- Prompts to skip local creation when cloud admin users already exist.
+- Uses ``settings.HUB_USER_PK_OFFSET`` (if set) to allocate user IDs in a
+  hub-local PK range and avoid cloud PK collisions.
+
+CLI options:
+- ``--username <str>``: local username (default: ``admin``).
+- ``--email <str>``: email address (default: ``admin@vitora.digital``).
+- ``--password <str>``: explicit password; if omitted, one is generated.
+- ``--no-profile``: skip ``StaffProfile`` creation/update checks.
+- ``--force``: bypass cloud-admin/username collision guardrails.
+- ``--reset-password``: reset password when the user already exists.
+
+Environment inputs:
+- ``HUB_DATA_DIR``: directory containing ``cloud_users.json``.
+- ``HUB_ORGANIZATION_ID``: preferred organization for ``StaffProfile``.
+- ``HUB_FACILITY_ID``: preferred facility for ``StaffProfile``.
+- ``HUB_USER_PK_OFFSET``: optional PK offset for hub-local user IDs.
+
+Examples:
+- ``python manage.py create_superuser``
+- ``python manage.py create_superuser --username admin2 --email admin2@example.com``
+- ``python manage.py create_superuser --username admin --reset-password``
+- ``python manage.py create_superuser --username local-admin --force --no-profile``
 """
 
 import json

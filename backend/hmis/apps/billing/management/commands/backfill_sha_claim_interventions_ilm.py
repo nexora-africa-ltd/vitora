@@ -1,3 +1,33 @@
+"""Backfill SHA claim intervention metadata from DHA ILM registry endpoints.
+
+This command enriches ``SHAClaimIntervention`` rows with intervention metadata
+such as payment mechanism, access point, required documents, fund/schemes, and
+tariff values by querying ILM sub-benefits and benefit-interventions APIs.
+
+How to run:
+    python manage.py backfill_sha_claim_interventions_ilm [options]
+
+Arguments:
+    None.
+
+Options:
+    --claim-id (int): Process only interventions for one SHA claim.
+    --intervention-id (int): Process only one ``SHAClaimIntervention`` row.
+    --limit (int): Maximum interventions to scan.
+    --max-sub-benefits (int): Cap sub-benefit buckets scanned per row.
+        Default: 25 (bounded to 1..200).
+    --allow-broad-fallback: If parent/hint lookup fails, scan all patient
+        sub-benefits for a match.
+    --overwrite: Overwrite existing non-empty metadata fields.
+    --include-complete: Include rows that already appear fully populated.
+    --commit: Persist updates. Without this flag, command is dry-run.
+
+Behavior notes:
+- Targets active interventions by default.
+- Rejects using ``--claim-id`` and ``--intervention-id`` together.
+- Prints per-row update outcomes and a final scan/update summary.
+"""
+
 from __future__ import annotations
 
 import re
@@ -23,6 +53,8 @@ class _ResolutionResult:
 
 
 class Command(BaseCommand):
+    """Django command entrypoint for ILM-based intervention metadata backfill."""
+
     help = (
         "Backfill SHAClaimIntervention metadata from ILM benefits endpoints "
         "(sub-benefits + benefit-interventions)."

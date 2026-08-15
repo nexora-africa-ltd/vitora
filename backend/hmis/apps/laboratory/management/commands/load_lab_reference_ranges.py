@@ -1,15 +1,29 @@
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
-"""
-Management command to load lab test reference ranges into LabResultTemplate.
+"""Load or refresh lab reference-range templates used by test catalog workflows.
 
-Populates common lab test parameters with WHO-recommended and Kenya-specific
-reference ranges for different demographics (adult male, adult female, pediatric).
+Purpose:
+- Seed ``LabResultTemplate`` rows with predefined panel/parameter reference ranges.
+- Provide baseline critical thresholds and demographic ranges for common tests.
 
-Usage:
-    python manage.py load_lab_reference_ranges
-    python manage.py load_lab_reference_ranges --clear  # Clear existing first
-    python manage.py load_lab_reference_ranges --panel CBC  # Load specific panel
-    python manage.py load_lab_reference_ranges --dry-run  # Validate without loading
+Primary operations:
+- Load all configured panels, or a single panel via ``--panel``.
+- Upsert templates by ``(test_code, parameter_code)``.
+- Optionally clear existing templates before loading fresh data.
+- Support dry-run validation with transaction rollback.
+
+CLI options:
+- ``--panel <code>``: load one panel only (for example ``CBC`` or ``LIVER``).
+- ``--clear``: delete existing ``LabResultTemplate`` rows before loading.
+- ``--dry-run``: preview creates/updates without committing DB changes.
+
+Arguments:
+- No positional arguments.
+
+Examples:
+- ``python manage.py load_lab_reference_ranges``
+- ``python manage.py load_lab_reference_ranges --panel CBC``
+- ``python manage.py load_lab_reference_ranges --dry-run``
+- ``python manage.py load_lab_reference_ranges --clear --panel LIVER``
 """
 
 import logging

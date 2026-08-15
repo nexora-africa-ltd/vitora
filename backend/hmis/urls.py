@@ -5,9 +5,19 @@ URL configuration for Vitora HMIS project.
 The `urlpatterns` list routes URLs to views.
 """
 
+import os
+import platform
+import sys
+import time
+from datetime import UTC, datetime
+
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
+from django.core.cache import caches
+from django.core.exceptions import ImproperlyConfigured
+from django.db import connections
+from django.db.migrations.executor import MigrationExecutor
 from django.http import JsonResponse
 from django.urls import include, path
 from django.views.decorators.cache import never_cache
@@ -66,6 +76,7 @@ from hmis.apps.encounters.views import (
     SocialHistoryObservationViewSet,
     TreatmentPlanTemplateViewSet,
     TreatmentPlanView,
+    VitalFlagSuggestionViewSet,
 )
 from hmis.apps.laboratory.views import (
     EncounterLabOrderViewSet,
@@ -79,46 +90,292 @@ from hmis.apps.patients.views import (
     PatientViewSet,
 )
 
+PROCESS_START_MONOTONIC = time.monotonic()
 
-@csrf_exempt
-@never_cache
-def health_check(request):
-    """Simple health check endpoint for monitoring."""
-    from django.conf import settings
 
-    from hmis.apps.billing.services.icd11_status import get_icd11_local_fallback_status
+def _truncate_error(exc: Exception, max_len: int = 300) -> str:
+    """Return a compact error string suitable for health endpoint payloads."""
+    message = str(exc).strip() or exc.__class__.__name__
+    return message[:max_len]
 
-    # Check if WebSocket/Channels is configured
-    websocket_enabled = False
+
+def _check_database_health() -> dict[str, object]:
+    """Check default database connectivity and query latency."""
+    started = time.monotonic()
+    db_settings = settings.DATABASES.get("default", {})
+    details: dict[str, object] = {
+        "status": "unknown",
+        "engine": db_settings.get("ENGINE", ""),
+        "name": str(db_settings.get("NAME", "")),
+    }
+
     try:
-        # Check if ASGI application and channel layers are configured
-        asgi_app = getattr(settings, "ASGI_APPLICATION", None)
+        with connections["default"].cursor() as cursor:
+            cursor.execute("SELECT 1")
+            cursor.fetchone()
+        details["status"] = "healthy"
+    except Exception as exc:
+        details["status"] = "unhealthy"
+        details["error"] = _truncate_error(exc)
+
+    details["latency_ms"] = round((time.monotonic() - started) * 1000, 2)
+    return details
+
+
+def _check_cache_health() -> dict[str, object]:
+    """Check default cache backend availability with a set/get/delete cycle."""
+    started = time.monotonic()
+    details: dict[str, object] = {"status": "unknown", "backend": None}
+
+    try:
+        cache = caches["default"]
+        details["backend"] = f"{cache.__class__.__module__}.{cache.__class__.__name__}"
+
+        probe_key = f"health:probe:{int(time.time() * 1000)}:{os.getpid()}"
+        probe_value = f"ok:{probe_key}"
+        cache.set(probe_key, probe_value, timeout=10)
+        round_trip = cache.get(probe_key)
+        cache.delete(probe_key)
+
+        details["status"] = "healthy" if round_trip == probe_value else "degraded"
+        if round_trip != probe_value:
+            details["detail"] = "Cache round-trip probe value mismatch"
+    except ImproperlyConfigured as exc:
+        details["status"] = "unavailable"
+        details["error"] = _truncate_error(exc)
+    except Exception as exc:
+        details["status"] = "unhealthy"
+        details["error"] = _truncate_error(exc)
+
+    details["latency_ms"] = round((time.monotonic() - started) * 1000, 2)
+    return details
+
+
+def _check_migration_health() -> dict[str, object]:
+    """Report whether unapplied migrations exist for the default DB."""
+    started = time.monotonic()
+    details: dict[str, object] = {
+        "status": "unknown",
+        "pending_count": None,
+        "has_pending_migrations": None,
+    }
+
+    try:
+        connection = connections["default"]
+        executor = MigrationExecutor(connection)
+        targets = executor.loader.graph.leaf_nodes()
+        pending_count = len(executor.migration_plan(targets))
+        details["pending_count"] = pending_count
+        details["has_pending_migrations"] = pending_count > 0
+        details["status"] = "healthy" if pending_count == 0 else "pending"
+    except Exception as exc:
+        details["status"] = "unavailable"
+        details["error"] = _truncate_error(exc)
+
+    details["latency_ms"] = round((time.monotonic() - started) * 1000, 2)
+    return details
+
+
+def _check_websocket_health() -> dict[str, object]:
+    """Validate whether Channels/WebSocket wiring is configured."""
+    details: dict[str, object] = {
+        "status": "unknown",
+        "enabled": False,
+        "asgi_application": None,
+        "channel_layer_backends": [],
+    }
+
+    try:
+        asgi_application = getattr(settings, "ASGI_APPLICATION", None)
         channel_layers = getattr(settings, "CHANNEL_LAYERS", {})
-        # Check if channels is in installed apps
         channels_installed = "channels" in settings.INSTALLED_APPS
 
-        # WebSocket is enabled if all components are configured
-        websocket_enabled = bool(asgi_app and channel_layers and channels_installed)
-    except Exception:
-        websocket_enabled = False
+        backends = []
+        for layer in channel_layers.values():
+            backend = layer.get("BACKEND") if isinstance(layer, dict) else None
+            if backend:
+                backends.append(backend)
 
-    # Quick KMS health check (PII encryption provider)
+        enabled = bool(asgi_application and channel_layers and channels_installed)
+        details.update(
+            {
+                "status": "healthy" if enabled else "unavailable",
+                "enabled": enabled,
+                "asgi_application": asgi_application,
+                "channel_layer_backends": backends,
+                "channels_installed": channels_installed,
+            }
+        )
+    except Exception as exc:
+        details["status"] = "unavailable"
+        details["error"] = _truncate_error(exc)
+
+    return details
+
+
+def _check_kms_health() -> dict[str, object]:
+    """Check encryption provider availability for PII operations."""
+    details: dict[str, object] = {
+        "status": "unknown",
+        "provider": None,
+    }
+
     try:
         from hmis.apps.core.kms import get_kms_provider
 
         kms = get_kms_provider()
-        pii_encryption = "healthy" if kms.is_healthy() else "unhealthy"
-    except Exception:
-        pii_encryption = "unavailable"
+        details["provider"] = kms.__class__.__name__
+        details["status"] = "healthy" if kms.is_healthy() else "unhealthy"
+    except Exception as exc:
+        details["status"] = "unavailable"
+        details["error"] = _truncate_error(exc)
+
+    return details
+
+
+def _check_tibabot_health() -> dict[str, object]:
+    """Check TibaBot feature flag, configuration, and remote service availability."""
+    details: dict[str, object] = {
+        "status": "unknown",
+        "enabled": bool(getattr(settings, "TIBABOT_ENABLED", False)),
+        "api_url": str(getattr(settings, "TIBABOT_API_URL", "") or ""),
+        "timeout_seconds": int(getattr(settings, "TIBABOT_TIMEOUT", 30)),
+        "configured": False,
+        "service_available": False,
+    }
+
+    if not details["enabled"]:
+        details["status"] = "disabled"
+        return details
+
+    api_key = str(getattr(settings, "TIBABOT_API_KEY", "") or "")
+    has_auth = bool(
+        api_key
+        or getattr(settings, "TIBABOT_JWT_PRIVATE_KEY", "")
+        or getattr(settings, "TIBABOT_JWT_SECRET", "")
+    )
+    details["configured"] = bool(details["api_url"]) and has_auth
+    if not details["configured"]:
+        details["status"] = "misconfigured"
+        return details
+
+    try:
+        from hmis.apps.ai.client import TibaBotError, get_tibabot_client
+
+        started = time.monotonic()
+        client = get_tibabot_client()
+        health = client._request("GET", "/health")
+        details["service_available"] = True
+        details["status"] = "healthy"
+        details["latency_ms"] = round((time.monotonic() - started) * 1000, 2)
+        details["rag_initialized"] = bool(health.get("rag_initialized", False))
+        details["demo_mode"] = bool(health.get("demo_mode", False))
+    except TibaBotError as exc:
+        details["status"] = "unhealthy"
+        details["error"] = _truncate_error(exc)
+    except Exception as exc:
+        details["status"] = "unavailable"
+        details["error"] = _truncate_error(exc)
+
+    return details
+
+
+def _compute_overall_health(checks: dict[str, dict[str, object]]) -> str:
+    """Compute aggregate status from component checks."""
+    db_status = checks.get("database", {}).get("status")
+    if db_status == "unhealthy":
+        return "unhealthy"
+
+    degraded_markers = {"unhealthy", "degraded", "unavailable", "pending"}
+    non_core_statuses = [
+        checks.get("cache", {}).get("status"),
+        checks.get("websocket", {}).get("status"),
+        checks.get("kms", {}).get("status"),
+        checks.get("tibabot", {}).get("status"),
+    ]
+
+    if any(status in degraded_markers for status in non_core_statuses):
+        return "degraded"
+
+    return "healthy"
+
+
+def _is_truthy(value: str | None) -> bool:
+    """Parse common truthy query values (1/true/yes/on)."""
+    if value is None:
+        return False
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+@csrf_exempt
+@never_cache
+def health_check(request):
+    """Comprehensive health endpoint for monitoring and diagnostics."""
+    from hmis import __version__
+
+    lite_mode = _is_truthy(request.GET.get("lite"))
+    uptime_seconds = int(time.monotonic() - PROCESS_START_MONOTONIC)
+    timestamp = datetime.now(UTC).isoformat()
+
+    if lite_mode:
+        database_check = _check_database_health()
+        overall_status = "healthy" if database_check.get("status") == "healthy" else "unhealthy"
+        return JsonResponse(
+            {
+                "status": overall_status,
+                "service": "vitora-hmis",
+                "version": __version__,
+                "mode": "lite",
+                "timestamp": timestamp,
+                "uptime_seconds": uptime_seconds,
+                "checks": {
+                    "database": database_check,
+                },
+            }
+        )
+
+    from hmis.apps.billing.services.icd11_status import get_icd11_local_fallback_status
+
+    checks = {
+        "database": _check_database_health(),
+        "cache": _check_cache_health(),
+        "migrations": _check_migration_health(),
+        "websocket": _check_websocket_health(),
+        "kms": _check_kms_health(),
+        "tibabot": _check_tibabot_health(),
+    }
+    overall_status = _compute_overall_health(checks)
+    websocket_enabled = bool(checks["websocket"].get("enabled"))
+    pii_encryption = str(checks["kms"].get("status", "unknown"))
+
+    build_id = os.getenv("VITORA_BUILD_ID")
+    deployment_mode = os.getenv("DJANGO_ENV", "development")
 
     return JsonResponse(
         {
-            "status": "healthy",
+            "status": overall_status,
             "service": "vitora-hmis",
-            "version": "0.1.0",
+            "version": __version__,
+            "timestamp": timestamp,
+            "uptime_seconds": uptime_seconds,
+            "uptime_human": f"{uptime_seconds // 3600}h {(uptime_seconds % 3600) // 60}m",
+            "environment": {
+                "django_env": deployment_mode,
+                "debug": settings.DEBUG,
+                "python": platform.python_version(),
+                "python_implementation": platform.python_implementation(),
+                "platform": platform.platform(),
+                "executable": sys.executable,
+            },
+            "build": {
+                "id": build_id,
+                "git_sha": os.getenv("GIT_SHA") or os.getenv("VERCEL_GIT_COMMIT_SHA"),
+            },
             "websocket_enabled": websocket_enabled,
             "icd11_local_fallback": get_icd11_local_fallback_status(),
             "pii_encryption": pii_encryption,
+            "tibabot_status": checks["tibabot"].get("status", "unknown"),
+            "checks": checks,
         }
     )
 
@@ -486,6 +743,37 @@ urlpatterns = [
             {"get": "retrieve", "put": "update", "patch": "partial_update", "delete": "destroy"}
         ),
         name="patient-chronic-conditions-detail",
+    ),
+    # Nested route for vitals-derived flag suggestions under patients
+    path(
+        "api/patients/<int:patient_pk>/vital-flag-suggestions/",
+        VitalFlagSuggestionViewSet.as_view({"get": "list"}),
+        name="patient-vital-flag-suggestions-list",
+    ),
+    path(
+        "api/patients/<int:patient_pk>/vital-flag-suggestions/<int:pk>/",
+        VitalFlagSuggestionViewSet.as_view({"get": "retrieve"}),
+        name="patient-vital-flag-suggestions-detail",
+    ),
+    path(
+        "api/patients/<int:patient_pk>/vital-flag-suggestions/<int:pk>/acknowledge/",
+        VitalFlagSuggestionViewSet.as_view({"post": "acknowledge"}),
+        name="patient-vital-flag-suggestions-acknowledge",
+    ),
+    path(
+        "api/patients/<int:patient_pk>/vital-flag-suggestions/<int:pk>/map-codes/",
+        VitalFlagSuggestionViewSet.as_view({"post": "map_codes"}),
+        name="patient-vital-flag-suggestions-map-codes",
+    ),
+    path(
+        "api/patients/<int:patient_pk>/vital-flag-suggestions/<int:pk>/accept/",
+        VitalFlagSuggestionViewSet.as_view({"post": "accept"}),
+        name="patient-vital-flag-suggestions-accept",
+    ),
+    path(
+        "api/patients/<int:patient_pk>/vital-flag-suggestions/<int:pk>/reject/",
+        VitalFlagSuggestionViewSet.as_view({"post": "reject"}),
+        name="patient-vital-flag-suggestions-reject",
     ),
     # Nested route for current medications under patients
     path(

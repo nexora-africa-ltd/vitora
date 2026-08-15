@@ -191,6 +191,8 @@ class ClinicalEvents:
     CLINIC_VISIT_STATUS_CHANGED = "clinical.clinic_visit.status_changed"
     CLINIC_SESSION_OPENED = "clinical.clinic_session.opened"
     CLINIC_SESSION_CLOSED = "clinical.clinic_session.closed"
+    VITAL_FLAG_DETECTED = "clinical.vital_flag.detected"
+    VITAL_FLAG_STATUS_CHANGED = "clinical.vital_flag.status_changed"
 
 
 class InpatientEvents:

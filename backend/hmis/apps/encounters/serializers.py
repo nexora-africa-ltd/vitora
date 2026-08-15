@@ -19,6 +19,8 @@ from .models import (
     SocialHistoryObservation,
     TreatmentPlan,
     TreatmentPlanTemplate,
+    VitalFlagSuggestion,
+    VitalFlagSuggestionAction,
 )
 
 
@@ -971,6 +973,167 @@ class ChronicConditionCreateSerializer(serializers.ModelSerializer):
                 f"Invalid status. Must be one of: {', '.join(sorted(valid))}"
             )
         return value
+
+
+# =============================================================================
+# Vital Flag Suggestion Serializers
+# =============================================================================
+
+
+class VitalFlagSuggestionActionSerializer(serializers.ModelSerializer):
+    """Read serializer for VitalFlagSuggestionAction audit trail."""
+
+    actor_username = serializers.CharField(source="actor.username", read_only=True, allow_null=True)
+
+    class Meta:
+        model = VitalFlagSuggestionAction
+        fields = [
+            "id",
+            "action_type",
+            "from_status",
+            "to_status",
+            "actor",
+            "actor_username",
+            "payload_json",
+            "created_at",
+        ]
+        read_only_fields = fields
+
+
+class VitalFlagSuggestionSerializer(serializers.ModelSerializer):
+    """Read serializer for vitals-derived clinician review suggestions."""
+
+    status_display = serializers.CharField(source="get_status_display", read_only=True)
+    severity_display = serializers.CharField(source="get_severity_display", read_only=True)
+    mapping_status_display = serializers.CharField(
+        source="get_mapping_status_display", read_only=True
+    )
+    patient_name = serializers.SerializerMethodField()
+    suggested_icd10_code = serializers.CharField(
+        source="suggested_icd10.code", read_only=True, allow_null=True
+    )
+    selected_icd10_code = serializers.CharField(
+        source="selected_icd10.code", read_only=True, allow_null=True
+    )
+    resolved_by_username = serializers.CharField(
+        source="resolved_by.username", read_only=True, allow_null=True
+    )
+    actions = VitalFlagSuggestionActionSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = VitalFlagSuggestion
+        fields = [
+            "id",
+            "patient",
+            "patient_name",
+            "encounter",
+            "triage_assessment",
+            "source_type",
+            "flag_key",
+            "clinical_domain",
+            "severity",
+            "severity_display",
+            "status",
+            "status_display",
+            "detected_at",
+            "acknowledged_at",
+            "resolved_at",
+            "rule_id",
+            "rule_version",
+            "evidence_json",
+            "mapping_status",
+            "mapping_status_display",
+            "suggested_icd10",
+            "suggested_icd10_code",
+            "suggested_icd11_code",
+            "suggested_icd11_title",
+            "selected_icd10",
+            "selected_icd10_code",
+            "selected_icd11_code",
+            "selected_icd11_title",
+            "resolution_action",
+            "resolution_note",
+            "resolved_by",
+            "resolved_by_username",
+            "linked_diagnosis",
+            "linked_chronic_condition",
+            "actions",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = fields
+
+    def get_patient_name(self, obj: VitalFlagSuggestion) -> str:
+        return f"{obj.patient.first_name} {obj.patient.last_name}"
+
+
+class VitalFlagSuggestionMapSerializer(serializers.Serializer):
+    """Payload serializer for mapping ICD codes on a suggestion."""
+
+    selected_icd10 = serializers.PrimaryKeyRelatedField(
+        queryset=ICD10Code.objects.filter(is_active=True),
+        required=False,
+        allow_null=True,
+    )
+    selected_icd11_code = serializers.CharField(required=False, allow_blank=True, max_length=50)
+    selected_icd11_title = serializers.CharField(required=False, allow_blank=True, max_length=500)
+
+
+class VitalFlagSuggestionAcknowledgeSerializer(serializers.Serializer):
+    """Payload serializer for acknowledge action."""
+
+    note = serializers.CharField(required=False, allow_blank=True, max_length=1000)
+
+
+class VitalFlagSuggestionRejectSerializer(serializers.Serializer):
+    """Payload serializer for reject action."""
+
+    reason = serializers.CharField(required=True, allow_blank=False, max_length=1000)
+
+
+class VitalFlagSuggestionAcceptSerializer(serializers.Serializer):
+    """Payload serializer for accept action and downstream record creation."""
+
+    resolution_action = serializers.ChoiceField(
+        choices=VitalFlagSuggestion.ResolutionAction.choices
+    )
+    note = serializers.CharField(required=False, allow_blank=True, max_length=1000)
+    selected_icd10 = serializers.PrimaryKeyRelatedField(
+        queryset=ICD10Code.objects.filter(is_active=True),
+        required=False,
+        allow_null=True,
+    )
+    selected_icd11_code = serializers.CharField(required=False, allow_blank=True, max_length=50)
+    selected_icd11_title = serializers.CharField(required=False, allow_blank=True, max_length=500)
+    diagnosis_type = serializers.ChoiceField(
+        choices=Diagnosis.DIAGNOSIS_TYPE_CHOICES, required=False
+    )
+    certainty = serializers.ChoiceField(choices=Diagnosis.CERTAINTY_CHOICES, required=False)
+    condition_name = serializers.CharField(required=False, allow_blank=True, max_length=255)
+    chronic_status = serializers.ChoiceField(
+        choices=ChronicCondition.ConditionStatus.choices,
+        required=False,
+    )
+
+    def validate(self, attrs: dict) -> dict:
+        action = attrs["resolution_action"]
+        if action in {
+            VitalFlagSuggestion.ResolutionAction.CREATE_DIAGNOSIS_PROVISIONAL,
+            VitalFlagSuggestion.ResolutionAction.CREATE_DIAGNOSIS_CONFIRMED,
+        }:
+            if not attrs.get("selected_icd10") and not attrs.get("selected_icd11_code"):
+                raise serializers.ValidationError(
+                    "Provide selected_icd10 or selected_icd11_code when creating a diagnosis."
+                )
+
+        if action == VitalFlagSuggestion.ResolutionAction.ADD_CHRONIC_CONDITION and not attrs.get(
+            "condition_name"
+        ):
+            raise serializers.ValidationError(
+                {"condition_name": "condition_name is required when adding a chronic condition."}
+            )
+
+        return attrs
 
 
 # =============================================================================

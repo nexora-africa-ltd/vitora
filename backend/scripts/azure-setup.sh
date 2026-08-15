@@ -132,7 +132,7 @@ az containerapp create \
     "HIE_AUTO_CR_REGISTER=true" \
     "HIE_AUTO_SHR_PUSH=false" \
     "HIE_ADX_ENABLED=false" \
-    "FHIR_BASE_URL=https://staging.vitora.digital" \
+    "FHIR_BASE_URL=https://staging-api.vitora.digital" \
     "KMS_PROVIDER=local" \
     "TIBABOT_ENABLED=true" \
     "TIBABOT_API_URL=https://tibabot.vitora.nexora.africa" \

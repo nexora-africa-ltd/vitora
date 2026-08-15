@@ -1,12 +1,20 @@
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
-"""One-time cleanup for duplicate SHA claim attachments.
+"""Remove duplicate SHA claim attachments using checksum/content signatures.
 
-Usage:
-    python manage.py dedupe_sha_claim_attachments --dry-run
-    python manage.py dedupe_sha_claim_attachments --claim-id 123
-    python manage.py dedupe_sha_claim_attachments --commit
+How to run:
+    python manage.py dedupe_sha_claim_attachments [--claim-id ID] [--commit]
 
-Default mode is dry-run. Pass ``--commit`` to actually delete duplicates.
+Arguments:
+    None.
+
+Options:
+    --claim-id (int): Limit processing to a single ``SHAClaim`` ID.
+    --commit: Apply deletions. If omitted, command runs in dry-run mode.
+
+Behavior notes:
+- Duplicate detection prefers stored checksum, then file-content hash, then
+  filename/mime/size fallback signature.
+- Default mode is dry-run and prints what would be deleted.
 """
 
 from __future__ import annotations
@@ -26,6 +34,8 @@ class _Candidate:
 
 
 class Command(BaseCommand):
+    """Django command entrypoint for SHA attachment deduplication."""
+
     help = "Remove duplicate SHA claim attachments (checksum/content-based dedupe)"
 
     def add_arguments(self, parser):

@@ -1,9 +1,9 @@
 .PHONY: help install test lint format type-check security clean \
 	staging-status staging-logs staging-logs-100 staging-exec staging-seed \
 	staging-migrate staging-shell staging-restart staging-env staging-secrets \
-	staging-deploy staging-login-test check-ilm \
-	prod-deploy prod-env prod-logs prod-status prod-restart \
-	api api-wsgi kill-api r
+	staging-deploy staging-verify staging-login-test check-ilm \
+	prod-deploy prod-env prod-logs prod-exec prod-shell prod-status prod-restart prod-verify \
+	runserver api api-wsgi kill-api r
 
 help:
 	@echo "Vitora HMIS Backend - Make Commands"
@@ -22,12 +22,15 @@ help:
 	@echo "Testing:"
 	@echo "  test          - Run tests with coverage"
 	@echo "  test-fast     - Run tests without coverage"
+	@echo "  test-fast-fail - Run tests without coverage and stop at first failure"
 	@echo "  test-unit     - Run unit tests only"
 	@echo "  test-integration - Run integration tests only"
 	@echo "  test-contracts - Run serializer contract tests"
+	@echo "  test-watch    - Run tests in watch mode"
 	@echo "  test-fhir     - Run FHIR validation tests"
 	@echo "  test-shr      - Run SHA SHR compliance tests"
 	@echo "  test-fhir-integration - Run FHIR server integration tests"
+	@echo "  test-fhir-integration-cov - Run FHIR integration tests with coverage"
 	@echo "  test-fhir-all - Run all FHIR tests (schema + integration)"
 	@echo "  test-fhir-full - Full cycle: start server, test, stop"
 	@echo "  inferno-smoke - Seed FHIR test data and start the local Inferno IPS smoke flow"
@@ -44,10 +47,25 @@ help:
 	@echo "Code Quality:"
 	@echo "  lint          - Run all linters (ruff, black check, isort check)"
 	@echo "  format        - Format code with black and isort"
+	@echo "  ruff          - Run ruff lint checks"
+	@echo "  ruff-fix      - Run ruff lint checks with auto-fix"
+	@echo "  black         - Run black formatting checks"
+	@echo "  black-format  - Format code with black"
+	@echo "  isort         - Run import ordering checks"
+	@echo "  isort-format  - Format imports with isort"
 	@echo "  type-check    - Run mypy type checking"
 	@echo "  security      - Run bandit security scan"
 	@echo "  quality       - Run all quality checks (lint + type-check + security)"
 	@echo "  pre-commit    - Run all checks before committing"
+	@echo "  cloc          - Count lines of code"
+	@echo ""
+	@echo "Build & Reports:"
+	@echo "  build-compiled-hub     - Compile hub with Nuitka"
+	@echo "  build-compiled-hub-dry - Dry run of hub compilation"
+	@echo "  package-hub            - Compile and package hub tarball"
+	@echo "  coverage-html          - Generate HTML coverage report"
+	@echo "  coverage-report        - Generate terminal + XML coverage report"
+	@echo "  schema                 - Generate OpenAPI schema"
 	@echo ""
 	@echo "Database:"
 	@echo "  showmigrations - Show Django migrations"
@@ -70,12 +88,34 @@ help:
 	@echo "  seed-diseases-update - Update diseases from JSON"
 	@echo "  seed-surveillance - Seed surveillance demo cases for DHIS2 testing"
 	@echo "  seed-surveillance-clear - Clear and re-seed surveillance demo data"
+	@echo "  seed-kepi       - Seed KEPI indicators and forms"
+	@echo "  seed-subscription-plans - Seed subscription plans"
+	@echo "  seed-feature-flags - Seed feature flags"
+	@echo "  seed-service-catalog - Seed billing service catalog"
+	@echo "  seed-cds-rules  - Seed CDS default rules"
+	@echo "  seed-snomed     - Seed SNOMED subset"
+	@echo "  seed-imaging-catalog - Seed imaging service catalog"
+	@echo "  seed-procedure-catalog - Seed procedure catalog"
+	@echo "  seed-surgical-procedures - Seed surgical procedures"
+	@echo "  seed-theatre-roles - Seed theatre role matrix"
+	@echo "  seed-er-beds    - Seed ER bed templates"
+	@echo "  seed-quality-measures - Seed quality measure definitions"
+	@echo "  seed-analyzer-templates - Seed lab analyzer templates"
+	@echo "  seed-vaccines   - Seed immunization vaccine definitions"
+	@echo "  seed-autoverify-defaults - Seed lab autoverify defaults"
+	@echo "  seed-bed-assignment-rules - Seed bed assignment rules"
+	@echo "  seed-discharge-templates - Seed discharge templates"
+	@echo "  seed-outbreak-thresholds - Seed outbreak threshold defaults"
+	@echo "  seed-kenhdd     - Seed Kenya Health Data Dictionary mappings"
 	@echo "  init-pki        - Initialize PKI Certificate Authority (idempotent)"
 	@echo "  import-all      - Run all data imports"
 	@echo ""
 	@echo "Setup:"
 	@echo "  setup-db       - Setup database with all data + superuser prompt"
 	@echo "  setup-db-quick - Setup database with test user (no prompts)"
+	@echo "  seed-demo      - Seed demo clinical data"
+	@echo "  setup-demo     - Full setup + demo data"
+	@echo "  seed-surveillance-demo - Seed surveillance-only demo data"
 	@echo ""
 	@echo "Docker:"
 	@echo "  docker-up     - Start Docker containers"
@@ -108,7 +148,17 @@ help:
 	@echo "  staging-login-test  - Test login against the staging API"
 	@echo ""
 	@echo "Production:"
+	@echo "  prod-deploy         - Build, push, and deploy image to production ACA"
+	@echo "  prod-env            - Sync production environment variables"
+	@echo "  prod-logs           - Tail production logs"
+	@echo "  prod-exec           - Open a bash shell in the production container"
+	@echo "  prod-shell          - Open Django shell in the production container"
+	@echo "  prod-status         - Show production ACA status"
+	@echo "  prod-restart        - Restart the active production revision"
 	@echo "  prod-verify         - Post-deploy: PII integrity + login smoke test"
+	@echo ""
+	@echo "Utilities:"
+	@echo "  gen-secret    - Generate a random 32-character secret"
 	@echo ""
 	@echo "Cleanup:"
 	@echo "  clean         - Remove generated files and caches"
@@ -293,6 +343,9 @@ migrate:
 
 createsuperuser:
 	poetry run python manage.py createsuperuser
+
+runserver:
+	poetry run python manage.py runserver
 
 api:
 	@echo "Starting ASGI server with WebSocket support on port 9088..."
@@ -780,6 +833,12 @@ prod-env:
 
 prod-logs:
 	az containerapp logs show -n $(ACA_PROD_NAME) -g $(ACA_RG) --follow
+
+prod-exec:
+	az containerapp exec -n $(ACA_PROD_NAME) -g $(ACA_RG) --command bash
+
+prod-shell:
+	az containerapp exec -n $(ACA_PROD_NAME) -g $(ACA_RG) --command "python manage.py shell"
 
 prod-verify:
 	@echo "=== Post-deploy verification ==="

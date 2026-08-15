@@ -3099,6 +3099,200 @@ class ChronicCondition(FacilityScopedModel, TimeStampedModel):
         super().save(*args, **kwargs)
 
 
+class VitalFlagSuggestion(FacilityScopedModel, TimeStampedModel):
+    """Clinician-reviewable suggestion raised from vitals/triage rule evaluation."""
+
+    class SourceType(models.TextChoices):
+        TRIAGE = "TRIAGE", "Triage"
+        ENCOUNTER = "ENCOUNTER", "Encounter"
+        BACKGROUND_RULE = "BACKGROUND_RULE", "Background Rule"
+
+    class Severity(models.TextChoices):
+        INFO = "INFO", "Info"
+        WARNING = "WARNING", "Warning"
+        CRITICAL = "CRITICAL", "Critical"
+
+    class Status(models.TextChoices):
+        NEW = "NEW", "New"
+        ACKNOWLEDGED = "ACKNOWLEDGED", "Acknowledged"
+        MAPPED = "MAPPED", "Mapped"
+        ACCEPTED = "ACCEPTED", "Accepted"
+        REJECTED = "REJECTED", "Rejected"
+        EXPIRED = "EXPIRED", "Expired"
+        SUPERSEDED = "SUPERSEDED", "Superseded"
+
+    class MappingStatus(models.TextChoices):
+        UNMAPPED = "UNMAPPED", "Unmapped"
+        AUTO_MAPPED = "AUTO_MAPPED", "Auto mapped"
+        NEEDS_REVIEW = "NEEDS_REVIEW", "Needs review"
+        CONFIRMED = "CONFIRMED", "Confirmed"
+
+    class ResolutionAction(models.TextChoices):
+        CREATE_DIAGNOSIS_PROVISIONAL = (
+            "CREATE_DIAGNOSIS_PROVISIONAL",
+            "Create provisional diagnosis",
+        )
+        CREATE_DIAGNOSIS_CONFIRMED = "CREATE_DIAGNOSIS_CONFIRMED", "Create confirmed diagnosis"
+        ADD_CHRONIC_CONDITION = "ADD_CHRONIC_CONDITION", "Add chronic condition"
+        NOTE_ONLY = "NOTE_ONLY", "Note only"
+        NO_ACTION = "NO_ACTION", "No action"
+
+    OPEN_STATUSES = [Status.NEW, Status.ACKNOWLEDGED, Status.MAPPED]
+
+    patient = models.ForeignKey(
+        "patients.Patient",
+        on_delete=models.CASCADE,
+        related_name="vital_flag_suggestions",
+    )
+    encounter = models.ForeignKey(
+        "encounters.Encounter",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="vital_flag_suggestions",
+    )
+    triage_assessment = models.ForeignKey(
+        "triage.TriageAssessment",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="vital_flag_suggestions",
+    )
+
+    source_type = models.CharField(max_length=24, choices=SourceType.choices)
+    flag_key = models.CharField(max_length=64)
+    clinical_domain = models.CharField(max_length=64, blank=True, default="")
+    severity = models.CharField(max_length=16, choices=Severity.choices, default=Severity.WARNING)
+    status = models.CharField(max_length=16, choices=Status.choices, default=Status.NEW)
+
+    detected_at = models.DateTimeField(default=timezone.now)
+    acknowledged_at = models.DateTimeField(null=True, blank=True)
+    resolved_at = models.DateTimeField(null=True, blank=True)
+
+    rule_id = models.CharField(max_length=80, blank=True, default="")
+    rule_version = models.CharField(max_length=40, blank=True, default="")
+    evidence_json = models.JSONField(default=dict, blank=True)
+
+    mapping_status = models.CharField(
+        max_length=24,
+        choices=MappingStatus.choices,
+        default=MappingStatus.UNMAPPED,
+    )
+    suggested_icd10 = models.ForeignKey(
+        ICD10Code,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="vital_flag_suggested_by",
+    )
+    suggested_icd11_code = models.CharField(max_length=50, blank=True, default="")
+    suggested_icd11_title = models.CharField(max_length=500, blank=True, default="")
+
+    selected_icd10 = models.ForeignKey(
+        ICD10Code,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="vital_flag_selected_by",
+    )
+    selected_icd11_code = models.CharField(max_length=50, blank=True, default="")
+    selected_icd11_title = models.CharField(max_length=500, blank=True, default="")
+
+    resolution_action = models.CharField(
+        max_length=40,
+        choices=ResolutionAction.choices,
+        blank=True,
+        default="",
+    )
+    resolution_note = models.TextField(blank=True, default="")
+    resolved_by = models.ForeignKey(
+        "auth.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="resolved_vital_flag_suggestions",
+    )
+
+    linked_diagnosis = models.ForeignKey(
+        "encounters.Diagnosis",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="source_vital_flag_suggestions",
+    )
+    linked_chronic_condition = models.ForeignKey(
+        "encounters.ChronicCondition",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="source_vital_flag_suggestions",
+    )
+
+    class Meta(TimeStampedModel.Meta):
+        ordering = ["-detected_at", "-created_at"]
+        indexes = [
+            models.Index(fields=["patient", "status"]),
+            models.Index(fields=["encounter", "status"]),
+            models.Index(fields=["flag_key", "status"]),
+            models.Index(fields=["detected_at"]),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["patient", "encounter", "flag_key"],
+                condition=models.Q(status__in=["NEW", "ACKNOWLEDGED", "MAPPED"]),
+                name="unique_open_vital_flag_per_patient_encounter",
+            )
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.flag_key} ({self.status}) - patient {self.patient_id}"
+
+    def save(self, *args, **kwargs):
+        resolve_tenant_from_related(self, encounter_field="encounter", patient_field="patient")
+        super().save(*args, **kwargs)
+
+
+class VitalFlagSuggestionAction(models.Model):
+    """Immutable state/action log for VitalFlagSuggestion transitions."""
+
+    class ActionType(models.TextChoices):
+        DETECTED = "DETECTED", "Detected"
+        ACKNOWLEDGED = "ACKNOWLEDGED", "Acknowledged"
+        MAPPING_UPDATED = "MAPPING_UPDATED", "Mapping updated"
+        ACCEPTED = "ACCEPTED", "Accepted"
+        REJECTED = "REJECTED", "Rejected"
+        EXPIRED = "EXPIRED", "Expired"
+        SUPERSEDED = "SUPERSEDED", "Superseded"
+
+    suggestion = models.ForeignKey(
+        VitalFlagSuggestion,
+        on_delete=models.CASCADE,
+        related_name="actions",
+    )
+    action_type = models.CharField(max_length=20, choices=ActionType.choices)
+    from_status = models.CharField(max_length=16, blank=True, default="")
+    to_status = models.CharField(max_length=16, blank=True, default="")
+    actor = models.ForeignKey(
+        "auth.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="vital_flag_suggestion_actions",
+    )
+    payload_json = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at", "-id"]
+        indexes = [
+            models.Index(fields=["suggestion", "created_at"]),
+            models.Index(fields=["action_type", "created_at"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.action_type} suggestion={self.suggestion_id}"
+
+
 class CurrentMedication(FacilityScopedModel, TimeStampedModel):
     """Structured current medication statement for patient intake (FHIR MedicationStatement)."""
 

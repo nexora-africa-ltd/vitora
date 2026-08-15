@@ -82,6 +82,7 @@ import { PatientChronicConditionsTab } from '@/components/patients/chronic-condi
 import { PatientCurrentMedicationsTab } from '@/components/patients/current-medications';
 import { PatientPastSurgeriesTab } from '@/components/patients/past-surgeries';
 import { PatientFamilyHistoryTab } from '@/components/patients/family-history';
+import { PatientVitalFlagSuggestionsTab } from '@/components/patients/vital-flag-suggestions';
 import { PatientAlliedHealthTab } from '@/components/patients/allied-health';
 import { PatientAuditTrail } from '@/components/patients/patient-audit-trail';
 import { EGFRTrendChart } from '@/components/patients/egfr-trend-chart';
@@ -639,7 +640,7 @@ export default function PatientDetailPage() {
 
           {/* Clinical — Vitals | Allergies | Emergency Contacts */}
           <TabsContent value="clinical">
-            <Accordion type="multiple" defaultValue={['vitals', 'egfr-trend', 'allergies', 'social-history', 'chronic-conditions', 'current-medications', 'past-surgeries', 'family-history', 'emergency-contacts']}>
+            <Accordion type="multiple" defaultValue={['vitals', 'vital-flags', 'egfr-trend', 'allergies', 'social-history', 'chronic-conditions', 'current-medications', 'past-surgeries', 'family-history', 'emergency-contacts']}>
               <AccordionItem value="vitals">
                 <AccordionTrigger className="hover:no-underline">
                   <div className="flex items-center gap-2">
@@ -667,6 +668,18 @@ export default function PatientDetailPage() {
                 </AccordionTrigger>
                 <AccordionContent>
                     <EGFRTrendChart patientId={patient.id} />
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="vital-flags">
+                <AccordionTrigger className="hover:no-underline">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+                    <span>Vitals Flag Review</span>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent>
+                  <PatientVitalFlagSuggestionsTab patientId={patient.id} />
                 </AccordionContent>
               </AccordionItem>
 

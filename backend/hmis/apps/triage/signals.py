@@ -170,6 +170,11 @@ def update_encounter_triage_status(sender, instance, created, **kwargs):
     if created:
         _notify_urgent_triage(instance, encounter)
 
+    # Generate/refresh vitals-derived clinician review suggestions
+    from hmis.apps.encounters.services import VitalFlagSuggestionService
+
+    VitalFlagSuggestionService.detect_from_triage(instance)
+
 
 def _notify_urgent_triage(instance, encounter):
     """Send notification for RED/ORANGE triage category patients."""

@@ -5,6 +5,7 @@ Views for the encounters app.
 
 from django.core.exceptions import ValidationError
 from django.db.models import ProtectedError
+from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema, inline_serializer
 from rest_framework import filters, serializers, status, viewsets
@@ -43,6 +44,8 @@ from .models import (
     SocialHistoryObservation,
     TreatmentPlan,
     TreatmentPlanTemplate,
+    VitalFlagSuggestion,
+    VitalFlagSuggestionAction,
 )
 from .serializers import (
     ChronicConditionCreateSerializer,
@@ -63,6 +66,11 @@ from .serializers import (
     SocialHistoryObservationSerializer,
     TreatmentPlanSerializer,
     TreatmentPlanTemplateSerializer,
+    VitalFlagSuggestionAcceptSerializer,
+    VitalFlagSuggestionAcknowledgeSerializer,
+    VitalFlagSuggestionMapSerializer,
+    VitalFlagSuggestionRejectSerializer,
+    VitalFlagSuggestionSerializer,
 )
 
 
@@ -2196,6 +2204,328 @@ class ChronicConditionViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets
             user_agent=self.request.META.get("HTTP_USER_AGENT", ""),
             patient_id=patient_id,
             details={"condition_name": name},
+        )
+
+
+class VitalFlagSuggestionViewSet(TenantScopedViewMixin, viewsets.ReadOnlyModelViewSet):
+    """Review and resolve vitals-derived clinical flag suggestions for a patient."""
+
+    queryset = VitalFlagSuggestion.objects.select_related(
+        "patient",
+        "encounter",
+        "triage_assessment",
+        "suggested_icd10",
+        "selected_icd10",
+        "resolved_by",
+        "linked_diagnosis",
+        "linked_chronic_condition",
+    ).prefetch_related("actions")
+    serializer_class = VitalFlagSuggestionSerializer
+    permission_classes = [
+        IsAuthenticated,
+        RequiresActiveShiftPermission,
+        ReadRequiresModelPermission,
+    ]
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filterset_fields = ["status", "severity", "flag_key", "mapping_status", "source_type"]
+    ordering_fields = ["detected_at", "created_at", "resolved_at"]
+    ordering = ["-detected_at"]
+    tenant_scope = "facility"
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        patient_pk = self.kwargs.get("patient_pk")
+        if patient_pk:
+            qs = qs.filter(patient_id=patient_pk)
+        return qs
+
+    def get_serializer_class(self):
+        if self.action == "acknowledge":
+            return VitalFlagSuggestionAcknowledgeSerializer
+        if self.action == "map_codes":
+            return VitalFlagSuggestionMapSerializer
+        if self.action == "accept":
+            return VitalFlagSuggestionAcceptSerializer
+        if self.action == "reject":
+            return VitalFlagSuggestionRejectSerializer
+        return VitalFlagSuggestionSerializer
+
+    @action(detail=True, methods=["post"], url_path="acknowledge")
+    def acknowledge(self, request, patient_pk=None, pk=None):
+        suggestion = self.get_object()
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        if suggestion.status not in (
+            VitalFlagSuggestion.Status.NEW,
+            VitalFlagSuggestion.Status.MAPPED,
+        ):
+            return Response(
+                {"detail": f"Cannot acknowledge suggestion in status {suggestion.status}."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        from_status = suggestion.status
+        suggestion.status = VitalFlagSuggestion.Status.ACKNOWLEDGED
+        suggestion.acknowledged_at = timezone.now()
+        suggestion.save(update_fields=["status", "acknowledged_at", "updated_at"])
+
+        note = serializer.validated_data.get("note", "")
+        self._append_action(
+            suggestion=suggestion,
+            action_type=VitalFlagSuggestionAction.ActionType.ACKNOWLEDGED,
+            from_status=from_status,
+            to_status=suggestion.status,
+            actor=request.user,
+            payload={"note": note},
+        )
+
+        self._audit(
+            request=request,
+            action="vital_flag_suggestion_acknowledge",
+            suggestion=suggestion,
+            details={"note": note, "from_status": from_status, "to_status": suggestion.status},
+        )
+        return Response(
+            VitalFlagSuggestionSerializer(suggestion, context={"request": request}).data
+        )
+
+    @action(detail=True, methods=["post"], url_path="map-codes")
+    def map_codes(self, request, patient_pk=None, pk=None):
+        suggestion = self.get_object()
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        from_status = suggestion.status
+        suggestion.selected_icd10 = serializer.validated_data.get("selected_icd10")
+        suggestion.selected_icd11_code = serializer.validated_data.get("selected_icd11_code", "")
+        suggestion.selected_icd11_title = serializer.validated_data.get("selected_icd11_title", "")
+        suggestion.mapping_status = VitalFlagSuggestion.MappingStatus.CONFIRMED
+        if suggestion.status in (
+            VitalFlagSuggestion.Status.NEW,
+            VitalFlagSuggestion.Status.ACKNOWLEDGED,
+        ):
+            suggestion.status = VitalFlagSuggestion.Status.MAPPED
+        suggestion.save(
+            update_fields=[
+                "selected_icd10",
+                "selected_icd11_code",
+                "selected_icd11_title",
+                "mapping_status",
+                "status",
+                "updated_at",
+            ]
+        )
+
+        self._append_action(
+            suggestion=suggestion,
+            action_type=VitalFlagSuggestionAction.ActionType.MAPPING_UPDATED,
+            from_status=from_status,
+            to_status=suggestion.status,
+            actor=request.user,
+            payload={
+                "selected_icd10": suggestion.selected_icd10.code
+                if suggestion.selected_icd10
+                else "",
+                "selected_icd11_code": suggestion.selected_icd11_code,
+            },
+        )
+        self._audit(
+            request=request,
+            action="vital_flag_suggestion_map_codes",
+            suggestion=suggestion,
+            details={"from_status": from_status, "to_status": suggestion.status},
+        )
+        return Response(
+            VitalFlagSuggestionSerializer(suggestion, context={"request": request}).data
+        )
+
+    @action(detail=True, methods=["post"], url_path="accept")
+    def accept(self, request, patient_pk=None, pk=None):
+        suggestion = self.get_object()
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        data = serializer.validated_data
+        from_status = suggestion.status
+
+        selected_icd10 = data.get("selected_icd10")
+        selected_icd11_code = data.get("selected_icd11_code", "")
+        selected_icd11_title = data.get("selected_icd11_title", "")
+        if selected_icd10 is not None or selected_icd11_code or selected_icd11_title:
+            suggestion.selected_icd10 = selected_icd10
+            suggestion.selected_icd11_code = selected_icd11_code
+            suggestion.selected_icd11_title = selected_icd11_title
+            suggestion.mapping_status = VitalFlagSuggestion.MappingStatus.CONFIRMED
+
+        resolution_action = data["resolution_action"]
+        note = data.get("note", "")
+
+        created_diagnosis = None
+        created_condition = None
+        if resolution_action in {
+            VitalFlagSuggestion.ResolutionAction.CREATE_DIAGNOSIS_PROVISIONAL,
+            VitalFlagSuggestion.ResolutionAction.CREATE_DIAGNOSIS_CONFIRMED,
+        }:
+            if suggestion.encounter_id is None:
+                return Response(
+                    {"detail": "Diagnosis creation requires a linked encounter."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            created_diagnosis = Diagnosis.objects.create(
+                encounter=suggestion.encounter,
+                icd10_code=suggestion.selected_icd10,
+                icd11_code=suggestion.selected_icd11_code,
+                icd11_display=suggestion.selected_icd11_title,
+                diagnosis_type=data.get("diagnosis_type", "WORKING"),
+                notes=note,
+                is_confirmed=(
+                    resolution_action
+                    == VitalFlagSuggestion.ResolutionAction.CREATE_DIAGNOSIS_CONFIRMED
+                ),
+                certainty=data.get(
+                    "certainty",
+                    "confirmed"
+                    if resolution_action
+                    == VitalFlagSuggestion.ResolutionAction.CREATE_DIAGNOSIS_CONFIRMED
+                    else "provisional",
+                ),
+                diagnosed_by=request.user,
+            )
+            suggestion.linked_diagnosis = created_diagnosis
+
+        elif resolution_action == VitalFlagSuggestion.ResolutionAction.ADD_CHRONIC_CONDITION:
+            condition_name = (
+                data.get("condition_name", "").strip()
+                or suggestion.flag_key.replace("_", " ").title()
+            )
+            icd10_code = suggestion.selected_icd10.code if suggestion.selected_icd10 else ""
+            created_condition = ChronicCondition.objects.create(
+                patient=suggestion.patient,
+                encounter=suggestion.encounter,
+                condition_name=condition_name,
+                icd10_code=icd10_code,
+                status=data.get("chronic_status", ChronicCondition.ConditionStatus.ACTIVE),
+                notes=note,
+                recorded_by=request.user,
+                **self.get_tenant_save_kwargs(),
+            )
+            suggestion.linked_chronic_condition = created_condition
+
+        suggestion.status = VitalFlagSuggestion.Status.ACCEPTED
+        suggestion.resolution_action = resolution_action
+        suggestion.resolution_note = note
+        suggestion.resolved_by = request.user
+        suggestion.resolved_at = timezone.now()
+        suggestion.save(
+            update_fields=[
+                "selected_icd10",
+                "selected_icd11_code",
+                "selected_icd11_title",
+                "mapping_status",
+                "linked_diagnosis",
+                "linked_chronic_condition",
+                "status",
+                "resolution_action",
+                "resolution_note",
+                "resolved_by",
+                "resolved_at",
+                "updated_at",
+            ]
+        )
+
+        self._append_action(
+            suggestion=suggestion,
+            action_type=VitalFlagSuggestionAction.ActionType.ACCEPTED,
+            from_status=from_status,
+            to_status=suggestion.status,
+            actor=request.user,
+            payload={
+                "resolution_action": resolution_action,
+                "diagnosis_id": created_diagnosis.id if created_diagnosis else None,
+                "chronic_condition_id": created_condition.id if created_condition else None,
+            },
+        )
+        self._audit(
+            request=request,
+            action="vital_flag_suggestion_accept",
+            suggestion=suggestion,
+            details={
+                "from_status": from_status,
+                "to_status": suggestion.status,
+                "resolution_action": resolution_action,
+                "diagnosis_id": created_diagnosis.id if created_diagnosis else None,
+                "chronic_condition_id": created_condition.id if created_condition else None,
+            },
+        )
+        return Response(
+            VitalFlagSuggestionSerializer(suggestion, context={"request": request}).data
+        )
+
+    @action(detail=True, methods=["post"], url_path="reject")
+    def reject(self, request, patient_pk=None, pk=None):
+        suggestion = self.get_object()
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        from_status = suggestion.status
+        reason = serializer.validated_data["reason"]
+
+        suggestion.status = VitalFlagSuggestion.Status.REJECTED
+        suggestion.resolution_action = VitalFlagSuggestion.ResolutionAction.NO_ACTION
+        suggestion.resolution_note = reason
+        suggestion.resolved_by = request.user
+        suggestion.resolved_at = timezone.now()
+        suggestion.save(
+            update_fields=[
+                "status",
+                "resolution_action",
+                "resolution_note",
+                "resolved_by",
+                "resolved_at",
+                "updated_at",
+            ]
+        )
+
+        self._append_action(
+            suggestion=suggestion,
+            action_type=VitalFlagSuggestionAction.ActionType.REJECTED,
+            from_status=from_status,
+            to_status=suggestion.status,
+            actor=request.user,
+            payload={"reason": reason},
+        )
+        self._audit(
+            request=request,
+            action="vital_flag_suggestion_reject",
+            suggestion=suggestion,
+            details={"from_status": from_status, "to_status": suggestion.status, "reason": reason},
+        )
+        return Response(
+            VitalFlagSuggestionSerializer(suggestion, context={"request": request}).data
+        )
+
+    def _append_action(self, *, suggestion, action_type, from_status, to_status, actor, payload):
+        VitalFlagSuggestionAction.objects.create(
+            suggestion=suggestion,
+            action_type=action_type,
+            from_status=from_status,
+            to_status=to_status,
+            actor=actor,
+            payload_json=payload,
+        )
+
+    def _audit(self, *, request, action: str, suggestion, details: dict):
+        AuditLog.log(
+            action=action,
+            user=request.user,
+            resource_type="VitalFlagSuggestion",
+            resource_id=suggestion.id,
+            ip_address=get_client_ip(request),
+            user_agent=request.META.get("HTTP_USER_AGENT", ""),
+            patient_id=suggestion.patient_id,
+            details=details,
         )
 
 

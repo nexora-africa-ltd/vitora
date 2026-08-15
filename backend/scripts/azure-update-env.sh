@@ -36,7 +36,7 @@ if [[ -z "$FQDN" ]]; then
   exit 1
 fi
 
-PUBLIC_API_BASE_URL="${CLOUD_API_BASE_URL:-https://${FQDN}}"
+PUBLIC_API_BASE_URL="${CLOUD_API_BASE_URL:-https://staging-api.vitora.digital}"
 PUBLIC_API_BASE_URL="${PUBLIC_API_BASE_URL%/}"
 PUBLIC_SYNC_SERVER_URL="${SYNC_SERVER_URL:-${PUBLIC_API_BASE_URL}/api/sync}"
 
@@ -184,10 +184,10 @@ az containerapp update \
     "HIE_AUTO_CR_REGISTER=${HIE_AUTO_CR_REGISTER:-true}" \
     "HIE_AUTO_SHR_PUSH=${HIE_AUTO_SHR_PUSH:-false}" \
     "HIE_ADX_ENABLED=${HIE_ADX_ENABLED:-false}" \
-    "FHIR_BASE_URL=https://staging.vitora.digital" \
+    "FHIR_BASE_URL=${FHIR_BASE_URL:-${PUBLIC_API_BASE_URL}}" \
     "KMS_PROVIDER=${KMS_PROVIDER:-local}" \
     "TIBABOT_ENABLED=${TIBABOT_ENABLED:-true}" \
-    "TIBABOT_API_URL=${TIBABOT_API_URL:-https://tibabot.vitora.nexora.africa}" \
+    "TIBABOT_API_URL=${TIBABOT_API_URL:-https://ai.vitora.digital}" \
     "TIBABOT_API_KEY=secretref:tibabot-api-key" \
     "TIBABOT_TIMEOUT=${TIBABOT_TIMEOUT:-30}" \
     "TIBABOT_JWT_SECRET=secretref:tibabot-jwt-secret" \

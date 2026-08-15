@@ -1,3 +1,27 @@
+"""Report SHA claim interventions still missing fund/schemes metadata.
+
+This command identifies interventions that remain incomplete after ILM backfill
+so operations can run targeted remediation.
+
+How to run:
+    python manage.py report_sha_claim_intervention_fund_gaps [options]
+
+Arguments:
+    None.
+
+Options:
+    --claim-id (int): Filter report to one SHA claim.
+    --intervention-id (int): Filter report to one intervention row.
+    --include-retired: Include retired rows (default scans active only).
+    --only-both-missing: Report only rows missing both fund and schemes.
+    --limit (int): Maximum rows to print. Default: 500.
+    --json: Emit machine-readable JSON output.
+
+Behavior notes:
+- Rejects using ``--claim-id`` and ``--intervention-id`` together.
+- Prints target claim IDs to feed backfill reruns.
+"""
+
 from __future__ import annotations
 
 import json
@@ -8,6 +32,8 @@ from hmis.apps.billing.models import SHAClaimIntervention
 
 
 class Command(BaseCommand):
+    """Django command entrypoint for SHA intervention metadata gap reporting."""
+
     help = (
         "Report SHA claim interventions still missing fund/schemes metadata "
         "after ILM backfill so ops can re-run targeted claims."

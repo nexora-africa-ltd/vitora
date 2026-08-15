@@ -1,14 +1,31 @@
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
-"""
-Management command to import LOINC codes from CSV file.
+"""Import and reconcile LOINC codes into ``laboratory.LOINCCode``.
 
-LOINC (Logical Observation Identifiers Names and Codes) is a universal
-standard for identifying medical laboratory observations.
+Purpose:
+- Load standard lab observation identifiers (LOINC) from CSV into the DB.
+- Support first-run bootstrap using built-in fallback records when no CSV exists.
 
-Usage:
-    python manage.py import_loinc
-    python manage.py import_loinc --file path/to/loinc.csv
-    python manage.py import_loinc --clear  # Clear existing before import
+Primary operations:
+- Validate required CSV headers before processing rows.
+- Upsert records by ``code`` (create new, update existing).
+- Optionally clear all existing LOINC rows before import.
+- Optionally run validation-only mode without writing to the database.
+
+CLI options:
+- ``--file <path>``: CSV source path. Defaults to ``settings.LOINC_DATA_PATH``
+  (or ``data/loinc_common.csv`` when the setting is absent).
+- ``--clear``: delete existing ``LOINCCode`` rows before import.
+- ``--dry-run``: parse/validate rows and print summary without persistence.
+
+Environment/settings inputs:
+- ``settings.LOINC_DATA_PATH``: default file path when ``--file`` is omitted.
+- ``settings.BASE_DIR``: base for resolving relative ``--file`` paths.
+
+Examples:
+- ``python manage.py import_loinc``
+- ``python manage.py import_loinc --file data/loinc_common.csv``
+- ``python manage.py import_loinc --file /tmp/loinc.csv --dry-run``
+- ``python manage.py import_loinc --clear``
 """
 
 import csv

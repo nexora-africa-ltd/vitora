@@ -184,7 +184,7 @@ az containerapp update \
     "HIE_AUTO_CR_REGISTER=${HIE_AUTO_CR_REGISTER:-true}" \
     "HIE_AUTO_SHR_PUSH=${HIE_AUTO_SHR_PUSH:-false}" \
     "HIE_ADX_ENABLED=${HIE_ADX_ENABLED:-false}" \
-    "FHIR_BASE_URL=${FHIR_BASE_URL:-https://app.vitora.digital}" \
+    "FHIR_BASE_URL=${FHIR_BASE_URL:-${PUBLIC_API_BASE_URL}}" \
     "KMS_PROVIDER=${KMS_PROVIDER:-local}" \
     "TIBABOT_ENABLED=${TIBABOT_ENABLED:-true}" \
     "TIBABOT_API_URL=${TIBABOT_API_URL:-}" \

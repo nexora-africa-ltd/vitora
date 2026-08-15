@@ -1,9 +1,29 @@
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
-"""
-Management command to auto-assign result LOINC codes to LabResultTemplate entries.
+"""Auto-map ``LabResultTemplate.result_loinc_code`` values from LOINC data.
 
-Matches template parameter names against the LOINCCode database using
-case-insensitive substring matching.
+Purpose:
+- Backfill missing result LOINC mappings for lab result parameters.
+- Improve interoperability for downstream exports and standardized reporting.
+
+Primary operations:
+- Select templates with empty mappings (or all templates with ``--overwrite``).
+- Match parameter names against ``LOINCCode`` using layered heuristics:
+  exact long name, exact component, then contains match.
+- Write matched LOINC codes to ``result_loinc_code`` unless running dry-run.
+- Report matched/unmatched totals at the end of execution.
+
+CLI options:
+- ``--dry-run``: preview proposed matches without saving updates.
+- ``--overwrite``: include templates that already have ``result_loinc_code``.
+
+Arguments:
+- No positional arguments.
+
+Examples:
+- ``python manage.py assign_result_loinc``
+- ``python manage.py assign_result_loinc --dry-run``
+- ``python manage.py assign_result_loinc --overwrite``
+- ``python manage.py assign_result_loinc --dry-run --overwrite``
 """
 
 from django.core.management.base import BaseCommand

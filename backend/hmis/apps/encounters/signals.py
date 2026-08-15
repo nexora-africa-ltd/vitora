@@ -13,6 +13,8 @@ from django.dispatch import receiver
 
 from hmis.apps.core.events import ClinicalEvents, publish_event
 
+from .services import VitalFlagSuggestionService
+
 logger = logging.getLogger(__name__)
 
 
@@ -159,6 +161,9 @@ def publish_encounter_event(sender, instance, created, **kwargs):
     # Notify about critical vitals when encounter is updated
     if not created and hasattr(instance, "has_critical_vitals"):
         _notify_critical_vitals(instance)
+
+    # Generate/refresh vitals-derived clinician review suggestions
+    VitalFlagSuggestionService.detect_from_encounter(instance)
 
     # Sync SHA claim diagnosis when encounter is closed
     if not created and getattr(instance, "status", "") == "CLOSED":
@@ -342,3 +347,50 @@ def sync_sha_claim_diagnosis(sender, instance, **kwargs):
                 logger.debug("SHA intervention suggestion not triggered (Celery unavailable)")
     except Exception:
         logger.exception("Failed to sync SHA claim diagnosis for diagnosis %s", instance.pk)
+
+
+@receiver(pre_save, sender="encounters.VitalFlagSuggestion")
+def cache_previous_vital_flag_status(sender, instance, **kwargs):
+    """Cache previous status to publish status-change events on post_save."""
+    previous = None
+    if instance.pk:
+        previous = sender.objects.filter(pk=instance.pk).values_list("status", flat=True).first()
+    instance._previous_status = previous
+
+
+@receiver(post_save, sender="encounters.VitalFlagSuggestion")
+def publish_vital_flag_suggestion_events(sender, instance, created, **kwargs):
+    """Publish domain events for vitals suggestion lifecycle changes."""
+    if created:
+        publish_event(
+            event_type=ClinicalEvents.VITAL_FLAG_DETECTED,
+            aggregate_type="VitalFlagSuggestion",
+            aggregate_id=instance.id,
+            payload={
+                "patient_id": instance.patient_id,
+                "encounter_id": instance.encounter_id,
+                "flag_key": instance.flag_key,
+                "severity": instance.severity,
+                "status": instance.status,
+            },
+            facility_id=getattr(instance, "facility_id", None),
+            organization_id=getattr(instance, "organization_id", None),
+        )
+        return
+
+    previous_status = getattr(instance, "_previous_status", None)
+    if previous_status and previous_status != instance.status:
+        publish_event(
+            event_type=ClinicalEvents.VITAL_FLAG_STATUS_CHANGED,
+            aggregate_type="VitalFlagSuggestion",
+            aggregate_id=instance.id,
+            payload={
+                "patient_id": instance.patient_id,
+                "encounter_id": instance.encounter_id,
+                "flag_key": instance.flag_key,
+                "from_status": previous_status,
+                "to_status": instance.status,
+            },
+            facility_id=getattr(instance, "facility_id", None),
+            organization_id=getattr(instance, "organization_id", None),
+        )

@@ -1,10 +1,32 @@
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
-"""
-Management command to seed default delta check and auto-verify rules.
+"""Seed default lab auto-verify and delta-check rules from TestCatalog tests.
 
-Seeds commonly-used delta check thresholds and auto-verify conditions
-for all facilities (or a specific facility) that have tests in the
-TestCatalog matching the default codes.
+Purpose:
+- Bootstrap lab quality-control defaults for facilities using standard test codes.
+- Create foundational ``DeltaCheckRule``, ``AutoVerifyRule``, and config records.
+
+Primary operations:
+- Resolve default test-code set against existing ``TestCatalog`` entries.
+- Seed rules for all facilities, or a single facility via ``--facility``.
+- Create missing rows only (idempotent ``get_or_create`` behavior).
+- Optionally preview planned inserts without writing changes.
+
+CLI options:
+- ``--facility <id>``: limit seeding to one facility primary key.
+- ``--dry-run``: print intended creations without persisting any records.
+
+Arguments:
+- No positional arguments.
+
+Dependencies:
+- Requires matching ``TestCatalog.code`` entries for seeded defaults
+  (for example ``HGB``, ``WBC``, ``PLT``, ``K``, ``NA``).
+
+Examples:
+- ``python manage.py seed_autoverify_defaults``
+- ``python manage.py seed_autoverify_defaults --facility 12``
+- ``python manage.py seed_autoverify_defaults --dry-run``
+- ``python manage.py seed_autoverify_defaults --facility 12 --dry-run``
 """
 
 from decimal import Decimal

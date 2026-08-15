@@ -5,7 +5,7 @@ import { useParams, useSearchParams } from 'next/navigation';
 import {
   PlayCircle, User, Calendar, Stethoscope, Eye,
   ClipboardList, FileText, Beaker, ScanLine, Pill, Scissors,
-  HeartHandshake, ArrowRightLeft, ScrollText, ShieldCheck, MessageCircle, Droplets,
+  HeartHandshake, ArrowRightLeft, ScrollText, ShieldCheck, MessageCircle, Droplets, AlertTriangle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -61,6 +61,7 @@ import { usePatientVitalsHistory } from '@/lib/hooks/use-patients';
 import { usePatientAllergies } from '@/lib/hooks/use-allergies';
 import { usePatientChronicConditions } from '@/lib/hooks/use-chronic-conditions';
 import { usePatientCurrentMedications } from '@/lib/hooks/use-current-medications';
+import { usePatientVitalFlagSuggestions } from '@/lib/hooks/use-vital-flag-suggestions';
 import { useOptionalAIChatContext } from '@/lib/context/ai-chat-context';
 import { useAuth } from '@/lib/auth/context';
 import { usePermissions } from '@/lib/hooks/use-permissions';
@@ -68,6 +69,7 @@ import { useFacility } from '@/lib/context/facility-context';
 import { useCommentCount } from '@/lib/hooks/use-comment-count';
 import { CommentThread } from '@/components/comments';
 import { PatientDetailSheet } from '@/components/patients/patient-detail-sheet';
+import { PatientVitalFlagSuggestionsTab } from '@/components/patients/vital-flag-suggestions';
 import Link from 'next/link';
 import type { EncounterFormData, DiagnosisFormData } from '@/lib/types/encounter-form';
 import type { AIQuickAction } from '@/lib/types/ai';
@@ -202,6 +204,7 @@ export default function EncounterDetailPage() {
   // Referrals data (for tab badge count)
   const { data: referralsList } = useEncounterReferrals(encounterId);
   const referralsCount = referralsList?.length || 0;
+  const { data: vitalFlagSuggestions } = usePatientVitalFlagSuggestions(encounter?.patient ?? 0);
   const { data: storedCarePlans } = useStoredCarePlans({ encounter_id: encounterId });
   const { data: structuredAllergies, isLoading: isLoadingStructuredAllergies } = usePatientAllergies(
     encounter?.patient ?? 0,
@@ -222,6 +225,7 @@ export default function EncounterDetailPage() {
   const procedureOrdersCount = procedureOrdersData?.results?.length || 0;
   const ordersCount = (labOrders?.length || 0) + (imagingOrders?.length || 0) + (prescriptions?.length || 0) + procedureOrdersCount;
   const servicesCount = alliedHealthCount + referralsCount;
+  const openVitalFlagCount = (vitalFlagSuggestions || []).filter((item) => ['NEW', 'ACKNOWLEDGED', 'MAPPED'].includes(item.status)).length;
 
   // Real-time WebSocket subscription for lab result updates
   // Automatically invalidates lab orders cache when results are verified
@@ -791,7 +795,14 @@ export default function EncounterDetailPage() {
           </Tooltip>
           <Tooltip>
             <TooltipTrigger asChild>
-              <TabsTrigger value="history" className="text-xs sm:text-sm">History</TabsTrigger>
+              <TabsTrigger value="history" className="text-xs sm:text-sm">
+                History
+                {openVitalFlagCount > 0 && (
+                  <Badge variant="secondary" className="ml-1 h-4 min-w-4 rounded-full px-1 text-[10px]">
+                    {openVitalFlagCount}
+                  </Badge>
+                )}
+              </TabsTrigger>
             </TooltipTrigger>
             <TooltipContent><p>Medical history & audit trail</p></TooltipContent>
           </Tooltip>
@@ -1089,7 +1100,7 @@ export default function EncounterDetailPage() {
 
         {/* History & Audit */}
         <TabsContent value="history">
-          <Accordion type="multiple" defaultValue={['medical-history', 'audit']}>
+          <Accordion type="multiple" defaultValue={['medical-history', 'vital-flags', 'audit']}>
             <AccordionItem value="medical-history">
               <AccordionTrigger className="hover:no-underline">
                 <div className="flex items-center gap-2">
@@ -1099,6 +1110,18 @@ export default function EncounterDetailPage() {
               </AccordionTrigger>
               <AccordionContent>
                 <MedicalHistoryView encounter={encounter} />
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="vital-flags">
+              <AccordionTrigger className="hover:no-underline">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+                  <span>Vitals Flag Review</span>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent>
+                <PatientVitalFlagSuggestionsTab patientId={encounter.patient} />
               </AccordionContent>
             </AccordionItem>
 

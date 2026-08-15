@@ -1,12 +1,26 @@
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
-"""
-Management command to refresh the local SHA BenefitsAndInterventions JSONL
-from the DHA KNHTS OCL API.
+"""Refresh local SHA interventions JSONL from the DHA KNHTS OCL API.
 
-Usage:
-    python manage.py refresh_interventions
-    python manage.py refresh_interventions --page-size 200
-    python manage.py refresh_interventions --dry-run
+This command fetches paginated concept data from the OCL endpoint and writes a
+local JSONL snapshot used by fallback/intervention lookup flows.
+
+How to run:
+    python manage.py refresh_interventions [--page-size N] [--output PATH] [--dry-run] [--raw]
+
+Arguments:
+    None.
+
+Options:
+    --page-size (int): Number of records to request per API page. Default: 100.
+    --output (str): Output JSONL path. Default:
+        <BASE_DIR>/data/sha/benefits_and_interventions.jsonl
+    --dry-run: Fetch and count records without writing any file.
+    --raw: Write raw API concept objects instead of normalized records.
+
+Behavior notes:
+- Retries API calls on transient HTTP/network failures.
+- Writes atomically via a temporary file then rename.
+- Clears in-memory intervention fallback cache after successful write.
 """
 
 import json
@@ -28,6 +42,8 @@ RETRY_DELAY = 5
 
 
 class Command(BaseCommand):
+    """Django command entrypoint for SHA intervention snapshot refresh."""
+
     help = "Refresh local SHA BenefitsAndInterventions data from DHA KNHTS (OCL API)"
 
     def add_arguments(self, parser):

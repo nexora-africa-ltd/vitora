@@ -1,15 +1,23 @@
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
-"""
-Management command to seed the billing service catalog.
+"""Seed the billing service catalog with standard Kenya-focused defaults.
 
-Seeds standard Kenyan healthcare service categories and common billable
-services.  Prices are in KES and can be customised per facility via the
-admin interface after seeding.
+This command seeds service categories and billable services (KES pricing) used
+by billing workflows. Existing rows are preserved by default unless
+``--force`` is supplied.
 
-Usage:
-    python manage.py seed_service_catalog            # create missing only
-    python manage.py seed_service_catalog --force     # overwrite existing
-    python manage.py seed_service_catalog --dry-run   # preview, no writes
+How to run:
+    python manage.py seed_service_catalog [--force] [--dry-run]
+
+Arguments:
+    None.
+
+Options:
+    --force: Update existing categories/services to match seeded defaults.
+    --dry-run: Show what would be created/updated without database writes.
+
+Behavior notes:
+- Creates missing categories/services by code (with name fallback lookup).
+- Uses a superuser or creates a disabled ``system`` user for ``created_by``.
 """
 
 from decimal import Decimal

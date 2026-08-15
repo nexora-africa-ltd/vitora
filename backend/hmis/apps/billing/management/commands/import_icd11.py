@@ -1,5 +1,26 @@
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
-"""Import ICD-11 reference codes from the WHO CSV export."""
+"""Import ICD-11 reference codes into ``ICD11CodeReference``.
+
+This Django management command loads ICD-11 rows from either:
+- WHO full export CSV (expects columns like ``8Y``, ``Title``, ``ClassKind``), or
+- Simple CSV with ``Code`` and ``Title`` columns.
+
+How to run:
+    python manage.py import_icd11 <csv_file> [--clear] [--update]
+
+Arguments:
+    csv_file (str): Required path to the source CSV file.
+
+Options:
+    --clear: Delete all existing ICD-11 rows before processing the CSV.
+    --update: Update existing rows that match by ``code``. Without this flag,
+        existing rows are skipped.
+
+Behavior notes:
+- WHO full export mode imports only rows where ``ClassKind == category``.
+- Invalid/incomplete rows are skipped and counted.
+- Import summary prints created/updated/skipped/error totals at the end.
+"""
 
 import csv
 import os
@@ -11,6 +32,8 @@ from hmis.apps.billing.models import ICD11CodeReference
 
 
 class Command(BaseCommand):
+    """Django command entrypoint for ICD-11 CSV import."""
+
     help = "Import ICD-11 codes from WHO full export or simple Code/Title CSV"
 
     def add_arguments(self, parser):
