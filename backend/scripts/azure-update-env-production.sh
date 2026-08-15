@@ -192,6 +192,7 @@ az containerapp update \
     "TIBABOT_TIMEOUT=${TIBABOT_TIMEOUT:-30}" \
     "TIBABOT_JWT_SECRET=secretref:tibabot-jwt-secret" \
     "TIBABOT_JWT_PRIVATE_KEY=secretref:tibabot-jwt-private-key" \
+    "TIBABOT_JWT_KID=${TIBABOT_JWT_KID:-tibabot-vitora-1}" \
     "TIBABOT_JWT_ISSUER=${TIBABOT_JWT_ISSUER:-vitora.nexora.africa}" \
     "TIBABOT_JWT_AUDIENCE=${TIBABOT_JWT_AUDIENCE:-tibabot-api}" \
     "TIBABOT_JWT_EXPIRY_SECONDS=${TIBABOT_JWT_EXPIRY_SECONDS:-300}" \

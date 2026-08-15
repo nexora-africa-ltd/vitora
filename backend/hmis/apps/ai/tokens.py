@@ -26,7 +26,7 @@ import jwt
 from django.conf import settings
 from django.contrib.auth.models import AbstractBaseUser
 
-from .jwks import TIBABOT_JWT_KID, get_private_key
+from .jwks import get_private_key, get_tibabot_jwt_kid
 
 logger = logging.getLogger(__name__)
 
@@ -78,7 +78,7 @@ def mint_tibabot_jwt(user: AbstractBaseUser) -> str | None:
                 claims,
                 private_key,
                 algorithm="RS256",
-                headers={"kid": TIBABOT_JWT_KID},
+                headers={"kid": get_tibabot_jwt_kid()},
             )
         # HS256 fallback (dev/test)
         return jwt.encode(claims, secret, algorithm="HS256")

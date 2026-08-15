@@ -26,7 +26,13 @@ from cryptography.hazmat.primitives.serialization import Encoding, NoEncryption,
 from django.test import override_settings
 
 from hmis.apps.ai.client import TibaBotClient, _get_current_user, tibabot_user_context
-from hmis.apps.ai.jwks import TIBABOT_JWT_KID, _load_private_key, get_jwks, get_private_key
+from hmis.apps.ai.jwks import (
+    TIBABOT_JWT_KID,
+    _load_private_key,
+    get_jwks,
+    get_private_key,
+    get_tibabot_jwt_kid,
+)
 from hmis.apps.ai.tokens import _map_role, _parse_facility_level, mint_tibabot_jwt
 
 TEST_SECRET = "test-tibabot-jwt-secret-32bytes!"
@@ -428,6 +434,21 @@ class TestMintTibabotJWTRS256:
 
     @override_settings(
         TIBABOT_JWT_PRIVATE_KEY=_TEST_RSA_PEM,
+        TIBABOT_JWT_SECRET="",
+        TIBABOT_JWT_KID="tibabot-vitora-custom",
+        TIBABOT_JWT_AUDIENCE="tibabot-api",
+    )
+    def test_rs256_jwt_uses_configured_kid_header(self, test_user):
+        """RS256 JWT should use TIBABOT_JWT_KID when provided in settings."""
+        token = mint_tibabot_jwt(test_user)
+        assert token is not None
+
+        header = jwt.get_unverified_header(token)
+        assert header["kid"] == "tibabot-vitora-custom"
+        assert get_tibabot_jwt_kid() == "tibabot-vitora-custom"
+
+    @override_settings(
+        TIBABOT_JWT_PRIVATE_KEY=_TEST_RSA_PEM,
         TIBABOT_JWT_SECRET=TEST_SECRET,
         TIBABOT_JWT_AUDIENCE="tibabot-api",
     )
@@ -495,6 +516,15 @@ class TestGetJWKS:
         assert "n" in key  # modulus
         assert "e" in key  # exponent
         assert "x5t#S256" in key  # thumbprint
+
+    @override_settings(
+        TIBABOT_JWT_PRIVATE_KEY=_TEST_RSA_PEM, TIBABOT_JWT_KID="tibabot-vitora-custom"
+    )
+    def test_returns_jwk_with_configured_kid(self):
+        """Should use configured TIBABOT_JWT_KID in JWKS output."""
+        jwks = get_jwks()
+        assert len(jwks["keys"]) == 1
+        assert jwks["keys"][0]["kid"] == "tibabot-vitora-custom"
 
     @override_settings(TIBABOT_JWT_PRIVATE_KEY=_TEST_RSA_PEM)
     def test_jwk_can_verify_minted_jwt(self):

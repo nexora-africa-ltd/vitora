@@ -1043,6 +1043,7 @@ TIBABOT_TIMEOUT = int(os.getenv("TIBABOT_TIMEOUT", "30"))
 TIBABOT_JWT_PRIVATE_KEY = os.getenv("TIBABOT_JWT_PRIVATE_KEY", "")
 # HS256 shared secret — dev/test fallback when no private key is configured.
 TIBABOT_JWT_SECRET = os.getenv("TIBABOT_JWT_SECRET", "")
+TIBABOT_JWT_KID = os.getenv("TIBABOT_JWT_KID", "tibabot-vitora-1")
 TIBABOT_JWT_ISSUER = os.getenv("TIBABOT_JWT_ISSUER", "vitora.nexora.africa")
 TIBABOT_JWT_AUDIENCE = os.getenv("TIBABOT_JWT_AUDIENCE", "tibabot-api")
 TIBABOT_JWT_EXPIRY_SECONDS = int(os.getenv("TIBABOT_JWT_EXPIRY_SECONDS", "300"))

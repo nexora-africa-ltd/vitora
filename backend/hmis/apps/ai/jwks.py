@@ -30,8 +30,13 @@ from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
-# Key ID used in JWT header ``kid`` and JWKS ``kid`` — must match.
+# Default key ID used in JWT header ``kid`` and JWKS ``kid`` — must match.
 TIBABOT_JWT_KID = "tibabot-vitora-1"
+
+
+def get_tibabot_jwt_kid() -> str:
+    """Return configured JWT key ID, falling back to the default constant."""
+    return getattr(settings, "TIBABOT_JWT_KID", TIBABOT_JWT_KID)
 
 
 @lru_cache(maxsize=1)
@@ -94,7 +99,7 @@ def get_jwks() -> dict:
                 "kty": "RSA",
                 "use": "sig",
                 "alg": "RS256",
-                "kid": TIBABOT_JWT_KID,
+                "kid": get_tibabot_jwt_kid(),
                 "n": _int_to_base64url(public_numbers.n),
                 "e": _int_to_base64url(public_numbers.e),
                 "x5t#S256": thumbprint,
