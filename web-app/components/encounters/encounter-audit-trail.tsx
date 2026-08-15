@@ -13,6 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { History, Shield } from 'lucide-react';
 import { ENCOUNTER_FIELD_LABELS } from '@/lib/types/history';
+import type { FieldChanges, VersionHistoryItem } from '@/lib/types/history';
 
 interface EncounterAuditTrailProps {
   /** Encounter ID to show history for */
@@ -21,6 +22,53 @@ interface EncounterAuditTrailProps {
 
 export function EncounterAuditTrail({ encounterId }: EncounterAuditTrailProps) {
   const { data: versions, isLoading, error } = useEncounterHistory(encounterId);
+
+  const userReferenceFields = new Set([
+    'finalized_by',
+    'created_by',
+    'assigned_clinician',
+    'triage_bypassed_by',
+    'chief_complaint_edited_by',
+  ]);
+
+  const normalizedVersions: VersionHistoryItem[] = (versions || []).map((version) => {
+    const userIdToName = new Map<number, string>();
+    for (const item of versions || []) {
+      if (item.history_user_id && item.history_user) {
+        userIdToName.set(item.history_user_id, item.history_user);
+      }
+    }
+
+    const normalizedChanges: FieldChanges = Object.entries(version.changes).reduce((acc, [field, change]) => {
+      if (!userReferenceFields.has(field)) {
+        acc[field] = change;
+        return acc;
+      }
+
+      const resolveUserDisplay = (value: string | number | boolean | null): string | number | boolean | null => {
+        if (typeof value !== 'number') {
+          return value;
+        }
+
+        if (field === 'finalized_by' && version.history_user_id === value && version.history_user) {
+          return version.history_user;
+        }
+
+        return userIdToName.get(value) || value;
+      };
+
+      acc[field] = {
+        old: resolveUserDisplay(change.old),
+        new: resolveUserDisplay(change.new),
+      };
+      return acc;
+    }, {} as FieldChanges);
+
+    return {
+      ...version,
+      changes: normalizedChanges,
+    };
+  });
 
   if (error) {
     return (
@@ -54,10 +102,10 @@ export function EncounterAuditTrail({ encounterId }: EncounterAuditTrailProps) {
       </CardHeader>
       <CardContent>
         <VersionHistoryList
-          versions={versions || []}
+          versions={normalizedVersions}
           isLoading={isLoading}
           fieldConfig={ENCOUNTER_FIELD_LABELS}
-          initialLimit={10}
+          initialLimit={25}
         />
       </CardContent>
     </Card>

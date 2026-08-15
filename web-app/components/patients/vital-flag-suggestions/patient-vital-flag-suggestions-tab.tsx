@@ -31,6 +31,12 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import {
   useAcceptVitalFlagSuggestion,
   useAcknowledgeVitalFlagSuggestion,
   useMapVitalFlagSuggestionCodes,
@@ -168,68 +174,100 @@ export function PatientVitalFlagSuggestionsTab({ patientId }: { patientId: numbe
                   )}
 
                   {isOpen && (
-                    <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+                    <TooltipProvider delayDuration={250}>
+                      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
                       {item.status === 'NEW' && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          disabled={isBusy}
-                          onClick={() => acknowledgeMutation.mutate({ suggestionId: item.id, data: { note: 'Reviewed in panel' } })}
-                        >
-                          <AlertTriangle className="mr-2 h-4 w-4" />
-                          Acknowledge
-                        </Button>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              disabled={isBusy}
+                              onClick={() =>
+                                acknowledgeMutation.mutate({ suggestionId: item.id, data: { note: 'Reviewed in panel' } })
+                              }
+                            >
+                              <AlertTriangle className="mr-2 h-4 w-4" />
+                              Acknowledge
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            Mark this flag as reviewed and keep it open for next action.
+                          </TooltipContent>
+                        </Tooltip>
                       )}
 
                       {item.mapping_status !== 'CONFIRMED' && hasSuggestedMapping && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          disabled={isBusy}
-                          onClick={() =>
-                            mapCodesMutation.mutate({
-                              suggestionId: item.id,
-                              data: {
-                                selected_icd10: item.suggested_icd10,
-                                selected_icd11_code: item.suggested_icd11_code,
-                                selected_icd11_title: item.suggested_icd11_title,
-                              },
-                            })
-                          }
-                        >
-                          <Link2 className="mr-2 h-4 w-4" />
-                          Confirm Mapping
-                        </Button>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              disabled={isBusy}
+                              onClick={() =>
+                                mapCodesMutation.mutate({
+                                  suggestionId: item.id,
+                                  data: {
+                                    selected_icd10: item.suggested_icd10,
+                                    selected_icd11_code: item.suggested_icd11_code,
+                                    selected_icd11_title: item.suggested_icd11_title,
+                                  },
+                                })
+                              }
+                            >
+                              <Link2 className="mr-2 h-4 w-4" />
+                              Confirm Mapping
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            Apply the suggested ICD-10/ICD-11 mapping for this flag.
+                          </TooltipContent>
+                        </Tooltip>
                       )}
 
-                      <Button
-                        size="sm"
-                        disabled={isBusy}
-                        onClick={() => {
-                          setReviewing(item);
-                          setResolutionAction(defaultResolutionAction(item));
-                          setConditionName(defaultConditionName(item));
-                          setReviewNote('');
-                        }}
-                      >
-                        <CheckCircle2 className="mr-2 h-4 w-4" />
-                        Accept
-                      </Button>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            size="sm"
+                            disabled={isBusy}
+                            onClick={() => {
+                              setReviewing(item);
+                              setResolutionAction(defaultResolutionAction(item));
+                              setConditionName(defaultConditionName(item));
+                              setReviewNote('');
+                            }}
+                          >
+                            <CheckCircle2 className="mr-2 h-4 w-4" />
+                            Accept
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          Accept this suggestion and choose the clinical action to apply.
+                        </TooltipContent>
+                      </Tooltip>
 
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="text-destructive"
-                        disabled={isBusy}
-                        onClick={() => {
-                          setRejecting(item);
-                          setRejectReason('');
-                        }}
-                      >
-                        <ThumbsDown className="mr-2 h-4 w-4" />
-                        Reject
-                      </Button>
-                    </div>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-destructive"
+                            disabled={isBusy}
+                            onClick={() => {
+                              setRejecting(item);
+                              setRejectReason('');
+                            }}
+                          >
+                            <ThumbsDown className="mr-2 h-4 w-4" />
+                            Reject
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          Reject this suggestion and record a clinical reason.
+                        </TooltipContent>
+                      </Tooltip>
+                      </div>
+                    </TooltipProvider>
                   )}
                 </CardContent>
               </Card>

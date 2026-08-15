@@ -23,6 +23,7 @@ from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 from rest_framework import status
 
+from hmis.apps.encounters.models import VitalFlagSuggestion
 from hmis.apps.inpatient.models import WardRound
 
 
@@ -196,6 +197,41 @@ class TestWardRoundValidation:
         assert response.data["on_vasopressors"] is True
         assert response.data["on_mechanical_ventilation"] is False
         assert response.data["urine_output_ml_24h"] == 980
+
+    def test_ward_round_spo2_syncs_to_ipd_encounter_and_creates_hypoxia_flag(
+        self,
+        authenticated_client,
+        sample_admission,
+        test_user,
+    ):
+        """Ward round bedside SpO2 should feed encounter-based hypoxia detection."""
+        payload = {
+            "admission": sample_admission.id,
+            "round_date": date.today().isoformat(),
+            "round_time": "11:30",
+            "conducted_by": test_user.id,
+            "review_type": "WARD_ROUND",
+            "subjective": "Patient reports worsening breathlessness.",
+            "objective": "Mild respiratory distress noted.",
+            "assessment": "Likely hypoxemia requiring urgent review.",
+            "plan": "Increase oxygen support and monitor closely.",
+            "condition_status": "DETERIORATING",
+            "spo2": "88.0",
+        }
+
+        response = authenticated_client.post("/api/inpatient/ward-rounds/", payload, format="json")
+
+        assert response.status_code == status.HTTP_201_CREATED
+
+        sample_admission.ipd_encounter.refresh_from_db()
+        assert float(sample_admission.ipd_encounter.spo2) == 88.0
+
+        suggestion = VitalFlagSuggestion.objects.filter(
+            encounter=sample_admission.ipd_encounter,
+            flag_key="HYPOXIA",
+        ).first()
+        assert suggestion is not None
+        assert suggestion.source_type == VitalFlagSuggestion.SourceType.ENCOUNTER
 
 
 @pytest.mark.django_db

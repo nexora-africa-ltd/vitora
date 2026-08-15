@@ -788,6 +788,8 @@ class Encounter(HistoryMixin, FacilityScopedModel):
 
     def save(self, *args, **kwargs):
         """Override save to auto-set triage and tenant fields."""
+        preserve_triage_requirement = bool(kwargs.pop("preserve_triage_requirement", False))
+
         # --- Tenant auto-resolution ---
         # If facility is not set, inherit from patient's registered facility.
         # This prevents orphaned encounters when created outside
@@ -809,7 +811,7 @@ class Encounter(HistoryMixin, FacilityScopedModel):
             self._denormalize_template_data()
 
         # Auto-set triage_requirement based on encounter_type
-        if self.encounter_type:
+        if self.encounter_type and not preserve_triage_requirement:
             expected_requirement = self.ENCOUNTER_TYPE_TRIAGE_MAP.get(
                 self.encounter_type, "MANDATORY"
             )

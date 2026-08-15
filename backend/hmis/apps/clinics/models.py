@@ -945,11 +945,25 @@ class ClinicVisit(FacilityScopedModel, TimeStampedModel):
         # If a ClinicVisit is linked to an Encounter via the legacy OneToOne field,
         # ensure the new Encounter.clinic_visit FK is kept in sync for reporting.
         if self.encounter_id:
-            from hmis.apps.encounters.models import Encounter
+            encounter = self.encounter
+            if encounter.clinic_visit_id != self.pk:
+                encounter.clinic_visit = self
+                encounter.save(update_fields=["clinic_visit", "updated_at"])
 
-            Encounter.objects.filter(pk=self.encounter_id).exclude(clinic_visit_id=self.pk).update(
-                clinic_visit_id=self.pk
-            )
+    def _update_encounter_consultation_status(self, target_status: str) -> None:
+        """Sync consultation status on linked encounter while preserving history records."""
+        if not self.encounter_id:
+            return
+
+        encounter = self.encounter
+        if encounter.consultation_status not in {"WAITING", "CALLED", "IN_PROGRESS"}:
+            return
+
+        if encounter.consultation_status == target_status:
+            return
+
+        encounter.consultation_status = target_status
+        encounter.save(update_fields=["consultation_status", "updated_at"])
 
     def call_patient(self, clinician):
         """Call patient for consultation.
@@ -981,16 +995,19 @@ class ClinicVisit(FacilityScopedModel, TimeStampedModel):
 
         # Sync encounter consultation_status to CALLED + assign clinician
         if self.encounter_id:
-            from hmis.apps.encounters.models import Encounter
-
-            Encounter.objects.filter(
-                pk=self.encounter_id,
-                consultation_status="WAITING",
-            ).update(
-                consultation_status="CALLED",
-                assigned_clinician=clinician,
-                claimed_at=timezone.now(),
-            )
+            encounter = self.encounter
+            if encounter.consultation_status == "WAITING":
+                encounter.consultation_status = "CALLED"
+                encounter.assigned_clinician = clinician
+                encounter.claimed_at = timezone.now()
+                encounter.save(
+                    update_fields=[
+                        "consultation_status",
+                        "assigned_clinician",
+                        "claimed_at",
+                        "updated_at",
+                    ]
+                )
 
     def ensure_consultation_encounter(self, existing_encounter=None):
         """Ensure this clinic visit is linked to a consultation-ready encounter."""
@@ -1121,13 +1138,7 @@ class ClinicVisit(FacilityScopedModel, TimeStampedModel):
         self.session.update_statistics()
 
         # Sync encounter consultation_status to COMPLETED
-        if self.encounter_id:
-            from hmis.apps.encounters.models import Encounter
-
-            Encounter.objects.filter(
-                pk=self.encounter_id,
-                consultation_status__in=["WAITING", "CALLED", "IN_PROGRESS"],
-            ).update(consultation_status="COMPLETED")
+        self._update_encounter_consultation_status("COMPLETED")
 
     def cancel_visit(self, user=None):
         """Cancel a clinic visit."""
@@ -1138,13 +1149,7 @@ class ClinicVisit(FacilityScopedModel, TimeStampedModel):
         self.session.update_statistics()
 
         # Sync encounter consultation_status to CANCELLED
-        if self.encounter_id:
-            from hmis.apps.encounters.models import Encounter
-
-            Encounter.objects.filter(
-                pk=self.encounter_id,
-                consultation_status__in=["WAITING", "CALLED", "IN_PROGRESS"],
-            ).update(consultation_status="CANCELLED")
+        self._update_encounter_consultation_status("CANCELLED")
 
     def mark_no_show(self, user=None):
         """Mark a clinic visit as no-show."""
@@ -1155,13 +1160,7 @@ class ClinicVisit(FacilityScopedModel, TimeStampedModel):
         self.session.update_statistics()
 
         # Sync encounter consultation_status to NO_SHOW
-        if self.encounter_id:
-            from hmis.apps.encounters.models import Encounter
-
-            Encounter.objects.filter(
-                pk=self.encounter_id,
-                consultation_status__in=["WAITING", "CALLED", "IN_PROGRESS"],
-            ).update(consultation_status="NO_SHOW")
+        self._update_encounter_consultation_status("NO_SHOW")
 
     def refer_to_clinic(self, target_clinic, reason, user):
         """Refer patient to another clinic."""

@@ -3749,6 +3749,16 @@ class WardRoundViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     def perform_create(self, serializer):
         """Create ward round and log action."""
         instance = serializer.save()
+        _sync_bedside_vitals_to_ipd_encounter(
+            instance.admission,
+            vitals_payload={
+                "temperature": instance.temperature,
+                "pulse": instance.pulse,
+                "blood_pressure": instance.blood_pressure,
+                "respiratory_rate": instance.respiratory_rate,
+                "spo2": instance.spo2,
+            },
+        )
 
         # Log ward round creation
         AuditLog.log(
@@ -4383,6 +4393,26 @@ class ShiftHandoverViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
 # =============================================================================
 
 
+def _sync_bedside_vitals_to_ipd_encounter(admission, *, vitals_payload: dict) -> None:
+    """Mirror bedside vitals onto the linked IPD encounter for downstream workflows."""
+    encounter = getattr(admission, "ipd_encounter", None)
+    if encounter is None or encounter.status in {"CLOSED", "CANCELLED"}:
+        return
+
+    changed_fields = []
+    for field_name, value in vitals_payload.items():
+        if value is None:
+            continue
+        if getattr(encounter, field_name, None) != value:
+            setattr(encounter, field_name, value)
+            changed_fields.append(field_name)
+
+    if not changed_fields:
+        return
+
+    encounter.save(update_fields=[*changed_fields, "updated_at"])
+
+
 class TemperatureReadingViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     """
     ViewSet for temperature chart readings.
@@ -4420,6 +4450,14 @@ class TemperatureReadingViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         instance = serializer.save(recorded_by=self.request.user)
+        _sync_bedside_vitals_to_ipd_encounter(
+            instance.admission,
+            vitals_payload={
+                "temperature": instance.temperature,
+                "pulse": instance.pulse,
+                "respiratory_rate": instance.respiratory_rate,
+            },
+        )
         AuditLog.log(
             action="temperature_reading_create",
             user=self.request.user,
@@ -4685,6 +4723,13 @@ class BPMonitoringViewSet(NestedTenantScopeMixin, ReadOnCreateMixin, viewsets.Mo
 
     def perform_create(self, serializer):
         instance = serializer.save(recorded_by=self.request.user)
+        _sync_bedside_vitals_to_ipd_encounter(
+            instance.admission,
+            vitals_payload={
+                "blood_pressure": f"{instance.systolic}/{instance.diastolic}",
+                "pulse": instance.pulse,
+            },
+        )
         AuditLog.log(
             action="bp_reading_create",
             user=self.request.user,

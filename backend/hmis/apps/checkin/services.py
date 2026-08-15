@@ -556,23 +556,26 @@ def process_checkin(
 
         # Update encounter with clinic visit link and mark triage as bypassed
         # so the encounter appears in the consultation queue.
-        # Use queryset.update() to bypass save() auto-override of triage_requirement,
-        # which would force MANDATORY for OPD and reject the bypass.
-        update_kwargs: dict = {"clinic_visit": clinic_visit}
+        update_fields = ["clinic_visit", "updated_at"]
+        encounter.clinic_visit = clinic_visit
 
         if skip_triage:
-            update_kwargs.update(
-                {
-                    "triage_requirement": "OPTIONAL",
-                    "triage_status": "BYPASSED",
-                    "triage_bypass_reason": "CONSULTANT_DECISION",
-                    "triage_bypassed_by": user,
-                    "triage_bypassed_at": timezone.now(),
-                }
+            encounter.triage_requirement = "OPTIONAL"
+            encounter.triage_status = "BYPASSED"
+            encounter.triage_bypass_reason = "CONSULTANT_DECISION"
+            encounter.triage_bypassed_by = user
+            encounter.triage_bypassed_at = timezone.now()
+            update_fields.extend(
+                [
+                    "triage_requirement",
+                    "triage_status",
+                    "triage_bypass_reason",
+                    "triage_bypassed_by",
+                    "triage_bypassed_at",
+                ]
             )
 
-        Encounter.objects.filter(pk=encounter.pk).update(**update_kwargs)
-        encounter.refresh_from_db()
+        encounter.save(update_fields=update_fields, preserve_triage_requirement=skip_triage)
 
         # =====================================================================
         # Auto-transition procedure orders when checked into a procedure clinic
