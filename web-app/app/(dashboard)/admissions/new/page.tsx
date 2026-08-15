@@ -44,10 +44,10 @@ import {
   useGenerateWardBeds,
   useRecommendWard,
   useAdmissionRecommendations,
+  usePendingAdmissions,
   useActiveAdmissionForPatient,
 } from '@/lib/hooks/use-inpatient';
 import { useEncounter, useEncounterDiagnoses } from '@/lib/hooks/use-encounters';
-import { useEncounters } from '@/lib/hooks/use-encounters';
 import { usePatient } from '@/lib/hooks/use-patients';
 import { SHAConsentStep } from '@/components/patients/sha-consent-step';
 import { SHABenefitsAlert } from '@/components/billing/sha';
@@ -131,14 +131,14 @@ export default function NewAdmissionPage() {
 
   // Pending admissions: recommendations + IPD encounters without admissions
   const { data: pendingRecsResponse } = useAdmissionRecommendations({ status: 'PENDING', page_size: 10 });
-  const { data: ipdEncountersResponse } = useEncounters({ encounter_type: 'IPD', status: 'IN_PROGRESS', page_size: 10 });
+  const { data: pendingAdmissionsResponse } = usePendingAdmissions();
   const pendingRecs: AdmissionRecommendation[] = useMemo(
     () => (pendingRecsResponse as any)?.results ?? [],
     [pendingRecsResponse]
   );
   const ipdEncounters: Encounter[] = useMemo(
-    () => (ipdEncountersResponse as any)?.results ?? [],
-    [ipdEncountersResponse]
+    () => (pendingAdmissionsResponse as any)?.results ?? pendingAdmissionsResponse ?? [],
+    [pendingAdmissionsResponse]
   );
   const hasPendingItems = pendingRecs.length > 0 || ipdEncounters.length > 0;
 
