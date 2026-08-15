@@ -754,7 +754,20 @@ export interface ReviewRequestCreateData {
 // ============================================================================
 
 export type RiskLevel = 'LOW' | 'MODERATE' | 'HIGH';
-export type ShiftType = 'DAY' | 'NIGHT';
+export type ShiftType =
+  | 'DAY'
+  | 'NIGHT'
+  | 'MORNING'
+  | 'AFTERNOON'
+  | 'ON_CALL'
+  | 'OVERTIME'
+  | 'DAY_OFF'
+  | 'NIGHT_OFF'
+  | 'OFF'
+  | 'AFTERNOON_OFF'
+  | 'LEAVE'
+  | 'SICK_LEAVE'
+  | 'REST';
 
 export interface KardexShiftNote {
   id: number;

@@ -100,7 +100,21 @@ export const ReviewRequestStatusSchema = z.enum(['PENDING', 'IN_PROGRESS', 'COMP
 
 export const RiskLevelSchema = z.enum(['LOW', 'MODERATE', 'HIGH']);
 
-export const ShiftTypeSchema = z.enum(['DAY', 'NIGHT']);
+export const ShiftTypeSchema = z.enum([
+  'DAY',
+  'NIGHT',
+  'MORNING',
+  'AFTERNOON',
+  'ON_CALL',
+  'OVERTIME',
+  'DAY_OFF',
+  'NIGHT_OFF',
+  'OFF',
+  'AFTERNOON_OFF',
+  'LEAVE',
+  'SICK_LEAVE',
+  'REST',
+]);
 
 export const ShiftEndingTypeSchema = z.enum(['DAY', 'EVENING', 'NIGHT']);
 

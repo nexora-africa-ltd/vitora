@@ -27,6 +27,72 @@ const SHIFT_OPTIONS: { value: ShiftEndingType | 'ALL'; label: string }[] = [
   { value: 'NIGHT', label: 'Night Shift' },
 ];
 
+type ParsedHandoverNotes = {
+  summary: string;
+  critical: string;
+  pending: string;
+  medications: string;
+};
+
+function parseHandoverNotes(rawNotes?: string): ParsedHandoverNotes {
+  const empty: ParsedHandoverNotes = {
+    summary: '',
+    critical: '',
+    pending: '',
+    medications: '',
+  };
+
+  if (!rawNotes?.trim()) return empty;
+
+  const lines = rawNotes
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  if (lines.length === 0) return empty;
+
+  const sections: ParsedHandoverNotes = { ...empty };
+  let currentSection: keyof ParsedHandoverNotes = 'summary';
+  const summaryParts: string[] = [];
+
+  for (const line of lines) {
+    if (line.startsWith('Critical Patients:')) {
+      currentSection = 'critical';
+      const value = line.replace('Critical Patients:', '').trim();
+      if (value) sections.critical = sections.critical ? `${sections.critical}\n${value}` : value;
+      continue;
+    }
+    if (line.startsWith('Pending Tasks:')) {
+      currentSection = 'pending';
+      const value = line.replace('Pending Tasks:', '').trim();
+      if (value) sections.pending = sections.pending ? `${sections.pending}\n${value}` : value;
+      continue;
+    }
+    if (line.startsWith('Medications Due:')) {
+      currentSection = 'medications';
+      const value = line.replace('Medications Due:', '').trim();
+      if (value) sections.medications = sections.medications ? `${sections.medications}\n${value}` : value;
+      continue;
+    }
+
+    if (currentSection === 'summary') {
+      summaryParts.push(line);
+    } else {
+      sections[currentSection] = sections[currentSection]
+        ? `${sections[currentSection]}\n${line}`
+        : line;
+    }
+  }
+
+  sections.summary = summaryParts.join('\n').trim();
+
+  if (!sections.summary && !sections.critical && !sections.pending && !sections.medications) {
+    sections.summary = rawNotes.trim();
+  }
+
+  return sections;
+}
+
 export default function HandoverListPage() {
   const { toast } = useToast();
   const [wardFilter, setWardFilter] = useState<string>('all');
@@ -73,7 +139,7 @@ export default function HandoverListPage() {
     <div className="container mx-auto py-6 space-y-4 sm:space-y-6">
       <PageHeader
         title="Shift Handovers"
-        helpContent="View and acknowledge shift handover reports between nursing shifts."
+        helpContent="View and acknowledge shift handover reports between clinical teams."
         actions={
           <Button asChild>
             <CreateRouteLink href="/admissions/handover/new">
@@ -181,6 +247,8 @@ function HandoverCard({
   onAcknowledge: () => void;
   isAcknowledging: boolean;
 }) {
+  const notes = parseHandoverNotes(handover.general_notes);
+
   return (
     <Card>
       <CardHeader className="pb-2">
@@ -231,18 +299,40 @@ function HandoverCard({
           <div className="flex items-center gap-2">
             <User className="h-4 w-4 text-muted-foreground" />
             <span className="text-muted-foreground">From:</span>
-            <span className="font-medium">{handover.outgoing_nurse_username || `Nurse ${handover.outgoing_nurse}`}</span>
+            <span className="font-medium">{handover.outgoing_nurse_username || `Clinician ${handover.outgoing_nurse}`}</span>
           </div>
           <div className="flex items-center gap-2">
             <User className="h-4 w-4 text-muted-foreground" />
             <span className="text-muted-foreground">To:</span>
-            <span className="font-medium">{handover.incoming_nurse_username || `Nurse ${handover.incoming_nurse}`}</span>
+            <span className="font-medium">{handover.incoming_nurse_username || `Clinician ${handover.incoming_nurse}`}</span>
           </div>
         </div>
-        {handover.general_notes && (
-          <div className="mt-4 p-3 bg-muted rounded-lg">
-            <p className="text-sm text-muted-foreground mb-1">Summary</p>
-            <p className="text-sm">{handover.general_notes}</p>
+        {(notes.summary || notes.critical || notes.pending || notes.medications) && (
+          <div className="mt-4 space-y-3">
+            {notes.summary && (
+              <div className="rounded-lg border bg-muted/40 p-3">
+                <p className="mb-1 text-sm font-medium">Summary</p>
+                <p className="text-sm whitespace-pre-wrap break-words">{notes.summary}</p>
+              </div>
+            )}
+            {notes.critical && (
+              <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3">
+                <p className="mb-1 text-sm font-medium text-destructive">Critical</p>
+                <p className="text-sm whitespace-pre-wrap break-words">{notes.critical}</p>
+              </div>
+            )}
+            {notes.pending && (
+              <div className="rounded-lg border bg-muted/40 p-3">
+                <p className="mb-1 text-sm font-medium">Pending</p>
+                <p className="text-sm whitespace-pre-wrap break-words">{notes.pending}</p>
+              </div>
+            )}
+            {notes.medications && (
+              <div className="rounded-lg border bg-muted/40 p-3">
+                <p className="mb-1 text-sm font-medium">Medications</p>
+                <p className="text-sm whitespace-pre-wrap break-words">{notes.medications}</p>
+              </div>
+            )}
           </div>
         )}
       </CardContent>
