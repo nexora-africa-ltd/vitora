@@ -1,21 +1,27 @@
 'use client';
 
 import { useState } from 'react';
-import { Search, Target } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Plus, Search } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
+import { PermissionGate } from '@/components/shared/permission-gate';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ResponsiveTable } from '@/components/ui/responsive-table';
 import { useCrossMatches } from '@/lib/hooks/use-blood-bank';
 import { useDebounce } from '@/lib/hooks/use-debounce';
+import { useCreateRouteAccess } from '@/lib/hooks/use-create-route-access';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { formatDate } from '@/lib/utils/format';
 import type { CrossMatch } from '@/lib/types/blood-bank';
 import { CROSSMATCH_COLORS } from '@/lib/types/blood-bank';
 
 export default function CrossMatchPage() {
+  const router = useRouter();
+  const canCreateRoute = useCreateRouteAccess();
   const { refresh, isRefreshing } = usePageRefresh();
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 300);
@@ -78,6 +84,15 @@ export default function CrossMatchPage() {
         <PageHeader
           title="Cross-Match Tests"
           helpContent="Cross-matching verifies compatibility between donor blood and patient serum before transfusion."
+          actions={(
+            <PermissionGate action="blood_bank.perform_crossmatch">
+              <Button onClick={() => router.push('/blood-bank/crossmatch/new')} disabled={!canCreateRoute('/blood-bank/crossmatch/new')}>
+                <Plus className="h-4 w-4 mr-2" />
+                <span className="hidden sm:inline">Create Crossmatch</span>
+                <span className="sm:hidden">Create</span>
+              </Button>
+            </PermissionGate>
+          )}
         />
 
         {/* Filter */}

@@ -4602,6 +4602,7 @@ class BloodTransfusionViewSet(NestedTenantScopeMixin, ReadOnCreateMixin, viewset
                 "admission_id": instance.admission_id,
                 "blood_product": instance.blood_product,
                 "amount_ml": instance.amount_ml,
+                "blood_bank_unit_id": instance.blood_bank_unit_id,
             },
             ip_address=get_client_ip(self.request),
         )
@@ -4896,6 +4897,8 @@ class AdverseTransfusionReactionViewSet(
         if admission.facility:
             instance.facility = admission.facility
             instance.organization = admission.organization
+        if instance.volume_transfused_ml is None:
+            instance.volume_transfused_ml = instance.transfusion.amount_ml
         instance.auto_populate_vitals()
         instance.save()
 

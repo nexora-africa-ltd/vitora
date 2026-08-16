@@ -193,7 +193,7 @@ export function printATRForm(atr: AdverseTransfusionReaction): void {
           <td>${escapeHtml(atr.blood_product_display || '—')}</td>
           <td>${escapeHtml(atr.blood_unit_number || '—')}</td>
           <td>${escapeHtml(atr.transfusion_expiry_date || '—')}</td>
-          <td>${atr.amount_ml ? atr.amount_ml + ' ml' : '—'}</td>
+          <td>${atr.volume_transfused_ml != null ? atr.volume_transfused_ml + ' ml' : atr.amount_ml ? atr.amount_ml + ' ml' : '—'}</td>
         </tr>
       </tbody>
     </table>

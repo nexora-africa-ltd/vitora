@@ -5,6 +5,7 @@ Serializers for the inpatient app.
 
 from rest_framework import serializers
 
+from hmis.apps.blood_bank.models import UnitStatus
 from hmis.apps.core.models import Facility
 from hmis.apps.core.utils import resolve_model_pk_or_public_id
 from hmis.apps.encounters.models import Encounter
@@ -2389,6 +2390,7 @@ class BloodTransfusionSerializer(serializers.ModelSerializer):
             "blood_product_display",
             "blood_product_other",
             "blood_unit_number",
+            "blood_bank_unit",
             "blood_group",
             "amount_ml",
             "transfusion_date",
@@ -2417,6 +2419,50 @@ class BloodTransfusionCreateSerializer(serializers.ModelSerializer):
 
     admission = PublicIdOrPkRelatedField(queryset=Admission.objects.all())
 
+    def validate_blood_bank_unit(self, value):
+        if value is None:
+            return value
+        if value.status != UnitStatus.AVAILABLE:
+            raise serializers.ValidationError(
+                f"Selected blood unit is not available (current status: {value.status})."
+            )
+        return value
+
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        unit = attrs.get("blood_bank_unit")
+        admission = attrs.get("admission")
+        if unit is not None and admission is not None and unit.facility_id != admission.facility_id:
+            raise serializers.ValidationError(
+                {
+                    "blood_bank_unit": "Selected blood unit must belong to the same facility as the admission."
+                }
+            )
+        return attrs
+
+    def create(self, validated_data):
+        blood_bank_unit = validated_data.get("blood_bank_unit")
+        if blood_bank_unit is not None:
+            blood_bank_unit.refresh_from_db(
+                fields=["status", "unit_number", "blood_group", "expiry_date"]
+            )
+            if blood_bank_unit.status != UnitStatus.AVAILABLE:
+                raise serializers.ValidationError(
+                    {"blood_bank_unit": "Selected blood unit is no longer available."}
+                )
+            validated_data["blood_unit_number"] = blood_bank_unit.unit_number
+            validated_data["blood_group"] = blood_bank_unit.blood_group
+            if not validated_data.get("expiry_date") and blood_bank_unit.expiry_date:
+                validated_data["expiry_date"] = blood_bank_unit.expiry_date.date()
+
+        instance = super().create(validated_data)
+
+        if blood_bank_unit is not None:
+            blood_bank_unit.status = UnitStatus.ISSUED
+            blood_bank_unit.save(update_fields=["status", "updated_at"])
+
+        return instance
+
     class Meta:
         model = BloodTransfusionObservation
         fields = [
@@ -2424,6 +2470,7 @@ class BloodTransfusionCreateSerializer(serializers.ModelSerializer):
             "blood_product",
             "blood_product_other",
             "blood_unit_number",
+            "blood_bank_unit",
             "blood_group",
             "amount_ml",
             "transfusion_date",
@@ -2852,6 +2899,7 @@ class ATRCreateSerializer(serializers.ModelSerializer):
             "renal_reactions",
             "haematological_reactions",
             "other_reactions",
+            "volume_transfused_ml",
             # Reporter fields
             "initial_reporter_cadre",
             "initial_reporter_mobile",
@@ -2983,6 +3031,7 @@ class ATRDetailSerializer(serializers.ModelSerializer):
             "blood_product_display",
             "blood_unit_number",
             "amount_ml",
+            "volume_transfused_ml",
             "transfusion_expiry_date",
             # Patient history
             "pre_transfusion_hb",

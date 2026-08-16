@@ -101,6 +101,7 @@ export interface BloodUnitListItem {
 }
 
 export interface BloodUnitCreateData {
+  unit_number?: string;
   donor: number;
   blood_group: BloodGroup;
   component: BloodComponent;

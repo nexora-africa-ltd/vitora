@@ -181,6 +181,7 @@ const ROUTE_CREATE_PERMISSION_RULES: RoutePermissionRule[] = [
   { prefix: '/blood-bank/donors/new', permissions: 'blood_bank.add_blooddonor' },
   { prefix: '/blood-bank/units/new', permissions: 'blood_bank.add_bloodunit' },
   { prefix: '/blood-bank/requests/new', permissions: 'blood_bank.add_bloodrequest' },
+  { prefix: '/blood-bank/crossmatch/new', permissions: 'blood_bank.add_crossmatch' },
   { prefix: '/immunizations/aefi/new', permissions: 'immunizations.add_aefi' },
   { prefix: '/mch/new', permissions: 'mch.add_mchregistration' },
   { prefix: '/last-office/new', permissions: 'patients.add_deathrecord' },

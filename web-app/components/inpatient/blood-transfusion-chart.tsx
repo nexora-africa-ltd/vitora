@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { Plus, Droplets, AlertTriangle, CheckCircle, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -36,6 +37,7 @@ import {
   useCompleteTransfusion,
   useATRReports,
 } from '@/lib/hooks/use-inpatient';
+import { useBloodUnits } from '@/lib/hooks/use-blood-bank';
 import { useToast } from '@/lib/hooks/use-toast';
 import { formatDate, formatDateTime } from '@/lib/utils/format';
 import { getAgeGroupFromYears, getVitalPlaceholder } from '@/lib/vitals';
@@ -54,6 +56,23 @@ const BLOOD_PRODUCTS: { value: BloodProduct; label: string }[] = [
   { value: 'CRYOPRECIPITATE', label: 'Cryoprecipitate' },
   { value: 'OTHER', label: 'Other' },
 ];
+
+function mapComponentToTransfusionProduct(component: string): BloodProduct {
+  switch (component) {
+    case 'WHOLE_BLOOD':
+      return 'WHOLE';
+    case 'PACKED_RBC':
+      return 'PACKED_RED_CELLS';
+    case 'PLATELETS':
+      return 'PLATELETS';
+    case 'FFP':
+      return 'FFP';
+    case 'CRYOPRECIPITATE':
+      return 'CRYOPRECIPITATE';
+    default:
+      return 'OTHER';
+  }
+}
 
 const OBSERVATION_INTERVALS: { value: TransfusionObservationInterval; label: string }[] = [
   { value: 'BEFORE', label: 'Before Transfusion' },
@@ -168,8 +187,10 @@ interface BloodTransfusionChartProps {
 
 export function BloodTransfusionChart({ admissionId, isActive, patientAge }: BloodTransfusionChartProps) {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const ageGroup = useMemo(() => (patientAge != null ? getAgeGroupFromYears(patientAge) : null), [patientAge]);
   const { data, isLoading } = useBloodTransfusions(admissionId);
+  const { data: bloodUnitsData } = useBloodUnits({ ordering: '-collection_date', page_size: 100 });
   const { data: atrReports } = useATRReports(admissionId);
   const createTransfusion = useCreateBloodTransfusion();
   const addObservation = useAddTransfusionObservation();
@@ -190,6 +211,7 @@ export function BloodTransfusionChart({ admissionId, isActive, patientAge }: Blo
   const [selectedTransfusionId, setSelectedTransfusionId] = useState<number | null>(null);
 
   // New transfusion form
+  const [selectedUnitId, setSelectedUnitId] = useState('__manual__');
   const [bloodProduct, setBloodProduct] = useState<BloodProduct>('PACKED_RED_CELLS');
   const [bloodProductOther, setBloodProductOther] = useState('');
   const [unitNumber, setUnitNumber] = useState('');
@@ -238,6 +260,7 @@ export function BloodTransfusionChart({ admissionId, isActive, patientAge }: Blo
         blood_product: bloodProduct,
         blood_product_other: bloodProduct === 'OTHER' ? bloodProductOther : '',
         blood_unit_number: unitNumber.trim(),
+        blood_bank_unit: selectedUnitId !== '__manual__' ? parseInt(selectedUnitId, 10) : undefined,
         blood_group: bloodGroup || undefined,
         amount_ml: parseInt(amountMl),
         transfusion_date: new Date().toISOString().split('T')[0] as string,
@@ -267,6 +290,7 @@ export function BloodTransfusionChart({ admissionId, isActive, patientAge }: Blo
       }
 
       toast({ title: 'Transfusion record created' });
+      queryClient.invalidateQueries({ queryKey: ['blood-bank', 'units'] });
       setNewTransfusionOpen(false);
       resetTransfusionForm();
     } catch {
@@ -340,6 +364,7 @@ export function BloodTransfusionChart({ admissionId, isActive, patientAge }: Blo
   };
 
   const resetTransfusionForm = () => {
+    setSelectedUnitId('__manual__');
     setBloodProduct('PACKED_RED_CELLS');
     setBloodProductOther('');
     setUnitNumber('');
@@ -376,6 +401,8 @@ export function BloodTransfusionChart({ admissionId, isActive, patientAge }: Blo
 
   if (isLoading) return <Skeleton className="h-96" />;
 
+  const unitOptions = bloodUnitsData?.results ?? [];
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-center">
@@ -396,6 +423,33 @@ export function BloodTransfusionChart({ admissionId, isActive, patientAge }: Blo
                 <DialogTitle>Start Blood Transfusion</DialogTitle>
               </DialogHeader>
               <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label>Existing Unit (optional)</Label>
+                  <Select
+                    value={selectedUnitId}
+                    onValueChange={(value) => {
+                      setSelectedUnitId(value);
+                      if (value === '__manual__') return;
+
+                      const selected = unitOptions.find((unit) => String(unit.id) === value);
+                      if (!selected) return;
+
+                      setUnitNumber(selected.unit_number);
+                      setBloodGroup(selected.blood_group);
+                      setBloodProduct(mapComponentToTransfusionProduct(selected.component));
+                    }}
+                  >
+                    <SelectTrigger><SelectValue placeholder="Select an available unit" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__manual__">Manual entry</SelectItem>
+                      {unitOptions.map((unit) => (
+                        <SelectItem key={unit.id} value={String(unit.id)}>
+                          {unit.unit_number} - {unit.blood_group} {unit.component} ({unit.status})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
                 <div className="space-y-2">
                   <Label>Blood Product *</Label>
                   <Select value={bloodProduct} onValueChange={(v) => setBloodProduct(v as BloodProduct)}>

@@ -1407,6 +1407,7 @@ export interface BloodTransfusion {
   blood_product_display?: string;
   blood_product_other?: string;
   blood_unit_number: string;
+  blood_bank_unit?: number | null;
   blood_group?: string;
   amount_ml: number;
   transfusion_date: string;
@@ -1433,6 +1434,7 @@ export interface BloodTransfusionCreateData {
   blood_product: BloodProduct;
   blood_product_other?: string;
   blood_unit_number: string;
+  blood_bank_unit?: number | null;
   blood_group?: string;
   amount_ml: number;
   transfusion_date: string;
@@ -1734,6 +1736,7 @@ export interface AdverseTransfusionReaction {
   blood_product_display?: string;
   blood_unit_number?: string;
   amount_ml?: number;
+  volume_transfused_ml?: number | null;
   transfusion_expiry_date?: string | null;
   pre_transfusion_hb?: string | null;
   obstetric_status: ObstetricStatus;
@@ -1825,6 +1828,7 @@ export interface AdverseTransfusionReactionCreate {
   renal_reactions?: RenalReaction[];
   haematological_reactions?: HaematologicalReaction[];
   other_reactions?: string;
+  volume_transfused_ml?: number;
   initial_reporter_cadre?: string;
   initial_reporter_mobile?: string;
   initial_reporter_email?: string;

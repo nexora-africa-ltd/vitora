@@ -3149,6 +3149,14 @@ class BloodTransfusionObservation(TimeStampedModel):
         max_length=50,
         help_text="Blood unit/bag number",
     )
+    blood_bank_unit = models.ForeignKey(
+        "blood_bank.BloodUnit",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="inpatient_transfusions",
+        help_text="Optional linked Blood Bank unit record",
+    )
     blood_group = models.CharField(
         max_length=10,
         blank=True,
@@ -3808,6 +3816,12 @@ class AdverseTransfusionReaction(FacilityScopedModel, TimeStampedModel):
     vitals_at_stop_rr = models.IntegerField(null=True, blank=True)
 
     # ── Section 5: Lab Investigation ─────────────────────────────────────
+    volume_transfused_ml = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="Actual volume transfused before/at reaction (mL)",
+    )
+
     recipient_supernatant_hemolysis = models.CharField(
         max_length=15,
         choices=HemolysisResult.choices,

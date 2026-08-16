@@ -214,7 +214,10 @@ class CrossMatchViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.Model
         return CrossMatchSerializer
 
     def perform_create(self, serializer):
-        serializer.save(performed_by=self.request.user, **self.get_tenant_save_kwargs())
+        instance = serializer.save(performed_by=self.request.user, **self.get_tenant_save_kwargs())
+        if instance.blood_request.status == RequestStatus.PENDING:
+            instance.blood_request.status = RequestStatus.CROSSMATCH_PENDING
+            instance.blood_request.save(update_fields=["status", "updated_at"])
 
     @action(detail=True, methods=["post"])
     def record_result(self, request, pk=None):

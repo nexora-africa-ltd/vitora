@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Save, X, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
+import { useQuery } from '@tanstack/react-query';
 import { PageHeader } from '@/components/shared/page-header';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,7 +15,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
-import { useCreateBloodUnit, useBloodDonors } from '@/lib/hooks/use-blood-bank';
+import { useCreateBloodUnit, useBloodDonor, useBloodDonors } from '@/lib/hooks/use-blood-bank';
+import { resourcesApi } from '@/lib/api/scheduling';
 import { getApiErrorMessage } from '@/lib/api/client';
 import type { BloodUnitCreateData, BloodGroup, BloodComponent } from '@/lib/types/blood-bank';
 
@@ -35,6 +37,7 @@ export default function NewBloodUnitPage() {
   const donorParam = searchParams.get('donor');
 
   const [donorId, setDonorId] = useState<string>(donorParam || '');
+  const [unitNumber, setUnitNumber] = useState('');
   const [bloodGroup, setBloodGroup] = useState<BloodGroup>('O+');
   const [component, setComponent] = useState<BloodComponent>('WHOLE_BLOOD');
   const [collectionDate, setCollectionDate] = useState(new Date().toISOString().split('T')[0]);
@@ -42,11 +45,30 @@ export default function NewBloodUnitPage() {
   const [volumeMl, setVolumeMl] = useState('450');
   const [storageLocation, setStorageLocation] = useState('');
   const [notes, setNotes] = useState('');
-  const [donorSearch, setDonorSearch] = useState('');
   const [error, setError] = useState('');
 
   // Fetch donors for dropdown
-  const { data: donorsData } = useBloodDonors({ search: donorSearch, page_size: 20 });
+  const { data: donorsData } = useBloodDonors({ page_size: 100, ordering: '-created_at' });
+  const donorNumericId = donorId ? Number(donorId) : undefined;
+  const { data: donorDetail } = useBloodDonor(donorNumericId);
+  const { data: storagePlaces } = useQuery({
+    queryKey: ['blood-bank-storage-places'],
+    queryFn: () => resourcesApi.list({ resource_type: 'PLACE', is_active: true, page_size: 100 }),
+  });
+
+  useEffect(() => {
+    if (!donorId) return;
+
+    const fromList = donorsData?.results?.find((donor) => donor.id === Number(donorId));
+    if (fromList?.blood_group) {
+      setBloodGroup(fromList.blood_group);
+      return;
+    }
+
+    if (donorDetail?.blood_group) {
+      setBloodGroup(donorDetail.blood_group);
+    }
+  }, [donorId, donorsData?.results, donorDetail]);
 
   const handleSubmit = useCallback(async () => {
     setError('');
@@ -66,6 +88,7 @@ export default function NewBloodUnitPage() {
       component,
       expiry_date: expiryDate,
     };
+    if (unitNumber.trim()) data.unit_number = unitNumber.trim();
     if (collectionDate) data.collection_date = collectionDate;
     if (volumeMl) data.volume_ml = Number(volumeMl);
     if (storageLocation.trim()) data.storage_location = storageLocation.trim();
@@ -78,7 +101,7 @@ export default function NewBloodUnitPage() {
     } catch (err) {
       setError(getApiErrorMessage(err));
     }
-  }, [donorId, bloodGroup, component, collectionDate, expiryDate, volumeMl, storageLocation, notes, createMutation, router]);
+  }, [donorId, unitNumber, bloodGroup, component, collectionDate, expiryDate, volumeMl, storageLocation, notes, createMutation, router]);
 
   return (
     <div className="container mx-auto py-6 space-y-6">
@@ -117,6 +140,15 @@ export default function NewBloodUnitPage() {
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <Label htmlFor="unit-number">Unit/Bag Number</Label>
+                <Input
+                  id="unit-number"
+                  value={unitNumber}
+                  onChange={(e) => setUnitNumber(e.target.value)}
+                  placeholder="e.g., BU-20260816-0001"
+                />
+              </div>
               <div>
                 <Label>Blood Group *</Label>
                 <Select value={bloodGroup} onValueChange={(v) => setBloodGroup(v as BloodGroup)}>
@@ -188,13 +220,20 @@ export default function NewBloodUnitPage() {
             </div>
 
             <div>
-              <Label htmlFor="storage-location">Storage Location</Label>
-              <Input
-                id="storage-location"
-                value={storageLocation}
-                onChange={(e) => setStorageLocation(e.target.value)}
-                placeholder="e.g., Fridge A, Shelf 3"
-              />
+              <Label>Storage Location</Label>
+              <Select value={storageLocation || '__none__'} onValueChange={(v) => setStorageLocation(v === '__none__' ? '' : v)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select configured storage place" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">No location selected</SelectItem>
+                  {(storagePlaces?.results || []).map((place) => (
+                    <SelectItem key={place.id} value={place.name}>
+                      {place.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div>

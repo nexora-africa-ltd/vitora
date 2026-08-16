@@ -55,6 +55,7 @@ export default function NewATRReportPage() {
 
   // Section 1: Patient history
   const [preTransfusionHb, setPreTransfusionHb] = useState('');
+  const [volumeTransfusedMl, setVolumeTransfusedMl] = useState('');
   const [obstetricStatus, setObstetricStatus] = useState<ObstetricStatus>('NA');
   const [gravida, setGravida] = useState('');
   const [para, setPara] = useState('');
@@ -113,6 +114,7 @@ export default function NewATRReportPage() {
     const data: AdverseTransfusionReactionCreate = {
       transfusion: parseInt(transfusionId!, 10),
       pre_transfusion_hb: preTransfusionHb || undefined,
+      volume_transfused_ml: volumeTransfusedMl ? parseInt(volumeTransfusedMl, 10) : undefined,
       obstetric_status: obstetricStatus,
       gravida: gravida ? parseInt(gravida, 10) : undefined,
       para: para ? parseInt(para, 10) : undefined,
@@ -189,6 +191,17 @@ export default function NewATRReportPage() {
                 placeholder="e.g. 8.5"
                 value={preTransfusionHb}
                 onChange={(e) => setPreTransfusionHb(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="volume-transfused">Volume Transfused (mL)</Label>
+              <Input
+                id="volume-transfused"
+                type="number"
+                min="1"
+                placeholder="e.g. 280"
+                value={volumeTransfusedMl}
+                onChange={(e) => setVolumeTransfusedMl(e.target.value)}
               />
             </div>
             <div className="space-y-2">

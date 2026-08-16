@@ -87,9 +87,12 @@ class BloodDonorDetailSerializer(serializers.ModelSerializer):
 
 
 class BloodUnitCreateSerializer(serializers.ModelSerializer):
+    unit_number = serializers.CharField(required=False, allow_blank=True)
+
     class Meta:
         model = BloodUnit
         fields = [
+            "unit_number",
             "donor",
             "blood_group",
             "component",

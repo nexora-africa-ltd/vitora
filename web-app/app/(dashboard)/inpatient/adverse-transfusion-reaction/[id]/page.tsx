@@ -321,10 +321,10 @@ export default function ATRDetailPage({ params }: { params: Promise<{ id: string
             {atr.patient_name}
             <span className="text-muted-foreground"> &bull; {atr.patient_mrn}</span>
           </p>
-          <p className="text-xs sm:text-sm text-muted-foreground">
-            {atr.blood_product_display} &bull; Unit: {atr.blood_unit_number} &bull; {atr.amount_ml}ml
-          </p>
-        </div>
+            <p className="text-xs sm:text-sm text-muted-foreground">
+              {atr.blood_product_display} &bull; Unit: {atr.blood_unit_number} &bull; {atr.volume_transfused_ml ?? atr.amount_ml}ml
+            </p>
+          </div>
         <Badge className={`shrink-0 w-fit self-start sm:self-auto ${STATUS_STYLES[atr.status]}`}>
           {atr.status_display || atr.status}
         </Badge>

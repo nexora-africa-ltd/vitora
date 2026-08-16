@@ -56,6 +56,18 @@ export function useCreateBloodDonor() {
   });
 }
 
+export function useUpdateBloodDonor() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: Partial<BloodDonorCreateData> }) =>
+      bloodBankApi.updateDonor(id, data),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: bloodBankKeys.donors() });
+      queryClient.invalidateQueries({ queryKey: bloodBankKeys.donorDetail(variables.id) });
+    },
+  });
+}
+
 // Units
 export function useBloodUnits(params?: BloodUnitListParams) {
   return useQuery({
