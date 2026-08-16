@@ -30,6 +30,12 @@ from hmis.apps.encounters.serializers import (
     SocialHistoryObservationSerializer,
     TreatmentPlanSerializer,
     TreatmentPlanTemplateSerializer,
+    VitalFlagSuggestionAcceptSerializer,
+    VitalFlagSuggestionAcknowledgeSerializer,
+    VitalFlagSuggestionActionSerializer,
+    VitalFlagSuggestionMapSerializer,
+    VitalFlagSuggestionRejectSerializer,
+    VitalFlagSuggestionSerializer,
 )
 
 CONTRACTS: list[tuple[type, frozenset[str]]] = [
@@ -519,6 +525,107 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "id",
                 "is_active",
                 "name",
+                "updated_at",
+            }
+        ),
+    ),
+    (
+        VitalFlagSuggestionAcceptSerializer,
+        frozenset(
+            {
+                "certainty",
+                "chronic_status",
+                "condition_name",
+                "diagnosis_type",
+                "note",
+                "resolution_action",
+                "selected_icd10",
+                "selected_icd11_code",
+                "selected_icd11_title",
+            }
+        ),
+    ),
+    (
+        VitalFlagSuggestionAcknowledgeSerializer,
+        frozenset(
+            {
+                "note",
+            }
+        ),
+    ),
+    (
+        VitalFlagSuggestionActionSerializer,
+        frozenset(
+            {
+                "action_type",
+                "actor",
+                "actor_username",
+                "created_at",
+                "from_status",
+                "id",
+                "payload_json",
+                "to_status",
+            }
+        ),
+    ),
+    (
+        VitalFlagSuggestionMapSerializer,
+        frozenset(
+            {
+                "selected_icd10",
+                "selected_icd11_code",
+                "selected_icd11_title",
+            }
+        ),
+    ),
+    (
+        VitalFlagSuggestionRejectSerializer,
+        frozenset(
+            {
+                "reason",
+            }
+        ),
+    ),
+    (
+        VitalFlagSuggestionSerializer,
+        frozenset(
+            {
+                "acknowledged_at",
+                "actions",
+                "clinical_domain",
+                "created_at",
+                "detected_at",
+                "encounter",
+                "evidence_json",
+                "flag_key",
+                "id",
+                "linked_chronic_condition",
+                "linked_diagnosis",
+                "mapping_status",
+                "mapping_status_display",
+                "patient",
+                "patient_name",
+                "resolution_action",
+                "resolution_note",
+                "resolved_at",
+                "resolved_by",
+                "resolved_by_username",
+                "rule_id",
+                "rule_version",
+                "selected_icd10",
+                "selected_icd10_code",
+                "selected_icd11_code",
+                "selected_icd11_title",
+                "severity",
+                "severity_display",
+                "source_type",
+                "status",
+                "status_display",
+                "suggested_icd10",
+                "suggested_icd10_code",
+                "suggested_icd11_code",
+                "suggested_icd11_title",
+                "triage_assessment",
                 "updated_at",
             }
         ),

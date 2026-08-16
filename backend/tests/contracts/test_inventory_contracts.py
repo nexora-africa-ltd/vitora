@@ -25,6 +25,13 @@ from hmis.apps.inventory.serializers import (
     GoodsReceiptNoteListSerializer,
     GRNItemCreateSerializer,
     GRNItemSerializer,
+    InventoryBootstrapCatalogSourcesSerializer,
+    InventoryBootstrapMetaSerializer,
+    InventoryBootstrapModulesSerializer,
+    InventoryBootstrapPermissionsSerializer,
+    InventoryBootstrapRealtimeSerializer,
+    InventoryBootstrapSerializer,
+    InventoryBootstrapTenantSerializer,
     PaymentTermSerializer,
     POApproveSerializer,
     POCancelSerializer,
@@ -376,6 +383,83 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "supplier_name",
                 "total_amount",
                 "total_items",
+            }
+        ),
+    ),
+    (
+        InventoryBootstrapCatalogSourcesSerializer,
+        frozenset(
+            {
+                "invoice_item_source",
+                "order_item_source",
+                "unified_pricing_enabled",
+            }
+        ),
+    ),
+    (
+        InventoryBootstrapMetaSerializer,
+        frozenset(
+            {
+                "generated_at",
+                "version",
+            }
+        ),
+    ),
+    (
+        InventoryBootstrapModulesSerializer,
+        frozenset(
+            {
+                "billing",
+                "imaging",
+                "inventory",
+                "laboratory",
+                "pharmacy",
+            }
+        ),
+    ),
+    (
+        InventoryBootstrapPermissionsSerializer,
+        frozenset(
+            {
+                "can_adjust_stock",
+                "can_create_po",
+                "can_manage_suppliers",
+                "can_receive_grn",
+                "can_view",
+            }
+        ),
+    ),
+    (
+        InventoryBootstrapRealtimeSerializer,
+        frozenset(
+            {
+                "domain_events_wired",
+                "websocket_enabled",
+            }
+        ),
+    ),
+    (
+        InventoryBootstrapSerializer,
+        frozenset(
+            {
+                "catalog_sources",
+                "inventory_enabled",
+                "meta",
+                "modules",
+                "permissions",
+                "realtime",
+                "standalone_inventory_mode",
+                "tenant_scope",
+            }
+        ),
+    ),
+    (
+        InventoryBootstrapTenantSerializer,
+        frozenset(
+            {
+                "facility_id",
+                "facility_level",
+                "organization_id",
             }
         ),
     ),

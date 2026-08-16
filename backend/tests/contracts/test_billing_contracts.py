@@ -10,6 +10,7 @@ import pytest  # type: ignore
 
 from hmis.apps.billing.serializers import (
     BillingAutomationRuleSerializer,
+    BillingCatalogItemSerializer,
     CreditNoteSerializer,
     FacilityBillingConfigCreateSerializer,
     FacilityBillingConfigSerializer,
@@ -53,6 +54,22 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "trigger",
                 "unit_price_override",
                 "updated_at",
+            }
+        ),
+    ),
+    (
+        BillingCatalogItemSerializer,
+        frozenset(
+            {
+                "code",
+                "description",
+                "id",
+                "item_type",
+                "kind",
+                "name",
+                "service_id",
+                "sha_code",
+                "unit_price",
             }
         ),
     ),
@@ -178,10 +195,10 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
         InvoiceItemSerializer,
         frozenset(
             {
+                "catalog_ref",
                 "converted_at",
                 "converted_from_item",
                 "created_at",
-                "catalog_ref",
                 "description",
                 "discount_amount",
                 "discount_percentage",
@@ -263,7 +280,6 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
         frozenset(
             {
                 "amount_paid",
-                "gross_total",
                 "balance",
                 "balance_due",
                 "can_convert",
@@ -282,9 +298,11 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "discount_value",
                 "due_date",
                 "encounter",
+                "gross_total",
                 "id",
                 "insurance_amount",
                 "insurance_coverage",
+                "insurance_credit_amount",
                 "insurance_member_no",
                 "insurance_provider",
                 "invoice_date",
@@ -294,23 +312,22 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "items",
                 "notes",
                 "patient",
+                "patient_copay_amount",
                 "patient_mrn",
                 "patient_name",
+                "patient_net_due",
+                "payer_credit_total",
                 "payer_type",
                 "payers",
                 "payment_type",
-                "patient_net_due",
                 "public_id",
                 "qr_code",
-                "payer_credit_total",
-                "patient_copay_amount",
                 "sha_claim_number",
                 "sha_credit_amount",
                 "status",
                 "subtotal",
                 "tax_amount",
                 "total_amount",
-                "insurance_credit_amount",
                 "updated_at",
                 "valid_until",
             }

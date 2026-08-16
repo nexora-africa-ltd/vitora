@@ -13,12 +13,20 @@ from hmis.apps.pharmacy.serializers import (
     DispensingSerializer,
     DrugCategorySerializer,
     DrugSerializer,
+    PharmacyBootstrapCatalogSourcesSerializer,
+    PharmacyBootstrapMetaSerializer,
+    PharmacyBootstrapModulesSerializer,
+    PharmacyBootstrapPermissionsSerializer,
+    PharmacyBootstrapRealtimeSerializer,
+    PharmacyBootstrapSerializer,
+    PharmacyBootstrapTenantSerializer,
     PrescriptionCreateSerializer,
     PrescriptionItemSerializer,
     PrescriptionItemWriteSerializer,
     PrescriptionSerializer,
     StockAdjustmentSerializer,
     StockAlertSerializer,
+    StockAlertSeveritySummarySerializer,
     StockBatchSerializer,
 )
 
@@ -123,6 +131,83 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "strength",
                 "unit",
                 "updated_at",
+            }
+        ),
+    ),
+    (
+        PharmacyBootstrapCatalogSourcesSerializer,
+        frozenset(
+            {
+                "dispense_item_source",
+                "pricing_source",
+                "unified_pricing_enabled",
+            }
+        ),
+    ),
+    (
+        PharmacyBootstrapMetaSerializer,
+        frozenset(
+            {
+                "generated_at",
+                "version",
+            }
+        ),
+    ),
+    (
+        PharmacyBootstrapModulesSerializer,
+        frozenset(
+            {
+                "billing",
+                "inventory",
+                "laboratory",
+                "pharmacy",
+            }
+        ),
+    ),
+    (
+        PharmacyBootstrapPermissionsSerializer,
+        frozenset(
+            {
+                "can_adjust_stock",
+                "can_create_prescription",
+                "can_dispense",
+                "can_manage_catalog",
+                "can_view_alerts",
+                "can_view_prescriptions",
+            }
+        ),
+    ),
+    (
+        PharmacyBootstrapRealtimeSerializer,
+        frozenset(
+            {
+                "domain_events_wired",
+                "websocket_enabled",
+            }
+        ),
+    ),
+    (
+        PharmacyBootstrapSerializer,
+        frozenset(
+            {
+                "catalog_sources",
+                "meta",
+                "modules",
+                "permissions",
+                "pharmacy_enabled",
+                "realtime",
+                "standalone_pharmacy_mode",
+                "tenant_scope",
+            }
+        ),
+    ),
+    (
+        PharmacyBootstrapTenantSerializer,
+        frozenset(
+            {
+                "facility_id",
+                "facility_level",
+                "organization_id",
             }
         ),
     ),
@@ -270,6 +355,18 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "resolved_by",
                 "severity",
                 "updated_at",
+            }
+        ),
+    ),
+    (
+        StockAlertSeveritySummarySerializer,
+        frozenset(
+            {
+                "critical",
+                "high",
+                "low",
+                "medium",
+                "total",
             }
         ),
     ),

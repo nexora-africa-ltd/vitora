@@ -10,6 +10,8 @@ import pytest  # type: ignore
 
 from hmis.apps.insurance.serializers import (
     FacilitySladeCredentialSerializer,
+    HealthCloudGetHealthIdSerializer,
+    HealthCloudPostProfileSerializer,
     HealthCloudSessionRequestOTPSerializer,
     HealthCloudSessionStartVisitSerializer,
     InsuranceClaimAppealSerializer,
@@ -65,6 +67,32 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "slade_password",
                 "slade_username",
                 "updated_at",
+            }
+        ),
+    ),
+    (
+        HealthCloudGetHealthIdSerializer,
+        frozenset(
+            {
+                "profile_id",
+            }
+        ),
+    ),
+    (
+        HealthCloudPostProfileSerializer,
+        frozenset(
+            {
+                "contacts",
+                "date_of_birth",
+                "enrolment_date",
+                "first_name",
+                "gender",
+                "identifiers",
+                "last_name",
+                "other_name",
+                "profile_id",
+                "service_name",
+                "slade_code",
             }
         ),
     ),

@@ -630,6 +630,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "page_context",
                 "patient_context",
                 "session_id",
+                "stream",
                 "user_context",
                 "verbosity",
             }
