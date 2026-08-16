@@ -23,6 +23,7 @@ import { PageHeader } from '@/components/shared/page-header';
 import { inventoryApi } from '@/lib/api/inventory';
 import { getApiErrorMessage } from '@/lib/api/client';
 import { useToast } from '@/lib/hooks/use-toast';
+import { usePermissions } from '@/lib/hooks/use-permissions';
 
 const supplierFormSchema = z.object({
   code: z.string().min(1, 'Code is required'),
@@ -43,6 +44,27 @@ type SupplierFormValues = z.infer<typeof supplierFormSchema>;
 export default function NewSupplierPage() {
   const router = useRouter();
   const { toast } = useToast();
+  const { hasPermission } = usePermissions();
+  const canCreateSupplier = hasPermission('inventory.add_supplier');
+  const { data: bootstrap } = useQuery({
+    queryKey: ['inventory-bootstrap'],
+    queryFn: inventoryApi.getBootstrap,
+  });
+  const canManageSuppliersFromCapabilities = bootstrap?.permissions.can_manage_suppliers ?? true;
+
+  if (!canCreateSupplier || !canManageSuppliersFromCapabilities) {
+    return (
+      <div className="space-y-4 sm:space-y-6">
+        <PageHeader title="Add Supplier" />
+        <Card className="p-6 text-center">
+          <p className="text-sm font-medium">Access denied</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            You do not have permission to manage suppliers for this facility.
+          </p>
+        </Card>
+      </div>
+    );
+  }
 
   const { data: paymentTerms = [] } = useQuery({
     queryKey: ['payment-terms'],

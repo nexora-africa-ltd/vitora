@@ -54,11 +54,6 @@ export default function StockCountsPage() {
   const router = useRouter();
   const canCreateRoute = useCreateRouteAccess();
   const { refresh, isRefreshing } = usePageRefresh();
-
-  const { data: capabilities } = useQuery({
-    queryKey: ['inventory-stock-count-capabilities'],
-    queryFn: () => inventoryApi.getStockCountCapabilities(),
-  });
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
@@ -77,6 +72,11 @@ export default function StockCountsPage() {
   const counts = data?.results || [];
   const totalCount = data?.count || 0;
   const totalPages = Math.ceil(totalCount / 20);
+  const capabilities = data?.capabilities;
+  const canCreateCount =
+    canCreateRoute('/inventory/stock-counts/new') &&
+    (capabilities?.inventory_enabled ?? true) &&
+    (capabilities?.permissions.can_adjust_stock ?? true);
 
   const inProgressCount = counts.filter((c) => c.status === 'IN_PROGRESS').length;
   const awaitingApproval = counts.filter((c) => c.status === 'COMPLETED').length;
@@ -88,14 +88,26 @@ export default function StockCountsPage() {
           title="Stock Counts"
           helpContent="Physical stock verification sessions. Create a count, generate items from current batches, record physical quantities, then approve to auto-create adjustments for variances."
           actions={
-            capabilities?.can_initiate ? (
-              <Button onClick={() => router.push('/inventory/stock-counts/new')} disabled={!canCreateRoute('/inventory/stock-counts/new')}>
+            canCreateCount ? (
+              <Button onClick={() => router.push('/inventory/stock-counts/new')}>
                 <ClipboardList className="mr-2 h-4 w-4" />
                 New Count
               </Button>
             ) : undefined
           }
         />
+
+        <div className="flex flex-wrap gap-2">
+          <Badge variant="outline" className="w-fit">
+            Inventory: {capabilities?.inventory_enabled ? 'Enabled' : 'Disabled'}
+          </Badge>
+          <Badge variant="outline" className="w-fit">
+            Stock Adjust: {capabilities?.permissions.can_adjust_stock ? 'Allowed' : 'Restricted'}
+          </Badge>
+          <Badge variant="outline" className="w-fit">
+            Realtime: {capabilities?.realtime.websocket_enabled ? 'WebSocket On' : 'WebSocket Off'}
+          </Badge>
+        </div>
 
         {/* Stats */}
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">

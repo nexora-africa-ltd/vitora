@@ -107,6 +107,82 @@ export type AdjustmentType =
   | 'SAMPLE'
   | 'OTHER';
 
+export interface PharmacyBootstrapTenantScope {
+  organization_id: number | null;
+  facility_id: number | null;
+  facility_level: string;
+}
+
+export interface PharmacyBootstrapModules {
+  pharmacy: boolean;
+  inventory: boolean;
+  laboratory: boolean;
+  billing: boolean;
+}
+
+export interface PharmacyBootstrapPermissions {
+  can_view_prescriptions: boolean;
+  can_create_prescription: boolean;
+  can_dispense: boolean;
+  can_view_alerts: boolean;
+  can_adjust_stock: boolean;
+  can_manage_catalog: boolean;
+}
+
+export interface PharmacyBootstrapCatalogSources {
+  dispense_item_source: string;
+  pricing_source: string;
+  unified_pricing_enabled: boolean;
+}
+
+export interface PharmacyBootstrapRealtime {
+  websocket_enabled: boolean;
+  domain_events_wired: boolean;
+}
+
+export interface PharmacyBootstrapMeta {
+  generated_at: string;
+  version: string;
+}
+
+export interface PharmacyBootstrap {
+  pharmacy_enabled: boolean;
+  standalone_pharmacy_mode: boolean;
+  tenant_scope: PharmacyBootstrapTenantScope;
+  modules: PharmacyBootstrapModules;
+  permissions: PharmacyBootstrapPermissions;
+  catalog_sources: PharmacyBootstrapCatalogSources;
+  realtime: PharmacyBootstrapRealtime;
+  meta: PharmacyBootstrapMeta;
+}
+
+export interface PrescriptionListCapabilitiesSubset {
+  pharmacy_enabled: boolean;
+  modules: {
+    pharmacy: boolean;
+    inventory: boolean;
+    billing: boolean;
+  };
+  permissions: {
+    can_create_prescription: boolean;
+    can_dispense: boolean;
+  };
+  realtime: {
+    websocket_enabled: boolean;
+  };
+  meta: {
+    version: string;
+  };
+}
+
+export interface PrescriptionListResponse {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: Prescription[];
+  capabilities: PrescriptionListCapabilitiesSubset;
+}
+
 /**
  * Drug catalog entry
  */
@@ -233,6 +309,17 @@ export interface StockAlert {
   resolution_notes?: string | null;
   created_at: string;
   updated_at?: string | null;
+}
+
+/**
+ * Aggregate stock alert counts by severity.
+ */
+export interface StockAlertSeveritySummary {
+  total: number;
+  critical: number;
+  high: number;
+  medium: number;
+  low: number;
 }
 
 /**

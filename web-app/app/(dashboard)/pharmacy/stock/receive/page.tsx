@@ -15,7 +15,9 @@ import { format, parseISO } from 'date-fns';
 import * as z from 'zod';
 import { Check, Loader2, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
   Form,
   FormControl,
@@ -49,6 +51,7 @@ import {
 } from '@/components/ui/command';
 import { PageHeader } from '@/components/shared/page-header';
 import { useDrugs, useCreateStockBatch } from '@/lib/hooks/use-pharmacy';
+import { pharmacyApi } from '@/lib/api/pharmacy';
 import { useDebounce } from '@/lib/hooks/use-debounce';
 import { useQuery } from '@tanstack/react-query';
 import { inventoryApi } from '@/lib/api/inventory';
@@ -83,6 +86,17 @@ type ReceiveStockFormValues = z.infer<typeof receiveStockSchema>;
 export default function ReceiveStockPage() {
   const router = useRouter();
   const { toast } = useToast();
+  const { data: bootstrap } = useQuery({
+    queryKey: ['pharmacy-bootstrap'],
+    queryFn: pharmacyApi.getBootstrap,
+  });
+  const pharmacyEnabled = bootstrap?.pharmacy_enabled ?? true;
+  const inventoryModuleEnabled = bootstrap?.modules.inventory ?? true;
+  const canAdjustStock = bootstrap?.permissions.can_adjust_stock ?? true;
+  const canReceiveStock = pharmacyEnabled && inventoryModuleEnabled && canAdjustStock;
+  const formDisabled = !canReceiveStock;
+  const pricingSource = bootstrap?.catalog_sources.pricing_source ?? 'pharmacy_catalog';
+  const unifiedPricingEnabled = bootstrap?.catalog_sources.unified_pricing_enabled ?? false;
 
   // Server-side drug search
   const [drugSearch, setDrugSearch] = useState('');
@@ -135,6 +149,15 @@ export default function ReceiveStockPage() {
   });
 
   const onSubmit = async (data: ReceiveStockFormValues) => {
+    if (!canReceiveStock) {
+      toast({
+        title: 'Action blocked',
+        description: 'Stock receiving is currently disabled by facility capability settings.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     try {
       const batch = await createStockBatch.mutateAsync(data);
 
@@ -171,7 +194,26 @@ export default function ReceiveStockPage() {
       <PageHeader
         title="Quick Receive"
         helpContent="Quickly add a stock batch without a formal purchase order. For procurement-linked receiving, use Inventory → Formal Goods Receipt instead."
+        actions={
+          <div className="flex gap-2">
+            <Badge variant="outline" className="w-fit">Inventory: {inventoryModuleEnabled ? 'Enabled' : 'Disabled'}</Badge>
+            <Badge variant="outline" className="w-fit">Pricing: {unifiedPricingEnabled ? `Unified (${pricingSource})` : 'Manual'}</Badge>
+          </div>
+        }
       />
+
+      {!canReceiveStock ? (
+        <Alert>
+          <AlertTitle>Stock receiving is currently unavailable</AlertTitle>
+          <AlertDescription>
+            {!pharmacyEnabled
+              ? 'Pharmacy module is disabled for this facility.'
+              : !inventoryModuleEnabled
+                ? 'Inventory module is disabled for this facility.'
+                : 'Your role does not have permission to receive stock.'}
+          </AlertDescription>
+        </Alert>
+      ) : null}
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 sm:space-y-6 max-w-2xl mx-auto" role="form" data-testid="stock-receive-form">
@@ -195,6 +237,7 @@ export default function ReceiveStockPage() {
                             variant="outline"
                             role="combobox"
                             aria-expanded={drugOpen}
+                            disabled={formDisabled}
                             className="w-full justify-between font-normal"
                           >
                             {selectedDrug
@@ -210,6 +253,7 @@ export default function ReceiveStockPage() {
                             placeholder="Search items by name or code..."
                             value={drugSearch}
                             onValueChange={setDrugSearch}
+                            disabled={formDisabled}
                           />
                           <CommandList className="max-h-[250px]">
                             {drugsLoading ? (
@@ -228,6 +272,7 @@ export default function ReceiveStockPage() {
                                     key={drug.id}
                                     value={drug.id.toString()}
                                     onSelect={() => {
+                                      if (formDisabled) return;
                                       setSelectedDrug(drug);
                                       field.onChange(drug.id);
                                       setDrugOpen(false);
@@ -271,9 +316,10 @@ export default function ReceiveStockPage() {
                     <FormItem>
                       <FormLabel>Batch Number <span className="text-destructive">*</span></FormLabel>
                       <FormControl>
-                        <Input
-                          placeholder="e.g., BATCH-2026-001"
-                          aria-label="Batch Number"
+                          <Input
+                            placeholder="e.g., BATCH-2026-001"
+                            disabled={formDisabled}
+                            aria-label="Batch Number"
                           aria-invalid={!!fieldState.error}
                           className={fieldState.error ? 'border-destructive focus-visible:ring-destructive' : ''}
                           {...field}
@@ -292,9 +338,10 @@ export default function ReceiveStockPage() {
                     <FormItem>
                       <FormLabel>Quantity Received <span className="text-destructive">*</span></FormLabel>
                       <FormControl>
-                        <Input
-                          type="number"
-                          placeholder="e.g., 500"
+                          <Input
+                            type="number"
+                            disabled={formDisabled}
+                            placeholder="e.g., 500"
                           aria-label="Quantity"
                           aria-invalid={!!fieldState.error}
                           className={fieldState.error ? 'border-destructive focus-visible:ring-destructive' : ''}
@@ -329,6 +376,7 @@ export default function ReceiveStockPage() {
                           value={field.value ? parseISO(field.value) : undefined}
                           onChange={(date) => field.onChange(date ? format(date, 'yyyy-MM-dd') : '')}
                           placeholder="Select date"
+                          disabled={formDisabled}
                         />
                       </FormControl>
                       <FormMessage />
@@ -347,6 +395,7 @@ export default function ReceiveStockPage() {
                           value={field.value ? parseISO(field.value) : undefined}
                           onChange={(date) => field.onChange(date ? format(date, 'yyyy-MM-dd') : '')}
                           placeholder="Select date"
+                          disabled={formDisabled}
                           allowFuture={true}
                           allowPast={false}
                           error={!!fieldState.error}
@@ -368,6 +417,7 @@ export default function ReceiveStockPage() {
                           value={field.value ? parseISO(field.value) : undefined}
                           onChange={(date) => field.onChange(date ? format(date, 'yyyy-MM-dd') : '')}
                           placeholder="Select date"
+                          disabled={formDisabled}
                           error={!!fieldState.error}
                         />
                       </FormControl>
@@ -380,12 +430,15 @@ export default function ReceiveStockPage() {
           </Card>
 
           {/* Pricing */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base sm:text-lg">Pricing (KES)</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base sm:text-lg">Pricing (KES)</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="mb-3 text-xs text-muted-foreground">
+                  Price mode: {unifiedPricingEnabled ? `Unified catalog pricing (${pricingSource})` : 'Manual entry allowed'}
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
                   name="cost_price"
@@ -393,10 +446,11 @@ export default function ReceiveStockPage() {
                     <FormItem>
                       <FormLabel>Cost Price <span className="text-destructive">*</span></FormLabel>
                       <FormControl>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          placeholder="e.g., 3.00"
+                          <Input
+                            type="number"
+                            step="0.01"
+                            disabled={formDisabled || unifiedPricingEnabled}
+                            placeholder="e.g., 3.00"
                           aria-label="Cost Price"
                           aria-invalid={!!fieldState.error}
                           className={fieldState.error ? 'border-destructive focus-visible:ring-destructive' : ''}
@@ -417,10 +471,11 @@ export default function ReceiveStockPage() {
                     <FormItem>
                       <FormLabel>Selling Price <span className="text-destructive">*</span></FormLabel>
                       <FormControl>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          placeholder="e.g., 5.00"
+                          <Input
+                            type="number"
+                            step="0.01"
+                            disabled={formDisabled || unifiedPricingEnabled}
+                            placeholder="e.g., 5.00"
                           aria-label="Selling Price"
                           aria-invalid={!!fieldState.error}
                           className={fieldState.error ? 'border-destructive focus-visible:ring-destructive' : ''}
@@ -453,6 +508,7 @@ export default function ReceiveStockPage() {
                       <Select
                         value={field.value?.toString() || ''}
                         onValueChange={(v) => field.onChange(v ? parseInt(v) : undefined)}
+                        disabled={formDisabled}
                       >
                         <FormControl>
                           <SelectTrigger>
@@ -481,6 +537,7 @@ export default function ReceiveStockPage() {
                       <Select
                         value={field.value?.toString() || ''}
                         onValueChange={(v) => field.onChange(v ? parseInt(v) : undefined)}
+                        disabled={formDisabled}
                       >
                         <FormControl>
                           <SelectTrigger>
@@ -509,6 +566,7 @@ export default function ReceiveStockPage() {
                       <Select
                         value={field.value?.toString() || ''}
                         onValueChange={(v) => field.onChange(parseInt(v))}
+                        disabled={formDisabled}
                       >
                         <FormControl>
                           <SelectTrigger>
@@ -537,6 +595,7 @@ export default function ReceiveStockPage() {
                       <FormControl>
                         <Input
                           placeholder="e.g., Shelf A1, Bin 3"
+                          disabled={formDisabled}
                           aria-label="Shelf location"
                           {...field}
                         />
@@ -555,6 +614,7 @@ export default function ReceiveStockPage() {
                       <FormControl>
                         <Input
                           placeholder="e.g., 1234567890123"
+                          disabled={formDisabled}
                           {...field}
                         />
                       </FormControl>
@@ -579,7 +639,7 @@ export default function ReceiveStockPage() {
             </Button>
             <Button
               type="submit"
-              disabled={createStockBatch.isPending}
+              disabled={createStockBatch.isPending || !canReceiveStock}
               className="w-full sm:w-auto"
             >
               {createStockBatch.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

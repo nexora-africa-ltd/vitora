@@ -7,6 +7,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -18,6 +19,7 @@ import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useStockAdjustments } from '@/lib/hooks/use-pharmacy';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
+import { pharmacyApi } from '@/lib/api/pharmacy';
 import type { StockAdjustment, AdjustmentType } from '@/lib/types/pharmacy';
 
 const ADJUSTMENT_TYPE_LABELS: Record<AdjustmentType, string> = {
@@ -50,8 +52,13 @@ const ADJUSTMENT_TYPE_COLORS: Partial<Record<AdjustmentType, string>> = {
 
 export default function StockAdjustmentsPage() {
   const { refresh, isRefreshing } = usePageRefresh();
+  const { data: bootstrap } = useQuery({
+    queryKey: ['pharmacy-bootstrap'],
+    queryFn: pharmacyApi.getBootstrap,
+  });
   const [page, setPage] = useState(1);
   const pageSize = 20;
+  const canAdjustStock = bootstrap?.permissions.can_adjust_stock ?? true;
 
   const { data, isLoading } = useStockAdjustments({ page, page_size: pageSize });
 
@@ -76,6 +83,7 @@ export default function StockAdjustmentsPage() {
         <PageHeader
           title="Stock Adjustments"
           helpContent="Track and record stock adjustments including damage, expiry, corrections, returns, and transfers. All adjustments are audit-logged."
+          actions={<Badge variant="outline" className="w-fit">Adjust Stock: {canAdjustStock ? 'Enabled' : 'Read-only'}</Badge>}
         />
 
         <ResponsiveTable

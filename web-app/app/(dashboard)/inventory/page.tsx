@@ -1,6 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
+import { useQuery } from '@tanstack/react-query';
 import {
   Package,
   Building2,
@@ -15,6 +16,7 @@ import {
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { PageHeader } from '@/components/shared/page-header';
+import { inventoryApi } from '@/lib/api/inventory';
 
 const sections = [
   {
@@ -22,59 +24,76 @@ const sections = [
     description: 'Manage vendors and supplier relationships',
     href: '/inventory/suppliers',
     icon: Building2,
+    moduleKey: 'inventory' as const,
   },
   {
     title: 'Purchase Orders',
     description: 'Create and track procurement orders',
     href: '/inventory/purchase-orders',
     icon: FileText,
+    moduleKey: 'inventory' as const,
   },
   {
     title: 'Goods Receipt',
     description: 'Record incoming deliveries',
     href: '/inventory/goods-receipt',
     icon: ClipboardList,
+    moduleKey: 'inventory' as const,
   },
   {
     title: 'Store Locations',
     description: 'Manage stores, pharmacies, and wards',
     href: '/inventory/store-locations',
     icon: Hospital,
+    moduleKey: 'inventory' as const,
   },
   {
     title: 'Transfers',
     description: 'Inter-store stock transfers',
     href: '/inventory/transfers',
     icon: ArrowLeftRight,
+    moduleKey: 'inventory' as const,
   },
   {
     title: 'Ward Stock',
     description: 'Ward-level stock and consumption',
     href: '/inventory/ward-stock',
     icon: BedDouble,
+    moduleKey: 'inventory' as const,
   },
   {
     title: 'Stock Counts',
     description: 'Physical stock counts and adjustments',
     href: '/inventory/stock-counts',
     icon: ListOrdered,
+    moduleKey: 'inventory' as const,
   },
   {
     title: 'eTIMS',
     description: 'KRA eTIMS electronic invoicing',
     href: '/inventory/etims',
     icon: Receipt,
+    moduleKey: 'billing' as const,
   },
   {
     title: 'Forecasting',
     description: 'Demand forecasts and reorder suggestions',
     href: '/inventory/forecasting',
     icon: BarChart3,
+    moduleKey: 'pharmacy' as const,
   },
 ];
 
 export default function InventoryOverviewPage() {
   const router = useRouter();
+  const { data: bootstrap } = useQuery({
+    queryKey: ['inventory-bootstrap'],
+    queryFn: inventoryApi.getBootstrap,
+  });
+
+  const visibleSections = sections.filter(
+    (section) => bootstrap?.modules?.[section.moduleKey] ?? true
+  );
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -84,7 +103,7 @@ export default function InventoryOverviewPage() {
       />
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {sections.map((section) => {
+        {visibleSections.map((section) => {
           const Icon = section.icon;
           return (
             <Card

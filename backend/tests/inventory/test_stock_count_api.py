@@ -17,6 +17,14 @@ class TestStockCountAPI:
         assert response.status_code == status.HTTP_200_OK
         data = response.data.get("results", response.data)
         assert len(data) >= 1
+        assert "capabilities" in response.data
+        assert set(response.data["capabilities"].keys()) == {
+            "inventory_enabled",
+            "modules",
+            "permissions",
+            "realtime",
+            "meta",
+        }
 
     def test_create_stock_count(self, authenticated_client, main_store):
         """Should create a stock count."""

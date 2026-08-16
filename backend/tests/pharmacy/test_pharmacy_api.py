@@ -56,6 +56,105 @@ def sample_drug_data(db):
 
 
 # ============================================================================
+# Bootstrap API Tests
+# ============================================================================
+
+
+@pytest.mark.django_db
+class TestPharmacyBootstrapAPI:
+    """Tests for pharmacy bootstrap embedded capabilities endpoint."""
+
+    def test_bootstrap_requires_auth(self, api_client):
+        """Bootstrap endpoint should require authentication."""
+        response = api_client.get("/api/pharmacy/bootstrap/")
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    def test_bootstrap_returns_expected_shape(self, authenticated_client):
+        """Bootstrap endpoint should return expected capability payload shape."""
+        response = authenticated_client.get("/api/pharmacy/bootstrap/")
+        assert response.status_code == status.HTTP_200_OK
+
+        assert "pharmacy_enabled" in response.data
+        assert "standalone_pharmacy_mode" in response.data
+        assert set(response.data["tenant_scope"].keys()) == {
+            "organization_id",
+            "facility_id",
+            "facility_level",
+        }
+        assert set(response.data["modules"].keys()) == {
+            "pharmacy",
+            "inventory",
+            "laboratory",
+            "billing",
+        }
+        assert set(response.data["permissions"].keys()) == {
+            "can_view_prescriptions",
+            "can_create_prescription",
+            "can_dispense",
+            "can_view_alerts",
+            "can_adjust_stock",
+            "can_manage_catalog",
+        }
+        assert set(response.data["catalog_sources"].keys()) == {
+            "dispense_item_source",
+            "pricing_source",
+            "unified_pricing_enabled",
+        }
+        assert set(response.data["realtime"].keys()) == {
+            "websocket_enabled",
+            "domain_events_wired",
+        }
+        assert response.data["meta"]["version"] == "1"
+
+
+@pytest.mark.django_db
+class TestStockAlertSeveritySummaryAPI:
+    """Tests for stock alert severity summary endpoint."""
+
+    def test_severity_summary_requires_auth(self, api_client):
+        response = api_client.get("/api/pharmacy/alerts/severity-summary/")
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    def test_severity_summary_returns_counts(
+        self, authenticated_client, sample_facility, sample_organization
+    ):
+        from hmis.apps.pharmacy.models import Drug, StockAlert
+
+        drug = Drug.objects.create(
+            code="ALRT001",
+            generic_name="Alert Drug",
+            strength="100mg",
+            form="TABLET",
+            categories=["OTHER"],
+            unit="tablet",
+        )
+
+        StockAlert.objects.create(
+            drug=drug,
+            alert_type="LOW_STOCK",
+            severity="CRITICAL",
+            message="Critical alert",
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+        StockAlert.objects.create(
+            drug=drug,
+            alert_type="LOW_STOCK",
+            severity="HIGH",
+            message="High alert",
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+
+        response = authenticated_client.get("/api/pharmacy/alerts/severity-summary/")
+        assert response.status_code == status.HTTP_200_OK
+        assert set(response.data.keys()) == {"total", "critical", "high", "medium", "low"}
+        assert response.data["total"] >= 2
+        assert response.data["critical"] >= 1
+        assert response.data["high"] >= 1
+
+
+# ============================================================================
 # Drug API Tests (6 tests)
 # ============================================================================
 
@@ -407,6 +506,14 @@ class TestPrescriptionAPI:
         response = authenticated_client.get("/api/pharmacy/prescriptions/")
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data["results"]) == 1
+        assert "capabilities" in response.data
+        assert set(response.data["capabilities"].keys()) == {
+            "pharmacy_enabled",
+            "modules",
+            "permissions",
+            "realtime",
+            "meta",
+        }
 
     def test_create_prescription(
         self, authenticated_client, test_user, sample_organization, sample_facility

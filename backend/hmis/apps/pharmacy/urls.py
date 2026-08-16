@@ -13,6 +13,7 @@ from hmis.apps.pharmacy.views import (
     DrugCategoryViewSet,
     DrugViewSet,
     ExpiryReportView,
+    PharmacyBootstrapView,
     PrescriptionViewSet,
     StockAdjustmentViewSet,
     StockAlertViewSet,
@@ -33,6 +34,7 @@ router.register(r"adjustments", StockAdjustmentViewSet, basename="stockadjustmen
 app_name = "pharmacy"
 
 urlpatterns = [
+    path("bootstrap/", PharmacyBootstrapView.as_view(), name="pharmacy-bootstrap"),
     path("", include(router.urls)),
     path("standalone/", include("hmis.apps.pharmacy.standalone.urls")),
     # Settings endpoint

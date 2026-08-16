@@ -45,8 +45,10 @@ import {
   PaginatedDemandForecastSchema,
   ReorderSuggestionSchema,
   PaginatedReorderSuggestionSchema,
+  InventoryBootstrapSchema,
 } from '@/lib/schemas/inventory.schema';
 import type {
+  InventoryBootstrap,
   Supplier,
   SupplierCreateData,
   SupplierListParams,
@@ -82,6 +84,7 @@ import type {
   StockCountItem,
   StockCountCreateData,
   StockCountListParams,
+  StockCountListResponse,
   StockCountItemUpdateData,
   StockCountCapabilities,
   ETIMSConfig,
@@ -107,6 +110,13 @@ import { z } from 'zod';
 const BASE = '/api/inventory';
 
 export const inventoryApi = {
+  async getBootstrap(): Promise<InventoryBootstrap> {
+    const response = await apiClient.get(`${BASE}/bootstrap/`);
+    return parseResponse(InventoryBootstrapSchema, response.data, {
+      context: 'inventoryApi.getBootstrap',
+    });
+  },
+
   // ==========================================================================
   // Suppliers
   // ==========================================================================
@@ -498,9 +508,7 @@ export const inventoryApi = {
   // Stock Counts
   // ==========================================================================
 
-  async listStockCounts(
-    params?: StockCountListParams
-  ): Promise<PaginatedResponse<StockCount>> {
+  async listStockCounts(params?: StockCountListParams): Promise<StockCountListResponse> {
     const response = await apiClient.get(`${BASE}/stock-counts/`, { params });
     return parseResponse(PaginatedStockCountSchema, response.data, {
       context: 'inventoryApi.listStockCounts',

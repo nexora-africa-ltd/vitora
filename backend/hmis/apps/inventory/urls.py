@@ -11,6 +11,7 @@ from hmis.apps.inventory.views import (
     ETIMSDailyReportViewSet,
     ETIMSInvoiceViewSet,
     GoodsReceiptNoteViewSet,
+    InventoryBootstrapView,
     PaymentTermViewSet,
     PurchaseOrderViewSet,
     ReorderSuggestionViewSet,
@@ -42,5 +43,6 @@ router.register(r"reorder-suggestions", ReorderSuggestionViewSet, basename="reor
 app_name = "inventory"
 
 urlpatterns = [
+    path("bootstrap/", InventoryBootstrapView.as_view(), name="inventory-bootstrap"),
     path("", include(router.urls)),
 ]

@@ -15,6 +15,7 @@
 
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useQuery } from '@tanstack/react-query';
 import {
   Plus,
   Trash2,
@@ -121,16 +122,21 @@ export default function NewPrescriptionPage() {
   const router = useRouter();
   const { hasPermission } = usePermissions();
   const canCreatePrescription = hasPermission('pharmacy.add_prescription');
+  const { data: bootstrap } = useQuery({
+    queryKey: ['pharmacy-bootstrap'],
+    queryFn: pharmacyApi.getBootstrap,
+  });
+  const canCreateFromCapabilities = bootstrap?.permissions.can_create_prescription ?? true;
   const searchParams = useSearchParams();
 
-  if (!canCreatePrescription) {
+  if (!canCreatePrescription || !canCreateFromCapabilities) {
     return (
       <div className="space-y-4 sm:space-y-6">
         <PageHeader title="New Prescription" />
         <Card className="p-6 text-center">
           <p className="text-sm font-medium">Access denied</p>
           <p className="text-sm text-muted-foreground mt-1">
-            You do not have permission to create prescriptions.
+            You do not have permission to create prescriptions for this facility.
           </p>
         </Card>
       </div>

@@ -70,6 +70,55 @@ export type ReorderUrgency = 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
 
 export type ReorderStatus = 'PENDING' | 'CONVERTED_TO_PO' | 'DISMISSED';
 
+export interface InventoryBootstrapTenantScope {
+  organization_id: number | null;
+  facility_id: number | null;
+  facility_level: string;
+}
+
+export interface InventoryBootstrapModules {
+  inventory: boolean;
+  pharmacy: boolean;
+  laboratory: boolean;
+  imaging: boolean;
+  billing: boolean;
+}
+
+export interface InventoryBootstrapPermissions {
+  can_view: boolean;
+  can_create_po: boolean;
+  can_receive_grn: boolean;
+  can_adjust_stock: boolean;
+  can_manage_suppliers: boolean;
+}
+
+export interface InventoryBootstrapCatalogSources {
+  invoice_item_source: string;
+  order_item_source: string;
+  unified_pricing_enabled: boolean;
+}
+
+export interface InventoryBootstrapRealtime {
+  websocket_enabled: boolean;
+  domain_events_wired: boolean;
+}
+
+export interface InventoryBootstrapMeta {
+  generated_at: string;
+  version: string;
+}
+
+export interface InventoryBootstrap {
+  inventory_enabled: boolean;
+  standalone_inventory_mode: boolean;
+  tenant_scope: InventoryBootstrapTenantScope;
+  modules: InventoryBootstrapModules;
+  permissions: InventoryBootstrapPermissions;
+  catalog_sources: InventoryBootstrapCatalogSources;
+  realtime: InventoryBootstrapRealtime;
+  meta: InventoryBootstrapMeta;
+}
+
 // =============================================================================
 // READ MODELS — match backend read serializers
 // =============================================================================
@@ -407,6 +456,33 @@ export interface StockCountCapabilities {
   can_record: boolean;
   can_approve: boolean;
   can_cancel: boolean;
+}
+
+export interface StockCountListCapabilitiesSubset {
+  inventory_enabled: boolean;
+  modules: {
+    inventory: boolean;
+    pharmacy: boolean;
+    billing: boolean;
+  };
+  permissions: {
+    can_view: boolean;
+    can_adjust_stock: boolean;
+  };
+  realtime: {
+    websocket_enabled: boolean;
+  };
+  meta: {
+    version: string;
+  };
+}
+
+export interface StockCountListResponse {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: StockCount[];
+  capabilities: StockCountListCapabilitiesSubset;
 }
 
 /**

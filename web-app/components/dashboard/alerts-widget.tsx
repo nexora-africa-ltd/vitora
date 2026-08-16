@@ -3,7 +3,7 @@
 import { AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import { Badge } from '@/components/ui/badge';
-import { useStockAlerts } from '@/lib/hooks/use-pharmacy';
+import { useAlertSeveritySummary } from '@/lib/hooks/use-pharmacy';
 import { DashboardEmptyState, DashboardFooterLink, DashboardListSkeleton } from './widget-primitives';
 
 const severitySummaryStyles = {
@@ -19,7 +19,7 @@ interface AlertsWidgetProps {
 }
 
 export function AlertsWidget({ className }: AlertsWidgetProps = {}) {
-  const { data: alertsData, isLoading, error } = useStockAlerts({ resolved: false });
+  const { data: summary, isLoading, error } = useAlertSeveritySummary({ resolved: false });
 
   if (error) {
     return (
@@ -32,12 +32,12 @@ export function AlertsWidget({ className }: AlertsWidgetProps = {}) {
     );
   }
 
-  const unresolvedAlerts = alertsData?.results?.filter((a) => !a.resolved) || [];
+  const unresolvedTotal = summary?.total ?? 0;
 
-  const criticalCount = unresolvedAlerts.filter((a) => a.severity === 'CRITICAL').length;
-  const highCount = unresolvedAlerts.filter((a) => a.severity === 'HIGH').length;
-  const mediumCount = unresolvedAlerts.filter((a) => a.severity === 'MEDIUM').length;
-  const lowCount = unresolvedAlerts.filter((a) => a.severity === 'LOW').length;
+  const criticalCount = summary?.critical ?? 0;
+  const highCount = summary?.high ?? 0;
+  const mediumCount = summary?.medium ?? 0;
+  const lowCount = summary?.low ?? 0;
   const severitySummary = [
     { label: 'Critical', value: criticalCount, severity: 'CRITICAL' as const },
     { label: 'High', value: highCount, severity: 'HIGH' as const },
@@ -49,7 +49,7 @@ export function AlertsWidget({ className }: AlertsWidgetProps = {}) {
     return <DashboardListSkeleton rows={2} showMeta={false} className={cn('h-full', className)} />;
   }
 
-  if (unresolvedAlerts.length === 0) {
+  if (unresolvedTotal === 0) {
     return (
       <DashboardEmptyState
         icon={AlertTriangle}
@@ -64,13 +64,13 @@ export function AlertsWidget({ className }: AlertsWidgetProps = {}) {
     <div data-testid="alerts-widget" className={cn('space-y-3 h-full', className)}>
       <div className="flex items-start justify-between gap-3 rounded-xl border border-border/60 bg-muted/20 p-3">
         <div className="min-w-0">
-          <p className="text-sm font-medium text-foreground">{unresolvedAlerts.length} unresolved alerts</p>
+          <p className="text-sm font-medium text-foreground">{unresolvedTotal} unresolved alerts</p>
           <p className="mt-1 text-sm text-muted-foreground text-pretty">
             Prioritize stock-outs and expiring batches that need intervention today.
           </p>
         </div>
         <Badge variant="destructive" className="shrink-0 w-fit self-start">
-          {unresolvedAlerts.length}
+          {unresolvedTotal}
         </Badge>
       </div>
 

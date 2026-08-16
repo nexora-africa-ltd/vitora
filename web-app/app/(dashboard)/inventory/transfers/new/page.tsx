@@ -34,6 +34,8 @@ import { organizationsApi } from '@/lib/api/organizations';
 import { getApiErrorMessage } from '@/lib/api/client';
 import { useToast } from '@/lib/hooks/use-toast';
 import { useFacility } from '@/lib/context/facility-context';
+import { usePermissions } from '@/lib/hooks/use-permissions';
+import { Card as AccessCard } from '@/components/ui/card';
 
 const transferItemSchema = z.object({
   drug: z.coerce.number().min(1, 'Select a drug'),
@@ -57,6 +59,27 @@ export default function NewStockTransferPage() {
   const router = useRouter();
   const { toast } = useToast();
   const { facility, organization } = useFacility();
+  const { hasPermission } = usePermissions();
+  const canCreateTransfer = hasPermission('inventory.add_stocktransfer');
+  const { data: bootstrap } = useQuery({
+    queryKey: ['inventory-bootstrap'],
+    queryFn: inventoryApi.getBootstrap,
+  });
+  const canAdjustFromCapabilities = bootstrap?.permissions.can_adjust_stock ?? true;
+
+  if (!canCreateTransfer || !canAdjustFromCapabilities) {
+    return (
+      <div className="space-y-4 sm:space-y-6">
+        <PageHeader title="New Stock Transfer" />
+        <AccessCard className="p-6 text-center">
+          <p className="text-sm font-medium">Access denied</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            You do not have permission to create stock transfers.
+          </p>
+        </AccessCard>
+      </div>
+    );
+  }
 
   // Batch options keyed by drug ID
   const [batchesByDrug, setBatchesByDrug] = useState<

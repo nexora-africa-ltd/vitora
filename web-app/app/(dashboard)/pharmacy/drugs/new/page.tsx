@@ -6,17 +6,24 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
+import { useQuery } from '@tanstack/react-query';
 import { PageHeader } from '@/components/shared/page-header';
 import { DrugForm } from '@/components/pharmacy/drug-form';
 import { Card } from '@/components/ui/card';
+import { pharmacyApi } from '@/lib/api/pharmacy';
 import { usePermissions } from '@/lib/hooks/use-permissions';
 
 export default function NewDrugPage() {
   const router = useRouter();
   const { hasPermission } = usePermissions();
   const canCreateDrug = hasPermission('pharmacy.add_drug');
+  const { data: bootstrap } = useQuery({
+    queryKey: ['pharmacy-bootstrap'],
+    queryFn: pharmacyApi.getBootstrap,
+  });
+  const canManageCatalog = bootstrap?.permissions.can_manage_catalog ?? true;
 
-  if (!canCreateDrug) {
+  if (!canCreateDrug || !canManageCatalog) {
     return (
       <div className="space-y-4 sm:space-y-6">
         <PageHeader title="Add to Catalog" />

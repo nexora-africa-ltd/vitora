@@ -7,6 +7,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useParams } from 'next/navigation';
+import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { ExternalLink } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
@@ -38,6 +39,7 @@ import {
 } from '@/lib/hooks/billing';
 import { useClaim, useClaims } from '@/lib/hooks/use-sha';
 import { billingApi } from '@/lib/api/billing';
+import { inventoryApi } from '@/lib/api/inventory';
 import { useToast } from '@/lib/hooks/use-toast';
 import type { Invoice, PaymentCreateData, InvoiceItemCreateData, ApplyDiscountData } from '@/lib/types/billing';
 import type { Claim } from '@/lib/types/sha';
@@ -47,6 +49,11 @@ export default function InvoiceDetailPage() {
   const params = useParams();
   const { toast } = useToast();
   const invoiceId = String(params.id);
+  const { data: bootstrap } = useQuery({
+    queryKey: ['inventory-bootstrap'],
+    queryFn: inventoryApi.getBootstrap,
+  });
+  const billingEnabled = bootstrap?.modules.billing ?? true;
 
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
   const [showPaymentSuccessDialog, setShowPaymentSuccessDialog] = useState(false);
@@ -363,13 +370,19 @@ export default function InvoiceDetailPage() {
         ) : null}
       />
 
+      {!billingEnabled ? (
+        <div className="rounded-lg border p-3 text-sm text-muted-foreground">
+          Billing module is disabled for this facility. Invoice actions are restricted.
+        </div>
+      ) : null}
+
       <InvoiceDetail
         invoice={invoice || null}
         isLoading={isLoading}
         onRecordPayment={handleRecordPayment}
         onFinalize={handleFinalize}
         onCancel={handleCancel}
-        onAddItem={handleAddItem}
+        onAddItem={billingEnabled ? handleAddItem : undefined}
         onRemoveItem={handleRemoveItem}
         onApplyDiscount={handleApplyDiscount}
         onCollectCopay={handleCollectCopay}

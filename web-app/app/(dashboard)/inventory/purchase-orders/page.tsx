@@ -50,7 +50,14 @@ export default function PurchaseOrdersPage() {
   const router = useRouter();
   const { refresh, isRefreshing } = usePageRefresh();
   const { hasPermission } = usePermissions();
-  const canCreatePurchaseOrder = hasPermission('inventory.add_purchaseorder');
+  const { data: bootstrap } = useQuery({
+    queryKey: ['inventory-bootstrap'],
+    queryFn: inventoryApi.getBootstrap,
+  });
+  const canCreatePurchaseOrder =
+    hasPermission('inventory.add_purchaseorder') &&
+    (bootstrap?.permissions.can_create_po ?? true) &&
+    (bootstrap?.inventory_enabled ?? true);
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 300);

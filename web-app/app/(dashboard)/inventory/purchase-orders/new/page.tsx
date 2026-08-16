@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { SearchableSelect } from '@/components/ui/searchable-select';
 import {
   Form,
@@ -54,8 +55,15 @@ export default function NewPurchaseOrderPage() {
   const { hasPermission } = usePermissions();
   const canCreatePurchaseOrder = hasPermission('inventory.add_purchaseorder');
   const { toast } = useToast();
+  const { data: bootstrap } = useQuery({
+    queryKey: ['inventory-bootstrap'],
+    queryFn: inventoryApi.getBootstrap,
+  });
+  const canCreateFromCapabilities = bootstrap?.permissions.can_create_po ?? true;
+  const orderItemSource = bootstrap?.catalog_sources.order_item_source ?? 'catalogs';
+  const unifiedPricingEnabled = bootstrap?.catalog_sources.unified_pricing_enabled ?? false;
 
-  if (!canCreatePurchaseOrder) {
+  if (!canCreatePurchaseOrder || !canCreateFromCapabilities) {
     return (
       <div className="space-y-4 sm:space-y-6">
         <PageHeader title="New Purchase Order" />
@@ -129,6 +137,10 @@ export default function NewPurchaseOrderPage() {
   return (
     <div className="space-y-4 sm:space-y-6 max-w-4xl mx-auto">
       <PageHeader title="New Purchase Order" helpContent="Create a purchase order for a supplier. Add line items with items, quantities, and prices." />
+      <div className="flex flex-wrap gap-2">
+        <Badge variant="outline" className="w-fit">Item Source: {orderItemSource}</Badge>
+        <Badge variant="outline" className="w-fit">Pricing: {unifiedPricingEnabled ? 'Unified' : 'Manual'}</Badge>
+      </div>
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 sm:space-y-6">
@@ -270,7 +282,14 @@ export default function NewPurchaseOrderPage() {
                               render={({ field: costField }) => (
                                 <FormItem className="space-y-0">
                                   <FormControl>
-                                    <Input type="number" min={0} step="0.01" className="h-8 text-xs text-right" {...costField} />
+                                    <Input
+                                      type="number"
+                                      min={0}
+                                      step="0.01"
+                                      disabled={unifiedPricingEnabled}
+                                      className="h-8 text-xs text-right"
+                                      {...costField}
+                                    />
                                   </FormControl>
                                   <FormMessage className="text-xs" />
                                 </FormItem>

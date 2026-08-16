@@ -24,7 +24,7 @@ import { generateId } from '@/lib/powersync/uuid';
 import { transformPrescriptionRow } from '@/lib/powersync/transforms';
 import type { PrescriptionRow } from '@/lib/powersync/schema';
 import type { PaginatedResponse } from '@/lib/types';
-import type { Prescription } from '@/lib/types/pharmacy';
+import type { Prescription, PrescriptionListResponse } from '@/lib/types/pharmacy';
 
 // ============ Drug Hooks ============
 
@@ -176,10 +176,15 @@ export function useUpdateStockBatch() {
 /**
  * Hook for fetching paginated stock alerts.
  */
-export function useStockAlerts(params?: StockAlertListParams) {
+export function useStockAlerts(
+  params?: StockAlertListParams,
+  options?: { enabled?: boolean }
+) {
   return useQuery({
     queryKey: ['stock-alerts', params],
     queryFn: () => pharmacyApi.listAlerts(params),
+    enabled: options?.enabled ?? true,
+    placeholderData: keepPreviousData,
   });
 }
 
@@ -200,6 +205,16 @@ export function useExpiringAlerts() {
   return useQuery({
     queryKey: ['stock-alerts', 'expiring'],
     queryFn: () => pharmacyApi.getExpiringAlerts(),
+  });
+}
+
+/**
+ * Hook for fetching aggregate stock alert severity counts.
+ */
+export function useAlertSeveritySummary(params?: { resolved?: boolean }) {
+  return useQuery({
+    queryKey: ['stock-alerts', 'severity-summary', params],
+    queryFn: () => pharmacyApi.getAlertSeveritySummary(params),
   });
 }
 
@@ -265,7 +280,7 @@ export function usePrescriptions(params?: PrescriptionListParams) {
 
   // Force API mode: prescriptions require nested items with medication names
   // that can't be resolved from PowerSync's flat local SQLite tables.
-  return useOfflineQuery<PrescriptionJoinedRow, PaginatedResponse<Prescription>>({
+  return useOfflineQuery<PrescriptionJoinedRow, PrescriptionListResponse>({
     sql: `SELECT rx.*, p.first_name as patient_first_name, p.last_name as patient_last_name, p.mrn as patient_mrn
       FROM pharmacy_prescription rx
       LEFT JOIN patients_patient p ON rx.patient_id = p.id
@@ -278,6 +293,13 @@ export function usePrescriptions(params?: PrescriptionListParams) {
       next: null,
       previous: null,
       results: rows.map(r => transformPrescriptionRow(r) as unknown as Prescription),
+      capabilities: {
+        pharmacy_enabled: true,
+        modules: { pharmacy: true, inventory: true, billing: true },
+        permissions: { can_create_prescription: true, can_dispense: true },
+        realtime: { websocket_enabled: false },
+        meta: { version: '1' },
+      },
     }),
     queryKey: ['prescriptions', params],
     queryFn: () => pharmacyApi.listPrescriptions(params),

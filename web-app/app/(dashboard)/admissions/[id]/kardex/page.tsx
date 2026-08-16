@@ -290,6 +290,18 @@ export default function KardexPage() {
       .filter(Boolean);
   }, [kardex?.care_plan_entries]);
 
+  const recentShiftNotesSummary = useMemo(() => {
+    return kardex?.shift_notes
+      ?.slice(0, 3)
+      .map((note) => {
+        const noteText = (note.content || note.notes || '').trim();
+        if (!noteText) return null;
+        return `${note.shift_display || note.shift}: ${noteText}`;
+      })
+      .filter(Boolean)
+      .join(' | ');
+  }, [kardex?.shift_notes]);
+
   const handoverDraftText = useMemo(() => {
     const sections: string[] = [];
 
@@ -336,17 +348,6 @@ export default function KardexPage() {
         .filter(Boolean) ?? [],
     [kardex?.allergies]
   );
-  const recentShiftNotesSummary = useMemo(() => {
-    return kardex?.shift_notes
-      ?.slice(0, 3)
-      .map((note) => {
-        const noteText = (note.content || note.notes || '').trim();
-        if (!noteText) return null;
-        return `${note.shift_display || note.shift}: ${noteText}`;
-      })
-      .filter(Boolean)
-      .join(' | ');
-  }, [kardex?.shift_notes]);
   const recentHandoverSummary = useMemo(() => {
     return kardex?.handover_notes
       ?.slice(0, 2)

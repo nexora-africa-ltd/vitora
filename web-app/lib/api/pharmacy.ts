@@ -8,6 +8,7 @@ import {
   Drug,
   StockBatch,
   StockAlert,
+  StockAlertSeveritySummary,
   Prescription,
   Dispensing,
   StockAdjustment,
@@ -26,6 +27,8 @@ import {
   DispensingReportSummary,
   HptSearchResult,
   HptMapData,
+  PharmacyBootstrap,
+  PrescriptionListResponse,
 } from '@/lib/types/pharmacy';
 
 type IdParam = string | number;
@@ -37,6 +40,7 @@ import {
   DrugCategorySchema,
   StockBatchSchema,
   StockAlertSchema,
+  StockAlertSeveritySummarySchema,
   PrescriptionSchema,
   DispensingSchema,
   StockAdjustmentSchema,
@@ -46,6 +50,7 @@ import {
   StockMovementReportSchema,
   AlertSettingsSchema,
   HptSearchResponseSchema,
+  PharmacyBootstrapSchema,
   PaginatedDrugSchema,
   PaginatedDrugCategorySchema,
   PaginatedStockBatchSchema,
@@ -61,6 +66,13 @@ export interface DrugCategoryCreateData {
 }
 
 export const pharmacyApi = {
+  async getBootstrap(): Promise<PharmacyBootstrap> {
+    const response = await apiClient.get('/api/pharmacy/bootstrap/');
+    return parseResponse(PharmacyBootstrapSchema, response.data, {
+      context: 'pharmacyApi.getBootstrap',
+    });
+  },
+
   // ============ Drug Catalog ============
 
   /**
@@ -246,6 +258,18 @@ export const pharmacyApi = {
   },
 
   /**
+   * Get aggregate alert counts by severity.
+   */
+  async getAlertSeveritySummary(params?: { resolved?: boolean }): Promise<StockAlertSeveritySummary> {
+    const response = await apiClient.get('/api/pharmacy/alerts/severity-summary/', {
+      params,
+    });
+    return parseResponse(StockAlertSeveritySummarySchema, response.data, {
+      context: 'pharmacyApi.getAlertSeveritySummary',
+    });
+  },
+
+  /**
    * Acknowledge an alert.
    */
   async acknowledgeAlert(id: number): Promise<StockAlert> {
@@ -268,8 +292,8 @@ export const pharmacyApi = {
   /**
    * Get paginated list of prescriptions.
    */
-  async listPrescriptions(params?: PrescriptionListParams): Promise<PaginatedResponse<Prescription>> {
-    const response = await apiClient.get<PaginatedResponse<Prescription>>('/api/pharmacy/prescriptions/', {
+  async listPrescriptions(params?: PrescriptionListParams): Promise<PrescriptionListResponse> {
+    const response = await apiClient.get<PrescriptionListResponse>('/api/pharmacy/prescriptions/', {
       params,
     });
     return parseResponse(PaginatedPrescriptionSchema, response.data, { context: 'pharmacyApi.listPrescriptions' });

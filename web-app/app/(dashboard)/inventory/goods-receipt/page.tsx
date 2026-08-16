@@ -43,6 +43,10 @@ function formatDate(dateStr: string | null | undefined): string {
 export default function GoodsReceiptPage() {
   const router = useRouter();
   const canCreateRoute = useCreateRouteAccess();
+  const { data: bootstrap } = useQuery({
+    queryKey: ['inventory-bootstrap'],
+    queryFn: inventoryApi.getBootstrap,
+  });
   const { refresh, isRefreshing } = usePageRefresh();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
@@ -71,7 +75,15 @@ export default function GoodsReceiptPage() {
           title="Formal Goods Receipt"
           helpContent="Record incoming deliveries against purchase orders. Confirm receipts to update inventory stock levels automatically."
           actions={
-            <Button onClick={() => router.push('/inventory/goods-receipt/new')} disabled={!canCreateRoute('/inventory/goods-receipt/new')} className="gap-2 w-full sm:w-auto">
+            <Button
+              onClick={() => router.push('/inventory/goods-receipt/new')}
+              disabled={
+                !canCreateRoute('/inventory/goods-receipt/new') ||
+                !(bootstrap?.permissions.can_receive_grn ?? true) ||
+                !(bootstrap?.inventory_enabled ?? true)
+              }
+              className="gap-2 w-full sm:w-auto"
+            >
               <Plus className="h-4 w-4" />
               New GRN
             </Button>

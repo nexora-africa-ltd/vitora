@@ -51,6 +51,7 @@ import { Input } from '@/components/ui/input';
 import { StockAlert, AlertType, AlertSeverity } from '@/lib/types/pharmacy';
 import { useAcknowledgeAlert, useResolveAlert, useAlertSettings, useUpdateAlertSettings } from '@/lib/hooks/use-pharmacy';
 import { useToast } from '@/lib/hooks/use-toast';
+import { pharmacyApi } from '@/lib/api/pharmacy';
 
 interface AlertsPanelProps {
   alerts: StockAlert[];
@@ -139,6 +140,9 @@ export function AlertsPanel({
   const [lowStockThreshold, setLowStockThreshold] = useState('100');
   const [lastRefreshed, setLastRefreshed] = useState(new Date());
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const isDefaultFilterView =
+    activeTab === 'all' && !showResolved && typeFilter === 'all' && severityFilter === 'all';
 
   const acknowledgeAlert = useAcknowledgeAlert();
   const resolveAlert = useResolveAlert();
@@ -167,7 +171,7 @@ export function AlertsPanel({
   }, [autoRefreshInterval, onRefresh]);
 
   // Filter alerts based on active tab, filters, and resolved state
-  const filteredAlerts = alerts.filter((alert) => {
+  const matchesCurrentFilters = (alert: StockAlert): boolean => {
     // Resolved filter
     if (!showResolved && alert.resolved) return false;
 
@@ -190,7 +194,9 @@ export function AlertsPanel({
       );
     }
     return true;
-  });
+  };
+
+  const filteredAlerts = alerts.filter(matchesCurrentFilters);
 
   // Handle acknowledge
   const handleAcknowledge = async (alertId: number) => {
@@ -260,48 +266,72 @@ export function AlertsPanel({
 
   // Export alerts to CSV
   const handleExport = () => {
-    try {
-      // Create CSV content
-      const headers = ['Item Name', 'Item Code', 'Alert Type', 'Severity', 'Message', 'Batch Number', 'Created At', 'Acknowledged', 'Resolved'];
-      const rows = filteredAlerts.map(alert => [
-        alert.drug_name || '',
-        alert.drug_code || '',
-        alert.alert_type,
-        alert.severity,
-        alert.message,
-        alert.batch_number || '',
-        formatDateTime(alert.created_at, 'yyyy-MM-dd HH:mm:ss'),
-        alert.acknowledged ? 'Yes' : 'No',
-        alert.resolved ? 'Yes' : 'No',
-      ]);
+    const run = async () => {
+      setIsExporting(true);
+      try {
+        const pageSize = 200;
+        const allAlerts: StockAlert[] = [];
+        let pageNum = 1;
+        let total = 0;
 
-      const csvContent = [
-        headers.join(','),
-        ...rows.map(row => row.map(cell => `"${cell}"`).join(',')),
-      ].join('\n');
+        do {
+          const response = await pharmacyApi.listAlerts({
+            page: pageNum,
+            page_size: pageSize,
+            resolved: showResolved ? undefined : false,
+          });
+          total = response.count;
+          allAlerts.push(...response.results);
+          pageNum += 1;
+        } while (allAlerts.length < total);
 
-      // Create download link
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const link = document.createElement('a');
-      const url = URL.createObjectURL(blob);
-      link.setAttribute('href', url);
-      link.setAttribute('download', `stock-alerts-${format(new Date(), 'yyyy-MM-dd-HHmmss')}.csv`);
-      link.style.visibility = 'hidden';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+        const exportAlerts = allAlerts.filter(matchesCurrentFilters);
 
-      toast({
-        title: 'Export successful',
-        description: 'Alerts have been exported to CSV.',
-      });
-    } catch (error) {
-      toast({
-        title: 'Export failed',
-        description: 'Failed to export alerts.',
-        variant: 'destructive',
-      });
-    }
+        // Create CSV content
+        const headers = ['Item Name', 'Item Code', 'Alert Type', 'Severity', 'Message', 'Batch Number', 'Created At', 'Acknowledged', 'Resolved'];
+        const rows = exportAlerts.map(alert => [
+          alert.drug_name || '',
+          alert.drug_code || '',
+          alert.alert_type,
+          alert.severity,
+          alert.message,
+          alert.batch_number || '',
+          formatDateTime(alert.created_at, 'yyyy-MM-dd HH:mm:ss'),
+          alert.acknowledged ? 'Yes' : 'No',
+          alert.resolved ? 'Yes' : 'No',
+        ]);
+
+        const csvContent = [
+          headers.join(','),
+          ...rows.map(row => row.map(cell => `"${cell}"`).join(',')),
+        ].join('\n');
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', `stock-alerts-${format(new Date(), 'yyyy-MM-dd-HHmmss')}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        toast({
+          title: 'Export successful',
+          description: `Exported ${exportAlerts.length} alerts to CSV.`,
+        });
+      } catch (error) {
+        toast({
+          title: 'Export failed',
+          description: 'Failed to export alerts.',
+          variant: 'destructive',
+        });
+      } finally {
+        setIsExporting(false);
+      }
+    };
+
+    void run();
   };
 
   if (isLoading) {
@@ -321,7 +351,7 @@ export function AlertsPanel({
     );
   }
 
-  if (alerts.length === 0) {
+  if (totalCount === 0 && alerts.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center">
         <CheckCircle className="h-12 w-12 text-green-500 mb-4" />
@@ -386,16 +416,16 @@ export function AlertsPanel({
 
         <div className="flex gap-2 flex-wrap">
           {/* Export button */}
-          <Button
-            variant="outline"
-            size="sm"
-            data-testid="export-alerts-button"
-            onClick={handleExport}
-            disabled={filteredAlerts.length === 0}
-          >
-            <Download className="h-4 w-4 mr-1" />
-            Export CSV
-          </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              data-testid="export-alerts-button"
+              onClick={handleExport}
+              disabled={totalCount === 0 || isExporting}
+            >
+              {isExporting ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Download className="h-4 w-4 mr-1" />}
+              {isExporting ? 'Exporting...' : 'Export CSV'}
+            </Button>
 
           {/* Quick filters */}
           <Button
@@ -447,7 +477,7 @@ export function AlertsPanel({
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
-          <TabsTrigger value="all">All</TabsTrigger>
+          <TabsTrigger value="all">All ({totalCount})</TabsTrigger>
           <TabsTrigger value="low-stock">Low Stock</TabsTrigger>
           <TabsTrigger value="expiring">Expiring</TabsTrigger>
         </TabsList>
@@ -614,7 +644,7 @@ export function AlertsPanel({
       {totalPages > 1 && (
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between pt-2">
           <p className="text-sm text-muted-foreground text-center sm:text-left">
-            Showing {alerts.length} of {totalCount} alerts (Page {page} of {totalPages})
+            Showing {alerts.length} of {isDefaultFilterView ? totalCount : filteredAlerts.length} alerts (Page {page} of {totalPages})
           </p>
           <div className="flex items-center justify-center gap-2">
             <Button

@@ -11,6 +11,7 @@
 
 import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import { format } from 'date-fns';
 import {
@@ -40,6 +41,7 @@ import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { usePermissions } from '@/lib/hooks/use-permissions';
+import { pharmacyApi } from '@/lib/api/pharmacy';
 import {
   usePrescription,
   usePendingPrescriptions,
@@ -62,6 +64,13 @@ export default function DispensingPage() {
   const prescriptionId = searchParams.get('prescription');
   const { refresh, isRefreshing } = usePageRefresh();
   const { canPerformAction } = usePermissions();
+  const { data: bootstrap } = useQuery({
+    queryKey: ['pharmacy-bootstrap'],
+    queryFn: pharmacyApi.getBootstrap,
+  });
+  const pharmacyEnabled = bootstrap?.pharmacy_enabled ?? true;
+  const canDispenseFromCapabilities = bootstrap?.permissions.can_dispense ?? true;
+  const canCreatePrescriptionFromCapabilities = bootstrap?.permissions.can_create_prescription ?? true;
 
   // If prescription ID is provided, show that prescription
   // Otherwise show the pending prescriptions queue
@@ -90,7 +99,23 @@ export default function DispensingPage() {
           <PageHeader
             title="Dispensing Queue"
             helpContent="Prescriptions waiting to be dispensed. Click on a prescription to review and dispense its medications."
+            actions={
+              <div className="flex gap-2">
+                <Badge variant="outline" className="w-fit">Dispense: {canDispenseFromCapabilities ? 'Enabled' : 'Disabled'}</Badge>
+                <Badge variant="outline" className="w-fit">Source: {bootstrap?.catalog_sources.dispense_item_source ?? 'catalog'}</Badge>
+              </div>
+            }
           />
+
+          {!pharmacyEnabled ? (
+            <Alert>
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>Pharmacy module disabled</AlertTitle>
+              <AlertDescription>
+                Dispensing is unavailable because the pharmacy module is disabled for this facility.
+              </AlertDescription>
+            </Alert>
+          ) : null}
 
           {/* Pending Prescriptions List */}
           <Card>
@@ -119,7 +144,10 @@ export default function DispensingPage() {
                     <div
                       key={rx.id}
                       className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 cursor-pointer transition-colors"
-                      onClick={() => router.push(`/pharmacy/dispensing?prescription=${rx.id}`)}
+                      onClick={() => {
+                        if (!pharmacyEnabled) return;
+                        router.push(`/pharmacy/dispensing?prescription=${rx.id}`);
+                      }}
                     >
                       <div className="flex items-center gap-4">
                         <div className="p-2 bg-primary/10 rounded-full">
@@ -185,7 +213,11 @@ export default function DispensingPage() {
   }
 
   const isExpired = prescription.effective_status === 'EXPIRED' || prescription.status === 'EXPIRED';
-  const canDispense = !isExpired && (prescription.status === 'PENDING' || prescription.status === 'PARTIAL');
+  const canDispense =
+    pharmacyEnabled &&
+    canDispenseFromCapabilities &&
+    !isExpired &&
+    (prescription.status === 'PENDING' || prescription.status === 'PARTIAL');
 
   return (
     <PullToRefresh onRefresh={refresh} isRefreshing={isRefreshing}>
@@ -214,7 +246,7 @@ export default function DispensingPage() {
                 . Expired prescriptions cannot be dispensed for patient safety.
               </p>
               <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
-                {canPerformAction('pharmacy.create_prescription') && (
+                {canPerformAction('pharmacy.create_prescription') && canCreatePrescriptionFromCapabilities && (
                   <Button
                     variant="outline"
                     size="sm"

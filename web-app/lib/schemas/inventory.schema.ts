@@ -90,6 +90,55 @@ export const ReorderUrgencySchema = z.enum(['CRITICAL', 'HIGH', 'MEDIUM', 'LOW']
 
 export const ReorderStatusSchema = z.enum(['PENDING', 'CONVERTED_TO_PO', 'DISMISSED']);
 
+export const InventoryBootstrapTenantSchema = z.object({
+  organization_id: z.number().nullable(),
+  facility_id: z.number().nullable(),
+  facility_level: z.string(),
+});
+
+export const InventoryBootstrapModulesSchema = z.object({
+  inventory: z.boolean(),
+  pharmacy: z.boolean(),
+  laboratory: z.boolean(),
+  imaging: z.boolean(),
+  billing: z.boolean(),
+});
+
+export const InventoryBootstrapPermissionsSchema = z.object({
+  can_view: z.boolean(),
+  can_create_po: z.boolean(),
+  can_receive_grn: z.boolean(),
+  can_adjust_stock: z.boolean(),
+  can_manage_suppliers: z.boolean(),
+});
+
+export const InventoryBootstrapCatalogSourcesSchema = z.object({
+  invoice_item_source: z.string(),
+  order_item_source: z.string(),
+  unified_pricing_enabled: z.boolean(),
+});
+
+export const InventoryBootstrapRealtimeSchema = z.object({
+  websocket_enabled: z.boolean(),
+  domain_events_wired: z.boolean(),
+});
+
+export const InventoryBootstrapMetaSchema = z.object({
+  generated_at: z.string(),
+  version: z.string(),
+});
+
+export const InventoryBootstrapSchema = z.object({
+  inventory_enabled: z.boolean(),
+  standalone_inventory_mode: z.boolean(),
+  tenant_scope: InventoryBootstrapTenantSchema,
+  modules: InventoryBootstrapModulesSchema,
+  permissions: InventoryBootstrapPermissionsSchema,
+  catalog_sources: InventoryBootstrapCatalogSourcesSchema,
+  realtime: InventoryBootstrapRealtimeSchema,
+  meta: InventoryBootstrapMetaSchema,
+});
+
 // =============================================================================
 // SUPPLIER
 // =============================================================================
@@ -407,6 +456,25 @@ export const StockCountCapabilitiesSchema = z.object({
   can_cancel: z.boolean(),
 });
 
+export const StockCountListCapabilitiesSubsetSchema = z.object({
+  inventory_enabled: z.boolean(),
+  modules: z.object({
+    inventory: z.boolean(),
+    pharmacy: z.boolean(),
+    billing: z.boolean(),
+  }),
+  permissions: z.object({
+    can_view: z.boolean(),
+    can_adjust_stock: z.boolean(),
+  }),
+  realtime: z.object({
+    websocket_enabled: z.boolean(),
+  }),
+  meta: z.object({
+    version: z.string(),
+  }),
+});
+
 export const StockCountDetailSchema = StockCountListSchema.extend({
   notes: z.string(),
   item_count: z.number(),
@@ -429,6 +497,7 @@ export const PaginatedStockCountSchema = z.object({
   next: z.string().nullable(),
   previous: z.string().nullable(),
   results: z.array(StockCountListSchema),
+  capabilities: StockCountListCapabilitiesSubsetSchema,
 });
 
 // =============================================================================

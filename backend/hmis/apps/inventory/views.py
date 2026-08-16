@@ -9,6 +9,7 @@ Follows project conventions:
 - Custom @action for state transitions
 """
 
+from django.conf import settings
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.utils import timezone
 from drf_spectacular.types import OpenApiTypes
@@ -17,8 +18,9 @@ from rest_framework import serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
-from hmis.apps.core.mixins import ReadOnCreateMixin, TenantScopedViewMixin
+from hmis.apps.core.mixins import ReadOnCreateMixin, TenantScopedViewMixin, resolve_request_tenant
 from hmis.apps.core.permissions import (
     ReadRequiresModelPermission,
     RequiresActiveShiftPermission,
@@ -63,6 +65,7 @@ from hmis.apps.inventory.serializers import (
     GoodsReceiptNoteCreateSerializer,
     GoodsReceiptNoteDetailSerializer,
     GoodsReceiptNoteListSerializer,
+    InventoryBootstrapSerializer,
     PaymentTermSerializer,
     POApproveSerializer,
     POCancelSerializer,
@@ -92,6 +95,89 @@ from hmis.apps.inventory.serializers import (
     WardStockSerializer,
     WardStockTransactionSerializer,
 )
+
+
+class InventoryBootstrapView(APIView):
+    """Read-only bootstrap payload for inventory embedded capabilities."""
+
+    permission_classes = [IsAuthenticated]
+
+    _LEVEL_LABELS = {
+        "1": "LEVEL_1",
+        "2": "LEVEL_2",
+        "3": "LEVEL_3",
+        "4": "LEVEL_4",
+        "5": "LEVEL_5",
+        "6": "LEVEL_6",
+    }
+
+    def get(self, request):
+        resolve_request_tenant(request)
+        user = request.user
+        facility = getattr(request, "facility", None)
+        organization = getattr(request, "organization", None)
+
+        facility_has_inventory = bool(getattr(facility, "has_inventory", False))
+        inventory_enabled = facility_has_inventory
+
+        modules = {
+            "inventory": facility_has_inventory,
+            "pharmacy": bool(getattr(facility, "has_pharmacy", False)),
+            "laboratory": bool(getattr(facility, "has_laboratory", False)),
+            "imaging": bool(getattr(facility, "has_imaging", False)),
+            "billing": bool(getattr(facility, "has_billing", False)),
+        }
+
+        is_superuser = bool(getattr(user, "is_superuser", False))
+        permissions = {
+            "can_view": is_superuser or user.has_perm("inventory.view_purchaseorder"),
+            "can_create_po": is_superuser or user.has_perm("inventory.add_purchaseorder"),
+            "can_receive_grn": is_superuser or user.has_perm("inventory.add_goodsreceiptnote"),
+            "can_adjust_stock": is_superuser or user.has_perm("inventory.change_wardstock"),
+            "can_manage_suppliers": is_superuser
+            or user.has_perm("inventory.add_supplier")
+            or user.has_perm("inventory.change_supplier")
+            or user.has_perm("inventory.delete_supplier"),
+        }
+
+        operating_mode = str(getattr(facility, "operating_mode", "") or "")
+        standalone_inventory_mode = bool(operating_mode and operating_mode != "FULL_HMIS")
+
+        payload = {
+            "inventory_enabled": inventory_enabled,
+            "standalone_inventory_mode": standalone_inventory_mode,
+            "tenant_scope": {
+                "organization_id": getattr(organization, "id", None),
+                "facility_id": getattr(facility, "id", None),
+                "facility_level": self._LEVEL_LABELS.get(str(getattr(facility, "level", "")), ""),
+            },
+            "modules": modules,
+            "permissions": permissions,
+            "catalog_sources": {
+                "invoice_item_source": getattr(
+                    settings, "INVENTORY_INVOICE_ITEM_SOURCE", "services"
+                ),
+                "order_item_source": getattr(settings, "INVENTORY_ORDER_ITEM_SOURCE", "catalogs"),
+                "unified_pricing_enabled": bool(
+                    getattr(settings, "INVENTORY_UNIFIED_PRICING_ENABLED", False)
+                ),
+            },
+            "realtime": {
+                "websocket_enabled": bool(
+                    getattr(settings, "ASGI_APPLICATION", "")
+                    and getattr(settings, "CHANNEL_LAYERS", {})
+                ),
+                "domain_events_wired": True,
+            },
+            "meta": {
+                "generated_at": timezone.now(),
+                "version": "1",
+            },
+        }
+
+        serializer = InventoryBootstrapSerializer(payload)
+        return Response(serializer.data)
+
 
 # ---------------------------------------------------------------------------
 # Payment Terms
@@ -611,6 +697,46 @@ class StockCountViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.Model
     ]
     filterset_class = StockCountFilter
     tenant_scope = "facility"
+
+    def _compact_capabilities_payload(self, request):
+        """Return compact capabilities for stock-count list payloads."""
+        resolve_request_tenant(request)
+        user = request.user
+        facility = getattr(request, "facility", None)
+        organization = getattr(request, "organization", None)
+
+        is_superuser = bool(getattr(user, "is_superuser", False))
+        org_inventory = bool(organization.has_feature("inventory")) if organization else False
+        facility_inventory = bool(getattr(facility, "has_inventory", False))
+
+        return {
+            "inventory_enabled": facility_inventory and (org_inventory or is_superuser),
+            "modules": {
+                "inventory": facility_inventory,
+                "pharmacy": bool(getattr(facility, "has_pharmacy", False)),
+                "billing": bool(getattr(facility, "has_billing", False)),
+            },
+            "permissions": {
+                "can_view": is_superuser or user.has_perm("inventory.view_stockcount"),
+                "can_adjust_stock": is_superuser or user.has_perm("inventory.change_wardstock"),
+            },
+            "realtime": {
+                "websocket_enabled": bool(
+                    getattr(settings, "ASGI_APPLICATION", "")
+                    and getattr(settings, "CHANNEL_LAYERS", {})
+                ),
+            },
+            "meta": {
+                "version": "1",
+            },
+        }
+
+    def list(self, request, *args, **kwargs):
+        """List stock counts and include compact capabilities subset."""
+        response = super().list(request, *args, **kwargs)
+        if isinstance(response.data, dict):
+            response.data["capabilities"] = self._compact_capabilities_payload(request)
+        return response
 
     def get_serializer_class(self):
         if self.action == "create":

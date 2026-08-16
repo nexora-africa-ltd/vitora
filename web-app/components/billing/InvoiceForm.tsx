@@ -9,6 +9,7 @@ import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import {
   Form,
   FormControl,
@@ -54,6 +55,12 @@ interface InvoiceFormProps {
   defaultType?: 'invoice' | 'proforma';
   /** Whether to show the invoice type toggle */
   showTypeToggle?: boolean;
+  /** Embedded capabilities affecting line-item source and pricing behavior */
+  capabilities?: {
+    invoiceItemSource?: string;
+    pricingSource?: string;
+    unifiedPricingEnabled?: boolean;
+  };
 }
 
 interface LineItem {
@@ -92,6 +99,14 @@ const invoiceFormSchema = z.object({
 
 type InvoiceFormValues = z.infer<typeof invoiceFormSchema>;
 
+const INVOICE_ITEM_SOURCE_LABELS: Record<string, string> = {
+  services: 'Services',
+  catalogs: 'Inventory Catalogs',
+};
+
+const normalizeInvoiceItemSource = (source?: string): 'services' | 'catalogs' =>
+  source === 'catalogs' ? 'catalogs' : 'services';
+
 // ============================================================================
 // Main Component
 // ============================================================================
@@ -108,8 +123,17 @@ export function InvoiceForm({
   initialPatient,
   defaultType = 'invoice',
   showTypeToggle = true,
+  capabilities,
 }: InvoiceFormProps) {
   const isEditing = !!invoice;
+  const invoiceItemSource = normalizeInvoiceItemSource(capabilities?.invoiceItemSource);
+  const pricingSource = capabilities?.pricingSource ?? invoiceItemSource;
+  const unifiedPricingEnabled = capabilities?.unifiedPricingEnabled ?? false;
+  const lineItemLabel = invoiceItemSource === 'services' ? 'Service' : 'Catalog Item';
+  const lineItemPlaceholder =
+    invoiceItemSource === 'services' ? 'Select service' : 'Select catalog item';
+  const itemSourceLabel =
+    INVOICE_ITEM_SOURCE_LABELS[invoiceItemSource] ?? INVOICE_ITEM_SOURCE_LABELS.services;
 
   const form = useForm<InvoiceFormValues, unknown, InvoiceFormValues>({
     resolver: zodResolver(invoiceFormSchema),
@@ -398,6 +422,14 @@ export function InvoiceForm({
             </Button>
           </CardHeader>
           <CardContent className="px-3 sm:px-6">
+            <div className="mb-3 flex flex-wrap gap-2">
+              <Badge variant="outline" className="w-fit">
+                Source: {itemSourceLabel}
+              </Badge>
+              <Badge variant="outline" className="w-fit">
+                Pricing: {unifiedPricingEnabled ? `Unified (${pricingSource})` : 'Manual'}
+              </Badge>
+            </div>
             <div className="space-y-3 sm:space-y-4">
               {fields.map((field, index) => (
                 <div
@@ -411,7 +443,7 @@ export function InvoiceForm({
                       name={`items.${index}.service_id`}
                       render={({ field: serviceField }) => (
                         <FormItem>
-                          <FormLabel className={index === 0 ? '' : 'sm:hidden'}>Service</FormLabel>
+                          <FormLabel className={index === 0 ? '' : 'sm:hidden'}>{lineItemLabel}</FormLabel>
                           <Select
                             value={serviceField.value?.toString() || ''}
                             onValueChange={(value) =>
@@ -420,7 +452,7 @@ export function InvoiceForm({
                           >
                             <FormControl>
                               <SelectTrigger>
-                                <SelectValue placeholder="Select service" />
+                                <SelectValue placeholder={lineItemPlaceholder} />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
@@ -477,6 +509,7 @@ export function InvoiceForm({
                                 type="number"
                                 min="0"
                                 step="0.01"
+                                disabled={unifiedPricingEnabled}
                                 {...priceField}
                                 onChange={(e) =>
                                   priceField.onChange(parseFloat(e.target.value) || 0)

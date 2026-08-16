@@ -51,8 +51,16 @@ export default function WardStockPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const canAdd = canPerformAction('inventory.add_ward_stock');
-  const canManage = canPerformAction('inventory.manage_ward_stock');
+  const { data: bootstrap } = useQuery({
+    queryKey: ['inventory-bootstrap'],
+    queryFn: inventoryApi.getBootstrap,
+  });
+
+  const canAdjustStock =
+    (bootstrap?.permissions.can_adjust_stock ?? true) && (bootstrap?.inventory_enabled ?? true);
+
+  const canAdd = canPerformAction('inventory.add_ward_stock') && canAdjustStock;
+  const canManage = canPerformAction('inventory.manage_ward_stock') && canAdjustStock;
 
   const [page, setPage] = useState(1);
   const [storeFilter, setStoreFilter] = useState<string>('all');

@@ -108,6 +108,55 @@ export const AdjustmentTypeSchema = z.enum([
   'SAMPLE',
 ]);
 
+export const PharmacyBootstrapTenantSchema = z.object({
+  organization_id: z.number().nullable(),
+  facility_id: z.number().nullable(),
+  facility_level: z.string(),
+});
+
+export const PharmacyBootstrapModulesSchema = z.object({
+  pharmacy: z.boolean(),
+  inventory: z.boolean(),
+  laboratory: z.boolean(),
+  billing: z.boolean(),
+});
+
+export const PharmacyBootstrapPermissionsSchema = z.object({
+  can_view_prescriptions: z.boolean(),
+  can_create_prescription: z.boolean(),
+  can_dispense: z.boolean(),
+  can_view_alerts: z.boolean(),
+  can_adjust_stock: z.boolean(),
+  can_manage_catalog: z.boolean(),
+});
+
+export const PharmacyBootstrapCatalogSourcesSchema = z.object({
+  dispense_item_source: z.string(),
+  pricing_source: z.string(),
+  unified_pricing_enabled: z.boolean(),
+});
+
+export const PharmacyBootstrapRealtimeSchema = z.object({
+  websocket_enabled: z.boolean(),
+  domain_events_wired: z.boolean(),
+});
+
+export const PharmacyBootstrapMetaSchema = z.object({
+  generated_at: z.string(),
+  version: z.string(),
+});
+
+export const PharmacyBootstrapSchema = z.object({
+  pharmacy_enabled: z.boolean(),
+  standalone_pharmacy_mode: z.boolean(),
+  tenant_scope: PharmacyBootstrapTenantSchema,
+  modules: PharmacyBootstrapModulesSchema,
+  permissions: PharmacyBootstrapPermissionsSchema,
+  catalog_sources: PharmacyBootstrapCatalogSourcesSchema,
+  realtime: PharmacyBootstrapRealtimeSchema,
+  meta: PharmacyBootstrapMetaSchema,
+});
+
 // =============================================================================
 // DRUG CATEGORY REGISTRY SCHEMA (backend registry, not enum)
 // =============================================================================
@@ -245,6 +294,16 @@ export const StockAlertSchema = z.object({
 });
 
 export type StockAlertSchemaType = z.infer<typeof StockAlertSchema>;
+
+export const StockAlertSeveritySummarySchema = z.object({
+  total: z.number(),
+  critical: z.number(),
+  high: z.number(),
+  medium: z.number(),
+  low: z.number(),
+});
+
+export type StockAlertSeveritySummarySchemaType = z.infer<typeof StockAlertSeveritySummarySchema>;
 
 // =============================================================================
 // PRESCRIPTION ITEM SCHEMA (defined before Prescription for nesting)
@@ -474,6 +533,24 @@ export const PaginatedPrescriptionSchema = z.object({
   next: z.string().nullable(),
   previous: z.string().nullable(),
   results: z.array(PrescriptionSchema),
+  capabilities: z.object({
+    pharmacy_enabled: z.boolean(),
+    modules: z.object({
+      pharmacy: z.boolean(),
+      inventory: z.boolean(),
+      billing: z.boolean(),
+    }),
+    permissions: z.object({
+      can_create_prescription: z.boolean(),
+      can_dispense: z.boolean(),
+    }),
+    realtime: z.object({
+      websocket_enabled: z.boolean(),
+    }),
+    meta: z.object({
+      version: z.string(),
+    }),
+  }),
 });
 
 export const PaginatedDispensingSchema = z.object({

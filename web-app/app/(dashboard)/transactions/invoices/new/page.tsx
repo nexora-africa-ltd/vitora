@@ -7,11 +7,13 @@
 import React, { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useQuery } from '@tanstack/react-query';
 import { PageHeader } from '@/components/shared/page-header';
 import { InvoiceForm } from '@/components/billing/InvoiceForm';
 import { EligibilityBanner } from '@/components/billing/sha';
 import { useCreateInvoice, useServices } from '@/lib/hooks/billing';
 import { usePatients } from '@/lib/hooks/use-patients';
+import { inventoryApi } from '@/lib/api/inventory';
 import { useToast } from '@/lib/hooks/use-toast';
 import type { InvoiceCreateData } from '@/lib/types/billing';
 
@@ -29,6 +31,10 @@ export default function NewInvoicePage() {
   const { isLoading: patientsLoading } = usePatients();
   const { data: patientsData } = usePatients();
   const { data: servicesData, isLoading: servicesLoading } = useServices();
+  const { data: inventoryBootstrap } = useQuery({
+    queryKey: ['inventory-bootstrap'],
+    queryFn: inventoryApi.getBootstrap,
+  });
 
   const handleSubmit = async (data: InvoiceCreateData) => {
     try {
@@ -86,6 +92,11 @@ export default function NewInvoicePage() {
         <InvoiceForm
           patients={patients}
           services={servicesData?.results || []}
+          capabilities={{
+            invoiceItemSource: inventoryBootstrap?.catalog_sources.invoice_item_source,
+            pricingSource: inventoryBootstrap?.catalog_sources.invoice_item_source,
+            unifiedPricingEnabled: inventoryBootstrap?.catalog_sources.unified_pricing_enabled,
+          }}
           onSubmit={handleSubmit}
           onCancel={handleCancel}
           isLoading={createInvoice.isPending}

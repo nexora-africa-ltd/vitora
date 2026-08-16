@@ -6,8 +6,10 @@ Views for Pharmacy app API endpoints.
 import logging
 from datetime import date, timedelta
 
+from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db.models import Sum
+from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter, extend_schema
@@ -17,7 +19,12 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from hmis.apps.core.mixins import NestedTenantScopeMixin, PublicIdLookupMixin, TenantScopedViewMixin
+from hmis.apps.core.mixins import (
+    NestedTenantScopeMixin,
+    PublicIdLookupMixin,
+    TenantScopedViewMixin,
+    resolve_request_tenant,
+)
 from hmis.apps.core.permissions import (
     ReadRequiresModelPermission,
     RequiresActiveShiftPermission,
@@ -36,15 +43,99 @@ from hmis.apps.pharmacy.serializers import (
     DispensingSerializer,
     DrugCategorySerializer,
     DrugSerializer,
+    PharmacyBootstrapSerializer,
     PrescriptionCreateSerializer,
     PrescriptionSerializer,
     StockAdjustmentSerializer,
     StockAlertSerializer,
+    StockAlertSeveritySummarySerializer,
     StockBatchSerializer,
 )
 from hmis.apps.pharmacy.services import FEFODispenser, InsufficientStockError
 
 logger = logging.getLogger(__name__)
+
+
+class PharmacyBootstrapView(APIView):
+    """Read-only bootstrap payload for pharmacy embedded capabilities."""
+
+    permission_classes = [IsAuthenticated]
+
+    _LEVEL_LABELS = {
+        "1": "LEVEL_1",
+        "2": "LEVEL_2",
+        "3": "LEVEL_3",
+        "4": "LEVEL_4",
+        "5": "LEVEL_5",
+        "6": "LEVEL_6",
+    }
+
+    def get(self, request):
+        resolve_request_tenant(request)
+        user = request.user
+        facility = getattr(request, "facility", None)
+        organization = getattr(request, "organization", None)
+
+        facility_has_pharmacy = bool(getattr(facility, "has_pharmacy", False))
+        pharmacy_enabled = facility_has_pharmacy
+
+        is_superuser = bool(getattr(user, "is_superuser", False))
+        modules = {
+            "pharmacy": facility_has_pharmacy,
+            "inventory": bool(getattr(facility, "has_inventory", False)),
+            "laboratory": bool(getattr(facility, "has_laboratory", False)),
+            "billing": bool(getattr(facility, "has_billing", False)),
+        }
+        permissions = {
+            "can_view_prescriptions": is_superuser or user.has_perm("pharmacy.view_prescription"),
+            "can_create_prescription": is_superuser or user.has_perm("pharmacy.add_prescription"),
+            "can_dispense": is_superuser or user.has_perm("pharmacy.add_dispensing"),
+            "can_view_alerts": is_superuser or user.has_perm("pharmacy.view_stockalert"),
+            "can_adjust_stock": is_superuser
+            or user.has_perm("pharmacy.add_stockadjustment")
+            or user.has_perm("pharmacy.change_stockadjustment"),
+            "can_manage_catalog": is_superuser
+            or user.has_perm("pharmacy.add_drug")
+            or user.has_perm("pharmacy.change_drug")
+            or user.has_perm("pharmacy.delete_drug"),
+        }
+
+        operating_mode = str(getattr(facility, "operating_mode", "") or "")
+        standalone_pharmacy_mode = operating_mode == "STANDALONE_PHARMACY"
+
+        payload = {
+            "pharmacy_enabled": pharmacy_enabled,
+            "standalone_pharmacy_mode": standalone_pharmacy_mode,
+            "tenant_scope": {
+                "organization_id": getattr(organization, "id", None),
+                "facility_id": getattr(facility, "id", None),
+                "facility_level": self._LEVEL_LABELS.get(str(getattr(facility, "level", "")), ""),
+            },
+            "modules": modules,
+            "permissions": permissions,
+            "catalog_sources": {
+                "dispense_item_source": getattr(
+                    settings, "PHARMACY_DISPENSE_ITEM_SOURCE", "catalog"
+                ),
+                "pricing_source": getattr(settings, "PHARMACY_PRICING_SOURCE", "drug_reference"),
+                "unified_pricing_enabled": bool(
+                    getattr(settings, "PHARMACY_UNIFIED_PRICING_ENABLED", False)
+                ),
+            },
+            "realtime": {
+                "websocket_enabled": bool(
+                    getattr(settings, "ASGI_APPLICATION", "")
+                    and getattr(settings, "CHANNEL_LAYERS", {})
+                ),
+                "domain_events_wired": True,
+            },
+            "meta": {
+                "generated_at": timezone.now(),
+                "version": "1",
+            },
+        }
+        serializer = PharmacyBootstrapSerializer(payload)
+        return Response(serializer.data)
 
 
 class DrugCategoryViewSet(viewsets.ModelViewSet):
@@ -260,8 +351,8 @@ class StockAlertViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     filterset_fields = ["alert_type", "severity", "is_acknowledged", "is_resolved"]
-    ordering_fields = ["created_at", "severity"]
-    ordering = ["-created_at"]
+    ordering_fields = ["created_at", "severity", "id"]
+    ordering = ["-created_at", "-id"]
 
     def get_queryset(self):
         queryset = super().get_queryset()
@@ -274,7 +365,10 @@ class StockAlertViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         if profile and profile.primary_facility_id:
             facility_id = profile.primary_facility_id
 
-        if facility_id is not None:
+        page = self.request.query_params.get("page")
+        should_refresh_alerts = self.action == "list" and page in (None, "", "1")
+
+        if facility_id is not None and should_refresh_alerts:
             StockAlert.generate_low_stock_alerts(facility_id=facility_id)
         return queryset
 
@@ -310,6 +404,40 @@ class StockAlertViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             is_resolved=False,
         )
         serializer = self.get_serializer(alerts, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=["get"], url_path="severity-summary")
+    def severity_summary(self, request):
+        """Return aggregate stock alert counts by severity."""
+
+        def _to_bool(value, default=None):
+            if value is None:
+                return default
+            normalized = str(value).strip().lower()
+            if normalized in {"true", "1", "yes", "on"}:
+                return True
+            if normalized in {"false", "0", "no", "off"}:
+                return False
+            return default
+
+        queryset = self.get_queryset()
+
+        resolved_value = request.query_params.get("resolved")
+        if resolved_value is None:
+            resolved_value = request.query_params.get("is_resolved")
+        resolved_filter = _to_bool(resolved_value, default=False)
+        if resolved_filter is not None:
+            queryset = queryset.filter(is_resolved=resolved_filter)
+
+        payload = {
+            "total": queryset.count(),
+            "critical": queryset.filter(severity="CRITICAL").count(),
+            "high": queryset.filter(severity="HIGH").count(),
+            "medium": queryset.filter(severity="MEDIUM").count(),
+            "low": queryset.filter(severity="LOW").count(),
+        }
+
+        serializer = StockAlertSeveritySummarySerializer(payload)
         return Response(serializer.data)
 
 
@@ -356,6 +484,47 @@ class PrescriptionViewSet(PublicIdLookupMixin, TenantScopedViewMixin, viewsets.M
     ]
     ordering_fields = ["prescribed_at", "created_at"]
     ordering = ["-prescribed_at"]
+
+    def _compact_capabilities_payload(self, request):
+        """Return compact capabilities for prescription list payloads."""
+        resolve_request_tenant(request)
+        user = request.user
+        facility = getattr(request, "facility", None)
+        organization = getattr(request, "organization", None)
+
+        is_superuser = bool(getattr(user, "is_superuser", False))
+        org_pharmacy = bool(organization.has_feature("pharmacy")) if organization else False
+        facility_pharmacy = bool(getattr(facility, "has_pharmacy", False))
+
+        return {
+            "pharmacy_enabled": facility_pharmacy and (org_pharmacy or is_superuser),
+            "modules": {
+                "pharmacy": facility_pharmacy,
+                "inventory": bool(getattr(facility, "has_inventory", False)),
+                "billing": bool(getattr(facility, "has_billing", False)),
+            },
+            "permissions": {
+                "can_create_prescription": is_superuser
+                or user.has_perm("pharmacy.add_prescription"),
+                "can_dispense": is_superuser or user.has_perm("pharmacy.add_dispensing"),
+            },
+            "realtime": {
+                "websocket_enabled": bool(
+                    getattr(settings, "ASGI_APPLICATION", "")
+                    and getattr(settings, "CHANNEL_LAYERS", {})
+                ),
+            },
+            "meta": {
+                "version": "1",
+            },
+        }
+
+    def list(self, request, *args, **kwargs):
+        """List prescriptions and include compact capabilities subset."""
+        response = super().list(request, *args, **kwargs)
+        if isinstance(response.data, dict):
+            response.data["capabilities"] = self._compact_capabilities_payload(request)
+        return response
 
     def get_serializer_class(self):
         """Use different serializer for create action."""

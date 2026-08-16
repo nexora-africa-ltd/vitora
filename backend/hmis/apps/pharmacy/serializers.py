@@ -23,6 +23,80 @@ from hmis.apps.pharmacy.models import (
     StockBatch,
 )
 
+
+class PharmacyBootstrapTenantSerializer(serializers.Serializer):
+    """Tenant scope details for pharmacy bootstrap payload."""
+
+    organization_id = serializers.IntegerField(allow_null=True)
+    facility_id = serializers.IntegerField(allow_null=True)
+    facility_level = serializers.CharField(allow_blank=True)
+
+
+class PharmacyBootstrapModulesSerializer(serializers.Serializer):
+    """Enabled module flags used by pharmacy UI gating."""
+
+    pharmacy = serializers.BooleanField()
+    inventory = serializers.BooleanField()
+    laboratory = serializers.BooleanField()
+    billing = serializers.BooleanField()
+
+
+class PharmacyBootstrapPermissionsSerializer(serializers.Serializer):
+    """Effective pharmacy permissions for the current user."""
+
+    can_view_prescriptions = serializers.BooleanField()
+    can_create_prescription = serializers.BooleanField()
+    can_dispense = serializers.BooleanField()
+    can_view_alerts = serializers.BooleanField()
+    can_adjust_stock = serializers.BooleanField()
+    can_manage_catalog = serializers.BooleanField()
+
+
+class PharmacyBootstrapCatalogSourcesSerializer(serializers.Serializer):
+    """Catalog and pricing source toggles for pharmacy flows."""
+
+    dispense_item_source = serializers.CharField()
+    pricing_source = serializers.CharField()
+    unified_pricing_enabled = serializers.BooleanField()
+
+
+class PharmacyBootstrapRealtimeSerializer(serializers.Serializer):
+    """Realtime capability flags for pharmacy UX."""
+
+    websocket_enabled = serializers.BooleanField()
+    domain_events_wired = serializers.BooleanField()
+
+
+class PharmacyBootstrapMetaSerializer(serializers.Serializer):
+    """Metadata for bootstrap versioning and generation time."""
+
+    generated_at = serializers.DateTimeField()
+    version = serializers.CharField()
+
+
+class PharmacyBootstrapSerializer(serializers.Serializer):
+    """Top-level embedded capabilities payload for pharmacy bootstrap."""
+
+    pharmacy_enabled = serializers.BooleanField()
+    standalone_pharmacy_mode = serializers.BooleanField()
+    tenant_scope = PharmacyBootstrapTenantSerializer()
+    modules = PharmacyBootstrapModulesSerializer()
+    permissions = PharmacyBootstrapPermissionsSerializer()
+    catalog_sources = PharmacyBootstrapCatalogSourcesSerializer()
+    realtime = PharmacyBootstrapRealtimeSerializer()
+    meta = PharmacyBootstrapMetaSerializer()
+
+
+class StockAlertSeveritySummarySerializer(serializers.Serializer):
+    """Aggregate unresolved stock alert counts by severity."""
+
+    total = serializers.IntegerField()
+    critical = serializers.IntegerField()
+    high = serializers.IntegerField()
+    medium = serializers.IntegerField()
+    low = serializers.IntegerField()
+
+
 User = get_user_model()
 
 logger = logging.getLogger(__name__)

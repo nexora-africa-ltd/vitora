@@ -29,6 +29,8 @@ import { inventoryApi } from '@/lib/api/inventory';
 import { getApiErrorMessage } from '@/lib/api/client';
 import { useToast } from '@/lib/hooks/use-toast';
 import type { StoreLocationType } from '@/lib/types/inventory';
+import { useQuery } from '@tanstack/react-query';
+import { usePermissions } from '@/lib/hooks/use-permissions';
 
 const locationTypeLabels: Record<StoreLocationType, string> = {
   MAIN_STORE: 'Main Store',
@@ -50,6 +52,27 @@ type FormValues = z.infer<typeof formSchema>;
 export default function NewStoreLocationPage() {
   const router = useRouter();
   const { toast } = useToast();
+  const { hasPermission } = usePermissions();
+  const canCreateStore = hasPermission('inventory.add_storelocation');
+  const { data: bootstrap } = useQuery({
+    queryKey: ['inventory-bootstrap'],
+    queryFn: inventoryApi.getBootstrap,
+  });
+  const canAdjustFromCapabilities = bootstrap?.permissions.can_adjust_stock ?? true;
+
+  if (!canCreateStore || !canAdjustFromCapabilities) {
+    return (
+      <div className="space-y-4 sm:space-y-6">
+        <PageHeader title="New Store Location" />
+        <Card className="p-6 text-center">
+          <p className="text-sm font-medium">Access denied</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            You do not have permission to create store locations.
+          </p>
+        </Card>
+      </div>
+    );
+  }
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),

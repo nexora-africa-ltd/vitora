@@ -29,6 +29,70 @@ from hmis.apps.inventory.models import (
     WardStockTransaction,
 )
 
+
+class InventoryBootstrapTenantSerializer(serializers.Serializer):
+    """Tenant scope details for inventory bootstrap payload."""
+
+    organization_id = serializers.IntegerField(allow_null=True)
+    facility_id = serializers.IntegerField(allow_null=True)
+    facility_level = serializers.CharField(allow_blank=True)
+
+
+class InventoryBootstrapModulesSerializer(serializers.Serializer):
+    """Enabled module flags used by inventory UI gating."""
+
+    inventory = serializers.BooleanField()
+    pharmacy = serializers.BooleanField()
+    laboratory = serializers.BooleanField()
+    imaging = serializers.BooleanField()
+    billing = serializers.BooleanField()
+
+
+class InventoryBootstrapPermissionsSerializer(serializers.Serializer):
+    """Effective inventory permissions for the current user."""
+
+    can_view = serializers.BooleanField()
+    can_create_po = serializers.BooleanField()
+    can_receive_grn = serializers.BooleanField()
+    can_adjust_stock = serializers.BooleanField()
+    can_manage_suppliers = serializers.BooleanField()
+
+
+class InventoryBootstrapCatalogSourcesSerializer(serializers.Serializer):
+    """Catalog and pricing source toggles for inventory flows."""
+
+    invoice_item_source = serializers.CharField()
+    order_item_source = serializers.CharField()
+    unified_pricing_enabled = serializers.BooleanField()
+
+
+class InventoryBootstrapRealtimeSerializer(serializers.Serializer):
+    """Realtime capability flags for inventory UX."""
+
+    websocket_enabled = serializers.BooleanField()
+    domain_events_wired = serializers.BooleanField()
+
+
+class InventoryBootstrapMetaSerializer(serializers.Serializer):
+    """Metadata for bootstrap versioning and generation time."""
+
+    generated_at = serializers.DateTimeField()
+    version = serializers.CharField()
+
+
+class InventoryBootstrapSerializer(serializers.Serializer):
+    """Top-level embedded capabilities payload for inventory bootstrap."""
+
+    inventory_enabled = serializers.BooleanField()
+    standalone_inventory_mode = serializers.BooleanField()
+    tenant_scope = InventoryBootstrapTenantSerializer()
+    modules = InventoryBootstrapModulesSerializer()
+    permissions = InventoryBootstrapPermissionsSerializer()
+    catalog_sources = InventoryBootstrapCatalogSourcesSerializer()
+    realtime = InventoryBootstrapRealtimeSerializer()
+    meta = InventoryBootstrapMetaSerializer()
+
+
 # ---------------------------------------------------------------------------
 # Payment Terms
 # ---------------------------------------------------------------------------

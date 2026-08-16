@@ -18,6 +18,61 @@ pytestmark = pytest.mark.django_db
 
 
 # ============================================================================
+# Inventory Bootstrap API
+# ============================================================================
+
+
+class TestInventoryBootstrapAPI:
+    """Tests for inventory bootstrap embedded capabilities endpoint."""
+
+    ENDPOINT = "/api/inventory/bootstrap/"
+
+    def test_returns_bootstrap_payload(self, authenticated_client):
+        """Should return the expected bootstrap payload shape for authenticated users."""
+        response = authenticated_client.get(self.ENDPOINT)
+        assert response.status_code == status.HTTP_200_OK
+
+        assert "inventory_enabled" in response.data
+        assert "standalone_inventory_mode" in response.data
+
+        assert set(response.data["tenant_scope"].keys()) == {
+            "organization_id",
+            "facility_id",
+            "facility_level",
+        }
+        assert set(response.data["modules"].keys()) == {
+            "inventory",
+            "pharmacy",
+            "laboratory",
+            "imaging",
+            "billing",
+        }
+        assert set(response.data["permissions"].keys()) == {
+            "can_view",
+            "can_create_po",
+            "can_receive_grn",
+            "can_adjust_stock",
+            "can_manage_suppliers",
+        }
+        assert set(response.data["catalog_sources"].keys()) == {
+            "invoice_item_source",
+            "order_item_source",
+            "unified_pricing_enabled",
+        }
+        assert set(response.data["realtime"].keys()) == {
+            "websocket_enabled",
+            "domain_events_wired",
+        }
+        assert set(response.data["meta"].keys()) == {"generated_at", "version"}
+        assert response.data["meta"]["version"] == "1"
+
+    def test_unauthenticated_access_is_rejected(self, api_client):
+        """Should reject bootstrap access without authentication."""
+        response = api_client.get(self.ENDPOINT)
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+
+# ============================================================================
 # Supplier API
 # ============================================================================
 

@@ -54,6 +54,10 @@ export default function PrescriptionsPage() {
   // Pending count for badge
   const { data: pendingData } = usePendingPrescriptions();
   const pendingCount = pendingData?.length || 0;
+  const capabilities = prescriptionsData?.capabilities;
+  const canCreateFromCapabilities =
+    (capabilities?.pharmacy_enabled ?? true) &&
+    (capabilities?.permissions.can_create_prescription ?? true);
 
   // Calculate total pages
   const totalCount = prescriptionsData?.count || 0;
@@ -72,7 +76,7 @@ export default function PrescriptionsPage() {
                   {pendingCount} pending
                 </Badge>
               )}
-              {canCreatePrescription ? (
+              {canCreatePrescription && canCreateFromCapabilities ? (
                 <Button asChild className="w-full sm:w-auto">
                   <Link href="/pharmacy/prescriptions/new">
                     <Plus className="h-4 w-4 mr-2" />
@@ -83,6 +87,18 @@ export default function PrescriptionsPage() {
             </div>
           }
         />
+
+        <div className="flex flex-wrap gap-2">
+          <Badge variant="outline" className="w-fit">
+            Pharmacy: {capabilities?.pharmacy_enabled ? 'Enabled' : 'Disabled'}
+          </Badge>
+          <Badge variant="outline" className="w-fit">
+            Dispense: {capabilities?.permissions.can_dispense ? 'Allowed' : 'Restricted'}
+          </Badge>
+          <Badge variant="outline" className="w-fit">
+            Realtime: {capabilities?.realtime.websocket_enabled ? 'WebSocket On' : 'WebSocket Off'}
+          </Badge>
+        </div>
 
         <PrescriptionsTable
           prescriptions={prescriptionsData?.results || []}

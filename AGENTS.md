@@ -1696,6 +1696,57 @@ export const patientsApi = {
 3. **Include context** in parseResponse for debugging: `{ context: 'moduleName.methodName' }`
 4. Schema should match the TypeScript type in `lib/types/{module}.ts`
 
+## 🔐 Bootstrap Capability Wiring (Required)
+
+When working on `web-app/` pages under Inventory, Pharmacy, and Transactions/Invoices, capability bootstrap wiring is mandatory.
+
+### Capability Sources
+
+- Inventory: `GET /api/inventory/bootstrap/`
+- Pharmacy: `GET /api/pharmacy/bootstrap/`
+- Embedded compact subset:
+  - Inventory stock counts list returns top-level `capabilities`
+  - Pharmacy prescriptions list returns top-level `capabilities`
+
+### Required Rules
+
+1. **Gate by module availability**
+   - Inventory routes/actions must honor `inventory_enabled`
+   - Pharmacy routes/actions must honor `pharmacy_enabled`
+   - Invoice routes/actions must honor `modules.billing` from inventory bootstrap
+
+2. **Gate write actions by RBAC + capability flags**
+   - Inventory examples: `can_create_po`, `can_receive_grn`, `can_adjust_stock`, `can_manage_suppliers`
+   - Pharmacy examples: `can_create_prescription`, `can_dispense`, `can_adjust_stock`, `can_manage_catalog`
+   - Do not rely on one layer only; enforce both frontend RBAC and bootstrap capability flags.
+
+3. **Align item source and pricing behavior with bootstrap**
+   - Inventory invoice source set is `services | catalogs`
+   - Use canonical source labels in UI (normalize unknown values to a safe default)
+   - When `unified_pricing_enabled` is true, disable manual price inputs where applicable
+
+4. **Reflect capability state in UI**
+   - Disable unavailable actions/controls
+   - Show concise badges or contextual alerts for disabled capabilities
+   - Prefer clear “read-only/disabled by facility settings” messaging
+
+### Frontend Implementation Pattern
+
+- Fetch bootstrap with React Query using stable keys:
+  - `['inventory-bootstrap']`
+  - `['pharmacy-bootstrap']`
+- Validate responses using Zod schemas + `parseResponse()`
+- Reuse cached bootstrap in nested pages; avoid duplicate ad-hoc capability logic
+- For route trees, prefer layout-level gate wrappers plus page-level action gating
+
+### Checklist for New/Updated Pages
+
+- [ ] Module-level gate in layout or page
+- [ ] Action-level gate combines RBAC and capability flags
+- [ ] Pricing/source controls honor bootstrap settings
+- [ ] User-visible disabled/read-only feedback included
+- [ ] `npx tsc --noEmit` run after changes
+
 ---
 
 ## 🎨 UI/UX Patterns & Responsive Design

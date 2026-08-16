@@ -5,6 +5,7 @@
 
 import React, { useState, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useQuery } from '@tanstack/react-query';
 import { ExternalLink, Plus } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -26,6 +27,7 @@ import { useDhaInvoices, useInvoices, useFinalizeInvoice, useCancelInvoice } fro
 import { useDebounce } from '@/lib/hooks/use-debounce';
 import { useToast } from '@/lib/hooks/use-toast';
 import { useCreateRouteAccess } from '@/lib/hooks/use-create-route-access';
+import { inventoryApi } from '@/lib/api/inventory';
 import type { DHAInvoiceRow, Invoice, InvoiceStatus } from '@/lib/types/billing';
 import { formatCurrency, formatDate } from '@/lib/utils/format';
 
@@ -36,6 +38,12 @@ export default function TransactionsInvoicesPage() {
   const canCreateRoute = useCreateRouteAccess();
   const searchParams = useSearchParams();
   const { toast } = useToast();
+  const { data: bootstrap } = useQuery({
+    queryKey: ['inventory-bootstrap'],
+    queryFn: inventoryApi.getBootstrap,
+  });
+  const billingEnabled = bootstrap?.modules.billing ?? true;
+  const canCreateByCapabilities = billingEnabled;
 
   const [invoiceSearch, setInvoiceSearch] = useState(searchParams.get('search') ?? '');
   const [invoiceStatus, setInvoiceStatus] = useState<InvoiceStatus | undefined>();
@@ -61,6 +69,7 @@ export default function TransactionsInvoicesPage() {
   const cancelInvoice = useCancelInvoice();
 
   const handleCreateInvoice = () => {
+    if (!canCreateByCapabilities) return;
     if (!canCreateRoute('/transactions/invoices/new')) return;
     router.push('/transactions/invoices/new');
   };
@@ -120,7 +129,7 @@ export default function TransactionsInvoicesPage() {
           actions={
             <Button
               onClick={handleCreateInvoice}
-              disabled={!canCreateRoute('/transactions/invoices/new')}
+              disabled={!canCreateRoute('/transactions/invoices/new') || !canCreateByCapabilities}
               className="gap-2 w-full sm:w-auto"
             >
               <Plus className="h-4 w-4" />
@@ -148,6 +157,14 @@ export default function TransactionsInvoicesPage() {
             </SelectContent>
           </Select>
         </div>
+
+        {!billingEnabled ? (
+          <Card className="p-4">
+            <p className="text-sm text-muted-foreground">
+              Billing module is disabled for this facility. Invoice actions are unavailable.
+            </p>
+          </Card>
+        ) : null}
 
         {invoiceSource === 'local' && (
           <InvoiceList

@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { SearchableSelect } from '@/components/ui/searchable-select';
 import {
   Form,
@@ -69,6 +70,12 @@ export default function NewGoodsReceiptPage() {
   const searchParams = useSearchParams();
   const poIdParam = searchParams.get('po');
   const { toast } = useToast();
+  const { data: bootstrap } = useQuery({
+    queryKey: ['inventory-bootstrap'],
+    queryFn: inventoryApi.getBootstrap,
+  });
+  const canReceiveFromCapabilities = bootstrap?.permissions.can_receive_grn ?? true;
+  const unifiedPricingEnabled = bootstrap?.catalog_sources.unified_pricing_enabled ?? false;
 
   // Fetch suppliers
   const { data: suppliersData } = useQuery({
@@ -137,6 +144,15 @@ export default function NewGoodsReceiptPage() {
   );
 
   async function onSubmit(data: GRNFormValues) {
+    if (!canReceiveFromCapabilities) {
+      toast({
+        variant: 'destructive',
+        title: 'Action blocked',
+        description: 'Goods receipt is disabled by facility capability settings.',
+      });
+      return;
+    }
+
     try {
       const created = await inventoryApi.createGoodsReceipt({
         purchase_order: data.purchase_order || null,
@@ -168,6 +184,10 @@ export default function NewGoodsReceiptPage() {
         title="New Goods Receipt"
         helpContent="Record a delivery of goods. Link to a purchase order or create a standalone receipt. Enter batch numbers and expiry dates for each item."
       />
+      <div className="flex flex-wrap gap-2">
+        <Badge variant="outline" className="w-fit">Receive GRN: {canReceiveFromCapabilities ? 'Enabled' : 'Disabled'}</Badge>
+        <Badge variant="outline" className="w-fit">Pricing: {unifiedPricingEnabled ? 'Unified' : 'Manual'}</Badge>
+      </div>
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 sm:space-y-6">
@@ -344,7 +364,16 @@ export default function NewGoodsReceiptPage() {
                         render={({ field: costField }) => (
                           <FormItem>
                             <FormLabel className="text-xs">Cost Price *</FormLabel>
-                            <FormControl><Input type="number" min={0} step="0.01" className="h-9" {...costField} /></FormControl>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                min={0}
+                                step="0.01"
+                                disabled={unifiedPricingEnabled || !canReceiveFromCapabilities}
+                                className="h-9"
+                                {...costField}
+                              />
+                            </FormControl>
                             <FormMessage className="text-xs" />
                           </FormItem>
                         )}
@@ -355,7 +384,16 @@ export default function NewGoodsReceiptPage() {
                         render={({ field: sellField }) => (
                           <FormItem>
                             <FormLabel className="text-xs">Selling Price *</FormLabel>
-                            <FormControl><Input type="number" min={0} step="0.01" className="h-9" {...sellField} /></FormControl>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                min={0}
+                                step="0.01"
+                                disabled={unifiedPricingEnabled || !canReceiveFromCapabilities}
+                                className="h-9"
+                                {...sellField}
+                              />
+                            </FormControl>
                             <FormMessage className="text-xs" />
                           </FormItem>
                         )}
@@ -378,7 +416,7 @@ export default function NewGoodsReceiptPage() {
             <Button type="button" variant="outline" onClick={() => router.back()} className="w-full sm:w-auto">
               Cancel
             </Button>
-            <Button type="submit" disabled={isSubmitting} className="w-full sm:w-auto">
+            <Button type="submit" disabled={isSubmitting || !canReceiveFromCapabilities} className="w-full sm:w-auto">
               {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Create Goods Receipt
             </Button>

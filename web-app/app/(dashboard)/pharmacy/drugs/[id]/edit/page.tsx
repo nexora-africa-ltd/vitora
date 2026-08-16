@@ -11,14 +11,37 @@ import { useQuery } from '@tanstack/react-query';
 import { DrugForm } from '@/components/pharmacy/drug-form';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Card } from '@/components/ui/card';
 import { PageHeader } from '@/components/shared/page-header';
 import { pharmacyApi } from '@/lib/api/pharmacy';
 import { Drug } from '@/lib/types/pharmacy';
+import { usePermissions } from '@/lib/hooks/use-permissions';
 
 export default function EditDrugPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
   const router = useRouter();
   const drugId = parseInt(resolvedParams.id);
+  const { hasPermission } = usePermissions();
+  const canEditDrug = hasPermission('pharmacy.change_drug');
+  const { data: bootstrap } = useQuery({
+    queryKey: ['pharmacy-bootstrap'],
+    queryFn: pharmacyApi.getBootstrap,
+  });
+  const canManageCatalog = bootstrap?.permissions.can_manage_catalog ?? true;
+
+  if (!canEditDrug || !canManageCatalog) {
+    return (
+      <div className="space-y-4 sm:space-y-6">
+        <PageHeader title="Edit Item" />
+        <Card className="p-6 text-center">
+          <p className="text-sm font-medium">Access denied</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            You do not have permission to edit catalog items.
+          </p>
+        </Card>
+      </div>
+    );
+  }
 
   const { data: drug, isLoading, error } = useQuery({
     queryKey: ['drug', drugId],
