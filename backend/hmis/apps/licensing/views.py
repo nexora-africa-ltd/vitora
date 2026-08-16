@@ -17,7 +17,8 @@ from pathlib import Path
 
 from django.conf import settings
 from django.utils import timezone
-from rest_framework import permissions, status, viewsets
+from drf_spectacular.utils import extend_schema, inline_serializer
+from rest_framework import permissions, serializers, status, viewsets
 from rest_framework.decorators import (
     action,
     api_view,
@@ -48,6 +49,77 @@ from .tokens import (
 
 HUB_EULA_VERSION = "2026-07-31"
 
+LicenseGenericResponseSerializer = inline_serializer(
+    name="LicenseGenericResponse",
+    fields={
+        "data": serializers.JSONField(required=False),
+        "license": serializers.CharField(required=False),
+        "license_token": serializers.CharField(required=False),
+        "installation_id": serializers.CharField(required=False),
+        "features": serializers.JSONField(required=False),
+        "actions": serializers.ListField(required=False),
+    },
+)
+
+LicenseErrorResponseSerializer = inline_serializer(
+    name="LicenseErrorResponse",
+    fields={
+        "error": serializers.CharField(required=False),
+        "detail": serializers.CharField(required=False),
+        "code": serializers.CharField(required=False),
+    },
+)
+
+HubEulaResponseSerializer = inline_serializer(
+    name="HubEulaResponse",
+    fields={
+        "version": serializers.CharField(),
+        "title": serializers.CharField(),
+        "content": serializers.CharField(),
+    },
+)
+
+LicenseStatusResponseSerializer = inline_serializer(
+    name="LicenseStatusResponse",
+    fields={
+        "valid": serializers.BooleanField(),
+        "tier": serializers.CharField(),
+        "features": serializers.JSONField(),
+        "org_name": serializers.CharField(),
+        "subscription_status": serializers.CharField(),
+        "expires_at": serializers.IntegerField(required=False, allow_null=True),
+        "check_in_by": serializers.IntegerField(required=False, allow_null=True),
+        "check_in_overdue": serializers.BooleanField(),
+        "error": serializers.CharField(),
+    },
+)
+
+GenerateActivationCodeResponseSerializer = inline_serializer(
+    name="GenerateActivationCodeResponse",
+    fields={
+        "id": serializers.IntegerField(),
+        "activation_code": serializers.CharField(),
+        "organization": serializers.CharField(),
+        "facility": serializers.CharField(required=False, allow_null=True),
+        "status": serializers.CharField(),
+    },
+)
+
+RegistryTokenRequestSerializer = inline_serializer(
+    name="RegistryTokenRequest",
+    fields={"installation_id": serializers.CharField(required=False, allow_blank=True)},
+)
+
+RegistryTokenResponseSerializer = inline_serializer(
+    name="RegistryTokenResponse",
+    fields={
+        "token": serializers.CharField(),
+        "expires_at": serializers.IntegerField(),
+        "registry": serializers.CharField(),
+        "scope": serializers.CharField(),
+    },
+)
+
 
 def _load_hub_eula_text() -> str:
     eula_path = Path(settings.BASE_DIR) / "scripts" / "HUB-EULA.txt"
@@ -57,6 +129,10 @@ def _load_hub_eula_text() -> str:
         return ""
 
 
+@extend_schema(
+    request=ActivationRequestSerializer,
+    responses={200: LicenseGenericResponseSerializer, 400: LicenseErrorResponseSerializer},
+)
 @api_view(["POST"])
 @permission_classes([permissions.AllowAny])
 @throttle_classes([LicenseActivationThrottle])
@@ -134,6 +210,7 @@ def activate_installation(request: Request) -> Response:
     )
 
 
+@extend_schema(responses={200: HubEulaResponseSerializer})
 @api_view(["GET"])
 @permission_classes([permissions.AllowAny])
 def hub_eula(request: Request) -> Response:
@@ -149,6 +226,16 @@ def hub_eula(request: Request) -> Response:
     )
 
 
+@extend_schema(
+    request=CheckInRequestSerializer,
+    responses={
+        200: LicenseGenericResponseSerializer,
+        400: LicenseErrorResponseSerializer,
+        401: LicenseErrorResponseSerializer,
+        403: LicenseErrorResponseSerializer,
+        404: LicenseErrorResponseSerializer,
+    },
+)
 @api_view(["POST"])
 @permission_classes([permissions.AllowAny])
 @throttle_classes([LicenseCheckInThrottle])
@@ -328,6 +415,7 @@ def _create_check_in_log(installation, data: dict, client_ip: str, integrity_res
     )
 
 
+@extend_schema(responses={200: LicenseStatusResponseSerializer})
 @api_view(["GET"])
 @permission_classes([permissions.AllowAny])
 def license_status(request: Request) -> Response:
@@ -387,6 +475,13 @@ def license_status(request: Request) -> Response:
         )
 
 
+@extend_schema(
+    request=GenerateActivationCodeSerializer,
+    responses={
+        201: GenerateActivationCodeResponseSerializer,
+        404: LicenseErrorResponseSerializer,
+    },
+)
 @api_view(["POST"])
 @permission_classes([permissions.IsAdminUser])
 def generate_activation_code(request: Request) -> Response:
@@ -450,6 +545,14 @@ def generate_activation_code(request: Request) -> Response:
     )
 
 
+@extend_schema(
+    request=RegistryTokenRequestSerializer,
+    responses={
+        200: RegistryTokenResponseSerializer,
+        401: LicenseErrorResponseSerializer,
+        403: LicenseErrorResponseSerializer,
+    },
+)
 @api_view(["POST"])
 @authentication_classes([])  # License JWT, not a user JWT — skip DRF auth
 @permission_classes([permissions.AllowAny])

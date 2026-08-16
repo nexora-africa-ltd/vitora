@@ -56,6 +56,9 @@ class ActivationRequestSerializer(serializers.Serializer):
 class CheckInRequestSerializer(serializers.Serializer):
     """Request body for periodic license check-in (Phase 3 enhanced)."""
 
+    class Meta:
+        ref_name = "LicensingCheckInRequest"
+
     installation_id = serializers.CharField(
         max_length=200,
         help_text="Unique client identifier of the installation checking in.",

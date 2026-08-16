@@ -25,7 +25,7 @@ from datetime import date, datetime
 
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema
-from rest_framework import status
+from rest_framework import serializers, status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.renderers import JSONRenderer
 from rest_framework.response import Response
@@ -53,7 +53,30 @@ class FHIRAltJSONRenderer(JSONRenderer):
 FHIR_RENDERER_CLASSES = [FHIRJSONRenderer, FHIRAltJSONRenderer, JSONRenderer]
 
 
-class PublicFHIRReadAPIView(APIView):
+class FHIRSchemaSerializer(serializers.Serializer):
+    """Named fallback serializer used only for OpenAPI introspection."""
+
+    payload = serializers.JSONField(required=False)
+
+
+class FHIRSchemaMixin:
+    """Provide default serializer hooks for APIView OpenAPI introspection."""
+
+    serializer_class = FHIRSchemaSerializer
+
+    def get_serializer_class(self):
+        return getattr(self, "serializer_class", FHIRSchemaSerializer)
+
+    def get_serializer(self, *args, **kwargs):
+        serializer_class = self.get_serializer_class()
+        kwargs.setdefault("context", self.get_serializer_context())
+        return serializer_class(*args, **kwargs)
+
+    def get_serializer_context(self):
+        return {"request": getattr(self, "request", None), "view": self}
+
+
+class PublicFHIRReadAPIView(FHIRSchemaMixin, APIView):
     """Shared Inferno-friendly config for unauthenticated FHIR read endpoints."""
 
     permission_classes = [AllowAny]
@@ -3135,7 +3158,7 @@ class FHIRCarePlanView(APIView):
         return fhir_resource
 
 
-class FHIRPatientSummaryView(APIView):
+class FHIRPatientSummaryView(FHIRSchemaMixin, APIView):
     """
     IPS (International Patient Summary) endpoint.
 

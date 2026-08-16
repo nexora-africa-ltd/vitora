@@ -22,6 +22,7 @@ from typing import Any
 from django.conf import settings
 from django.http import StreamingHttpResponse
 from django.utils import timezone
+from drf_spectacular.utils import extend_schema
 from rest_framework import permissions, status
 from rest_framework.parsers import MultiPartParser
 from rest_framework.permissions import BasePermission
@@ -37,7 +38,7 @@ from hmis.apps.patients.models import Allergy
 
 from .client import TibaBotError, TibaBotUnavailableError, extract_token_usage, get_tibabot_client
 from .context import build_facility_context, build_user_context
-from .feature_flags import AIFeatureGatedMixin, is_ai_enabled
+from .feature_flags import AIFeatureGatedMixin, AISchemaMixin, is_ai_enabled
 from .models import (
     AIAdvisoryOrderLink,
     AIAdvisoryOrderLinkStatus,
@@ -475,7 +476,7 @@ class ICD10SuggestView(AIFeatureGatedMixin, APIView):
         )
 
 
-class AIStatusView(APIView):
+class AIStatusView(AISchemaMixin, APIView):
     """
     Check AI feature status.
 
@@ -3456,6 +3457,7 @@ class SurgicalProcedureListView(AIFeatureGatedMixin, APIView):
 
     permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
 
+    @extend_schema(operation_id="api_ai_surgical_procedures_list")
     def get(self, request: Request) -> Response:
         try:
             client = get_tibabot_client()
@@ -3481,6 +3483,7 @@ class SurgicalProcedureDetailView(AIFeatureGatedMixin, APIView):
 
     permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
 
+    @extend_schema(operation_id="api_ai_surgical_procedures_detail_retrieve")
     def get(self, request: Request, procedure_key: str) -> Response:
         try:
             client = get_tibabot_client()
@@ -3665,7 +3668,7 @@ def _extract_suggestions(
     return suggestions
 
 
-class AIAdvisoryOrderLinkListView(APIView):
+class AIAdvisoryOrderLinkListView(AISchemaMixin, APIView):
     """List links for a given AI result or seed them from result_data."""
 
     permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
@@ -3737,7 +3740,7 @@ class AIAdvisoryOrderLinkListView(APIView):
         )
 
 
-class AIAdvisoryOrderLinkActionView(APIView):
+class AIAdvisoryOrderLinkActionView(AISchemaMixin, APIView):
     """Action a single suggestion: mark as ORDERED / DECLINED / NOT_APPLICABLE."""
 
     permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
@@ -3775,7 +3778,7 @@ class AIAdvisoryOrderLinkActionView(APIView):
         return Response(AIAdvisoryOrderLinkSerializer(link).data)
 
 
-class AIAdvisoryHasOrdersView(APIView):
+class AIAdvisoryHasOrdersView(AISchemaMixin, APIView):
     """Check whether an AI result has non-draft orders linked.
 
     Used by the frontend to disable 'Ask again' when live orders exist.

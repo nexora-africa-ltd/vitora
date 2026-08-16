@@ -51,6 +51,7 @@ from .models import (
     UserCertificate,
     Ward,
 )
+from .openapi import SchemaFallbackSerializer
 from .permissions import (
     AuditLogPermission,
     FacilityAdminPermission,
@@ -3519,10 +3520,26 @@ class DocumentShareViewSet(viewsets.GenericViewSet, ListModelMixin):
         return Response(DocumentShareSerializer(share).data)
 
 
+@extend_schema_view(
+    sha_attachment_preview=extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name="attachment_id",
+                location=OpenApiParameter.PATH,
+                required=True,
+                type=OpenApiTypes.INT,
+            )
+        ]
+    )
+)
 class DocumentHubViewSet(viewsets.ViewSet):
     """Unified document listing for owned and shared clinical documents."""
 
     permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
+    serializer_class = SchemaFallbackSerializer
+
+    def get_serializer_class(self):
+        return self.serializer_class
 
     @action(
         detail=False,

@@ -204,6 +204,7 @@ class ExternalImagingOrderRequestSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = ExternalImagingOrderRequest
+        ref_name = "StandaloneExternalImagingOrderRequest"
         fields = [
             "id",
             "patient",

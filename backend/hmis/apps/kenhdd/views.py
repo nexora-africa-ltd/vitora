@@ -12,6 +12,7 @@ from __future__ import annotations
 
 from django.http import HttpResponse
 from django_filters.rest_framework import DjangoFilterBackend
+from drf_spectacular.utils import extend_schema
 from rest_framework import filters, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
@@ -136,6 +137,7 @@ class KENHDDComplianceViewSet(viewsets.ViewSet):
         service = KENHDDValidationService()
         return Response(service.get_compliance_summary())
 
+    @extend_schema(operation_id="api_kenhdd_compliance_runs_list")
     @action(detail=False, methods=["get"])
     def runs(self, request: Request) -> Response:
         """List past validation runs."""
@@ -188,6 +190,7 @@ class KENHDDComplianceViewSet(viewsets.ViewSet):
         content = report_service.export_compliance_report_json(run)
         return HttpResponse(content, content_type="application/json")
 
+    @extend_schema(operation_id="api_kenhdd_compliance_runs_detail_retrieve")
     @action(detail=False, methods=["get"], url_path=r"runs/(?P<run_id>\d+)")
     def run_detail(self, request: Request, run_id: str = "") -> Response:
         """Get detailed info for a specific validation run including failed records."""

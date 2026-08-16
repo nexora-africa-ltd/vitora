@@ -21,11 +21,12 @@ from datetime import date
 from urllib.parse import urlencode
 
 from django.db.models import Q
+from drf_spectacular.utils import extend_schema
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from hmis.apps.core.fhir.views import FHIR_RENDERER_CLASSES
+from hmis.apps.core.fhir.views import FHIR_RENDERER_CLASSES, FHIRSchemaMixin
 from hmis.apps.core.permissions import ReadRequiresModelPermission
 
 logger = logging.getLogger(__name__)
@@ -139,7 +140,7 @@ class FHIRSearchMixin:
         }
 
 
-class FHIRSearchAPIView(FHIRSearchMixin, APIView):
+class FHIRSearchAPIView(FHIRSearchMixin, FHIRSchemaMixin, APIView):
     """Base class for FHIR search endpoints (authenticated)."""
 
     permission_classes = [IsAuthenticated, ReadRequiresModelPermission]
@@ -160,6 +161,7 @@ class FHIRPatientSearchView(FHIRSearchAPIView):
         - _offset: Pagination offset
     """
 
+    @extend_schema(operation_id="fhir_Patient_search")
     def get(self, request):
         from hmis.apps.patients.models import Patient
 
@@ -246,6 +248,7 @@ class FHIRObservationSearchView(FHIRSearchAPIView):
         - _count / _offset: Pagination
     """
 
+    @extend_schema(operation_id="fhir_Observation_search")
     def get(self, request):
         from hmis.apps.encounters.models import Encounter
         from hmis.apps.laboratory.models import LabResult
@@ -376,6 +379,7 @@ class FHIRConditionSearchView(FHIRSearchAPIView):
         - _count / _offset: Pagination
     """
 
+    @extend_schema(operation_id="fhir_Condition_search")
     def get(self, request):
         from hmis.apps.encounters.models import Diagnosis
 
@@ -472,6 +476,7 @@ class FHIRMedicationStatementSearchView(FHIRSearchAPIView):
         - _count / _offset: Pagination
     """
 
+    @extend_schema(operation_id="fhir_MedicationStatement_search")
     def get(self, request):
         from hmis.apps.pharmacy.models import Prescription
 
@@ -614,6 +619,7 @@ class FHIRDiagnosticReportSearchView(FHIRSearchAPIView):
         - _count / _offset: Pagination
     """
 
+    @extend_schema(operation_id="fhir_DiagnosticReport_search")
     def get(self, request):
         from hmis.apps.laboratory.models import DiagnosticReport
 

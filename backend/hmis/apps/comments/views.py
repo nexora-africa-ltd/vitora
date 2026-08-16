@@ -16,7 +16,8 @@ from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import Count
 from django.http import Http404
-from rest_framework import permissions, status, viewsets
+from drf_spectacular.utils import extend_schema, inline_serializer
+from rest_framework import permissions, serializers, status, viewsets
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 
@@ -33,6 +34,19 @@ from hmis.apps.core.permissions import ReadRequiresModelPermission
 from hmis.apps.core.utils import resolve_model_pk_or_public_id
 
 User = get_user_model()
+
+CommentGenericResponseSerializer = inline_serializer(
+    name="CommentGenericResponse",
+    fields={
+        "data": serializers.JSONField(required=False),
+        "count": serializers.IntegerField(required=False),
+    },
+)
+
+CommentErrorResponseSerializer = inline_serializer(
+    name="CommentErrorResponse",
+    fields={"error": serializers.CharField()},
+)
 
 # Map URL kwarg names to (app_label, model_name)
 COMMENTABLE_MODELS = {
@@ -285,6 +299,7 @@ class ClinicalCommentViewSet(viewsets.ModelViewSet):
         )
 
 
+@extend_schema(responses={200: CommentGenericResponseSerializer})
 @api_view(["GET"])
 @permission_classes([permissions.IsAuthenticated])
 def mention_suggestions(request):
@@ -329,6 +344,9 @@ def mention_suggestions(request):
     return Response(serializer.data)
 
 
+@extend_schema(
+    responses={200: CommentGenericResponseSerializer, 400: CommentErrorResponseSerializer}
+)
 @api_view(["GET"])
 @permission_classes([permissions.IsAuthenticated])
 def comment_count(request):

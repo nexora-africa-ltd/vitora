@@ -20,6 +20,7 @@ from rest_framework.views import APIView
 
 from hmis.apps.core.mixins import ReadOnCreateMixin, TenantScopedViewMixin, resolve_request_tenant
 from hmis.apps.core.models import AuditLog
+from hmis.apps.core.openapi import SchemaFallbackSerializer
 from hmis.apps.core.permissions import ReadRequiresModelPermission, RequiresActiveShiftPermission
 from hmis.apps.encounters.models import Encounter
 from hmis.apps.insurance.bootstrap import seed_slade_defaults
@@ -1989,6 +1990,19 @@ class HealthCloudHealthIdWebhookView(APIView):
     """
 
     permission_classes = [AllowAny]
+
+    serializer_class = SchemaFallbackSerializer
+
+    def get_serializer_class(self):
+        return self.serializer_class
+
+    def get_serializer(self, *args, **kwargs):
+        serializer_class = self.get_serializer_class()
+        kwargs.setdefault("context", self.get_serializer_context())
+        return serializer_class(*args, **kwargs)
+
+    def get_serializer_context(self):
+        return {"request": self.request, "format": self.format_kwarg, "view": self}
 
     @staticmethod
     def _resolve_enrollment(profile_id: str):

@@ -12,8 +12,6 @@ Follows project conventions:
 from django.conf import settings
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.utils import timezone
-from drf_spectacular.types import OpenApiTypes
-from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
@@ -21,6 +19,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from hmis.apps.core.mixins import ReadOnCreateMixin, TenantScopedViewMixin, resolve_request_tenant
+from hmis.apps.core.openapi import SchemaFallbackSerializer
 from hmis.apps.core.permissions import (
     ReadRequiresModelPermission,
     RequiresActiveShiftPermission,
@@ -101,6 +100,7 @@ class InventoryBootstrapView(APIView):
     """Read-only bootstrap payload for inventory embedded capabilities."""
 
     permission_classes = [IsAuthenticated]
+    serializer_class = SchemaFallbackSerializer
 
     _LEVEL_LABELS = {
         "1": "LEVEL_1",
@@ -110,6 +110,17 @@ class InventoryBootstrapView(APIView):
         "5": "LEVEL_5",
         "6": "LEVEL_6",
     }
+
+    def get_serializer_class(self):
+        return self.serializer_class
+
+    def get_serializer(self, *args, **kwargs):
+        serializer_class = self.get_serializer_class()
+        kwargs.setdefault("context", self.get_serializer_context())
+        return serializer_class(*args, **kwargs)
+
+    def get_serializer_context(self):
+        return {"request": self.request, "format": self.format_kwarg, "view": self}
 
     def get(self, request):
         resolve_request_tenant(request)
@@ -896,12 +907,12 @@ class StockCountViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.Model
             return Response({"error": e.message}, status=status.HTTP_400_BAD_REQUEST)
         return Response(StockCountDetailSerializer(count).data)
 
-    @extend_schema(
-        parameters=[
-            OpenApiParameter("item_pk", OpenApiTypes.INT, OpenApiParameter.PATH),
-        ]
+    @action(
+        detail=True,
+        methods=["get"],
+        url_path=r"items/(?P<item_pk>\d+)",
+        url_name="stock-count-item-detail",
     )
-    @action(detail=True, methods=["get"], url_path="items/(?P<item_pk>[^/.]+)")
     def item_detail(self, request, pk=None, item_pk=None):
         """Get or update a specific count item (record physical count)."""
         count = self.get_object()
@@ -933,7 +944,7 @@ class StockCountViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.Model
         item.refresh_from_db()
         return Response(StockCountItemSerializer(item).data)
 
-    @action(detail=True, methods=["get"])
+    @action(detail=True, methods=["get"], url_name="stock-count-items-list")
     def items(self, request, pk=None):
         """Paginated list of count items (avoids SQLite expression-tree limit)."""
         count = self.get_object()

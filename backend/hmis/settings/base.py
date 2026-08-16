@@ -327,6 +327,10 @@ SPECTACULAR_SETTINGS = {
     "VERSION": "0.1.0",
     "SERVE_INCLUDE_SCHEMA": False,
     "COMPONENT_SPLIT_REQUEST": True,
+    "POSTPROCESSING_HOOKS": [
+        "drf_spectacular.hooks.postprocess_schema_enums",
+        "hmis.apps.core.openapi.patch_stock_count_items_operation_ids",
+    ],
     # Reduce enum collision warnings - these are cosmetic and don't affect functionality
     # The auto-generated hash names (e.g. Status753Enum) work correctly, just have non-ideal names
     "ENUM_ADD_EXPLICIT_BLANK_NULL_CHOICE": False,
@@ -436,6 +440,24 @@ SPECTACULAR_SETTINGS = {
         ),
         "NursingKardexRiskEnum": lambda: _model_attr(
             "hmis.apps.inpatient.models.NursingKardex", "RISK_CHOICES"
+        ),
+        "BabyGenderEnum": lambda: _model_attr("hmis.apps.mch.models.Delivery", "GENDER_CHOICES"),
+        "FacilityLevelEnum": lambda: _model_attr("hmis.apps.core.models.Facility", "FacilityLevel"),
+        "FacilityOwnershipEnum": lambda: _model_attr(
+            "hmis.apps.core.models.Facility", "OwnershipType"
+        ),
+        "FacilityOperatingModeEnum": lambda: _model_attr(
+            "hmis.apps.core.models.Facility", "OperatingMode"
+        ),
+        "PaymentTypeEnum": lambda: _model_attr("hmis.apps.billing.models.Invoice", "PaymentType"),
+        "PeriodTypeEnum": lambda: _model_attr(
+            "hmis.apps.quality.models.QualityMeasure", "PERIOD_CHOICES"
+        ),
+        "ExportFormatEnum": lambda: _model_attr(
+            "hmis.apps.laboratory.worksheets.models.WorksheetTemplate", "ExportFormat"
+        ),
+        "ChronicStatusEnum": lambda: _model_attr(
+            "hmis.apps.encounters.models.ChronicCondition", "ConditionStatus"
         ),
         # Triage bypass reasons
         "TriageBypassReasonEnum": lambda: _model_attr(

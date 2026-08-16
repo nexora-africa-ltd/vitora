@@ -14,7 +14,8 @@ import time
 from django.conf import settings
 from django.db import connection
 from django.utils import timezone
-from rest_framework import permissions, status
+from drf_spectacular.utils import extend_schema, inline_serializer
+from rest_framework import permissions, serializers, status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAdminUser
 from rest_framework.response import Response
@@ -27,6 +28,24 @@ _START_TIME = time.time()
 
 # In-memory wipe flag (persisted via _sync_meta or settings in production)
 _wipe_requested: dict[str, str] = {}  # hub_id → requested_by
+
+HubGenericResponseSerializer = inline_serializer(
+    name="HubGenericResponse",
+    fields={"data": serializers.JSONField(required=False)},
+)
+
+HubErrorResponseSerializer = inline_serializer(
+    name="HubErrorResponse",
+    fields={
+        "detail": serializers.CharField(required=False),
+        "error": serializers.CharField(required=False),
+    },
+)
+
+HubGenericRequestSerializer = inline_serializer(
+    name="HubGenericRequest",
+    fields={"payload": serializers.JSONField(required=False)},
+)
 
 
 class HubAdminPermission(permissions.BasePermission):
@@ -45,6 +64,7 @@ class HubAdminPermission(permissions.BasePermission):
         return bool(role and getattr(role, "code", "") in self.ADMIN_ROLE_CODES)
 
 
+@extend_schema(responses={200: HubGenericResponseSerializer})
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def hub_health(request):  # noqa: ARG001
@@ -109,6 +129,14 @@ def hub_health(request):  # noqa: ARG001
     return Response(health)
 
 
+@extend_schema(
+    request=HubGenericRequestSerializer,
+    responses={
+        200: HubGenericResponseSerializer,
+        400: HubErrorResponseSerializer,
+        409: HubErrorResponseSerializer,
+    },
+)
 @api_view(["POST"])
 @permission_classes([HubAdminPermission])
 def sync_now(request):  # noqa: ARG001
@@ -152,6 +180,10 @@ def sync_now(request):  # noqa: ARG001
     )
 
 
+@extend_schema(
+    request=HubGenericRequestSerializer,
+    responses={200: HubGenericResponseSerializer, 400: HubErrorResponseSerializer},
+)
 @api_view(["POST"])
 @permission_classes([IsAdminUser])
 def request_remote_wipe(request):
@@ -214,6 +246,7 @@ def request_remote_wipe(request):
     )
 
 
+@extend_schema(responses={200: HubGenericResponseSerializer})
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def check_wipe_status(request):  # noqa: ARG001

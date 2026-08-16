@@ -1436,7 +1436,7 @@ class ShiftSwapRequestSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
 
-    def _shift_summary(self, shift):
+    def _shift_summary(self, shift) -> dict[str, str | int | None] | None:
         if not shift:
             return None
         return {
@@ -1449,28 +1449,28 @@ class ShiftSwapRequestSerializer(serializers.ModelSerializer):
             "status": shift.status,
         }
 
-    def get_requester_name(self, obj):
+    def get_requester_name(self, obj) -> str | None:
         u = obj.requester
         return f"{u.first_name} {u.last_name}".strip() or u.username if u else None
 
-    def get_requesting_shift_summary(self, obj):
+    def get_requesting_shift_summary(self, obj) -> dict[str, str | int | None] | None:
         return self._shift_summary(obj.requesting_shift)
 
-    def get_target_shift_summary(self, obj):
+    def get_target_shift_summary(self, obj) -> dict[str, str | int | None] | None:
         return self._shift_summary(obj.target_shift)
 
-    def get_accepted_by_name(self, obj):
+    def get_accepted_by_name(self, obj) -> str | None:
         u = obj.accepted_by
         return f"{u.first_name} {u.last_name}".strip() or u.username if u else None
 
-    def get_accepted_shift_summary(self, obj):
+    def get_accepted_shift_summary(self, obj) -> dict[str, str | int | None] | None:
         return self._shift_summary(obj.accepted_shift)
 
-    def get_reviewed_by_name(self, obj):
+    def get_reviewed_by_name(self, obj) -> str | None:
         u = obj.reviewed_by
         return f"{u.first_name} {u.last_name}".strip() or u.username if u else None
 
-    def get_constraint_warnings(self, obj):
+    def get_constraint_warnings(self, obj) -> list[dict[str, str | int | bool | None]]:
         if obj.status in ("PENDING", "ACCEPTED"):
             return obj.check_constraints()
         return []

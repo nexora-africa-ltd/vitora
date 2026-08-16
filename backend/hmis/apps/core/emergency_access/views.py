@@ -63,6 +63,7 @@ class EmergencyAccessViewSet(viewsets.ModelViewSet):
     """
 
     serializer_class = EmergencyAccessSerializer
+    lookup_value_regex = r"\d+"
     permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
 
     def get_queryset(self):

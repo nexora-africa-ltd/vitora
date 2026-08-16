@@ -30,6 +30,7 @@ from hmis.apps.core.mixins import (
     resolve_request_tenant,
 )
 from hmis.apps.core.models import AuditLog
+from hmis.apps.core.openapi import SchemaFallbackSerializer
 from hmis.apps.core.permissions import ReadRequiresModelPermission, WriteRequiresRolePermission
 from hmis.apps.scheduling.models import Resource
 
@@ -2574,7 +2575,24 @@ class RadiologyReportViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
 # ============================================================================
 
 
-class StudyShareAccessView(APIView):
+class ImagingSchemaMixin:
+    """Schema fallback helpers for APIViews used by drf-spectacular."""
+
+    serializer_class = SchemaFallbackSerializer
+
+    def get_serializer_class(self):
+        return self.serializer_class
+
+    def get_serializer(self, *args, **kwargs):
+        serializer_class = self.get_serializer_class()
+        kwargs.setdefault("context", self.get_serializer_context())
+        return serializer_class(*args, **kwargs)
+
+    def get_serializer_context(self):
+        return {"request": self.request, "format": self.format_kwarg, "view": self}
+
+
+class StudyShareAccessView(ImagingSchemaMixin, APIView):
     """
     Public access to a shared study via token.
 
@@ -2693,7 +2711,7 @@ class StudyShareAccessView(APIView):
         return True, None
 
 
-class StudyShareInstanceView(APIView):
+class StudyShareInstanceView(ImagingSchemaMixin, APIView):
     """Serve an individual DICOM instance for a shared study."""
 
     permission_classes = []
@@ -2733,7 +2751,7 @@ class StudyShareInstanceView(APIView):
         return response
 
 
-class StudyShareDownloadView(APIView):
+class StudyShareDownloadView(ImagingSchemaMixin, APIView):
     """ZIP download of all instances for a shared study (if allow_download)."""
 
     permission_classes = []
@@ -2802,7 +2820,7 @@ class StudyShareDownloadView(APIView):
         return response
 
 
-class StudyShareFrameView(APIView):
+class StudyShareFrameView(ImagingSchemaMixin, APIView):
     """
     Render a shared DICOM instance as a PNG image for web display.
 

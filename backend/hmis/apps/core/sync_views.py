@@ -22,7 +22,8 @@ from django.contrib.auth.hashers import identify_hasher
 from django.db import models, transaction
 from django.utils import timezone
 from django.utils.dateparse import parse_date
-from rest_framework import status
+from drf_spectacular.utils import extend_schema, inline_serializer
+from rest_framework import serializers, status
 from rest_framework.decorators import (
     api_view,
     authentication_classes,
@@ -1013,6 +1014,21 @@ def _broadcast_sync_changes(facility_id: int, changes: list, client_id: str):
         logger.exception("Failed to broadcast sync changes to facility %s", facility_id)
 
 
+@extend_schema(
+    request=SyncPushRequestSerializer,
+    responses={
+        200: inline_serializer(
+            name="SyncPushResponse",
+            fields={
+                "accepted": serializers.IntegerField(),
+                "rejected": serializers.IntegerField(),
+                "conflicts": serializers.ListField(child=serializers.DictField()),
+                "rejections": serializers.ListField(child=serializers.DictField()),
+                "server_timestamp": serializers.DateTimeField(),
+            },
+        )
+    },
+)
 @api_view(["POST"])
 @authentication_classes([HubLicenseOrJWTAuthentication])
 @permission_classes([IsAuthenticatedOrHubLicense])
@@ -1162,6 +1178,21 @@ def sync_push(request):
     return Response(response_data, status=status.HTTP_200_OK)
 
 
+@extend_schema(
+    request=None,
+    responses={
+        200: inline_serializer(
+            name="SyncPullResponse",
+            fields={
+                "changes": serializers.ListField(child=serializers.DictField()),
+                "entries": serializers.ListField(child=serializers.DictField()),
+                "server_timestamp": serializers.DateTimeField(),
+                "has_more": serializers.BooleanField(),
+                "next_cursor": serializers.CharField(allow_null=True, required=False),
+            },
+        )
+    },
+)
 @api_view(["GET"])
 @authentication_classes([HubLicenseOrJWTAuthentication])
 @permission_classes([IsAuthenticatedOrHubLicense])
@@ -1275,6 +1306,21 @@ def sync_pull(request):
     return Response(response_data, status=status.HTTP_200_OK)
 
 
+@extend_schema(
+    request=None,
+    responses={
+        200: inline_serializer(
+            name="SyncStatusResponse",
+            fields={
+                "last_sync": serializers.DateTimeField(allow_null=True, required=False),
+                "pending_changes": serializers.IntegerField(),
+                "failed_changes": serializers.IntegerField(),
+                "conflicts": serializers.IntegerField(),
+                "server_timestamp": serializers.DateTimeField(),
+            },
+        )
+    },
+)
 @api_view(["GET"])
 @authentication_classes([HubLicenseOrJWTAuthentication])
 @permission_classes([IsAuthenticatedOrHubLicense])
@@ -1306,6 +1352,7 @@ def sync_status(request):
     return Response(response_data, status=status.HTTP_200_OK)
 
 
+@extend_schema(request=SyncConflictResolveSerializer, responses={200: SyncConflictDetailSerializer})
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def sync_resolve_conflict(request):
@@ -1360,6 +1407,20 @@ def sync_resolve_conflict(request):
     )
 
 
+@extend_schema(
+    request=None,
+    responses={
+        200: inline_serializer(
+            name="SyncConflictsListResponse",
+            fields={
+                "results": SyncConflictDetailSerializer(many=True),
+                "count": serializers.IntegerField(),
+                "limit": serializers.IntegerField(),
+                "offset": serializers.IntegerField(),
+            },
+        )
+    },
+)
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def sync_conflicts_list(request):
@@ -1383,6 +1444,21 @@ def sync_conflicts_list(request):
     )
 
 
+@extend_schema(
+    request=None,
+    responses={
+        200: inline_serializer(
+            name="SyncDashboardResponse",
+            fields={
+                "queue_summary": serializers.DictField(),
+                "throughput": serializers.DictField(),
+                "health": serializers.DictField(),
+                "conflicts": serializers.DictField(),
+                "server_timestamp": serializers.DateTimeField(),
+            },
+        )
+    },
+)
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def sync_dashboard(request):

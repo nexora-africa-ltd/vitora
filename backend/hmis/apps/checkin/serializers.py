@@ -161,6 +161,9 @@ class CheckInRequestSerializer(serializers.Serializer):
     destination routing.
     """
 
+    class Meta:
+        ref_name = "CheckInAppCheckInRequest"
+
     destination = serializers.CharField(
         help_text="TRIAGE or clinic ID",
     )

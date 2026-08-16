@@ -76,11 +76,11 @@ class SocialWorkReferralSerializer(serializers.ModelSerializer):
             "completed_at",
         ]
 
-    def get_patient_name(self, obj):
+    def get_patient_name(self, obj) -> str:
         """Return patient full name."""
         return f"{obj.patient.first_name} {obj.patient.last_name}"
 
-    def get_referred_by_name(self, obj):
+    def get_referred_by_name(self, obj) -> str | None:
         """Return referring user's name."""
         if obj.referred_by:
             return (
@@ -89,7 +89,7 @@ class SocialWorkReferralSerializer(serializers.ModelSerializer):
             )
         return None
 
-    def get_assigned_worker_name(self, obj):
+    def get_assigned_worker_name(self, obj) -> str | None:
         """Return assigned social worker's name."""
         if obj.assigned_worker:
             return (
@@ -131,11 +131,11 @@ class SocialWorkReferralListSerializer(serializers.ModelSerializer):
             "requires_immediate_attention",
         ]
 
-    def get_patient_name(self, obj):
+    def get_patient_name(self, obj) -> str:
         """Return patient full name."""
         return f"{obj.patient.first_name} {obj.patient.last_name}"
 
-    def get_assigned_worker_name(self, obj):
+    def get_assigned_worker_name(self, obj) -> str | None:
         """Return assigned social worker's name."""
         if obj.assigned_worker:
             return (
@@ -278,11 +278,11 @@ class SocialWorkCaseSerializer(serializers.ModelSerializer):
             "closed_at",
         ]
 
-    def get_patient_name(self, obj):
+    def get_patient_name(self, obj) -> str:
         """Return patient full name."""
         return f"{obj.patient.first_name} {obj.patient.last_name}"
 
-    def get_assigned_worker_name(self, obj):
+    def get_assigned_worker_name(self, obj) -> str | None:
         """Return assigned social worker's name."""
         if obj.assigned_worker:
             return (
@@ -291,7 +291,7 @@ class SocialWorkCaseSerializer(serializers.ModelSerializer):
             )
         return None
 
-    def get_supervisor_name(self, obj):
+    def get_supervisor_name(self, obj) -> str | None:
         """Return supervisor's name."""
         if obj.supervisor:
             return (
@@ -300,11 +300,11 @@ class SocialWorkCaseSerializer(serializers.ModelSerializer):
             )
         return None
 
-    def get_notes_count(self, obj):
+    def get_notes_count(self, obj) -> int:
         """Return count of case notes."""
         return obj.notes.count()
 
-    def get_interventions_count(self, obj):
+    def get_interventions_count(self, obj) -> int:
         """Return count of interventions."""
         return obj.interventions.count()
 
@@ -343,11 +343,11 @@ class SocialWorkCaseListSerializer(serializers.ModelSerializer):
             "is_overdue_for_review",
         ]
 
-    def get_patient_name(self, obj):
+    def get_patient_name(self, obj) -> str:
         """Return patient full name."""
         return f"{obj.patient.first_name} {obj.patient.last_name}"
 
-    def get_assigned_worker_name(self, obj):
+    def get_assigned_worker_name(self, obj) -> str | None:
         """Return assigned social worker's name."""
         if obj.assigned_worker:
             return (
@@ -446,7 +446,7 @@ class CaseNoteSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["id", "created_at", "updated_at"]
 
-    def get_author_name(self, obj):
+    def get_author_name(self, obj) -> str | None:
         """Return author's name."""
         if obj.author:
             return f"{obj.author.first_name} {obj.author.last_name}".strip() or obj.author.username
@@ -519,7 +519,7 @@ class SocialWorkInterventionSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["id", "created_at", "updated_at"]
 
-    def get_provided_by_name(self, obj):
+    def get_provided_by_name(self, obj) -> str | None:
         """Return provider's name."""
         if obj.provided_by:
             return (

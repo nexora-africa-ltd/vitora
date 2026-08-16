@@ -17,7 +17,8 @@ from __future__ import annotations
 
 import logging
 
-from rest_framework import status
+from drf_spectacular.utils import extend_schema, inline_serializer
+from rest_framework import serializers, status
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -26,7 +27,28 @@ from hmis.apps.licensing.hub_auth import HubLicenseAuthenticated
 
 logger = logging.getLogger(__name__)
 
+CloudRelayResponseSerializer = inline_serializer(
+    name="CloudRelayResponse",
+    fields={
+        "data": serializers.JSONField(required=False),
+        "detail": serializers.CharField(required=False),
+    },
+)
 
+CloudRelayRequestSerializer = inline_serializer(
+    name="CloudRelayRequest",
+    fields={"payload": serializers.JSONField(required=False)},
+)
+
+
+@extend_schema(
+    request=CloudRelayRequestSerializer,
+    responses={
+        200: CloudRelayResponseSerializer,
+        403: CloudRelayResponseSerializer,
+        502: CloudRelayResponseSerializer,
+    },
+)
 @api_view(["POST"])
 @authentication_classes([])
 @permission_classes([HubLicenseAuthenticated])
@@ -91,6 +113,14 @@ def cloud_sha_submit(request: Request) -> Response:
         )
 
 
+@extend_schema(
+    request=CloudRelayRequestSerializer,
+    responses={
+        200: CloudRelayResponseSerializer,
+        403: CloudRelayResponseSerializer,
+        502: CloudRelayResponseSerializer,
+    },
+)
 @api_view(["POST"])
 @authentication_classes([])
 @permission_classes([HubLicenseAuthenticated])
@@ -123,6 +153,10 @@ def cloud_sha_preauth(request: Request) -> Response:
         )
 
 
+@extend_schema(
+    request=CloudRelayRequestSerializer,
+    responses={200: CloudRelayResponseSerializer, 502: CloudRelayResponseSerializer},
+)
 @api_view(["POST"])
 @authentication_classes([])
 @permission_classes([HubLicenseAuthenticated])
@@ -147,6 +181,10 @@ def cloud_sha_eligibility(request: Request) -> Response:
         )
 
 
+@extend_schema(
+    request=CloudRelayRequestSerializer,
+    responses={202: CloudRelayResponseSerializer, 403: CloudRelayResponseSerializer},
+)
 @api_view(["POST"])
 @authentication_classes([])
 @permission_classes([HubLicenseAuthenticated])

@@ -13,7 +13,8 @@ import contextlib
 import logging
 from typing import Any
 
-from rest_framework import status
+from drf_spectacular.utils import extend_schema, inline_serializer
+from rest_framework import serializers, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -40,11 +41,60 @@ from hmis.apps.billing.services.ilm_prescription_service import (
     RemovePrescriptionDoctorParams,
 )
 from hmis.apps.core.events import BillingEvents, publish_event
+from hmis.apps.core.openapi import SchemaFallbackSerializer
 from hmis.apps.core.permissions import ReadRequiresModelPermission, WriteRequiresRolePermission
 from hmis.apps.encounters.models import Encounter
 from hmis.apps.patients.models import Patient
 
 logger = logging.getLogger(__name__)
+
+
+IlmPrescriptionGenericResponseSerializer = inline_serializer(
+    name="IlmPrescriptionGenericResponse",
+    fields={
+        "data": serializers.JSONField(required=False),
+        "http_status": serializers.IntegerField(required=False),
+        "record_id": serializers.IntegerField(required=False, allow_null=True),
+        "dha_external_id": serializers.CharField(required=False, allow_blank=True),
+        "correlation_id": serializers.CharField(required=False, allow_blank=True),
+    },
+)
+
+IlmPrescriptionErrorResponseSerializer = inline_serializer(
+    name="IlmPrescriptionErrorResponse",
+    fields={
+        "error": serializers.CharField(),
+        "message": serializers.CharField(),
+        "status_code": serializers.IntegerField(required=False, allow_null=True),
+    },
+)
+
+ILM_PRESCRIPTION_RESPONSES = {
+    200: IlmPrescriptionGenericResponseSerializer,
+    201: IlmPrescriptionGenericResponseSerializer,
+    400: IlmPrescriptionErrorResponseSerializer,
+    404: IlmPrescriptionErrorResponseSerializer,
+    429: IlmPrescriptionErrorResponseSerializer,
+    500: IlmPrescriptionErrorResponseSerializer,
+    502: IlmPrescriptionErrorResponseSerializer,
+}
+
+
+class BillingILMSchemaMixin:
+    """Schema fallback helpers for APIViews used by drf-spectacular."""
+
+    serializer_class = SchemaFallbackSerializer
+
+    def get_serializer_class(self):
+        return self.serializer_class
+
+    def get_serializer(self, *args, **kwargs):
+        serializer_class = self.get_serializer_class()
+        kwargs.setdefault("context", self.get_serializer_context())
+        return serializer_class(*args, **kwargs)
+
+    def get_serializer_context(self):
+        return {"request": self.request, "format": self.format_kwarg, "view": self}
 
 
 # ---------------------------------------------------------------------------
@@ -145,7 +195,8 @@ def _result_to_response(result, *, http_status: int = status.HTTP_200_OK) -> Res
 # ---------------------------------------------------------------------------
 
 
-class IlmPrescriptionPreviewView(APIView):
+@extend_schema(responses=ILM_PRESCRIPTION_RESPONSES)
+class IlmPrescriptionPreviewView(BillingILMSchemaMixin, APIView):
     permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
 
     def get(self, request):
@@ -172,7 +223,8 @@ class IlmPrescriptionPreviewView(APIView):
 # ---------------------------------------------------------------------------
 
 
-class IlmPrescriptionCreateView(APIView):
+@extend_schema(responses=ILM_PRESCRIPTION_RESPONSES)
+class IlmPrescriptionCreateView(BillingILMSchemaMixin, APIView):
     permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
 
     REQUIRED_FIELDS = ("consent_token", "intervention_code", "identification_number", "items")
@@ -241,7 +293,8 @@ class IlmPrescriptionCreateView(APIView):
 # ---------------------------------------------------------------------------
 
 
-class IlmPrescriptionDispenseView(APIView):
+@extend_schema(responses=ILM_PRESCRIPTION_RESPONSES)
+class IlmPrescriptionDispenseView(BillingILMSchemaMixin, APIView):
     permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
 
     REQUIRED_FIELDS = ("consent_token", "intervention_code", "actual_products")
@@ -310,7 +363,8 @@ class IlmPrescriptionDispenseView(APIView):
 # ---------------------------------------------------------------------------
 
 
-class IlmPrescriptionRemoveDoctorView(APIView):
+@extend_schema(responses=ILM_PRESCRIPTION_RESPONSES)
+class IlmPrescriptionRemoveDoctorView(BillingILMSchemaMixin, APIView):
     permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
 
     REQUIRED_FIELDS = (
@@ -368,7 +422,8 @@ def _serialize_prescription(obj: SHADhaPrescription) -> dict:
     }
 
 
-class SHADhaPrescriptionListView(APIView):
+@extend_schema(responses=ILM_PRESCRIPTION_RESPONSES)
+class SHADhaPrescriptionListView(BillingILMSchemaMixin, APIView):
     permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
 
     def get(self, request):

@@ -26,11 +26,30 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from hmis.apps.core.openapi import SchemaFallbackSerializer
+
 logger = logging.getLogger(__name__)
 
 # Cookie names (must match cookie_auth_backend.py)
 ACCESS_COOKIE = "vitora_access"
 REFRESH_COOKIE = "vitora_refresh"
+
+
+class CookieAuthSchemaMixin:
+    """Schema fallback helpers for APIViews used by drf-spectacular."""
+
+    serializer_class = SchemaFallbackSerializer
+
+    def get_serializer_class(self):
+        return self.serializer_class
+
+    def get_serializer(self, *args, **kwargs):
+        serializer_class = self.get_serializer_class()
+        kwargs.setdefault("context", self.get_serializer_context())
+        return serializer_class(*args, **kwargs)
+
+    def get_serializer_context(self):
+        return {"request": self.request, "format": self.format_kwarg, "view": self}
 
 
 # ---------------------------------------------------------------------------
@@ -81,7 +100,7 @@ def _clear_auth_cookies(response: Response) -> Response:
 # ---------------------------------------------------------------------------
 
 
-class CookieLoginView(APIView):
+class CookieLoginView(CookieAuthSchemaMixin, APIView):
     """
     Login endpoint that sets httpOnly cookies.
 
@@ -129,7 +148,7 @@ class CookieLoginView(APIView):
         return _set_auth_cookies(response, data["access"], data["refresh"])
 
 
-class CookieMFAVerifyView(APIView):
+class CookieMFAVerifyView(CookieAuthSchemaMixin, APIView):
     """
     MFA verification that sets httpOnly cookies.
 
@@ -178,7 +197,7 @@ class CookieMFAVerifyView(APIView):
         return _set_auth_cookies(response, access, refresh)
 
 
-class CookieRefreshView(APIView):
+class CookieRefreshView(CookieAuthSchemaMixin, APIView):
     """
     Refresh access token via httpOnly cookie.
 
@@ -220,7 +239,7 @@ class CookieRefreshView(APIView):
         return response
 
 
-class CookieLogoutView(APIView):
+class CookieLogoutView(CookieAuthSchemaMixin, APIView):
     """
     Logout — blacklists the refresh token and clears httpOnly auth cookies.
 

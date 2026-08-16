@@ -25,6 +25,7 @@ from hmis.apps.core.mixins import (
     TenantScopedViewMixin,
     resolve_request_tenant,
 )
+from hmis.apps.core.openapi import SchemaFallbackSerializer
 from hmis.apps.core.permissions import (
     ReadRequiresModelPermission,
     RequiresActiveShiftPermission,
@@ -60,6 +61,7 @@ class PharmacyBootstrapView(APIView):
     """Read-only bootstrap payload for pharmacy embedded capabilities."""
 
     permission_classes = [IsAuthenticated]
+    serializer_class = SchemaFallbackSerializer
 
     _LEVEL_LABELS = {
         "1": "LEVEL_1",
@@ -69,6 +71,17 @@ class PharmacyBootstrapView(APIView):
         "5": "LEVEL_5",
         "6": "LEVEL_6",
     }
+
+    def get_serializer_class(self):
+        return self.serializer_class
+
+    def get_serializer(self, *args, **kwargs):
+        serializer_class = self.get_serializer_class()
+        kwargs.setdefault("context", self.get_serializer_context())
+        return serializer_class(*args, **kwargs)
+
+    def get_serializer_context(self):
+        return {"request": self.request, "format": self.format_kwarg, "view": self}
 
     def get(self, request):
         resolve_request_tenant(request)

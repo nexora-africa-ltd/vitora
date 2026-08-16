@@ -12,6 +12,7 @@ from decimal import Decimal
 from django.conf import settings
 from django.core.cache import cache
 from django.utils import timezone
+from drf_spectacular.utils import extend_schema
 from rest_framework import serializers, status
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
@@ -19,6 +20,7 @@ from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
 from hmis.apps.core.models import SKU, Bundle, PriceBook, PricingQuoteSnapshot, SKUDependency
+from hmis.apps.core.openapi import SchemaFallbackSerializer
 
 ANNUAL_MULTIPLIER = Decimal("10")
 FACILITY_INCLUDED = 1
@@ -478,7 +480,24 @@ def _compute_quote_payload(price_book: PriceBook, payload: dict) -> dict:
     }
 
 
-class PricingQuoteView(APIView):
+class PricingSchemaMixin:
+    """Schema fallback helpers for APIViews used by drf-spectacular."""
+
+    serializer_class = SchemaFallbackSerializer
+
+    def get_serializer_class(self):
+        return self.serializer_class
+
+    def get_serializer(self, *args, **kwargs):
+        serializer_class = self.get_serializer_class()
+        kwargs.setdefault("context", self.get_serializer_context())
+        return serializer_class(*args, **kwargs)
+
+    def get_serializer_context(self):
+        return {"request": self.request, "format": self.format_kwarg, "view": self}
+
+
+class PricingQuoteView(PricingSchemaMixin, APIView):
     """Generate a cart quote and resolved feature set from selected SKUs."""
 
     permission_classes = [AllowAny]
@@ -518,7 +537,15 @@ class PricingQuoteView(APIView):
         return Response(response_payload, status=status.HTTP_200_OK)
 
 
-class PricingResolvePlanView(APIView):
+class PricingQuoteSlashAliasView(PricingQuoteView):
+    """Schema-excluded alias for trailing-slash compatibility route."""
+
+    @extend_schema(exclude=True)
+    def post(self, request):
+        return super().post(request)
+
+
+class PricingResolvePlanView(PricingSchemaMixin, APIView):
     """Resolve a cart payload to BASIC/PROFESSIONAL/ENTERPRISE/CUSTOM."""
 
     permission_classes = [AllowAny]
@@ -605,7 +632,15 @@ class PricingResolvePlanView(APIView):
         )
 
 
-class PricingQuoteSnapshotCreateView(APIView):
+class PricingResolvePlanSlashAliasView(PricingResolvePlanView):
+    """Schema-excluded alias for trailing-slash compatibility route."""
+
+    @extend_schema(exclude=True)
+    def post(self, request):
+        return super().post(request)
+
+
+class PricingQuoteSnapshotCreateView(PricingSchemaMixin, APIView):
     """Create a persisted quote snapshot and return a stable quote_id."""
 
     permission_classes = [AllowAny]
@@ -661,7 +696,15 @@ class PricingQuoteSnapshotCreateView(APIView):
         )
 
 
-class PricingQuoteSnapshotDetailView(APIView):
+class PricingQuoteSnapshotCreateSlashAliasView(PricingQuoteSnapshotCreateView):
+    """Schema-excluded alias for trailing-slash compatibility route."""
+
+    @extend_schema(exclude=True)
+    def post(self, request):
+        return super().post(request)
+
+
+class PricingQuoteSnapshotDetailView(PricingSchemaMixin, APIView):
     """Retrieve a persisted quote snapshot by quote_id."""
 
     permission_classes = [AllowAny]

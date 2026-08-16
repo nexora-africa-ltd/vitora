@@ -7,7 +7,7 @@ from django.core.exceptions import ValidationError
 from django.db.models import ProtectedError
 from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
-from drf_spectacular.utils import extend_schema, inline_serializer
+from drf_spectacular.utils import extend_schema, extend_schema_view, inline_serializer
 from rest_framework import filters, serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
@@ -313,6 +313,11 @@ class DiagnosisViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
         return self.update(request, *args, **kwargs)
 
 
+@extend_schema_view(
+    history=extend_schema(operation_id="api_encounters_history_list"),
+    history_version=extend_schema(operation_id="api_encounters_history_version_retrieve"),
+    history_count=extend_schema(operation_id="api_encounters_history_count_retrieve"),
+)
 class EncounterViewSet(
     PublicIdLookupMixin,
     TenantScopedViewMixin,

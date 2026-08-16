@@ -17,6 +17,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from hmis.apps.core.mixins import ReadOnCreateMixin, TenantScopedViewMixin, resolve_request_tenant
+from hmis.apps.core.openapi import SchemaFallbackSerializer
 from hmis.apps.core.permissions import ReadRequiresModelPermission
 from hmis.apps.laboratory.management.commands.seed_analyzer_templates import TEMPLATES
 from hmis.apps.laboratory.permissions import (
@@ -347,6 +348,18 @@ class AnalyzerDashboardView(APIView):
         ReadRequiresModelPermission,
     ]
     required_permission = "laboratory.view_instrumentchannel"
+    serializer_class = SchemaFallbackSerializer
+
+    def get_serializer_class(self):
+        return self.serializer_class
+
+    def get_serializer(self, *args, **kwargs):
+        serializer_class = self.get_serializer_class()
+        kwargs.setdefault("context", self.get_serializer_context())
+        return serializer_class(*args, **kwargs)
+
+    def get_serializer_context(self):
+        return {"request": self.request, "format": self.format_kwarg, "view": self}
 
     def get(self, request):
         resolve_request_tenant(request)

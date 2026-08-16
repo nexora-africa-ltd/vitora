@@ -294,6 +294,38 @@ class CatalogItemViewSet(TenantScopedViewMixin, viewsets.GenericViewSet):
         return Response(serializer.data)
 
 
+@extend_schema_view(
+    remove_item=extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name="item_id",
+                location=OpenApiParameter.PATH,
+                required=True,
+                type=OpenApiTypes.INT,
+            )
+        ]
+    ),
+    update_item_allocation=extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name="item_id",
+                location=OpenApiParameter.PATH,
+                required=True,
+                type=OpenApiTypes.INT,
+            )
+        ]
+    ),
+    payer_detail=extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name="payer_id",
+                location=OpenApiParameter.PATH,
+                required=True,
+                type=OpenApiTypes.INT,
+            )
+        ]
+    ),
+)
 class InvoiceViewSet(PublicIdLookupMixin, TenantScopedViewMixin, viewsets.ModelViewSet):
     """
     ViewSet for Invoice model.

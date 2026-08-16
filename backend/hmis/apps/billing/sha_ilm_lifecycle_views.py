@@ -15,7 +15,8 @@ import logging
 from pathlib import Path
 from typing import Any
 
-from rest_framework import status
+from drf_spectacular.utils import extend_schema, inline_serializer
+from rest_framework import serializers, status
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -50,10 +51,60 @@ from hmis.apps.billing.services.ilm_lifecycle_service import (
 )
 from hmis.apps.billing.services.multipart_builder import MultipartFile
 from hmis.apps.core.events import BillingEvents, publish_event
+from hmis.apps.core.openapi import SchemaFallbackSerializer
 from hmis.apps.core.permissions import ReadRequiresModelPermission, WriteRequiresRolePermission
 from hmis.apps.patients.models import Patient
 
 logger = logging.getLogger(__name__)
+
+
+IlmLifecycleGenericResponseSerializer = inline_serializer(
+    name="IlmLifecycleGenericResponse",
+    fields={
+        "data": serializers.JSONField(required=False),
+        "http_status": serializers.IntegerField(required=False),
+        "record_id": serializers.IntegerField(required=False, allow_null=True),
+        "dha_external_id": serializers.CharField(required=False, allow_blank=True),
+        "correlation_id": serializers.CharField(required=False, allow_blank=True),
+    },
+)
+
+IlmLifecycleErrorResponseSerializer = inline_serializer(
+    name="IlmLifecycleErrorResponse",
+    fields={
+        "error": serializers.CharField(),
+        "message": serializers.CharField(),
+        "status_code": serializers.IntegerField(required=False, allow_null=True),
+    },
+)
+
+ILM_LIFECYCLE_RESPONSES = {
+    200: IlmLifecycleGenericResponseSerializer,
+    201: IlmLifecycleGenericResponseSerializer,
+    400: IlmLifecycleErrorResponseSerializer,
+    404: IlmLifecycleErrorResponseSerializer,
+    429: IlmLifecycleErrorResponseSerializer,
+    500: IlmLifecycleErrorResponseSerializer,
+    502: IlmLifecycleErrorResponseSerializer,
+}
+
+
+class BillingILMSchemaMixin:
+    """Schema fallback helpers for APIViews used by drf-spectacular."""
+
+    serializer_class = SchemaFallbackSerializer
+
+    def get_serializer_class(self):
+        return self.serializer_class
+
+    def get_serializer(self, *args, **kwargs):
+        serializer_class = self.get_serializer_class()
+        kwargs.setdefault("context", self.get_serializer_context())
+        return serializer_class(*args, **kwargs)
+
+    def get_serializer_context(self):
+        return {"request": self.request, "format": self.format_kwarg, "view": self}
+
 
 OTP_WHITELIST_ALLOWED_DOCUMENT_TYPES = {"SUPPORT_DOCUMENT"}
 OTP_WHITELIST_ALLOWED_FILE_EXTENSIONS = {
@@ -204,7 +255,8 @@ def _record_pending_whitelist_from_error(
 # ---------------------------------------------------------------------------
 
 
-class IlmVisitOtpView(APIView):
+@extend_schema(responses=ILM_LIFECYCLE_RESPONSES)
+class IlmVisitOtpView(BillingILMSchemaMixin, APIView):
     permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
 
     def post(self, request):
@@ -250,7 +302,8 @@ class IlmVisitOtpView(APIView):
         return _result_to_response(result)
 
 
-class IlmDischargeOtpView(APIView):
+@extend_schema(responses=ILM_LIFECYCLE_RESPONSES)
+class IlmDischargeOtpView(BillingILMSchemaMixin, APIView):
     permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
 
     def post(self, request):
@@ -279,7 +332,8 @@ class IlmDischargeOtpView(APIView):
 # ---------------------------------------------------------------------------
 
 
-class IlmDischargeView(APIView):
+@extend_schema(responses=ILM_LIFECYCLE_RESPONSES)
+class IlmDischargeView(BillingILMSchemaMixin, APIView):
     permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
 
     def post(self, request):
@@ -457,7 +511,8 @@ class IlmDischargeView(APIView):
 # ---------------------------------------------------------------------------
 
 
-class IlmOtpWhitelistRequestView(APIView):
+@extend_schema(responses=ILM_LIFECYCLE_RESPONSES)
+class IlmOtpWhitelistRequestView(BillingILMSchemaMixin, APIView):
     permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     parser_classes = [MultiPartParser, FormParser, JSONParser]
 
@@ -572,7 +627,8 @@ class IlmOtpWhitelistRequestView(APIView):
         return _result_to_response(result, http_status=status.HTTP_201_CREATED)
 
 
-class IlmOtpWhitelistCallbackView(APIView):
+@extend_schema(responses=ILM_LIFECYCLE_RESPONSES)
+class IlmOtpWhitelistCallbackView(BillingILMSchemaMixin, APIView):
     permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
 
     def get(self, request):
@@ -601,7 +657,8 @@ class IlmOtpWhitelistCallbackView(APIView):
 # ---------------------------------------------------------------------------
 
 
-class IlmNextOfKinView(APIView):
+@extend_schema(responses=ILM_LIFECYCLE_RESPONSES)
+class IlmNextOfKinView(BillingILMSchemaMixin, APIView):
     permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
 
     def post(self, request):
@@ -642,7 +699,8 @@ class IlmNextOfKinView(APIView):
 # ---------------------------------------------------------------------------
 
 
-class IlmEmergencyDoctorAddView(APIView):
+@extend_schema(responses=ILM_LIFECYCLE_RESPONSES)
+class IlmEmergencyDoctorAddView(BillingILMSchemaMixin, APIView):
     permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
 
     def post(self, request):
@@ -667,7 +725,8 @@ class IlmEmergencyDoctorAddView(APIView):
         return _result_to_response(result)
 
 
-class IlmEmergencyDoctorRemoveView(APIView):
+@extend_schema(responses=ILM_LIFECYCLE_RESPONSES)
+class IlmEmergencyDoctorRemoveView(BillingILMSchemaMixin, APIView):
     permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
 
     def delete(self, request):
@@ -693,7 +752,8 @@ class IlmEmergencyDoctorRemoveView(APIView):
 # ---------------------------------------------------------------------------
 
 
-class IlmPomsfBalancesView(APIView):
+@extend_schema(responses=ILM_LIFECYCLE_RESPONSES)
+class IlmPomsfBalancesView(BillingILMSchemaMixin, APIView):
     permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
 
     def get(self, request):
@@ -727,7 +787,8 @@ class IlmPomsfBalancesView(APIView):
 # ---------------------------------------------------------------------------
 
 
-class IlmFileUploadView(APIView):
+@extend_schema(responses=ILM_LIFECYCLE_RESPONSES)
+class IlmFileUploadView(BillingILMSchemaMixin, APIView):
     permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     parser_classes = [MultiPartParser, FormParser]
 
@@ -755,7 +816,8 @@ class IlmFileUploadView(APIView):
         return _result_to_response(result, http_status=status.HTTP_201_CREATED)
 
 
-class IlmFileUrlView(APIView):
+@extend_schema(responses=ILM_LIFECYCLE_RESPONSES)
+class IlmFileUrlView(BillingILMSchemaMixin, APIView):
     permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
 
     def get(self, request, file_id: str):
@@ -824,7 +886,8 @@ def _serialize_upload(u: SHAUpload) -> dict[str, Any]:
     }
 
 
-class SHAOtpRequestListView(APIView):
+@extend_schema(responses=ILM_LIFECYCLE_RESPONSES)
+class SHAOtpRequestListView(BillingILMSchemaMixin, APIView):
     permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
 
     def get(self, request):
@@ -838,7 +901,8 @@ class SHAOtpRequestListView(APIView):
         return Response({"results": [_serialize_otp(o) for o in qs[:200]]})
 
 
-class SHAOtpWhitelistListView(APIView):
+@extend_schema(responses=ILM_LIFECYCLE_RESPONSES)
+class SHAOtpWhitelistListView(BillingILMSchemaMixin, APIView):
     permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
 
     def get(self, request):
@@ -852,7 +916,8 @@ class SHAOtpWhitelistListView(APIView):
         return Response({"results": [_serialize_whitelist(w) for w in qs[:200]]})
 
 
-class SHAUploadListView(APIView):
+@extend_schema(responses=ILM_LIFECYCLE_RESPONSES)
+class SHAUploadListView(BillingILMSchemaMixin, APIView):
     permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
 
     def get(self, request):

@@ -736,6 +736,28 @@ class SHATariffViewSet(viewsets.ReadOnlyModelViewSet):
         return Response(categories)
 
 
+@extend_schema_view(
+    item_allocation=extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name="item_id",
+                location=OpenApiParameter.PATH,
+                required=True,
+                type=OpenApiTypes.INT,
+            )
+        ]
+    ),
+    attachment_detail=extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name="attachment_id",
+                location=OpenApiParameter.PATH,
+                required=True,
+                type=OpenApiTypes.INT,
+            )
+        ]
+    ),
+)
 class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     """
     ViewSet for SHA Claims management.
@@ -5960,7 +5982,30 @@ class ConsentDetailView(APIView):
         return Response(serializer.data)
 
 
-class ConsentLatestView(APIView):
+class SHASchemaSerializer(serializers.Serializer):
+    """Named fallback serializer used only for OpenAPI introspection."""
+
+    payload = serializers.JSONField(required=False)
+
+
+class SHASchemaMixin:
+    """Schema fallback helpers for APIViews used by drf-spectacular."""
+
+    serializer_class = SHASchemaSerializer
+
+    def get_serializer_class(self):
+        return self.serializer_class
+
+    def get_serializer(self, *args, **kwargs):
+        serializer_class = self.get_serializer_class()
+        kwargs.setdefault("context", self.get_serializer_context())
+        return serializer_class(*args, **kwargs)
+
+    def get_serializer_context(self):
+        return {"request": self.request, "format": self.format_kwarg, "view": self}
+
+
+class ConsentLatestView(SHASchemaMixin, APIView):
     """
     Get the latest consent token for an SHA member.
 
@@ -6125,7 +6170,7 @@ class ConsentLatestView(APIView):
         return Response({**serializer.data, "exists": True})
 
 
-class ConsentAdmissionConflictView(APIView):
+class ConsentAdmissionConflictView(SHASchemaMixin, APIView):
     """Check if patient has an active admission in any facility in org."""
 
     permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
@@ -6647,7 +6692,7 @@ class BiometricAuthorizeStatusView(APIView):
             )
 
 
-class BiometricCancelView(APIView):
+class BiometricCancelView(SHASchemaMixin, APIView):
     """
     Cancel a pending biometric authorization.
 
@@ -6703,13 +6748,13 @@ class BeneficiaryContactsView(APIView):
 
     @extend_schema(
         parameters=[
-            {
-                "name": "beneficiary_cr_id",
-                "in": "query",
-                "required": True,
-                "schema": {"type": "string"},
-                "description": "Patient's Client Registry ID",
-            }
+            OpenApiParameter(
+                name="beneficiary_cr_id",
+                location=OpenApiParameter.QUERY,
+                required=True,
+                type=OpenApiTypes.STR,
+                description="Patient's Client Registry ID",
+            )
         ],
         responses={
             200: inline_serializer(

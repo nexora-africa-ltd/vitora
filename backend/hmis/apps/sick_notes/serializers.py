@@ -46,17 +46,17 @@ class SickNoteListSerializer(serializers.ModelSerializer):
             "created_at",
         ]
 
-    def get_patient_name(self, obj):
+    def get_patient_name(self, obj) -> str:
         if obj.patient:
             return f"{obj.patient.first_name} {obj.patient.last_name}"
         return ""
 
-    def get_patient_mrn(self, obj):
+    def get_patient_mrn(self, obj) -> str:
         if obj.patient:
             return obj.patient.mrn
         return ""
 
-    def get_issued_by_name(self, obj):
+    def get_issued_by_name(self, obj) -> str:
         if obj.issued_by:
             name = f"{obj.issued_by.first_name} {obj.issued_by.last_name}".strip()
             return name or obj.issued_by.username
@@ -131,29 +131,29 @@ class SickNoteSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
 
-    def get_patient_name(self, obj):
+    def get_patient_name(self, obj) -> str:
         if obj.patient:
             return f"{obj.patient.first_name} {obj.patient.last_name}"
         return ""
 
-    def get_patient_mrn(self, obj):
+    def get_patient_mrn(self, obj) -> str:
         if obj.patient:
             return obj.patient.mrn
         return ""
 
-    def get_issued_by_name(self, obj):
+    def get_issued_by_name(self, obj) -> str:
         if obj.issued_by:
             name = f"{obj.issued_by.first_name} {obj.issued_by.last_name}".strip()
             return name or obj.issued_by.username
         return ""
 
-    def get_revoked_by_name(self, obj):
+    def get_revoked_by_name(self, obj) -> str:
         if obj.revoked_by:
             name = f"{obj.revoked_by.first_name} {obj.revoked_by.last_name}".strip()
             return name or obj.revoked_by.username
         return ""
 
-    def get_cancelled_by_name(self, obj):
+    def get_cancelled_by_name(self, obj) -> str:
         if obj.cancelled_by:
             name = f"{obj.cancelled_by.first_name} {obj.cancelled_by.last_name}".strip()
             return name or obj.cancelled_by.username

@@ -17,7 +17,8 @@ import contextlib
 import logging
 import re
 
-from rest_framework import status
+from drf_spectacular.utils import extend_schema, inline_serializer
+from rest_framework import serializers, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -36,10 +37,58 @@ from hmis.apps.billing.services.dha_errors import (
 )
 from hmis.apps.billing.services.ilm_registries_service import IlmRegistriesService
 from hmis.apps.core.events import BillingEvents, publish_event
+from hmis.apps.core.openapi import SchemaFallbackSerializer
 from hmis.apps.core.permissions import ReadRequiresModelPermission, WriteRequiresRolePermission
 from hmis.apps.patients.models import Patient
 
 logger = logging.getLogger(__name__)
+
+
+IlmRegistryGenericResponseSerializer = inline_serializer(
+    name="IlmRegistryGenericResponse",
+    fields={
+        "data": serializers.JSONField(required=False),
+        "http_status": serializers.IntegerField(required=False),
+        "snapshot_id": serializers.IntegerField(required=False, allow_null=True),
+    },
+)
+
+IlmRegistryErrorResponseSerializer = inline_serializer(
+    name="IlmRegistryErrorResponse",
+    fields={
+        "error": serializers.CharField(),
+        "message": serializers.CharField(),
+        "status_code": serializers.IntegerField(required=False, allow_null=True),
+    },
+)
+
+ILM_REGISTRY_RESPONSES = {
+    200: IlmRegistryGenericResponseSerializer,
+    201: IlmRegistryGenericResponseSerializer,
+    400: IlmRegistryErrorResponseSerializer,
+    404: IlmRegistryErrorResponseSerializer,
+    429: IlmRegistryErrorResponseSerializer,
+    500: IlmRegistryErrorResponseSerializer,
+    502: IlmRegistryErrorResponseSerializer,
+}
+
+
+class BillingILMSchemaMixin:
+    """Schema fallback helpers for APIViews used by drf-spectacular."""
+
+    serializer_class = SchemaFallbackSerializer
+
+    def get_serializer_class(self):
+        return self.serializer_class
+
+    def get_serializer(self, *args, **kwargs):
+        serializer_class = self.get_serializer_class()
+        kwargs.setdefault("context", self.get_serializer_context())
+        return serializer_class(*args, **kwargs)
+
+    def get_serializer_context(self):
+        return {"request": self.request, "format": self.format_kwarg, "view": self}
+
 
 _HWR_REGULATORS = ("KMPDC", "COC", "PPB", "NCK", "KMLTTB", "KNDI")
 _HWR_REGULATOR_FULL_TO_ABBREV = {
@@ -200,7 +249,8 @@ def _result_to_response(result) -> Response:
 # ---------------------------------------------------------------------------
 
 
-class IlmFacilitySearchView(APIView):
+@extend_schema(responses=ILM_REGISTRY_RESPONSES)
+class IlmFacilitySearchView(BillingILMSchemaMixin, APIView):
     """GET /api/sha/ilm/registries/facility-search/?identifier=&identifier_type=&name="""
 
     permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
@@ -229,7 +279,8 @@ class IlmFacilitySearchView(APIView):
         return _result_to_response(result)
 
 
-class IlmPatientLookupView(APIView):
+@extend_schema(responses=ILM_REGISTRY_RESPONSES)
+class IlmPatientLookupView(BillingILMSchemaMixin, APIView):
     """GET /api/sha/ilm/registries/patient-lookup/?identification_number=&identification_type="""
 
     permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
@@ -267,7 +318,8 @@ class IlmPatientLookupView(APIView):
         return _result_to_response(result)
 
 
-class IlmProfessionalSearchView(APIView):
+@extend_schema(responses=ILM_REGISTRY_RESPONSES)
+class IlmProfessionalSearchView(BillingILMSchemaMixin, APIView):
     """GET /api/sha/ilm/registries/professional-search/?identification_number=&identification_type=&regulator="""
 
     permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
@@ -337,7 +389,8 @@ class IlmProfessionalSearchView(APIView):
 # ---------------------------------------------------------------------------
 
 
-class IlmEligibilityView(APIView):
+@extend_schema(responses=ILM_REGISTRY_RESPONSES)
+class IlmEligibilityView(BillingILMSchemaMixin, APIView):
     """GET /api/sha/ilm/eligibility/?identification_number=&identification_type=&patient_pk="""
 
     permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
@@ -375,7 +428,8 @@ class IlmEligibilityView(APIView):
         return _result_to_response(result)
 
 
-class IlmBenefitsView(APIView):
+@extend_schema(responses=ILM_REGISTRY_RESPONSES)
+class IlmBenefitsView(BillingILMSchemaMixin, APIView):
     """GET /api/sha/ilm/benefits/?patient_id=&fields=&is_unique_benefit=&patient_pk="""
 
     permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
@@ -409,7 +463,8 @@ class IlmBenefitsView(APIView):
         return _result_to_response(result)
 
 
-class IlmSubBenefitsView(APIView):
+@extend_schema(responses=ILM_REGISTRY_RESPONSES)
+class IlmSubBenefitsView(BillingILMSchemaMixin, APIView):
     """GET /api/sha/ilm/sub-benefits/?patient_id=&patient_pk="""
 
     permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
@@ -439,7 +494,8 @@ class IlmSubBenefitsView(APIView):
         return _result_to_response(result)
 
 
-class IlmBenefitInterventionsView(APIView):
+@extend_schema(responses=ILM_REGISTRY_RESPONSES)
+class IlmBenefitInterventionsView(BillingILMSchemaMixin, APIView):
     """GET /api/sha/ilm/benefit-interventions/?patient_id=&sub_benefit_code=&patient_pk=&service_type="""
 
     permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
@@ -475,7 +531,8 @@ class IlmBenefitInterventionsView(APIView):
         return _result_to_response(result)
 
 
-class IlmUtilizationView(APIView):
+@extend_schema(responses=ILM_REGISTRY_RESPONSES)
+class IlmUtilizationView(BillingILMSchemaMixin, APIView):
     """GET /api/sha/ilm/utilization/?patient_id=&intervention_code=&patient_pk="""
 
     permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
@@ -514,7 +571,8 @@ class IlmUtilizationView(APIView):
 # ---------------------------------------------------------------------------
 
 
-class PatientContactListCreateView(APIView):
+@extend_schema(responses=ILM_REGISTRY_RESPONSES)
+class PatientContactListCreateView(BillingILMSchemaMixin, APIView):
     """List/create cached DHA patient contacts.
 
     GET  /api/sha/ilm/patient-contacts/?patient_pk=

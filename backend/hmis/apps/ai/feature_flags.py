@@ -13,6 +13,8 @@ Plan-level and quota checks are enforced in AIFeatureGatedMixin.initial():
 from django.conf import settings
 from rest_framework.exceptions import NotFound, PermissionDenied
 
+from hmis.apps.core.openapi import SchemaFallbackSerializer
+
 from .client import tibabot_user_context
 
 
@@ -21,7 +23,24 @@ def is_ai_enabled() -> bool:
     return getattr(settings, "TIBABOT_ENABLED", False)
 
 
-class AIFeatureGatedMixin:
+class AISchemaMixin:
+    """Provide default serializer hooks for APIView schema introspection."""
+
+    serializer_class = SchemaFallbackSerializer
+
+    def get_serializer_class(self):
+        return getattr(self, "serializer_class", SchemaFallbackSerializer)
+
+    def get_serializer(self, *args, **kwargs):
+        serializer_class = self.get_serializer_class()
+        kwargs.setdefault("context", self.get_serializer_context())
+        return serializer_class(*args, **kwargs)
+
+    def get_serializer_context(self):
+        return {"request": getattr(self, "request", None), "view": self}
+
+
+class AIFeatureGatedMixin(AISchemaMixin):
     """
     Mixin for DRF views that gates access behind TIBABOT_ENABLED.
 

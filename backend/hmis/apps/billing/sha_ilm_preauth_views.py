@@ -16,7 +16,8 @@ import logging
 import os
 from typing import Any
 
-from rest_framework import status
+from drf_spectacular.utils import extend_schema, inline_serializer
+from rest_framework import serializers, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -48,10 +49,59 @@ from hmis.apps.billing.services.ilm_preauth_service import (
 )
 from hmis.apps.billing.services.multipart_builder import MultipartFile
 from hmis.apps.core.events import BillingEvents, publish_event
+from hmis.apps.core.openapi import SchemaFallbackSerializer
 from hmis.apps.core.permissions import ReadRequiresModelPermission, WriteRequiresRolePermission
 from hmis.apps.patients.models import Patient
 
 logger = logging.getLogger(__name__)
+
+
+IlmPreauthGenericResponseSerializer = inline_serializer(
+    name="IlmPreauthGenericResponse",
+    fields={
+        "data": serializers.JSONField(required=False),
+        "http_status": serializers.IntegerField(required=False),
+        "record_id": serializers.IntegerField(required=False, allow_null=True),
+        "dha_external_id": serializers.CharField(required=False, allow_blank=True),
+        "correlation_id": serializers.CharField(required=False, allow_blank=True),
+    },
+)
+
+IlmPreauthErrorResponseSerializer = inline_serializer(
+    name="IlmPreauthErrorResponse",
+    fields={
+        "error": serializers.CharField(),
+        "message": serializers.CharField(),
+        "status_code": serializers.IntegerField(required=False, allow_null=True),
+    },
+)
+
+ILM_PREAUTH_RESPONSES = {
+    200: IlmPreauthGenericResponseSerializer,
+    201: IlmPreauthGenericResponseSerializer,
+    400: IlmPreauthErrorResponseSerializer,
+    404: IlmPreauthErrorResponseSerializer,
+    429: IlmPreauthErrorResponseSerializer,
+    500: IlmPreauthErrorResponseSerializer,
+    502: IlmPreauthErrorResponseSerializer,
+}
+
+
+class BillingILMSchemaMixin:
+    """Schema fallback helpers for APIViews used by drf-spectacular."""
+
+    serializer_class = SchemaFallbackSerializer
+
+    def get_serializer_class(self):
+        return self.serializer_class
+
+    def get_serializer(self, *args, **kwargs):
+        serializer_class = self.get_serializer_class()
+        kwargs.setdefault("context", self.get_serializer_context())
+        return serializer_class(*args, **kwargs)
+
+    def get_serializer_context(self):
+        return {"request": self.request, "format": self.format_kwarg, "view": self}
 
 
 # ---------------------------------------------------------------------------
@@ -456,11 +506,13 @@ def _serialize_emergency(e: SHAEmergencyClaim) -> dict[str, Any]:
 # ===========================================================================
 
 
-class IlmPreauthFetchView(APIView):
+@extend_schema(responses=ILM_PREAUTH_RESPONSES)
+class IlmPreauthFetchView(BillingILMSchemaMixin, APIView):
     """GET /api/sha/ilm/preauth/?consent_token="""
 
     permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
 
+    @extend_schema(operation_id="api_sha_ilm_preauth_local_list")
     def get(self, request):
         consent_token = request.query_params.get("consent_token")
         if not consent_token:
@@ -480,7 +532,8 @@ class IlmPreauthFetchView(APIView):
         return _result_to_response(result)
 
 
-class IlmPreauthCreateView(APIView):
+@extend_schema(responses=ILM_PREAUTH_RESPONSES)
+class IlmPreauthCreateView(BillingILMSchemaMixin, APIView):
     """POST /api/sha/ilm/preauth/
 
     JSON body (multipart not currently supported via the proxy; files must
@@ -726,7 +779,8 @@ class IlmPreauthCreateView(APIView):
         return response
 
 
-class IlmPreauthCancelView(APIView):
+@extend_schema(responses=ILM_PREAUTH_RESPONSES)
+class IlmPreauthCancelView(BillingILMSchemaMixin, APIView):
     """POST /api/sha/ilm/preauth/cancel/
 
     Body: { consent_token, intervention_code }
@@ -760,7 +814,8 @@ class IlmPreauthCancelView(APIView):
         return _result_to_response(result)
 
 
-class IlmPreauthRemoveDiagnosisView(APIView):
+@extend_schema(responses=ILM_PREAUTH_RESPONSES)
+class IlmPreauthRemoveDiagnosisView(BillingILMSchemaMixin, APIView):
     """DELETE /api/sha/ilm/preauth/diagnoses/{icd_code}/
 
     Body: { consent_token, intervention_code }
@@ -793,7 +848,8 @@ class IlmPreauthRemoveDiagnosisView(APIView):
         return _result_to_response(result)
 
 
-class IlmPreauthRemoveDoctorView(APIView):
+@extend_schema(responses=ILM_PREAUTH_RESPONSES)
+class IlmPreauthRemoveDoctorView(BillingILMSchemaMixin, APIView):
     """DELETE /api/sha/ilm/preauth/doctors/
 
     Body: { consent_token, intervention_code, practitioner_registration_number }
@@ -833,7 +889,8 @@ class IlmPreauthRemoveDoctorView(APIView):
 # ===========================================================================
 
 
-class IlmDoctorConsentView(APIView):
+@extend_schema(responses=ILM_PREAUTH_RESPONSES)
+class IlmDoctorConsentView(BillingILMSchemaMixin, APIView):
     """POST /api/sha/ilm/preauth/doctor-consent/"""
 
     permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
@@ -879,7 +936,8 @@ class IlmDoctorConsentView(APIView):
         return _result_to_response(result)
 
 
-class IlmDoctorConsentPollView(APIView):
+@extend_schema(responses=ILM_PREAUTH_RESPONSES)
+class IlmDoctorConsentPollView(BillingILMSchemaMixin, APIView):
     """GET /api/sha/ilm/preauth/doctor-consent/poll/?preauth_id=
 
     Polls DHA for the latest doctor-consent state on a preauth by re-fetching
@@ -937,7 +995,8 @@ class IlmDoctorConsentPollView(APIView):
 # ===========================================================================
 
 
-class IlmEmergencyOpenView(APIView):
+@extend_schema(responses=ILM_PREAUTH_RESPONSES)
+class IlmEmergencyOpenView(BillingILMSchemaMixin, APIView):
     """POST /api/sha/ilm/emergency/
 
     Body mirrors DHA spec; ``patient_pk`` / ``sha_member_id`` are optional
@@ -976,7 +1035,8 @@ class IlmEmergencyOpenView(APIView):
         return _result_to_response(result, http_status=status.HTTP_201_CREATED)
 
 
-class IlmEmergencyProtocolsListView(APIView):
+@extend_schema(responses=ILM_PREAUTH_RESPONSES)
+class IlmEmergencyProtocolsListView(BillingILMSchemaMixin, APIView):
     """GET /api/sha/ilm/emergency/protocols/?active=&intervention_code="""
 
     permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
@@ -1005,7 +1065,8 @@ class IlmEmergencyProtocolsListView(APIView):
         return _result_to_response(result)
 
 
-class IlmEmergencyProtocolApplyView(APIView):
+@extend_schema(responses=ILM_PREAUTH_RESPONSES)
+class IlmEmergencyProtocolApplyView(BillingILMSchemaMixin, APIView):
     """POST /api/sha/ilm/emergency/protocols/
 
     Body: { consent_token, protocol_code, intervention_code, unit_price, quantity, diagnoses }
@@ -1055,7 +1116,8 @@ class IlmEmergencyProtocolApplyView(APIView):
         return _result_to_response(result)
 
 
-class IlmEmtCreateView(APIView):
+@extend_schema(responses=ILM_PREAUTH_RESPONSES)
+class IlmEmtCreateView(BillingILMSchemaMixin, APIView):
     """POST /api/sha/ilm/emt/"""
 
     permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
@@ -1131,7 +1193,8 @@ class IlmEmtCreateView(APIView):
 # ===========================================================================
 
 
-class SHAPreauthListView(APIView):
+@extend_schema(responses=ILM_PREAUTH_RESPONSES)
+class SHAPreauthListView(BillingILMSchemaMixin, APIView):
     """GET /api/sha/ilm/preauth/local/?patient_pk=&claim_pk=&status=
 
     Returns the cached SHAPreauth rows for browsing in the UI.
@@ -1182,7 +1245,8 @@ class SHAPreauthListView(APIView):
         return Response({"results": results})
 
 
-class SHAPreauthDetailView(APIView):
+@extend_schema(responses=ILM_PREAUTH_RESPONSES)
+class SHAPreauthDetailView(BillingILMSchemaMixin, APIView):
     """GET /api/sha/ilm/preauth/local/<int:pk>/
 
     Returns a single SHAPreauth record by ID (scoped to user's facility).
@@ -1190,6 +1254,7 @@ class SHAPreauthDetailView(APIView):
 
     permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
 
+    @extend_schema(operation_id="api_sha_ilm_preauth_local_detail_retrieve")
     def get(self, request, pk: int):
         from hmis.apps.core.models import AuditLog
 
@@ -1215,7 +1280,8 @@ class SHAPreauthDetailView(APIView):
         return Response(_serialize_preauth(preauth))
 
 
-class SHAEmergencyClaimListView(APIView):
+@extend_schema(responses=ILM_PREAUTH_RESPONSES)
+class SHAEmergencyClaimListView(BillingILMSchemaMixin, APIView):
     """GET /api/sha/ilm/emergency/local/?patient_pk=&kind=
 
     Returns the cached SHAEmergencyClaim rows for browsing in the UI.

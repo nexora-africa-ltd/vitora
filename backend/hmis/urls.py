@@ -37,9 +37,12 @@ from hmis.apps.core.cookie_auth import (
 from hmis.apps.core.mfa.views import MFAAwareTokenRefreshView
 from hmis.apps.core.powersync_tokens import PowerSyncCredentialsView
 from hmis.apps.core.pricing import (
+    PricingQuoteSlashAliasView,
+    PricingQuoteSnapshotCreateSlashAliasView,
     PricingQuoteSnapshotCreateView,
     PricingQuoteSnapshotDetailView,
     PricingQuoteView,
+    PricingResolvePlanSlashAliasView,
     PricingResolvePlanView,
 )
 from hmis.apps.core.views import (
@@ -1084,11 +1087,11 @@ urlpatterns = [
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
     path("api/pricing/quote", PricingQuoteView.as_view(), name="pricing-quote"),
-    path("api/pricing/quote/", PricingQuoteView.as_view(), name="pricing-quote-slash"),
+    path("api/pricing/quote/", PricingQuoteSlashAliasView.as_view(), name="pricing-quote-slash"),
     path("api/pricing/resolve-plan", PricingResolvePlanView.as_view(), name="pricing-resolve-plan"),
     path(
         "api/pricing/resolve-plan/",
-        PricingResolvePlanView.as_view(),
+        PricingResolvePlanSlashAliasView.as_view(),
         name="pricing-resolve-plan-slash",
     ),
     path(
@@ -1096,7 +1099,7 @@ urlpatterns = [
     ),
     path(
         "api/pricing/quotes/",
-        PricingQuoteSnapshotCreateView.as_view(),
+        PricingQuoteSnapshotCreateSlashAliasView.as_view(),
         name="pricing-quotes-create-slash",
     ),
     path(

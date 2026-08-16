@@ -24,6 +24,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from hmis.apps.core.mixins import NestedTenantScopeMixin
+from hmis.apps.core.openapi import SchemaFallbackSerializer
 from hmis.apps.core.permissions import ReadRequiresModelPermission
 
 from .models import (
@@ -677,7 +678,24 @@ class QualityDashboardView(APIView):
 # =============================================================================
 
 
-class SDMXImportView(APIView):
+class QualitySchemaMixin:
+    """Schema fallback helpers for APIViews used by drf-spectacular."""
+
+    serializer_class = SchemaFallbackSerializer
+
+    def get_serializer_class(self):
+        return self.serializer_class
+
+    def get_serializer(self, *args, **kwargs):
+        serializer_class = self.get_serializer_class()
+        kwargs.setdefault("context", self.get_serializer_context())
+        return serializer_class(*args, **kwargs)
+
+    def get_serializer_context(self):
+        return {"request": self.request, "format": self.format_kwarg, "view": self}
+
+
+class SDMXImportView(QualitySchemaMixin, APIView):
     """
     Import SDMX-ML 2.1 data for facility benchmarking.
 
@@ -731,7 +749,7 @@ class SDMXImportView(APIView):
         )
 
 
-class BenchmarkDataView(APIView):
+class BenchmarkDataView(QualitySchemaMixin, APIView):
     """
     List imported benchmark observations.
 

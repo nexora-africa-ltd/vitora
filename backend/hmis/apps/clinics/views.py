@@ -21,6 +21,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 
 from hmis.apps.core.mixins import NestedTenantScopeMixin, TenantScopedViewMixin
+from hmis.apps.core.openapi import SchemaFallbackSerializer
 from hmis.apps.core.permissions import ReadRequiresModelPermission
 from hmis.apps.core.tenant_access import user_has_facility_access
 
@@ -1148,6 +1149,10 @@ class PublicQueueView(viewsets.ViewSet):
 
     permission_classes = [permissions.AllowAny]
     authentication_classes = []
+    serializer_class = SchemaFallbackSerializer
+
+    def get_serializer_class(self):
+        return self.serializer_class
 
     def list(self, request, clinic_id=None):
         """Get today's queue for the specified clinic."""

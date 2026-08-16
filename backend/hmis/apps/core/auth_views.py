@@ -19,7 +19,8 @@ from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.utils import timezone
 from django_ratelimit.decorators import ratelimit
-from rest_framework import status, viewsets
+from drf_spectacular.utils import extend_schema, inline_serializer
+from rest_framework import serializers, status, viewsets
 from rest_framework.decorators import action, api_view, permission_classes, throttle_classes
 from rest_framework.permissions import AllowAny, IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
@@ -249,6 +250,11 @@ class StaffInvitationViewSet(viewsets.ModelViewSet):
 # ============================================================================
 
 
+@extend_schema(
+    operation_id="api_core_invitations_token_retrieve",
+    request=None,
+    responses={200: InvitationPublicSerializer},
+)
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def invitation_lookup(request, token):
@@ -270,6 +276,18 @@ def invitation_lookup(request, token):
     return Response(InvitationPublicSerializer(invitation).data)
 
 
+@extend_schema(
+    request=InvitationAcceptSerializer,
+    responses={
+        201: inline_serializer(
+            name="InvitationAcceptResponse",
+            fields={
+                "message": serializers.CharField(),
+                "username": serializers.CharField(),
+            },
+        )
+    },
+)
 @api_view(["POST"])
 @permission_classes([AllowAny])
 @ratelimit(key="ip", rate="10/h", method="POST", block=True)
@@ -402,6 +420,15 @@ def invitation_accept(request):
 # ============================================================================
 
 
+@extend_schema(
+    request=CrossOrgAcceptSerializer,
+    responses={
+        200: inline_serializer(
+            name="AcceptCrossOrgResponse",
+            fields={"message": serializers.CharField()},
+        )
+    },
+)
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def accept_cross_org(request):
@@ -497,6 +524,15 @@ def accept_cross_org(request):
 # ============================================================================
 
 
+@extend_schema(
+    request=None,
+    responses={
+        200: inline_serializer(
+            name="DeclineInvitationResponse",
+            fields={"message": serializers.CharField()},
+        )
+    },
+)
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def decline_invitation(request, pk):
@@ -540,6 +576,7 @@ class OrgJoinRequestViewSet(viewsets.ModelViewSet):
     """
 
     serializer_class = OrgJoinRequestSerializer
+    lookup_value_regex = r"\d+"
     permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     http_method_names = ["get", "post", "head", "options"]
 
@@ -670,6 +707,15 @@ class OrgJoinRequestViewSet(viewsets.ModelViewSet):
 # ============================================================================
 
 
+@extend_schema(
+    request=PasswordResetRequestSerializer,
+    responses={
+        200: inline_serializer(
+            name="PasswordResetRequestResponse",
+            fields={"message": serializers.CharField()},
+        )
+    },
+)
 @api_view(["POST"])
 @permission_classes([AllowAny])
 @ratelimit(key="ip", rate="5/h", method="POST", block=True)
@@ -719,6 +765,15 @@ def password_reset_request(request):
     )
 
 
+@extend_schema(
+    request=PasswordResetConfirmSerializer,
+    responses={
+        200: inline_serializer(
+            name="PasswordResetConfirmResponse",
+            fields={"message": serializers.CharField()},
+        )
+    },
+)
 @api_view(["POST"])
 @permission_classes([AllowAny])
 @ratelimit(key="ip", rate="10/h", method="POST", block=True)
@@ -821,6 +876,15 @@ class ValidationError(Exception):
         self.code = code
 
 
+@extend_schema(
+    request=ChangePasswordSerializer,
+    responses={
+        200: inline_serializer(
+            name="ChangePasswordResponse",
+            fields={"message": serializers.CharField()},
+        )
+    },
+)
 @api_view(["POST"])
 @permission_classes([AllowAny])
 def change_password(request):
@@ -910,6 +974,21 @@ def change_password(request):
 # ============================================================================
 
 
+@extend_schema(
+    request=inline_serializer(
+        name="ValidatePasswordRequest",
+        fields={"password": serializers.CharField()},
+    ),
+    responses={
+        200: inline_serializer(
+            name="ValidatePasswordResponse",
+            fields={
+                "valid": serializers.BooleanField(),
+                "errors": serializers.ListField(child=serializers.CharField(), required=False),
+            },
+        )
+    },
+)
 @api_view(["POST"])
 @permission_classes([AllowAny])
 @throttle_classes([AnonRateThrottle])
@@ -945,6 +1024,22 @@ def validate_password(request):
 # ============================================================================
 
 
+@extend_schema(
+    request=OrgSignupSerializer,
+    responses={
+        201: inline_serializer(
+            name="OrgSignupResponse",
+            fields={
+                "message": serializers.CharField(),
+                "org_name": serializers.CharField(),
+                "admin_email": serializers.CharField(),
+                "facility_name": serializers.CharField(),
+                "facility_mfl_code": serializers.CharField(),
+                "username": serializers.CharField(),
+            },
+        )
+    },
+)
 @api_view(["POST"])
 @permission_classes([AllowAny])
 @ratelimit(key="ip", rate="5/h", method="POST", block=True)
@@ -1100,6 +1195,19 @@ def org_signup(request):
 # ============================================================================
 
 
+@extend_schema(
+    request=EmailVerifySerializer,
+    responses={
+        200: inline_serializer(
+            name="VerifyEmailResponse",
+            fields={
+                "message": serializers.CharField(),
+                "org_name": serializers.CharField(),
+                "username": serializers.CharField(),
+            },
+        )
+    },
+)
 @api_view(["POST"])
 @permission_classes([AllowAny])
 @ratelimit(key="ip", rate="10/h", method="POST", block=True)
@@ -1219,6 +1327,21 @@ def verify_email(request):
 # ============================================================================
 
 
+@extend_schema(
+    request=None,
+    responses={
+        200: inline_serializer(
+            name="SetupCheckResponse",
+            fields={
+                "setup_required": serializers.BooleanField(),
+                "setup_enabled": serializers.BooleanField(),
+                "has_organizations": serializers.BooleanField(),
+                "has_facilities": serializers.BooleanField(),
+                "has_staff_with_facility": serializers.BooleanField(),
+            },
+        )
+    },
+)
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def setup_check(request):
@@ -1253,6 +1376,20 @@ def setup_check(request):
     )
 
 
+@extend_schema(
+    request=SetupWizardSerializer,
+    responses={
+        201: inline_serializer(
+            name="SetupInitializeResponse",
+            fields={
+                "message": serializers.CharField(),
+                "org_name": serializers.CharField(),
+                "facility_name": serializers.CharField(),
+                "username": serializers.CharField(),
+            },
+        )
+    },
+)
 @api_view(["POST"])
 @permission_classes([AllowAny])
 @ratelimit(key="ip", rate="3/h", method="POST", block=True)
@@ -1369,6 +1506,31 @@ def setup_initialize(request):
 # ============================================================================
 
 
+@extend_schema(
+    methods=["GET"],
+    request=None,
+    responses={
+        200: inline_serializer(
+            name="OnboardingStatusGetResponse",
+            fields={
+                "complete": serializers.BooleanField(),
+                "all_required_done": serializers.BooleanField(),
+                "completed_at": serializers.CharField(allow_null=True),
+                "steps": serializers.ListField(child=serializers.DictField()),
+            },
+        )
+    },
+)
+@extend_schema(
+    methods=["POST"],
+    request=None,
+    responses={
+        200: inline_serializer(
+            name="OnboardingStatusPostResponse",
+            fields={"detail": serializers.CharField(required=False)},
+        )
+    },
+)
 @api_view(["GET", "POST"])
 @permission_classes([IsAuthenticated])
 def onboarding_status(request):

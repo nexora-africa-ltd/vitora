@@ -38,6 +38,7 @@ from hmis.apps.analytics.serializers import (
     PatientDemographicSnapshotSerializer,
 )
 from hmis.apps.core.mixins import TenantScopedViewMixin
+from hmis.apps.core.openapi import SchemaFallbackSerializer
 from hmis.apps.core.permissions import ReadRequiresModelPermission, SubscriptionFeaturePermission
 
 # ---------------------------------------------------------------------------
@@ -174,6 +175,23 @@ class PatientDemographicSnapshotViewSet(
 logger = logging.getLogger(__name__)
 
 
+class AnalyticsSchemaMixin:
+    """Schema fallback helpers for APIViews used by drf-spectacular."""
+
+    serializer_class = SchemaFallbackSerializer
+
+    def get_serializer_class(self):
+        return self.serializer_class
+
+    def get_serializer(self, *args, **kwargs):
+        serializer_class = self.get_serializer_class()
+        kwargs.setdefault("context", self.get_serializer_context())
+        return serializer_class(*args, **kwargs)
+
+    def get_serializer_context(self):
+        return {"request": self.request, "format": self.format_kwarg, "view": self}
+
+
 class _SupersetTokenCache:
     """Cache Superset admin session to avoid login on every request."""
 
@@ -244,7 +262,7 @@ class _SupersetTokenCache:
         cls._expires_at = 0.0
 
 
-class SupersetGuestTokenView(APIView):
+class SupersetGuestTokenView(AnalyticsSchemaMixin, APIView):
     """
     Generate a Superset guest token for embedded dashboard viewing.
 
@@ -413,7 +431,7 @@ class SupersetGuestTokenView(APIView):
         )
 
 
-class SupersetDashboardListView(APIView):
+class SupersetDashboardListView(AnalyticsSchemaMixin, APIView):
     """
     List Superset dashboards available for embedding.
 
@@ -519,7 +537,7 @@ class MetabaseEmbedSerializer(serializers.Serializer):
     resource_id = serializers.IntegerField(min_value=1)
 
 
-class MetabaseEmbedView(APIView):
+class MetabaseEmbedView(AnalyticsSchemaMixin, APIView):
     """
     Generate a signed Metabase embed URL.
 
@@ -597,7 +615,7 @@ class MetabaseEmbedView(APIView):
         )
 
 
-class MetabaseDashboardListView(APIView):
+class MetabaseDashboardListView(AnalyticsSchemaMixin, APIView):
     """
     List Metabase dashboards available for embedding.
 

@@ -16,6 +16,7 @@ from rest_framework.views import APIView
 
 from hmis.apps.core.history import get_full_history, get_history_diff
 from hmis.apps.core.models import AuditLog
+from hmis.apps.core.openapi import SchemaFallbackSerializer
 from hmis.apps.core.permissions import ReadRequiresModelPermission, WriteRequiresRolePermission
 
 
@@ -153,7 +154,24 @@ class ModelHistoryMixin:
         return ip
 
 
-class PatientHistoryView(APIView):
+class HistorySchemaMixin:
+    """Schema fallback helpers for APIViews used by drf-spectacular."""
+
+    serializer_class = SchemaFallbackSerializer
+
+    def get_serializer_class(self):
+        return self.serializer_class
+
+    def get_serializer(self, *args, **kwargs):
+        serializer_class = self.get_serializer_class()
+        kwargs.setdefault("context", self.get_serializer_context())
+        return serializer_class(*args, **kwargs)
+
+    def get_serializer_context(self):
+        return {"request": self.request, "format": self.format_kwarg, "view": self}
+
+
+class PatientHistoryView(HistorySchemaMixin, APIView):
     """
     Standalone API view for patient history.
 
@@ -204,7 +222,7 @@ class PatientHistoryView(APIView):
         return ip
 
 
-class EncounterHistoryView(APIView):
+class EncounterHistoryView(HistorySchemaMixin, APIView):
     """
     Standalone API view for encounter history.
 

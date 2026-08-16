@@ -9,6 +9,7 @@ from django.db import transaction
 from django.db.models import Count, Max, Min
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
+from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import filters, serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
@@ -77,6 +78,11 @@ def _fire_sha_auto_verify(patient_id: int, facility_id: int | None = None) -> No
         )
 
 
+@extend_schema_view(
+    history=extend_schema(operation_id="api_patients_history_list"),
+    history_version=extend_schema(operation_id="api_patients_history_version_retrieve"),
+    history_count=extend_schema(operation_id="api_patients_history_count_retrieve"),
+)
 class PatientViewSet(
     PublicIdLookupMixin,
     TenantScopedViewMixin,

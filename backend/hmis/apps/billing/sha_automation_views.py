@@ -12,19 +12,60 @@ Provides endpoints for:
 
 import logging
 
-from rest_framework import status
+from drf_spectacular.utils import extend_schema, inline_serializer
+from rest_framework import serializers, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.renderers import JSONRenderer
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from hmis.apps.core.openapi import SchemaFallbackSerializer
 from hmis.apps.core.permissions import ReadRequiresModelPermission
 from hmis.apps.licensing.permissions import requires_feature
 
 logger = logging.getLogger(__name__)
 
 
-class ClaimBatchValidateView(APIView):
+ShaAutomationGenericResponseSerializer = inline_serializer(
+    name="ShaAutomationGenericResponse",
+    fields={
+        "data": serializers.JSONField(required=False),
+        "status": serializers.CharField(required=False),
+        "message": serializers.CharField(required=False),
+    },
+)
+
+ShaAutomationErrorResponseSerializer = inline_serializer(
+    name="ShaAutomationErrorResponse",
+    fields={"error": serializers.CharField()},
+)
+
+SHA_AUTOMATION_RESPONSES = {
+    200: ShaAutomationGenericResponseSerializer,
+    400: ShaAutomationErrorResponseSerializer,
+    404: ShaAutomationErrorResponseSerializer,
+}
+
+
+class SHAAutomationSchemaMixin:
+    """Schema fallback helpers for APIViews used by drf-spectacular."""
+
+    serializer_class = SchemaFallbackSerializer
+
+    def get_serializer_class(self):
+        return self.serializer_class
+
+    def get_serializer(self, *args, **kwargs):
+        serializer_class = self.get_serializer_class()
+        kwargs.setdefault("context", self.get_serializer_context())
+        return serializer_class(*args, **kwargs)
+
+    def get_serializer_context(self):
+        return {"request": self.request, "format": self.format_kwarg, "view": self}
+
+
+@extend_schema(responses=SHA_AUTOMATION_RESPONSES)
+class ClaimBatchValidateView(SHAAutomationSchemaMixin, APIView):
     """
     Validate all draft SHA claims for the user's facility in batch.
 
@@ -58,7 +99,8 @@ class ClaimBatchValidateView(APIView):
         return Response(result)
 
 
-class ClaimBulkSubmitView(APIView):
+@extend_schema(responses=SHA_AUTOMATION_RESPONSES)
+class ClaimBulkSubmitView(SHAAutomationSchemaMixin, APIView):
     """
     Submit multiple validated SHA claims in bulk.
 
@@ -104,7 +146,8 @@ class ClaimBulkSubmitView(APIView):
         return Response(result)
 
 
-class ClaimDailyDigestView(APIView):
+@extend_schema(responses=SHA_AUTOMATION_RESPONSES)
+class ClaimDailyDigestView(SHAAutomationSchemaMixin, APIView):
     """
     Get the SHA claims daily digest for the user's facility.
 
@@ -138,7 +181,8 @@ class ClaimDailyDigestView(APIView):
         return Response(digest)
 
 
-class ClaimInterventionSuggestionsView(APIView):
+@extend_schema(responses=SHA_AUTOMATION_RESPONSES)
+class ClaimInterventionSuggestionsView(SHAAutomationSchemaMixin, APIView):
     """
     Get intervention suggestions for a specific encounter/claim.
 
@@ -201,7 +245,8 @@ class ClaimInterventionSuggestionsView(APIView):
         return Response(result)
 
 
-class EligibilityPreCheckView(APIView):
+@extend_schema(responses=SHA_AUTOMATION_RESPONSES)
+class EligibilityPreCheckView(SHAAutomationSchemaMixin, APIView):
     """
     Trigger eligibility pre-check for a patient.
 
@@ -250,7 +295,8 @@ class EligibilityPreCheckView(APIView):
             return Response(result)
 
 
-class ClaimAutoAttachDocumentsView(APIView):
+@extend_schema(responses=SHA_AUTOMATION_RESPONSES)
+class ClaimAutoAttachDocumentsView(SHAAutomationSchemaMixin, APIView):
     """
     Trigger auto-attachment of digital documents to a claim.
 

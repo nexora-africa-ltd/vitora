@@ -10,6 +10,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from hmis.apps.core.mixins import ReadOnCreateMixin, TenantScopedViewMixin, resolve_request_tenant
+from hmis.apps.core.openapi import SchemaFallbackSerializer
 from hmis.apps.core.permissions import ReadRequiresModelPermission
 from hmis.apps.laboratory.permissions import LaboratoryModuleRequired
 
@@ -113,7 +114,24 @@ def _get_facility_id(request):
     return None
 
 
-class SLAComplianceReportView(APIView):
+class LabReportingSchemaMixin:
+    """Schema fallback helpers for APIViews used by drf-spectacular."""
+
+    serializer_class = SchemaFallbackSerializer
+
+    def get_serializer_class(self):
+        return self.serializer_class
+
+    def get_serializer(self, *args, **kwargs):
+        serializer_class = self.get_serializer_class()
+        kwargs.setdefault("context", self.get_serializer_context())
+        return serializer_class(*args, **kwargs)
+
+    def get_serializer_context(self):
+        return {"request": self.request, "format": self.format_kwarg, "view": self}
+
+
+class SLAComplianceReportView(LabReportingSchemaMixin, APIView):
     """Enhanced SLA compliance report with percentiles."""
 
     permission_classes = [IsAuthenticated, LaboratoryModuleRequired, ReadRequiresModelPermission]
@@ -127,7 +145,7 @@ class SLAComplianceReportView(APIView):
         return Response(data)
 
 
-class TATTrendReportView(APIView):
+class TATTrendReportView(LabReportingSchemaMixin, APIView):
     """Daily TAT trend report."""
 
     permission_classes = [IsAuthenticated, LaboratoryModuleRequired, ReadRequiresModelPermission]
@@ -141,7 +159,7 @@ class TATTrendReportView(APIView):
         return Response(data)
 
 
-class ActiveBreachesView(APIView):
+class ActiveBreachesView(LabReportingSchemaMixin, APIView):
     """Real-time view of currently breached in-progress orders."""
 
     permission_classes = [IsAuthenticated, LaboratoryModuleRequired, ReadRequiresModelPermission]
@@ -154,7 +172,7 @@ class ActiveBreachesView(APIView):
         return Response(data)
 
 
-class TechnicianEfficiencyView(APIView):
+class TechnicianEfficiencyView(LabReportingSchemaMixin, APIView):
     """Per-technician efficiency metrics."""
 
     permission_classes = [IsAuthenticated, LaboratoryModuleRequired, ReadRequiresModelPermission]
@@ -168,7 +186,7 @@ class TechnicianEfficiencyView(APIView):
         return Response(data)
 
 
-class WorkloadKPIReportView(APIView):
+class WorkloadKPIReportView(LabReportingSchemaMixin, APIView):
     """Workload KPI report from aggregated snapshots."""
 
     permission_classes = [IsAuthenticated, LaboratoryModuleRequired, ReadRequiresModelPermission]
