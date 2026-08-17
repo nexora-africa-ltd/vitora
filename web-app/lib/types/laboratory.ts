@@ -495,11 +495,15 @@ export interface WorkloadKPIReport {
 export interface LabOrder {
   id: number;
   order_number: string;
-  patient: number;
+  patient: number | null;
   patient_name?: string | null;
   patient_mrn?: string | null;
+  billing_patient?: number | null;
+  billing_patient_name?: string | null;
   encounter: number | null;
   admission?: number | null;
+  blood_bank_unit?: number | null;
+  blood_bank_unit_number?: string | null;
   ordered_by: number;
   ordered_by_name?: string | null;
   order_type: OrderType;
@@ -691,9 +695,11 @@ export interface LabTechnician {
 
 // API request/response types
 export interface LabOrderCreateData {
-  patient: number;
+  patient?: number;
+  billing_patient?: number;
   encounter?: number;
   admission?: number;
+  blood_bank_unit?: number;
   order_type?: OrderType;
   external_lab?: string;
   priority?: LabPriority;

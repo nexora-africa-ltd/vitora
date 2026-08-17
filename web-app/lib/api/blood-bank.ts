@@ -72,6 +72,11 @@ export const bloodBankApi = {
     return response.data;
   },
 
+  async updateUnit(id: number, data: Partial<BloodUnitCreateData & { status: string }>): Promise<BloodUnit> {
+    const response = await apiClient.patch(`/api/blood-bank/units/${id}/`, data);
+    return response.data;
+  },
+
   async markAvailable(id: number): Promise<BloodUnit> {
     const response = await apiClient.post(`/api/blood-bank/units/${id}/mark_available/`);
     return response.data;
@@ -112,6 +117,11 @@ export const bloodBankApi = {
 
   async createCrossMatch(data: CrossMatchCreateData): Promise<CrossMatch> {
     const response = await apiClient.post('/api/blood-bank/crossmatches/', data);
+    return response.data;
+  },
+
+  async getCrossMatch(id: number): Promise<CrossMatch> {
+    const response = await apiClient.get(`/api/blood-bank/crossmatches/${id}/`);
     return response.data;
   },
 

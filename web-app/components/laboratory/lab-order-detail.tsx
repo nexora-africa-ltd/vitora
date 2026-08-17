@@ -149,6 +149,7 @@ export function LabOrderDetail({ orderNumber }: LabOrderDetailProps) {
   const canCancel = ['DRAFT', 'ORDERED'].includes(order.status);
   const hasCriticalResults = orderItems.some(item => item.result?.is_critical_result);
   const canGenerateReport = order.status === 'COMPLETED' && linkedReports.length === 0;
+  const isDonorUnitScreening = order.patient === null && !!order.blood_bank_unit;
 
   // Check if all tests have results entered
   const allResultsEntered = orderItems.length > 0 && orderItems.every(item => item.has_result);
@@ -380,7 +381,12 @@ export function LabOrderDetail({ orderNumber }: LabOrderDetailProps) {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Patient</p>
-                <p className="font-medium">{order.patient_name}</p>
+                <div className="flex items-center gap-2">
+                  <p className="font-medium">{order.patient_name}</p>
+                  {isDonorUnitScreening && (
+                    <Badge variant="outline" className="text-[10px]">Donor Unit Screening</Badge>
+                  )}
+                </div>
                 <p className="text-xs text-muted-foreground">{order.patient_mrn}</p>
               </div>
             </div>

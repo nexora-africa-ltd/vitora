@@ -27,6 +27,7 @@ export const bloodBankKeys = {
   requestList: (params?: BloodRequestListParams) => [...bloodBankKeys.requests(), 'list', params] as const,
   requestDetail: (id: number) => [...bloodBankKeys.requests(), 'detail', id] as const,
   crossmatches: () => [...bloodBankKeys.all, 'crossmatches'] as const,
+  crossmatchDetail: (id: number) => [...bloodBankKeys.crossmatches(), 'detail', id] as const,
   issues: () => [...bloodBankKeys.all, 'issues'] as const,
 };
 
@@ -95,6 +96,18 @@ export function useCreateBloodUnit() {
   });
 }
 
+export function useUpdateBloodUnit() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: Partial<BloodUnitCreateData & { status: string }> }) =>
+      bloodBankApi.updateUnit(id, data),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: bloodBankKeys.units() });
+      queryClient.invalidateQueries({ queryKey: bloodBankKeys.unitDetail(variables.id) });
+    },
+  });
+}
+
 export function useMarkUnitAvailable() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -156,6 +169,14 @@ export function useCrossMatches(requestId?: number) {
   return useQuery({
     queryKey: [...bloodBankKeys.crossmatches(), requestId] as const,
     queryFn: () => bloodBankApi.listCrossMatches(requestId),
+  });
+}
+
+export function useCrossMatch(id: number | undefined) {
+  return useQuery({
+    queryKey: typeof id === 'number' ? bloodBankKeys.crossmatchDetail(id) : [...bloodBankKeys.crossmatches(), 'detail', 'unknown'] as const,
+    enabled: typeof id === 'number',
+    queryFn: () => bloodBankApi.getCrossMatch(id!),
   });
 }
 

@@ -163,6 +163,9 @@ export default function NewBloodDonorPage() {
                 onChange={setPatientId}
                 placeholder="Search patient by name or MRN..."
               />
+              <p className="mt-1 text-xs text-muted-foreground">
+                Link to patient record if donor is also a patient.
+              </p>
             </div>
 
             <div>

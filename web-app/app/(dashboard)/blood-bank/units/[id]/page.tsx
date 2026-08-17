@@ -5,7 +5,7 @@
  */
 'use client';
 
-import { use, useState } from 'react';
+import { use, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AlertTriangle, CheckCircle2, ShieldAlert } from 'lucide-react';
 import { toast } from 'sonner';
@@ -16,9 +16,15 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useBloodUnit, useMarkUnitAvailable, useQuarantineUnit } from '@/lib/hooks/use-blood-bank';
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
+import { useBloodUnit, useMarkUnitAvailable, useQuarantineUnit, useUpdateBloodUnit } from '@/lib/hooks/use-blood-bank';
 import { UNIT_STATUS_COLORS, COMPONENT_LABELS } from '@/lib/types/blood-bank';
+import type { UnitStatus } from '@/lib/types/blood-bank';
 import { formatDate } from '@/lib/utils/format';
+
+const UNIT_STATUSES: UnitStatus[] = ['COLLECTED', 'TESTING', 'AVAILABLE', 'RESERVED', 'ISSUED', 'EXPIRED', 'DISCARDED', 'QUARANTINED'];
 
 export default function BloodUnitDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -27,7 +33,15 @@ export default function BloodUnitDetailPage({ params }: { params: Promise<{ id: 
   const { data: unit, isLoading } = useBloodUnit(Number.isNaN(unitId) ? undefined : unitId);
   const markAvailable = useMarkUnitAvailable();
   const quarantine = useQuarantineUnit();
+  const updateUnit = useUpdateBloodUnit();
   const [quarantineReason, setQuarantineReason] = useState('');
+  const [selectedStatus, setSelectedStatus] = useState<UnitStatus>('COLLECTED');
+
+  useEffect(() => {
+    if (unit) {
+      setSelectedStatus(unit.status);
+    }
+  }, [unit]);
 
   if (isLoading) {
     return <Skeleton className="h-80 w-full" />;
@@ -78,8 +92,14 @@ export default function BloodUnitDetailPage({ params }: { params: Promise<{ id: 
             <CardTitle className="text-base">Unit Details</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
-            <p><span className="font-medium">Status:</span> <Badge className={`${UNIT_STATUS_COLORS[unit.status]} ml-1`}>{unit.status}</Badge></p>
-            <p><span className="font-medium">Blood Group:</span> <Badge variant="outline" className="ml-1 font-bold">{unit.blood_group}</Badge></p>
+            <div className="flex items-center gap-2">
+              <span className="font-medium">Status:</span>
+              <Badge className={UNIT_STATUS_COLORS[unit.status]}>{unit.status}</Badge>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="font-medium">Blood Group:</span>
+              <Badge variant="outline" className="font-bold">{unit.blood_group}</Badge>
+            </div>
             <p><span className="font-medium">Component:</span> {COMPONENT_LABELS[unit.component] || unit.component}</p>
             <p><span className="font-medium">Donor:</span> {unit.donor_name}</p>
             <p><span className="font-medium">Collection Date:</span> {formatDate(unit.collection_date)}</p>
@@ -101,6 +121,37 @@ export default function BloodUnitDetailPage({ params }: { params: Promise<{ id: 
             <p><span className="font-medium">Syphilis:</span> {unit.syphilis_screened ? 'Done' : 'Pending'}</p>
             <p><span className="font-medium">Malaria:</span> {unit.malaria_screened ? 'Done' : 'Pending'}</p>
             <p><span className="font-medium">All Screens Negative:</span> {unit.all_screens_negative ? 'Yes' : 'No'}</p>
+
+            <div className="pt-4 space-y-2 border-t mt-4">
+              <Label>Change Status</Label>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Select value={selectedStatus} onValueChange={(value) => setSelectedStatus(value as UnitStatus)}>
+                  <SelectTrigger className="w-full sm:w-52">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {UNIT_STATUSES.map((status) => (
+                      <SelectItem key={status} value={status}>{status.replace('_', ' ')}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  variant="outline"
+                  onClick={async () => {
+                    try {
+                      await updateUnit.mutateAsync({ id: unit.id, data: { status: selectedStatus } });
+                      toast.success(`Unit status updated to ${selectedStatus.replace('_', ' ')}`);
+                    } catch {
+                      toast.error('Failed to update unit status');
+                    }
+                  }}
+                  disabled={updateUnit.isPending || selectedStatus === unit.status}
+                  className="w-full sm:w-auto"
+                >
+                  Save Status
+                </Button>
+              </div>
+            </div>
 
             <div className="pt-4 space-y-2 border-t mt-4">
               <Label htmlFor="quarantine-reason">Quarantine Reason</Label>

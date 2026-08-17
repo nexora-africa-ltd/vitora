@@ -34,6 +34,7 @@ export interface BloodDonor {
 export interface BloodDonorListItem {
   id: number;
   donor_number: string;
+  patient?: number | null;
   first_name: string;
   last_name: string;
   blood_group: BloodGroup;

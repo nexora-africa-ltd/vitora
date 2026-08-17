@@ -68,6 +68,8 @@ export function LabOrderTable({
 }: LabOrderTableProps) {
   const router = useRouter();
 
+  const isDonorUnitScreening = (order: LabOrder) => order.patient === null && !!order.blood_bank_unit;
+
   const hasCriticalResults = (order: LabOrder) => {
     return order.items?.some(item => item.result?.is_critical_result);
   };
@@ -174,7 +176,12 @@ export function LabOrderTable({
             sortFn: (a, b) => (a.patient_name || '').localeCompare(b.patient_name || ''),
             cell: (order) => (
               <div>
-                <div className="font-medium">{order.patient_name}</div>
+                <div className="flex items-center gap-2">
+                  <div className="font-medium">{order.patient_name}</div>
+                  {isDonorUnitScreening(order) && (
+                    <Badge variant="outline" className="text-[10px]">Donor Unit Screening</Badge>
+                  )}
+                </div>
                 <div className="text-sm text-muted-foreground">{order.patient_mrn}</div>
               </div>
             ),
@@ -263,6 +270,9 @@ export function LabOrderTable({
                     {order.patient_name}
                     <span className="text-muted-foreground"> • {order.patient_mrn}</span>
                   </p>
+                  {isDonorUnitScreening(order) && (
+                    <Badge variant="outline" className="mt-1 text-[10px]">Donor Unit Screening</Badge>
+                  )}
                   <p className="text-xs text-muted-foreground font-mono">{order.order_number}</p>
                 </div>
                 <Badge className="shrink-0 w-fit" variant={status.variant}>

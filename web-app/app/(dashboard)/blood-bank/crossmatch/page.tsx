@@ -120,6 +120,7 @@ export default function CrossMatchPage() {
             data={filteredResults}
             columns={columns}
             keyExtractor={(item) => item.id}
+            onRowClick={(item) => router.push(`/blood-bank/crossmatch/${item.id}`)}
             defaultSortColumn="performed_at"
             defaultSortDirection="desc"
             emptyMessage="No cross-match tests recorded."

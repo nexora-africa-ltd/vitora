@@ -10,8 +10,10 @@ import { useRouter } from 'next/navigation';
 import { AlertTriangle, Save, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { PageHeader } from '@/components/shared/page-header';
+import { PatientSearchInput } from '@/components/patients/patient-search-input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -34,6 +36,7 @@ export default function EditBloodDonorPage({ params }: { params: Promise<{ id: s
 
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
+  const [patientId, setPatientId] = useState<number | null>(null);
   const [dateOfBirth, setDateOfBirth] = useState('');
   const [gender, setGender] = useState<'M' | 'F'>('M');
   const [bloodGroup, setBloodGroup] = useState<BloodGroup>('O+');
@@ -46,6 +49,7 @@ export default function EditBloodDonorPage({ params }: { params: Promise<{ id: s
     if (!donor) return;
     setFirstName(donor.first_name || '');
     setLastName(donor.last_name || '');
+    setPatientId(donor.patient ?? null);
     setDateOfBirth(donor.date_of_birth || '');
     setGender(donor.gender || 'M');
     setBloodGroup(donor.blood_group || 'O+');
@@ -70,6 +74,7 @@ export default function EditBloodDonorPage({ params }: { params: Promise<{ id: s
     const data: Partial<BloodDonorCreateData> = {
       first_name: firstName.trim(),
       last_name: lastName.trim(),
+      patient: patientId ?? null,
       date_of_birth: dateOfBirth,
       gender,
       blood_group: bloodGroup,
@@ -85,7 +90,7 @@ export default function EditBloodDonorPage({ params }: { params: Promise<{ id: s
     } catch (err) {
       setError(getApiErrorMessage(err));
     }
-  }, [donor, firstName, lastName, dateOfBirth, gender, bloodGroup, phoneNumber, nationalId, notes, updateMutation, router]);
+  }, [donor, firstName, lastName, patientId, dateOfBirth, gender, bloodGroup, phoneNumber, nationalId, notes, updateMutation, router]);
 
   if (isLoading) {
     return <div className="text-sm text-muted-foreground">Loading donor...</div>;
@@ -128,6 +133,21 @@ export default function EditBloodDonorPage({ params }: { params: Promise<{ id: s
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
+                <Label>Donor Number</Label>
+                <Input value={donor.donor_number} disabled readOnly />
+              </div>
+              <div>
+                <Label>Status</Label>
+                <div className="pt-2">
+                  <Badge variant={donor.eligible_to_donate ? 'default' : 'outline'}>
+                    {donor.eligible_to_donate ? 'Eligible to Donate' : 'Not Eligible'}
+                  </Badge>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
                 <Label htmlFor="dob">Date of Birth *</Label>
                 <Input id="dob" type="date" value={dateOfBirth} onChange={(e) => setDateOfBirth(e.target.value)} />
               </div>
@@ -154,14 +174,36 @@ export default function EditBloodDonorPage({ params }: { params: Promise<{ id: s
                 </SelectContent>
               </Select>
             </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <Label>Total Donations</Label>
+                <Input value={String(donor.total_donations ?? 0)} disabled readOnly />
+              </div>
+              <div>
+                <Label>Last Donation Date</Label>
+                <Input value={donor.last_donation_date || 'Not recorded'} disabled readOnly />
+              </div>
+            </div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-base sm:text-lg">Contact</CardTitle>
+            <CardTitle className="text-base sm:text-lg">Contact &amp; Linkage</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            <div>
+              <Label>Link to Patient (optional)</Label>
+              <PatientSearchInput
+                value={patientId}
+                onChange={setPatientId}
+                placeholder="Search patient by name or MRN..."
+              />
+              <p className="mt-1 text-xs text-muted-foreground">
+                Link to patient record if donor is also a patient.
+              </p>
+            </div>
             <div>
               <Label htmlFor="phone">Phone Number</Label>
               <Input id="phone" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} />

@@ -329,6 +329,14 @@ class LabOrder(FacilityScopedModel):
         blank=True,
         help_text="HMIS patient (null for walk-in/external standalone orders)",
     )
+    billing_patient = models.ForeignKey(
+        "patients.Patient",
+        on_delete=models.PROTECT,
+        related_name="billed_lab_orders",
+        null=True,
+        blank=True,
+        help_text="Patient to bill for this order (defaults to patient if omitted)",
+    )
     encounter = models.ForeignKey(
         "encounters.Encounter",
         on_delete=models.PROTECT,
@@ -366,6 +374,14 @@ class LabOrder(FacilityScopedModel):
         null=True,
         blank=True,
         help_text="IPD admission if lab ordered during inpatient stay",
+    )
+    blood_bank_unit = models.ForeignKey(
+        "blood_bank.BloodUnit",
+        on_delete=models.SET_NULL,
+        related_name="lab_orders",
+        null=True,
+        blank=True,
+        help_text="Linked blood bank unit for transfusion-related testing",
     )
     ordered_by = models.ForeignKey(User, on_delete=models.PROTECT, related_name="lab_orders")
 

@@ -274,6 +274,12 @@ def notify_on_result_verification(sender, instance, created, **kwargs):
     try:
         # Check if this is a verification status change
         if instance.verification_status == "VERIFIED":
+            from hmis.apps.blood_bank.services.screening_sync import (
+                sync_blood_unit_screening_from_result,
+            )
+
+            sync_blood_unit_screening_from_result(instance)
+
             # Broadcast verified result
             broadcast_result_verified(instance)
             logger.info(f"Broadcasted verification notification for result {instance.id}")

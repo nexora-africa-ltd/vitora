@@ -243,6 +243,8 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
             {
                 "admission",
                 "bill_patient",
+                "billing_patient",
+                "blood_bank_unit",
                 "clinical_notes",
                 "encounter",
                 "external_lab",
@@ -295,6 +297,10 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
             {
                 "admission",
                 "bill_patient",
+                "billing_patient",
+                "billing_patient_name",
+                "blood_bank_unit",
+                "blood_bank_unit_number",
                 "cancellation_reason",
                 "cancelled_at",
                 "cancelled_by",

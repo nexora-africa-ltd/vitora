@@ -38,6 +38,7 @@ class BloodDonorListSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "donor_number",
+            "patient",
             "first_name",
             "last_name",
             "blood_group",

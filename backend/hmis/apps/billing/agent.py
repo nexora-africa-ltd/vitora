@@ -319,7 +319,26 @@ class BillingAgentService:
             )
             return
 
-        invoice = cls.get_or_create_draft_invoice(encounter.patient, encounter)
+        billing_patient = getattr(lab_order, "billing_patient", None) or getattr(
+            lab_order, "patient", None
+        )
+        encounter_for_billing = encounter
+
+        if (
+            encounter_for_billing
+            and billing_patient
+            and encounter_for_billing.patient_id != billing_patient.id
+        ):
+            encounter_for_billing = None
+
+        if billing_patient is None:
+            logger.warning(
+                "Billing agent: skipping lab order %s because billing patient is not set",
+                getattr(lab_order, "id", None),
+            )
+            return
+
+        invoice = cls.get_or_create_draft_invoice(billing_patient, encounter_for_billing)
 
         for item in lab_order.items.select_related("test"):
             # Primary lookup: exact code match (TestCatalog.code == Service.code)

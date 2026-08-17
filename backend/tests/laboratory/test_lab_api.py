@@ -15,6 +15,7 @@ from django.contrib.auth import get_user_model
 from rest_framework import status
 from rest_framework.test import APIClient
 
+from hmis.apps.blood_bank.models import BloodDonor, BloodGroup, BloodUnit, UnitStatus
 from hmis.apps.encounters.models import Encounter
 from hmis.apps.laboratory.models import LabOrder, LabOrderItem, LabResult, TestCatalog
 from hmis.apps.patients.models import Patient
@@ -197,6 +198,100 @@ class TestLabOrderAPI:
         assert "order_number" in response.data
         assert response.data["order_number"].startswith("LAB-")
         assert len(response.data["items"]) == 2
+
+    def test_create_lab_order_with_billing_patient_and_blood_unit(
+        self,
+        auth_client,
+        sample_encounter,
+        sample_test_catalog,
+        sample_facility,
+        sample_organization,
+    ):
+        donor_patient = sample_encounter.patient
+        recipient = Patient.objects.create(
+            first_name="Recipient",
+            last_name="Patient",
+            date_of_birth=date(1992, 6, 1),
+            gender="F",
+            organization=sample_organization,
+        )
+        donor = BloodDonor.objects.create(
+            patient=donor_patient,
+            first_name="Donor",
+            last_name="Person",
+            date_of_birth=date(1988, 1, 1),
+            gender="M",
+            blood_group=BloodGroup.O_POS,
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+        unit = BloodUnit.objects.create(
+            donor=donor,
+            blood_group=BloodGroup.O_POS,
+            status=UnitStatus.COLLECTED,
+            expiry_date="2099-01-01T00:00:00Z",
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+
+        order_data = {
+            "patient": donor_patient.id,
+            "billing_patient": recipient.id,
+            "encounter": sample_encounter.id,
+            "blood_bank_unit": unit.id,
+            "items": [{"test_code": "CBC"}],
+        }
+
+        response = auth_client.post("/api/lab/orders/", order_data, format="json")
+
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data["patient"] == donor_patient.id
+        assert response.data["billing_patient"] == recipient.id
+        assert response.data["blood_bank_unit"] == unit.id
+
+        unit.refresh_from_db()
+        assert unit.status == UnitStatus.TESTING
+
+    def test_create_lab_order_allows_patient_null_when_blood_unit_linked(
+        self,
+        auth_client,
+        sample_encounter,
+        sample_test_catalog,
+        sample_facility,
+        sample_organization,
+    ):
+        recipient = sample_encounter.patient
+        donor = BloodDonor.objects.create(
+            first_name="NoPatient",
+            last_name="Donor",
+            date_of_birth=date(1988, 1, 1),
+            gender="M",
+            blood_group=BloodGroup.O_POS,
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+        unit = BloodUnit.objects.create(
+            donor=donor,
+            blood_group=BloodGroup.O_POS,
+            status=UnitStatus.COLLECTED,
+            expiry_date="2099-01-01T00:00:00Z",
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+
+        order_data = {
+            "billing_patient": recipient.id,
+            "encounter": sample_encounter.id,
+            "blood_bank_unit": unit.id,
+            "items": [{"test_code": "CBC"}],
+        }
+
+        response = auth_client.post("/api/lab/orders/", order_data, format="json")
+
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data["patient"] is None
+        assert response.data["billing_patient"] == recipient.id
+        assert response.data["blood_bank_unit"] == unit.id
 
     def test_order_number_auto_generated(self, auth_client, sample_encounter, sample_test_catalog):
         """Order number should be auto-generated."""

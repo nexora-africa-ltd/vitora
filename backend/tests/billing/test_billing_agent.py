@@ -299,6 +299,35 @@ class TestHandleLabOrderConfirmed:
         item = invoice.items.first()
         assert item.lab_order == sample_lab_order
 
+    def test_bills_to_billing_patient_when_different_from_test_subject(
+        self,
+        db,
+        sample_lab_order,
+        sample_organization,
+        lab_billing_service,
+    ):
+        from hmis.apps.billing.agent import BillingAgentService
+        from hmis.apps.patients.models import Patient
+
+        recipient = Patient.objects.create(
+            first_name="Bill",
+            last_name="Recipient",
+            date_of_birth=date(1991, 3, 1),
+            gender="F",
+            organization=sample_organization,
+        )
+        sample_lab_order.billing_patient = recipient
+        sample_lab_order.save(update_fields=["billing_patient", "updated_at"])
+
+        BillingAgentService.handle_lab_order_confirmed(sample_lab_order)
+
+        invoice = Invoice.objects.filter(
+            patient=recipient,
+            status=Invoice.Status.DRAFT,
+        ).first()
+        assert invoice is not None
+        assert invoice.items.filter(lab_order=sample_lab_order).exists()
+
     def test_skips_ipd_lab_billing_when_per_diem_intervention_active(
         self,
         db,

@@ -505,7 +505,7 @@ class LabOrderViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
 
     queryset = (
         LabOrder.objects.all()
-        .select_related("patient", "encounter", "ordered_by")
+        .select_related("patient", "billing_patient", "encounter", "ordered_by", "blood_bank_unit")
         .prefetch_related(
             "items__test",
             "items__result__entered_by",
@@ -521,7 +521,14 @@ class LabOrderViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         ReadRequiresModelPermission,
     ]
     filter_backends = [filters.DjangoFilterBackend, SearchFilter]
-    filterset_fields = ["patient", "encounter", "status", "priority", "order_type"]
+    filterset_fields = [
+        "patient",
+        "billing_patient",
+        "encounter",
+        "status",
+        "priority",
+        "order_type",
+    ]
     search_fields = [
         "order_number",
         "patient__first_name",

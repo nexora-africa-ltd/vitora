@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Form,
   FormControl,
@@ -23,27 +24,31 @@ import { Separator } from '@/components/ui/separator';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { toast as sonnerToast } from 'sonner';
-import { Plus, Trash2, FlaskConical, Search, User, AlertTriangle } from 'lucide-react';
+import { Plus, Trash2, FlaskConical, User, AlertTriangle } from 'lucide-react';
 import { TestSelector } from './test-selector';
 import { LabOrderCreateData, OrderType, LabPriority, TestCatalogListItem } from '@/lib/types/laboratory';
-import { useCreateLabOrder, useSubmitLabOrder } from '@/lib/hooks/use-laboratory';
+import { useCreateLabOrder, useSubmitLabOrder, useTestCatalog } from '@/lib/hooks/use-laboratory';
+import { useBloodUnits } from '@/lib/hooks/use-blood-bank';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/lib/hooks';
 import { formatCurrency } from '@/lib/utils/format';
 import { useAuth } from '@/lib/auth';
+import { useFacility } from '@/lib/context/facility-context';
 import { useOptionalPatientContext } from '@/lib/context/patient-context';
 import { useOptionalEncounterContext } from '@/lib/context/encounter-context';
 import { HelpPopover } from '@/components/shared/help-popover';
 import { ShiftGate } from '@/components/shared/shift-gate';
 
 const orderSchema = z.object({
-  patient: z.number().positive('Patient is required'),
+  patient: z.number().positive('Patient is required').optional(),
+  billing_patient: z.number().positive('Billing patient is required').optional(),
   encounter: z.number().positive('Encounter is required').optional(),
   order_type: z.enum(['IN_HOUSE', 'EXTERNAL']).default('IN_HOUSE'),
   external_lab: z.string().optional(),
   priority: z.enum(['ROUTINE', 'URGENT', 'STAT']).default('ROUTINE'),
   clinical_notes: z.string().optional(),
   bill_patient: z.boolean().default(true),
+  blood_bank_unit: z.number().positive().optional(),
   items: z.array(
     z.object({
       test: z.number().min(0, 'Test is required'),
@@ -65,6 +70,11 @@ interface LabOrderFormProps {
   encounterId?: number;
   /** Admission ID - for inpatient lab orders */
   admissionId?: number;
+  /** Billing recipient patient ID when different from test subject */
+  billingPatientId?: number;
+  billingPatientName?: string;
+  /** Preselected blood unit ID for blood-unit testing workflow */
+  bloodBankUnitId?: number;
   patientName?: string;
   patientMrn?: string;
   patientGender?: string;
@@ -95,10 +105,21 @@ const ORDER_TYPE_OPTIONS = [
   { value: 'EXTERNAL', label: 'External Lab', description: 'Sent to external partner' },
 ];
 
+const REQUIRED_BLOOD_SCREENING_TESTS = [
+  { key: 'hiv', keywords: ['hiv'] },
+  { key: 'hbv', keywords: ['hbv', 'hepatitis b', 'hbsag'] },
+  { key: 'hcv', keywords: ['hcv', 'hepatitis c'] },
+  { key: 'syphilis', keywords: ['syphilis', 'vdrl', 'rpr'] },
+  { key: 'malaria', keywords: ['malaria'] },
+] as const;
+
 export function LabOrderForm({
   patientId: propPatientId,
   encounterId: propEncounterId,
   admissionId,
+  billingPatientId,
+  billingPatientName,
+  bloodBankUnitId,
   patientName: propPatientName,
   patientMrn: propPatientMrn,
   patientGender: propPatientGender,
@@ -114,6 +135,7 @@ export function LabOrderForm({
   onCancel,
 }: LabOrderFormProps) {
   const { toast } = useToast();
+  const { hasModule } = useFacility();
   const { user } = useAuth();
   const router = useRouter();
   const createOrder = useCreateLabOrder();
@@ -128,21 +150,18 @@ export function LabOrderForm({
   const contextEncounter = encounterContext?.encounter;
   const canPlaceOrders = encounterContext?.canPlaceOrders ?? true;
 
-  // Resolved values: context takes precedence over props
-  const patientId = contextPatient?.id ?? propPatientId;
-  const encounterId = contextEncounter?.id ?? propEncounterId;
-  const patientName = contextPatient
-    ? `${contextPatient.first_name} ${contextPatient.last_name}`
-    : propPatientName;
-  const patientMrn = contextPatient?.mrn ?? propPatientMrn;
-  const patientGender = contextPatient?.gender ?? propPatientGender;
-  const patientDateOfBirth = contextPatient?.date_of_birth ?? propPatientDateOfBirth;
-  const encounterType = contextEncounter?.encounter_type ?? propEncounterType;
-  const encounterDate = contextEncounter?.encounter_date ?? propEncounterDate;
-  const chiefComplaint = contextEncounter?.chief_complaint ?? propChiefComplaint;
+  // Resolved values: explicit props take precedence over optional context
+  const patientId = propPatientId ?? contextPatient?.id;
+  const encounterId = propEncounterId ?? contextEncounter?.id;
+  const patientName = propPatientName ?? (contextPatient ? `${contextPatient.first_name} ${contextPatient.last_name}` : undefined);
+  const patientMrn = propPatientMrn ?? contextPatient?.mrn;
+  const patientGender = propPatientGender ?? contextPatient?.gender;
+  const patientDateOfBirth = propPatientDateOfBirth ?? contextPatient?.date_of_birth;
+  const encounterType = propEncounterType ?? contextEncounter?.encounter_type;
+  const encounterDate = propEncounterDate ?? contextEncounter?.encounter_date;
+  const chiefComplaint = propChiefComplaint ?? contextEncounter?.chief_complaint;
 
-  // Validation: both patient and encounter are required
-  const hasPatient = !!patientId;
+  // Validation: encounter may be required based on workflow
   const hasEncounter = !!encounterId;
   // Current date/time for "Requested At"
   const requestedAt = new Date();
@@ -157,12 +176,14 @@ export function LabOrderForm({
   const form = useForm<OrderFormData>({
     resolver: zodResolver(orderSchema),
     defaultValues: {
-      patient: patientId || 0,
+      patient: patientId || undefined,
+      billing_patient: billingPatientId || undefined,
       encounter: encounterId || undefined,
       order_type: 'IN_HOUSE',
       priority: prefillPriority || 'ROUTINE',
       clinical_notes: prefillClinicalNotes || '',
       bill_patient: true,
+      blood_bank_unit: bloodBankUnitId || undefined,
       items: [],
     },
     mode: 'onChange', // Validate on change to catch issues early
@@ -179,11 +200,28 @@ export function LabOrderForm({
 
   const orderType = form.watch('order_type');
   const items = form.watch('items');
+  const linkedBloodUnitId = form.watch('blood_bank_unit');
+  const bloodBankModuleEnabled = hasModule('blood_bank');
+
+  const { data: bloodUnits, isLoading: loadingBloodUnits } = useBloodUnits({ page_size: 200 });
+  const { data: testCatalogPage } = useTestCatalog({ is_active: true, available_in_house: true, page_size: 200 });
+
+  const selectableBloodUnits = (bloodUnits?.results || []).filter(
+    (unit) => unit.status !== 'EXPIRED' && unit.status !== 'ISSUED'
+  );
 
   // Keep external/context patient and encounter selection in sync with form state.
   useEffect(() => {
-    form.setValue('patient', patientId || 0, { shouldValidate: true });
+    form.setValue('patient', patientId || undefined, { shouldValidate: !!patientId });
   }, [patientId, form]);
+
+  useEffect(() => {
+    form.setValue('billing_patient', billingPatientId || undefined);
+  }, [billingPatientId, form]);
+
+  useEffect(() => {
+    form.setValue('blood_bank_unit', bloodBankUnitId || undefined);
+  }, [bloodBankUnitId, form]);
 
   useEffect(() => {
     const nextEncounter = encounterId || undefined;
@@ -197,6 +235,56 @@ export function LabOrderForm({
   useEffect(() => {
     form.setValue('bill_patient', orderType !== 'EXTERNAL');
   }, [orderType, form]);
+
+  useEffect(() => {
+    if (!bloodBankModuleEnabled) {
+      form.setValue('blood_bank_unit', undefined);
+    }
+  }, [bloodBankModuleEnabled, form]);
+
+  useEffect(() => {
+    if (!bloodBankModuleEnabled || !linkedBloodUnitId || !testCatalogPage?.results?.length) {
+      return;
+    }
+
+    const currentItems = form.getValues('items');
+    const currentCodes = new Set(currentItems.map((item) => item.test_code.toLowerCase()));
+
+    const testsToAppend: OrderFormData['items'] = [];
+
+    for (const required of REQUIRED_BLOOD_SCREENING_TESTS) {
+      const match = testCatalogPage.results.find((test) => {
+        const haystack = `${test.code} ${test.name} ${test.short_name}`.toLowerCase();
+        return required.keywords.some((keyword) => haystack.includes(keyword));
+      });
+
+      if (!match) {
+        continue;
+      }
+
+      if (currentCodes.has(match.code.toLowerCase())) {
+        continue;
+      }
+
+      const cost = typeof match.cost === 'string' ? parseFloat(match.cost) : (match.cost || 0);
+      testsToAppend.push({
+        test: match.id,
+        test_name: match.name,
+        test_code: match.code,
+        cost: isNaN(cost) ? 0 : cost,
+        special_instructions: '',
+      });
+      currentCodes.add(match.code.toLowerCase());
+    }
+
+    if (testsToAppend.length > 0) {
+      for (const testItem of testsToAppend) {
+        append(testItem);
+      }
+      form.trigger('items');
+      sonnerToast.info('Added available blood screening tests for the linked blood unit.');
+    }
+  }, [append, bloodBankModuleEnabled, form, linkedBloodUnitId, testCatalogPage?.results]);
 
   // Calculate total, ensuring cost is treated as number
   const totalCost = items.reduce((sum, item) => {
@@ -276,7 +364,8 @@ export function LabOrderForm({
 
     try {
       const orderData: LabOrderCreateData = {
-        patient: data.patient,
+        ...(data.patient ? { patient: data.patient } : {}),
+        ...(data.billing_patient ? { billing_patient: data.billing_patient } : {}),
         ...(data.encounter ? { encounter: data.encounter } : {}),
         ...(admissionId ? { admission: admissionId } : {}),
         order_type: data.order_type as OrderType,
@@ -284,6 +373,7 @@ export function LabOrderForm({
         priority: data.priority as LabPriority,
         clinical_notes: data.clinical_notes,
         bill_patient: data.bill_patient,
+        ...(data.blood_bank_unit ? { blood_bank_unit: data.blood_bank_unit } : {}),
         items: data.items.map(item => ({
           test_code: item.test_code,
           special_instructions: item.special_instructions,
@@ -363,8 +453,15 @@ export function LabOrderForm({
               {/* Patient Name */}
               {patientName && (
                 <div>
-                  <Label className="text-xs text-muted-foreground">Patient Name</Label>
+                  <Label className="text-xs text-muted-foreground">Test Subject</Label>
                   <p className="font-medium">{patientName}</p>
+                </div>
+              )}
+
+              {billingPatientName && (
+                <div>
+                  <Label className="text-xs text-muted-foreground">Bill To</Label>
+                  <p className="font-medium">{billingPatientName}</p>
                 </div>
               )}
 
@@ -555,8 +652,48 @@ export function LabOrderForm({
                   </FormControl>
                   <FormMessage />
                 </FormItem>
-              )}
-            />
+                )}
+              />
+
+            {bloodBankModuleEnabled && (
+              <FormField
+                control={form.control}
+                name="blood_bank_unit"
+                render={({ field }) => (
+                  <FormItem>
+                    <div className="flex items-center gap-2">
+                      <FormLabel>Linked Blood Unit</FormLabel>
+                      <HelpPopover content="Optional: link an available blood bank unit for transfusion-related testing, such as crossmatch or blood grouping workflows." />
+                    </div>
+                    <FormControl>
+                      <Select
+                        value={field.value ? String(field.value) : 'none'}
+                        onValueChange={(value) => field.onChange(value === 'none' ? undefined : Number(value))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select blood unit (optional)" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">No linked blood unit</SelectItem>
+                          {selectableBloodUnits.map((unit) => (
+                            <SelectItem key={unit.id} value={String(unit.id)}>
+                              {unit.unit_number} - {unit.blood_group} - {unit.component.replace('_', ' ')}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </FormControl>
+                    {loadingBloodUnits && (
+                      <p className="text-xs text-muted-foreground">Loading blood units...</p>
+                    )}
+                    {!loadingBloodUnits && selectableBloodUnits.length === 0 && (
+                      <p className="text-xs text-muted-foreground">No eligible blood units found (expired and transfused/issued are excluded).</p>
+                    )}
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
           </CardContent>
         </Card>
 
@@ -655,7 +792,7 @@ export function LabOrderForm({
                     {field === 'items'
                       ? (error as { message?: string })?.message || 'At least one test is required'
                       : field === 'patient'
-                      ? 'Patient is required'
+                      ? 'Patient is required unless a blood unit donor workflow is selected'
                       : field === 'encounter'
                       ? 'Encounter is required'
                       : `${field}: ${(error as { message?: string })?.message || 'Invalid'}`

@@ -333,7 +333,11 @@ class LabOrderSerializer(serializers.ModelSerializer):
     items = LabOrderItemSerializer(many=True, read_only=True)
     patient_name = serializers.SerializerMethodField()
     patient_mrn = serializers.SerializerMethodField()
+    billing_patient_name = serializers.SerializerMethodField()
     ordered_by_name = serializers.SerializerMethodField()
+    blood_bank_unit_number = serializers.CharField(
+        source="blood_bank_unit.unit_number", read_only=True
+    )
     # Coerce total_cost to float for frontend compatibility
     total_cost = serializers.SerializerMethodField()
 
@@ -345,8 +349,12 @@ class LabOrderSerializer(serializers.ModelSerializer):
             "patient",
             "patient_name",
             "patient_mrn",
+            "billing_patient",
+            "billing_patient_name",
             "encounter",
             "admission",
+            "blood_bank_unit",
+            "blood_bank_unit_number",
             "ordered_by",
             "ordered_by_name",
             "order_type",
@@ -388,7 +396,15 @@ class LabOrderSerializer(serializers.ModelSerializer):
     def get_patient_name(self, obj) -> str:
         if obj.patient:
             return f"{obj.patient.first_name} {obj.patient.last_name}"
+        if obj.blood_bank_unit_id:
+            donor = obj.blood_bank_unit.donor
+            return f"Donor: {donor.first_name} {donor.last_name}"
         return obj.walkin_patient_name or "Walk-in"
+
+    def get_billing_patient_name(self, obj) -> str | None:
+        if obj.billing_patient:
+            return f"{obj.billing_patient.first_name} {obj.billing_patient.last_name}"
+        return None
 
     def get_ordered_by_name(self, obj) -> str:
         return obj.ordered_by.get_full_name() or obj.ordered_by.username
@@ -411,8 +427,10 @@ class LabOrderCreateSerializer(serializers.ModelSerializer):
         model = LabOrder
         fields = [
             "patient",
+            "billing_patient",
             "encounter",
             "admission",
+            "blood_bank_unit",
             "order_type",
             "external_lab",
             "priority",
@@ -421,15 +439,70 @@ class LabOrderCreateSerializer(serializers.ModelSerializer):
             "items",
         ]
 
+    def validate_blood_bank_unit(self, value):
+        """Ensure linked blood unit is facility-scoped and usable for lab workflows."""
+        if value is None:
+            return value
+
+        request = self.context.get("request")
+        current_facility = getattr(request, "current_facility", None) if request else None
+
+        if current_facility and value.facility_id != current_facility.id:
+            raise serializers.ValidationError(
+                "Selected blood unit is not in your current facility."
+            )
+
+        if value.status in {"EXPIRED", "ISSUED"}:
+            raise serializers.ValidationError(
+                "Selected blood unit cannot be linked because it is expired or transfused/issued."
+            )
+
+        return value
+
+    def validate(self, attrs):
+        bill_patient = attrs.get("bill_patient")
+        if bill_patient is None:
+            bill_patient = attrs.get("order_type", "IN_HOUSE") != "EXTERNAL"
+
+        patient = attrs.get("patient")
+        blood_bank_unit = attrs.get("blood_bank_unit")
+
+        if patient is None and blood_bank_unit is None:
+            raise serializers.ValidationError(
+                {
+                    "patient": (
+                        "Patient is required unless a blood bank unit is linked "
+                        "for donor/unit screening workflows."
+                    )
+                }
+            )
+
+        billing_patient = attrs.get("billing_patient") or attrs.get("patient")
+        if bill_patient and billing_patient is None:
+            raise serializers.ValidationError(
+                {"billing_patient": "Billing patient is required when bill_patient is enabled."}
+            )
+
+        return attrs
+
     def create(self, validated_data):
         items_data = validated_data.pop("items")
+        linked_unit = validated_data.get("blood_bank_unit")
         # Default bill_patient based on order_type when not explicitly provided
         if "bill_patient" not in validated_data:
             validated_data["bill_patient"] = (
                 validated_data.get("order_type", "IN_HOUSE") != "EXTERNAL"
             )
+
+        if validated_data.get("bill_patient") and not validated_data.get("billing_patient"):
+            validated_data["billing_patient"] = validated_data.get("patient")
+
         ordered_by = self.context["request"].user
         order = LabOrder.objects.create(ordered_by=ordered_by, **validated_data)
+
+        if linked_unit and linked_unit.status not in {"TESTING", "EXPIRED", "ISSUED"}:
+            linked_unit.status = "TESTING"
+            linked_unit.save(update_fields=["status", "updated_at"])
 
         for item_data in items_data:
             test_code = item_data["test_code"]
