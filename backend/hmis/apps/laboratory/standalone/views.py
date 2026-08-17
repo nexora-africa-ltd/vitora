@@ -9,7 +9,12 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from hmis.apps.core.mixins import ReadOnCreateMixin, TenantScopedViewMixin
-from hmis.apps.core.permissions import ReadRequiresModelPermission, RequiresActiveShiftPermission
+from hmis.apps.core.models import AuditLog
+from hmis.apps.core.permissions import (
+    ReadRequiresModelPermission,
+    RequiresActiveShiftPermission,
+    get_client_ip,
+)
 from hmis.apps.laboratory.permissions import LaboratoryModuleRequired, LISStandaloneRequired
 from hmis.apps.laboratory.serializers import LabOrderSerializer
 
@@ -98,6 +103,7 @@ class WalkInPatientViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.Mo
         """
         walkin = self.get_object()
         data = request.data or {}
+        was_linked = bool(walkin.linked_patient_id)
 
         try:
             patient = walkin.promote_to_patient(
@@ -123,6 +129,24 @@ class WalkInPatientViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.Mo
         except Exception as exc:  # noqa: BLE001
             logger.exception("Walk-in promotion failed for id=%s", walkin.pk)
             return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not was_linked:
+            AuditLog.log(
+                action="patient_create",
+                user=request.user,
+                resource_type="Patient",
+                resource_id=patient.id,
+                patient_id=patient.id,
+                ip_address=get_client_ip(request),
+                user_agent=request.META.get("HTTP_USER_AGENT", ""),
+                details={
+                    "source": "walkin_promote",
+                    "patient_mrn": patient.mrn,
+                    "walkin_patient_id": walkin.id,
+                    "registered_by": request.user.username,
+                },
+                request=request,
+            )
 
         serializer = WalkInPatientSerializer(walkin)
         return Response(

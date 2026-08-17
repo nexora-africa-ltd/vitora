@@ -21,7 +21,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from hmis.apps.core.fhir.views import FHIR_RENDERER_CLASSES, FHIRSchemaMixin
-from hmis.apps.core.permissions import ReadRequiresModelPermission
+from hmis.apps.core.models import AuditLog
+from hmis.apps.core.permissions import ReadRequiresModelPermission, get_client_ip
 
 logger = logging.getLogger(__name__)
 
@@ -159,6 +160,22 @@ class FHIRPatientCreateView(FHIRWriteAPIView):
             return self.operation_outcome(
                 "error", "duplicate", f"Patient creation failed: {e}", http_status=409
             )
+
+        AuditLog.log(
+            action="patient_create",
+            user=request.user,
+            resource_type="Patient",
+            resource_id=patient.id,
+            patient_id=patient.id,
+            ip_address=get_client_ip(request),
+            user_agent=request.META.get("HTTP_USER_AGENT", ""),
+            details={
+                "source": "fhir",
+                "patient_mrn": patient.mrn,
+                "registered_by": request.user.username,
+            },
+            request=request,
+        )
 
         # Build response
         location = request.build_absolute_uri(f"/fhir/Patient/{patient.pk}")

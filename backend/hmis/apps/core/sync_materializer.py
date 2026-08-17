@@ -9,7 +9,7 @@ from django.apps import apps
 from django.db import transaction
 from django.utils.dateparse import parse_date, parse_datetime, parse_time
 
-from hmis.apps.core.models import SyncConflict, SyncQueue
+from hmis.apps.core.models import AuditLog, SyncConflict, SyncQueue
 from hmis.apps.core.sync_context import sync_materialization_context
 from hmis.apps.core.sync_registry import SYNC_REGISTRY, SyncDirection, SyncRegistryEntry
 
@@ -79,6 +79,7 @@ def apply_entry(
     try:
         with transaction.atomic(), sync_materialization_context():
             instance = None
+            created_instance = False
             if operation == "CREATE":
                 # Origin-based dedup: if record carries origin_hub_id + origin_local_id,
                 # check if we already have it (prevents PK collision on re-sync).
@@ -99,13 +100,16 @@ def apply_entry(
                     else:
                         cleaned_data.pop(model._meta.pk.name, None)
                         instance = create_from_materializer(model, **cleaned_data)
+                        created_instance = True
                 elif record_id is not None:
                     cleaned_data.pop(model._meta.pk.name, None)
                     instance, _created = update_or_create_from_materializer(
                         model, record_id, cleaned_data
                     )
+                    created_instance = _created
                 else:
                     instance = create_from_materializer(model, **cleaned_data)
+                    created_instance = True
             elif operation == "UPDATE":
                 instance = update_existing_from_materializer(model, record_id, cleaned_data)
                 if instance is None:
@@ -113,16 +117,39 @@ def apply_entry(
                     instance, _created = update_or_create_from_materializer(
                         model, record_id, cleaned_data
                     )
+                    created_instance = _created
             elif operation == "DELETE":
                 model.objects.filter(pk=record_id).delete()
             else:
                 return {"success": False, "error": f"Unsupported operation: {operation}"}
             if instance is not None:
                 apply_materialized_m2m(model, instance, data)
+                if created_instance and model._meta.label == "patients.Patient":
+                    _log_patient_create_from_sync_materializer(instance)
     except Exception as exc:  # noqa: BLE001
         return {"success": False, "error": str(exc)}
 
     return {"success": True}
+
+
+def _log_patient_create_from_sync_materializer(instance) -> None:
+    """Record patient creation audits for cloud-to-hub sync materialization."""
+    creator = getattr(instance, "registered_by", None)
+    AuditLog.log(
+        action="patient_create",
+        user=creator,
+        resource_type="Patient",
+        resource_id=instance.id,
+        patient_id=instance.id,
+        user_agent="sync_materializer",
+        details={
+            "source": "sync_materializer",
+            "patient_mrn": getattr(instance, "mrn", ""),
+            "registered_by": getattr(creator, "username", ""),
+        },
+        facility=getattr(instance, "registered_at_facility", None),
+        organization=getattr(instance, "organization", None),
+    )
 
 
 def create_from_materializer(model, **cleaned_data):

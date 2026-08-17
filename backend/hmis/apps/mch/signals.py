@@ -8,6 +8,7 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 
 from hmis.apps.core.events import ImmunizationEvents, MCHEvents, publish_event
+from hmis.apps.core.models import AuditLog
 from hmis.apps.mch.models import (
     ANCVisit,
     Delivery,
@@ -330,6 +331,25 @@ def create_baby_patient_on_delivery(sender, instance, created, **kwargs):
             sub_county=mother.sub_county,
             ward=mother.ward,
             registered_by=instance.delivered_by or instance.registration.registered_by,
+        )
+
+        creator = instance.delivered_by or instance.registration.registered_by
+        AuditLog.log(
+            action="patient_create",
+            user=creator,
+            resource_type="Patient",
+            resource_id=baby.id,
+            patient_id=baby.id,
+            user_agent="mch_delivery_signal",
+            details={
+                "source": "mch_delivery",
+                "patient_mrn": baby.mrn,
+                "delivery_id": instance.id,
+                "mother_id": mother.id,
+                "registered_by": getattr(creator, "username", ""),
+            },
+            facility=getattr(instance, "facility", None),
+            organization=getattr(instance, "organization", None),
         )
 
         instance.baby_patient = baby
