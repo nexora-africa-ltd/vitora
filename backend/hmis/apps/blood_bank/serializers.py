@@ -3,7 +3,14 @@
 
 from rest_framework import serializers
 
-from .models import BloodDonor, BloodIssue, BloodRequest, BloodUnit, CrossMatch
+from .models import (
+    BloodDonor,
+    BloodIssue,
+    BloodRequest,
+    BloodUnit,
+    BloodUnitStatusEvent,
+    CrossMatch,
+)
 
 # =============================================================================
 # BloodDonor
@@ -137,6 +144,9 @@ class BloodUnitDetailSerializer(serializers.ModelSerializer):
     donor_name = serializers.SerializerMethodField()
     is_expired = serializers.BooleanField(read_only=True)
     is_available = serializers.BooleanField(read_only=True)
+    allowed_next_statuses = serializers.SerializerMethodField()
+    status_timeline = serializers.SerializerMethodField()
+    last_status_changed_by_name = serializers.SerializerMethodField()
 
     class Meta:
         model = BloodUnit
@@ -160,14 +170,75 @@ class BloodUnitDetailSerializer(serializers.ModelSerializer):
             "all_screens_negative",
             "is_expired",
             "is_available",
+            "allowed_next_statuses",
+            "status_reason",
+            "last_status_change_at",
+            "last_status_changed_by",
+            "last_status_changed_by_name",
+            "status_timeline",
             "notes",
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["unit_number", "created_at", "updated_at"]
+        read_only_fields = [
+            "unit_number",
+            "status",
+            "allowed_next_statuses",
+            "status_reason",
+            "last_status_change_at",
+            "last_status_changed_by",
+            "last_status_changed_by_name",
+            "status_timeline",
+            "created_at",
+            "updated_at",
+        ]
 
     def get_donor_name(self, obj):
         return f"{obj.donor.first_name} {obj.donor.last_name}"
+
+    def get_status_timeline(self, obj):
+        events = obj.status_events.select_related("changed_by").all()[:20]
+        return BloodUnitStatusEventSerializer(events, many=True).data
+
+    def get_allowed_next_statuses(self, obj):
+        return obj.get_allowed_next_statuses()
+
+    def get_last_status_changed_by_name(self, obj):
+        if obj.last_status_changed_by:
+            return obj.last_status_changed_by.get_full_name() or obj.last_status_changed_by.username
+        return None
+
+
+class BloodUnitStatusTransitionSerializer(serializers.Serializer):
+    """Validate a blood-unit lifecycle transition request."""
+
+    target_status = serializers.ChoiceField(choices=BloodUnit._meta.get_field("status").choices)
+    reason = serializers.CharField(required=False, allow_blank=True, default="")
+
+
+class BloodUnitStatusEventSerializer(serializers.ModelSerializer):
+    """Read serializer for immutable blood-unit transition timeline events."""
+
+    changed_by_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = BloodUnitStatusEvent
+        fields = [
+            "id",
+            "blood_unit",
+            "from_status",
+            "to_status",
+            "reason",
+            "source",
+            "changed_by",
+            "changed_by_name",
+            "changed_at",
+        ]
+
+    def get_changed_by_name(self, obj):
+        if obj.changed_by:
+            return obj.changed_by.get_full_name() or obj.changed_by.username
+        return None
 
 
 # =============================================================================
@@ -297,6 +368,21 @@ class CrossMatchSerializer(serializers.ModelSerializer):
 
 
 class BloodIssueCreateSerializer(serializers.ModelSerializer):
+    def validate(self, attrs):
+        blood_unit = attrs["blood_unit"]
+        if blood_unit.is_expired:
+            raise serializers.ValidationError({"blood_unit": "Cannot issue an expired blood unit."})
+        if blood_unit.status not in {"AVAILABLE", "RESERVED"}:
+            raise serializers.ValidationError(
+                {
+                    "blood_unit": (
+                        "Blood unit must be AVAILABLE or RESERVED before issuing. "
+                        f"Current status is {blood_unit.status}."
+                    )
+                }
+            )
+        return attrs
+
     class Meta:
         model = BloodIssue
         fields = ["blood_request", "blood_unit", "crossmatch", "notes"]

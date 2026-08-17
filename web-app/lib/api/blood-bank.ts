@@ -11,6 +11,7 @@ import type {
   BloodUnit,
   BloodUnitListItem,
   BloodUnitCreateData,
+  BloodUnitTransitionData,
   BloodUnitListParams,
   BloodRequest,
   BloodRequestListItem,
@@ -84,6 +85,11 @@ export const bloodBankApi = {
 
   async quarantine(id: number, reason: string): Promise<BloodUnit> {
     const response = await apiClient.post(`/api/blood-bank/units/${id}/quarantine/`, { reason });
+    return response.data;
+  },
+
+  async transitionUnit(id: number, data: BloodUnitTransitionData): Promise<BloodUnit> {
+    const response = await apiClient.post(`/api/blood-bank/units/${id}/transition/`, data);
     return response.data;
   },
 

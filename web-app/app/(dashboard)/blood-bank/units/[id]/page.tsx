@@ -7,7 +7,7 @@
 
 import { use, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { AlertTriangle, CheckCircle2, ShieldAlert } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, ShieldAlert, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { PageHeader } from '@/components/shared/page-header';
 import { Button } from '@/components/ui/button';
@@ -19,29 +19,46 @@ import { Skeleton } from '@/components/ui/skeleton';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
-import { useBloodUnit, useMarkUnitAvailable, useQuarantineUnit, useUpdateBloodUnit } from '@/lib/hooks/use-blood-bank';
+import { useBloodUnit, useTransitionBloodUnit } from '@/lib/hooks/use-blood-bank';
 import { UNIT_STATUS_COLORS, COMPONENT_LABELS } from '@/lib/types/blood-bank';
 import type { UnitStatus } from '@/lib/types/blood-bank';
 import { formatDate } from '@/lib/utils/format';
 
-const UNIT_STATUSES: UnitStatus[] = ['COLLECTED', 'TESTING', 'AVAILABLE', 'RESERVED', 'ISSUED', 'EXPIRED', 'DISCARDED', 'QUARANTINED'];
+function formatStatusLabel(status: UnitStatus) {
+  return status.replaceAll('_', ' ');
+}
 
 export default function BloodUnitDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
   const unitId = Number(id);
   const { data: unit, isLoading } = useBloodUnit(Number.isNaN(unitId) ? undefined : unitId);
-  const markAvailable = useMarkUnitAvailable();
-  const quarantine = useQuarantineUnit();
-  const updateUnit = useUpdateBloodUnit();
-  const [quarantineReason, setQuarantineReason] = useState('');
+  const transitionUnit = useTransitionBloodUnit();
+  const [transitionReason, setTransitionReason] = useState('');
   const [selectedStatus, setSelectedStatus] = useState<UnitStatus>('COLLECTED');
 
   useEffect(() => {
     if (unit) {
-      setSelectedStatus(unit.status);
+      setSelectedStatus(unit.allowed_next_statuses[0] ?? unit.status);
     }
   }, [unit]);
+
+  const runTransition = async (targetStatus: UnitStatus, fallbackReason = '') => {
+    if (!unit) return;
+    try {
+      await transitionUnit.mutateAsync({
+        id: unit.id,
+        data: {
+          target_status: targetStatus,
+          reason: transitionReason.trim() || fallbackReason,
+        },
+      });
+      toast.success(`Unit moved to ${formatStatusLabel(targetStatus)}`);
+      setTransitionReason('');
+    } catch {
+      toast.error('Failed to transition blood unit');
+    }
+  };
 
   if (isLoading) {
     return <Skeleton className="h-80 w-full" />;
@@ -67,15 +84,8 @@ export default function BloodUnitDetailPage({ params }: { params: Promise<{ id: 
           <div className="flex gap-2">
             {unit.status === 'TESTING' && (
               <Button
-                onClick={async () => {
-                  try {
-                    await markAvailable.mutateAsync(unit.id);
-                    toast.success('Unit marked as available');
-                  } catch {
-                    toast.error('Failed to mark unit available');
-                  }
-                }}
-                disabled={markAvailable.isPending}
+                onClick={() => runTransition('AVAILABLE', 'Manual release after screening review.')}
+                disabled={transitionUnit.isPending || !unit.allowed_next_statuses.includes('AVAILABLE')}
               >
                 <CheckCircle2 className="h-4 w-4 mr-2" />
                 Mark Available
@@ -106,6 +116,13 @@ export default function BloodUnitDetailPage({ params }: { params: Promise<{ id: 
             <p><span className="font-medium">Expiry Date:</span> {formatDate(unit.expiry_date)} {unit.is_expired && <span className="text-destructive">(Expired)</span>}</p>
             <p><span className="font-medium">Volume:</span> {unit.volume_ml} mL</p>
             <p><span className="font-medium">Storage Location:</span> {unit.storage_location || 'Not set'}</p>
+            {unit.status_reason && <p><span className="font-medium">Latest Reason:</span> {unit.status_reason}</p>}
+            {unit.last_status_change_at && (
+              <p>
+                <span className="font-medium">Last Transition:</span> {formatDate(unit.last_status_change_at)}
+                {unit.last_status_changed_by_name ? ` by ${unit.last_status_changed_by_name}` : ''}
+              </p>
+            )}
             {unit.notes && <p><span className="font-medium">Notes:</span> {unit.notes}</p>}
           </CardContent>
         </Card>
@@ -123,55 +140,44 @@ export default function BloodUnitDetailPage({ params }: { params: Promise<{ id: 
             <p><span className="font-medium">All Screens Negative:</span> {unit.all_screens_negative ? 'Yes' : 'No'}</p>
 
             <div className="pt-4 space-y-2 border-t mt-4">
-              <Label>Change Status</Label>
+              <Label>Lifecycle Transition</Label>
               <div className="flex flex-col gap-2 sm:flex-row">
                 <Select value={selectedStatus} onValueChange={(value) => setSelectedStatus(value as UnitStatus)}>
-                  <SelectTrigger className="w-full sm:w-52">
-                    <SelectValue />
+                  <SelectTrigger className="w-full sm:w-52" disabled={unit.allowed_next_statuses.length === 0}>
+                    <SelectValue placeholder="Select next status" />
                   </SelectTrigger>
                   <SelectContent>
-                    {UNIT_STATUSES.map((status) => (
-                      <SelectItem key={status} value={status}>{status.replace('_', ' ')}</SelectItem>
+                    {unit.allowed_next_statuses.map((status) => (
+                      <SelectItem key={status} value={status}>{formatStatusLabel(status)}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
                 <Button
                   variant="outline"
-                  onClick={async () => {
-                    try {
-                      await updateUnit.mutateAsync({ id: unit.id, data: { status: selectedStatus } });
-                      toast.success(`Unit status updated to ${selectedStatus.replace('_', ' ')}`);
-                    } catch {
-                      toast.error('Failed to update unit status');
-                    }
-                  }}
-                  disabled={updateUnit.isPending || selectedStatus === unit.status}
+                  onClick={() => runTransition(selectedStatus)}
+                  disabled={
+                    transitionUnit.isPending ||
+                    unit.allowed_next_statuses.length === 0 ||
+                    selectedStatus === unit.status ||
+                    !unit.allowed_next_statuses.includes(selectedStatus)
+                  }
                   className="w-full sm:w-auto"
                 >
-                  Save Status
+                  Apply Transition
                 </Button>
               </div>
+              <Input
+                value={transitionReason}
+                onChange={(e) => setTransitionReason(e.target.value)}
+                placeholder="Reason for transition (optional)"
+              />
             </div>
 
             <div className="pt-4 space-y-2 border-t mt-4">
-              <Label htmlFor="quarantine-reason">Quarantine Reason</Label>
-              <Input
-                id="quarantine-reason"
-                value={quarantineReason}
-                onChange={(e) => setQuarantineReason(e.target.value)}
-                placeholder="Reason for quarantine"
-              />
               <Button
                 variant="destructive"
-                onClick={async () => {
-                  try {
-                    await quarantine.mutateAsync({ id: unit.id, reason: quarantineReason.trim() });
-                    toast.success('Unit quarantined');
-                  } catch {
-                    toast.error('Failed to quarantine unit');
-                  }
-                }}
-                disabled={quarantine.isPending}
+                onClick={() => runTransition('QUARANTINED', 'Manual quarantine requested.')}
+                disabled={transitionUnit.isPending || !unit.allowed_next_statuses.includes('QUARANTINED')}
                 className="w-full sm:w-auto"
               >
                 <ShieldAlert className="h-4 w-4 mr-2" />
@@ -181,6 +187,35 @@ export default function BloodUnitDetailPage({ params }: { params: Promise<{ id: 
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Lifecycle Timeline</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {unit.status_timeline.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No status transitions recorded yet.</p>
+          ) : (
+            unit.status_timeline.map((event) => (
+              <div key={event.id} className="rounded-md border p-3 text-sm">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 font-medium">
+                    <Badge variant="outline">{formatStatusLabel(event.from_status)}</Badge>
+                    <ArrowRight className="h-3.5 w-3.5 text-muted-foreground" />
+                    <Badge className={UNIT_STATUS_COLORS[event.to_status]}>{formatStatusLabel(event.to_status)}</Badge>
+                  </div>
+                  <span className="text-xs text-muted-foreground">{formatDate(event.changed_at)}</span>
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {event.source}
+                  {event.changed_by_name ? ` by ${event.changed_by_name}` : ''}
+                </p>
+                {event.reason && <p className="mt-1">{event.reason}</p>}
+              </div>
+            ))
+          )}
+        </CardContent>
+      </Card>
 
       {unit.is_expired && (
         <Card className="border-destructive/40">

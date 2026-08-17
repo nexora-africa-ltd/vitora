@@ -6,9 +6,12 @@ Inputs: `LabOrder` (with optional `blood_bank_unit`) and verified `LabResult` va
 
 from __future__ import annotations
 
+from contextlib import suppress
 from typing import TYPE_CHECKING
 
-from hmis.apps.blood_bank.models import UnitStatus
+from django.core.exceptions import ValidationError
+
+from hmis.apps.blood_bank.models import UnitStatus, UnitStatusChangeSource
 
 if TYPE_CHECKING:
     from hmis.apps.blood_bank.models import BloodUnit
@@ -141,12 +144,23 @@ def sync_blood_unit_screening_from_lab_order(lab_order: LabOrder) -> BloodUnit |
             unit.notes = f"{notes}\n{reason}".strip() if notes else reason
             update_fields.append("notes")
 
-        unit.status = UnitStatus.QUARANTINED
-        update_fields.append("status")
+        with suppress(ValidationError):
+            unit.transition_to(
+                UnitStatus.QUARANTINED,
+                reason=reason,
+                source=UnitStatusChangeSource.AUTOMATED,
+            )
 
     elif all_negative and unit.status in {UnitStatus.COLLECTED, UnitStatus.TESTING}:
-        unit.status = UnitStatus.AVAILABLE
-        update_fields.append("status")
+        with suppress(ValidationError):
+            unit.transition_to(
+                UnitStatus.AVAILABLE,
+                reason=(
+                    "Screening sync: all mandatory donor screening results are verified negative "
+                    f"on linked lab order {lab_order.order_number}"
+                ),
+                source=UnitStatusChangeSource.AUTOMATED,
+            )
 
     if update_fields:
         unit.save(update_fields=sorted(set(update_fields + ["updated_at"])))

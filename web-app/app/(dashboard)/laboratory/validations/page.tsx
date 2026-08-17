@@ -423,6 +423,9 @@ function ResultCard({
             <ResultValidationPanel
               resultId={result.id}
               verificationStatus={result.verification_status}
+              requiresClinicalSignoff={
+                result.validation_summary?.requires_clinical_signoff ?? true
+              }
               canAddTechnical={validationType === 'TECHNICAL'}
               canAddClinical={validationType === 'CLINICAL'}
               onValidationAdded={onValidationAdded}

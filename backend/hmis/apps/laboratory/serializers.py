@@ -152,9 +152,9 @@ class TestCatalogCreateSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["id", "created_at", "updated_at"]
 
-    def validate_code(self):
+    def validate_code(self, value):
         """Ensure code is unique within the facility (case-insensitive)."""
-        code = self.initial_data.get("code", "")
+        code = value
         if isinstance(code, str):
             code = code.strip().upper()
         # Scope uniqueness check to the facility from the request context

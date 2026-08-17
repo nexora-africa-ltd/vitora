@@ -2,6 +2,7 @@
 """Blood Bank models for Vitora HMIS."""
 
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
 
@@ -38,6 +39,12 @@ class UnitStatus(models.TextChoices):
     EXPIRED = "EXPIRED", "Expired"
     DISCARDED = "DISCARDED", "Discarded"
     QUARANTINED = "QUARANTINED", "Quarantined"
+
+
+class UnitStatusChangeSource(models.TextChoices):
+    MANUAL = "MANUAL", "Manual"
+    AUTOMATED = "AUTOMATED", "Automated"
+    SYSTEM = "SYSTEM", "System"
 
 
 class RequestStatus(models.TextChoices):
@@ -163,7 +170,60 @@ class BloodUnit(FacilityScopedModel, TimeStampedModel):
     all_screens_negative = models.BooleanField(default=False)
 
     storage_location = models.CharField(max_length=100, blank=True)
+    status_reason = models.TextField(blank=True)
+    last_status_change_at = models.DateTimeField(null=True, blank=True)
+    last_status_changed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="blood_unit_status_changes",
+    )
     notes = models.TextField(blank=True)
+
+    _ALLOWED_TRANSITIONS = {
+        UnitStatus.COLLECTED: {
+            UnitStatus.TESTING,
+            UnitStatus.QUARANTINED,
+            UnitStatus.DISCARDED,
+            UnitStatus.EXPIRED,
+        },
+        UnitStatus.TESTING: {
+            UnitStatus.AVAILABLE,
+            UnitStatus.QUARANTINED,
+            UnitStatus.DISCARDED,
+            UnitStatus.EXPIRED,
+        },
+        UnitStatus.AVAILABLE: {
+            UnitStatus.RESERVED,
+            UnitStatus.ISSUED,
+            UnitStatus.QUARANTINED,
+            UnitStatus.DISCARDED,
+            UnitStatus.EXPIRED,
+        },
+        UnitStatus.RESERVED: {
+            UnitStatus.AVAILABLE,
+            UnitStatus.ISSUED,
+            UnitStatus.QUARANTINED,
+            UnitStatus.DISCARDED,
+            UnitStatus.EXPIRED,
+        },
+        UnitStatus.ISSUED: {UnitStatus.DISCARDED},
+        UnitStatus.QUARANTINED: {
+            UnitStatus.TESTING,
+            UnitStatus.DISCARDED,
+            UnitStatus.EXPIRED,
+        },
+        UnitStatus.EXPIRED: {UnitStatus.DISCARDED},
+        UnitStatus.DISCARDED: set(),
+    }
+    _AUTO_EXPIRE_ELIGIBLE_STATUSES = {
+        UnitStatus.COLLECTED,
+        UnitStatus.TESTING,
+        UnitStatus.AVAILABLE,
+        UnitStatus.RESERVED,
+        UnitStatus.QUARANTINED,
+    }
 
     class Meta:
         ordering = ["-collection_date"]
@@ -177,9 +237,61 @@ class BloodUnit(FacilityScopedModel, TimeStampedModel):
         return f"{self.unit_number} ({self.blood_group} {self.get_component_display()})"
 
     def save(self, *args, **kwargs):
+        creating = self._state.adding
+        auto_expire_from_status: str | None = None
+
         if not self.unit_number:
             self.unit_number = self._generate_unit_number()
+
+        if (
+            self.expiry_date
+            and self.expiry_date <= timezone.now()
+            and self.status in self._AUTO_EXPIRE_ELIGIBLE_STATUSES
+        ):
+            auto_expire_from_status = self.status
+            self.status = UnitStatus.EXPIRED
+            if not self.status_reason:
+                self.status_reason = (
+                    "Automatically marked expired because expiry date is in the past."
+                )
+            self.last_status_change_at = timezone.now()
+            self.last_status_changed_by = None
+
+            update_fields = kwargs.get("update_fields")
+            if update_fields is not None:
+                kwargs["update_fields"] = sorted(
+                    set(update_fields)
+                    | {
+                        "status",
+                        "status_reason",
+                        "last_status_change_at",
+                        "last_status_changed_by",
+                        "updated_at",
+                    }
+                )
+
         super().save(*args, **kwargs)
+
+        if auto_expire_from_status and auto_expire_from_status != UnitStatus.EXPIRED:
+            reason = "Automatically marked expired because expiry date is in the past."
+            event_exists = BloodUnitStatusEvent.objects.filter(
+                blood_unit=self,
+                from_status=auto_expire_from_status,
+                to_status=UnitStatus.EXPIRED,
+                source=UnitStatusChangeSource.SYSTEM,
+                reason=reason,
+            ).exists()
+            if not event_exists or creating:
+                BloodUnitStatusEvent.objects.create(
+                    blood_unit=self,
+                    from_status=auto_expire_from_status,
+                    to_status=UnitStatus.EXPIRED,
+                    reason=reason,
+                    changed_by=None,
+                    source=UnitStatusChangeSource.SYSTEM,
+                    facility=self.facility,
+                    organization=self.organization,
+                )
 
     def _generate_unit_number(self):
         today = timezone.now().strftime("%Y%m%d")
@@ -200,18 +312,143 @@ class BloodUnit(FacilityScopedModel, TimeStampedModel):
     def is_available(self) -> bool:
         return self.status == UnitStatus.AVAILABLE and not self.is_expired
 
+    def get_transition_blockers(self, target_status: str) -> list[str]:
+        blockers: list[str] = []
+        if target_status == self.status:
+            blockers.append("Unit is already in the requested status.")
+            return blockers
+
+        allowed = self._ALLOWED_TRANSITIONS.get(self.status, set())
+        if target_status not in allowed:
+            blockers.append(f"Cannot transition from {self.status} to {target_status}.")
+            return blockers
+
+        if self.is_expired and target_status not in {
+            UnitStatus.EXPIRED,
+            UnitStatus.DISCARDED,
+        }:
+            blockers.append("Unit is expired. Move to EXPIRED or DISCARDED before any other state.")
+
+        if target_status == UnitStatus.AVAILABLE:
+            if not self.all_screens_negative:
+                blockers.append(
+                    "Cannot mark unit AVAILABLE until all required screening tests are verified negative."
+                )
+            if self.is_expired:
+                blockers.append("Cannot mark unit AVAILABLE because it is expired.")
+
+        if target_status in {UnitStatus.RESERVED, UnitStatus.ISSUED} and self.is_expired:
+            blockers.append("Cannot reserve or issue an expired unit.")
+
+        return blockers
+
+    def can_transition_to(self, target_status: str) -> bool:
+        return len(self.get_transition_blockers(target_status)) == 0
+
+    def get_allowed_next_statuses(self) -> list[str]:
+        candidates = self._ALLOWED_TRANSITIONS.get(self.status, set())
+        return [status for status in sorted(candidates) if self.can_transition_to(status)]
+
+    def transition_to(
+        self,
+        target_status: str,
+        *,
+        changed_by=None,
+        reason: str = "",
+        source: str = UnitStatusChangeSource.MANUAL,
+    ):
+        blockers = self.get_transition_blockers(target_status)
+        if blockers:
+            raise ValidationError(blockers[0])
+
+        previous_status = self.status
+        self.status = target_status
+        self.status_reason = (reason or "").strip()
+        self.last_status_change_at = timezone.now()
+        self.last_status_changed_by = changed_by
+
+        update_fields = [
+            "status",
+            "status_reason",
+            "last_status_change_at",
+            "last_status_changed_by",
+            "updated_at",
+        ]
+
+        if target_status == UnitStatus.AVAILABLE and not self.all_screens_negative:
+            self.all_screens_negative = True
+            update_fields.append("all_screens_negative")
+
+        if reason:
+            note_prefix = f"[{source}] {previous_status} -> {target_status}: {reason}"
+            existing_notes = (self.notes or "").strip()
+            self.notes = (
+                f"{existing_notes}\n{note_prefix}".strip() if existing_notes else note_prefix
+            )
+            update_fields.append("notes")
+
+        self.save(update_fields=update_fields)
+
+        BloodUnitStatusEvent.objects.create(
+            blood_unit=self,
+            from_status=previous_status,
+            to_status=target_status,
+            reason=(reason or "").strip(),
+            changed_by=changed_by,
+            source=source,
+            facility=self.facility,
+            organization=self.organization,
+        )
+
     def mark_available(self):
         """Mark unit available after all screens pass."""
-        self.status = UnitStatus.AVAILABLE
-        self.all_screens_negative = True
-        self.save(update_fields=["status", "all_screens_negative", "updated_at"])
+        self.transition_to(
+            UnitStatus.AVAILABLE,
+            reason="All screening checks completed and negative.",
+            source=UnitStatusChangeSource.AUTOMATED,
+        )
 
     def quarantine(self, reason=""):
         """Quarantine unit (positive screen or QC failure)."""
-        self.status = UnitStatus.QUARANTINED
-        if reason:
-            self.notes = f"{self.notes}\nQuarantined: {reason}".strip()
-        self.save(update_fields=["status", "notes", "updated_at"])
+        self.transition_to(
+            UnitStatus.QUARANTINED,
+            reason=reason or "Unit quarantined due to screening/QC risk.",
+            source=UnitStatusChangeSource.AUTOMATED,
+        )
+
+
+class BloodUnitStatusEvent(FacilityScopedModel, TimeStampedModel):
+    """Immutable audit trail of blood-unit status transitions."""
+
+    blood_unit = models.ForeignKey(
+        BloodUnit,
+        on_delete=models.CASCADE,
+        related_name="status_events",
+    )
+    from_status = models.CharField(max_length=20, choices=UnitStatus.choices)
+    to_status = models.CharField(max_length=20, choices=UnitStatus.choices)
+    reason = models.TextField(blank=True)
+    changed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="blood_unit_transition_events",
+    )
+    source = models.CharField(
+        max_length=20,
+        choices=UnitStatusChangeSource.choices,
+        default=UnitStatusChangeSource.MANUAL,
+    )
+    changed_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ["-changed_at", "-id"]
+
+    def __str__(self):
+        return (
+            f"{self.blood_unit.unit_number}: {self.from_status} -> {self.to_status} ({self.source})"
+        )
 
 
 class BloodRequest(FacilityScopedModel, TimeStampedModel):
@@ -338,11 +575,14 @@ class BloodIssue(FacilityScopedModel, TimeStampedModel):
         return f"Issue {self.blood_unit.unit_number} → {self.blood_request.patient}"
 
     def save(self, *args, **kwargs):
-        if not self.pk:
-            # Mark unit as issued
-            self.blood_unit.status = UnitStatus.ISSUED
-            self.blood_unit.save(update_fields=["status", "updated_at"])
+        creating = self.pk is None
         super().save(*args, **kwargs)
+        if creating and self.blood_unit.status != UnitStatus.ISSUED:
+            self.blood_unit.transition_to(
+                UnitStatus.ISSUED,
+                reason=f"Issued via blood issue #{self.pk}",
+                source=UnitStatusChangeSource.SYSTEM,
+            )
 
     def complete_transfusion(self, reaction=TransfusionReaction.NONE, details=""):
         """Complete transfusion and record reaction."""

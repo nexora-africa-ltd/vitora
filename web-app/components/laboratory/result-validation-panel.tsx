@@ -56,6 +56,8 @@ interface ResultValidationPanelProps {
   resultId: number;
   /** Current verification status from the result */
   verificationStatus?: 'UNVERIFIED' | 'VERIFIED' | 'REJECTED';
+  /** Whether this test requires clinical sign-off */
+  requiresClinicalSignoff?: boolean;
   /** Whether user can add technical validations */
   canAddTechnical?: boolean;
   /** Whether user can add clinical validations */
@@ -73,6 +75,7 @@ interface ResultValidationPanelProps {
 export function ResultValidationPanel({
   resultId,
   verificationStatus = 'UNVERIFIED',
+  requiresClinicalSignoff = true,
   canAddTechnical = true,
   canAddClinical = true,
   compact = false,
@@ -102,13 +105,15 @@ export function ResultValidationPanel({
   const clinicalStatus = clinicalValidation?.status;
 
   const isFullyValidated =
-    technicalStatus === 'APPROVED' && clinicalStatus === 'APPROVED';
+    technicalStatus === 'APPROVED' &&
+    (!requiresClinicalSignoff || clinicalStatus === 'APPROVED');
 
   // Determine what actions are available
   const canSubmitTechnical =
     canAddTechnical &&
     (!technicalValidation || technicalValidation.status === 'REJECTED');
   const canSubmitClinical =
+    requiresClinicalSignoff &&
     canAddClinical &&
     technicalStatus === 'APPROVED' &&
     (!clinicalValidation || clinicalValidation.status === 'REJECTED');
@@ -190,11 +195,13 @@ export function ResultValidationPanel({
         ) : (
           <div className="flex items-center gap-2 p-3 bg-yellow-50 dark:bg-yellow-950/30 rounded-lg border border-yellow-200 dark:border-yellow-800">
             <Clock className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
-            <span className="text-sm font-medium text-yellow-700 dark:text-yellow-300">
+              <span className="text-sm font-medium text-yellow-700 dark:text-yellow-300">
               {!technicalStatus
                 ? 'Awaiting Technical Review'
                 : technicalStatus === 'REJECTED'
                   ? 'Technical Review Rejected'
+                  : !requiresClinicalSignoff
+                    ? 'Technical Review Complete - No Clinical Sign-off Required'
                   : !clinicalStatus
                     ? 'Awaiting Clinical (Pathologist) Review'
                     : 'Clinical (Pathologist) Review Rejected'}
@@ -220,7 +227,7 @@ export function ResultValidationPanel({
             />
 
             {/* Clinical Validation (only show after technical) */}
-            {(technicalStatus === 'APPROVED' || clinicalValidation) && (
+            {requiresClinicalSignoff && (technicalStatus === 'APPROVED' || clinicalValidation) && (
               <ValidationCard
                 type="CLINICAL"
                 validation={clinicalValidation}

@@ -544,6 +544,28 @@ The app will behave as a fresh install on next launch.
 2. Set `"setup_completed": false` to trigger the setup wizard
 3. Restart the app → choose new mode
 
+### Stop Hub
+```bash
+# Linux
+# Stop now:
+  sudo systemctl stop vitora-hub
+# Disable auto-start:
+  sudo systemctl disable vitora-hub
+# Prevent any manual/dep start:
+  sudo systemctl mask vitora-hub
+# Verify:
+  systemctl status vitora-hub
+
+# Windows
+# Stop now:
+  Stop-Service -Name VitoraHub -Force
+# Disable auto-start:
+  Set-Service -Name VitoraHub -StartupType Disabled
+# Verify:
+  Get-Service VitoraHub | Select-Object Name,Status,StartType
+#If you want it fully removed:
+  sc.exe delete VitoraHub
+```
 ### Performance Targets
 
 | Metric | Target | Notes |

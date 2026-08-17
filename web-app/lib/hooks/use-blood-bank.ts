@@ -8,6 +8,7 @@ import type {
   BloodDonorCreateData,
   BloodDonorListParams,
   BloodUnitCreateData,
+  BloodUnitTransitionData,
   BloodUnitListParams,
   BloodRequestCreateData,
   BloodRequestListParams,
@@ -124,6 +125,19 @@ export function useQuarantineUnit() {
     mutationFn: ({ id, reason }: { id: number; reason: string }) => bloodBankApi.quarantine(id, reason),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: bloodBankKeys.units() });
+    },
+  });
+}
+
+export function useTransitionBloodUnit() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: BloodUnitTransitionData }) =>
+      bloodBankApi.transitionUnit(id, data),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: bloodBankKeys.units() });
+      queryClient.invalidateQueries({ queryKey: bloodBankKeys.unitDetail(variables.id) });
+      queryClient.invalidateQueries({ queryKey: bloodBankKeys.requests() });
     },
   });
 }

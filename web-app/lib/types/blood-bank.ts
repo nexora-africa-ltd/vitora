@@ -4,6 +4,7 @@
 
 // Status enums
 export type UnitStatus = 'COLLECTED' | 'TESTING' | 'AVAILABLE' | 'RESERVED' | 'ISSUED' | 'EXPIRED' | 'DISCARDED' | 'QUARANTINED';
+export type UnitStatusChangeSource = 'MANUAL' | 'AUTOMATED' | 'SYSTEM';
 export type RequestStatus = 'PENDING' | 'CROSSMATCH_PENDING' | 'READY' | 'ISSUED' | 'TRANSFUSED' | 'CANCELLED' | 'RETURNED';
 export type RequestUrgency = 'ROUTINE' | 'URGENT' | 'EMERGENCY';
 export type CrossMatchResult = 'COMPATIBLE' | 'INCOMPATIBLE' | 'PENDING';
@@ -79,9 +80,27 @@ export interface BloodUnit {
   all_screens_negative: boolean;
   is_expired: boolean;
   is_available: boolean;
+  allowed_next_statuses: UnitStatus[];
+  status_reason: string;
+  last_status_change_at: string | null;
+  last_status_changed_by: number | null;
+  last_status_changed_by_name: string | null;
+  status_timeline: BloodUnitStatusEvent[];
   notes: string;
   created_at: string;
   updated_at: string;
+}
+
+export interface BloodUnitStatusEvent {
+  id: number;
+  blood_unit: number;
+  from_status: UnitStatus;
+  to_status: UnitStatus;
+  reason: string;
+  source: UnitStatusChangeSource;
+  changed_by: number | null;
+  changed_by_name: string | null;
+  changed_at: string;
 }
 
 export interface BloodUnitListItem {
@@ -111,6 +130,11 @@ export interface BloodUnitCreateData {
   volume_ml?: number;
   storage_location?: string;
   notes?: string;
+}
+
+export interface BloodUnitTransitionData {
+  target_status: UnitStatus;
+  reason?: string;
 }
 
 // Blood Request

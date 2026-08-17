@@ -165,6 +165,28 @@ class TestTestCatalogAPI:
         assert response.data["code"] == test.code
         assert response.data["name"] == test.name
 
+    def test_create_test_catalog_entry(self, auth_client, sample_facility):
+        """Should create a test catalog entry and normalize code."""
+        response = auth_client.post(
+            "/api/lab/tests/",
+            {
+                "code": "  hba1c  ",
+                "name": "HbA1c",
+                "short_name": "HbA1c",
+                "category": "CHEMISTRY",
+                "specimen_type": "BLOOD",
+                "result_type": "NUMERIC",
+                "result_unit": "%",
+            },
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data["code"] == "HBA1C"
+
+        created = TestCatalog.objects.get(pk=response.data["id"])
+        assert created.code == "HBA1C"
+
 
 @pytest.mark.django_db
 class TestLabOrderAPI:

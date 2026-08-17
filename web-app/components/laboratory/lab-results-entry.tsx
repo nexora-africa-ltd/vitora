@@ -352,16 +352,21 @@ export function LabResultsEntry({ orderNumber, items, onComplete, onResultAdded,
     try {
       const activeResult = activeItem?.result;
       const summary = activeResult?.validation_summary;
-      const technicalStatus = summary?.technical_validation?.status;
-      const requiresClinical = summary?.requires_clinical_signoff ?? false;
-      const clinicalStatus = summary?.clinical_validation?.status;
+      let technicalStatus = summary?.technical_validation?.status;
+      let requiresClinical = summary?.requires_clinical_signoff ?? true;
+      let clinicalStatus = summary?.clinical_validation?.status;
 
       if (technicalStatus !== 'APPROVED') {
-        await verifyResult.mutateAsync({
+        const technicalResponse = await verifyResult.mutateAsync({
           resultId,
           approved: true,
           validationType: 'TECHNICAL',
         });
+
+        technicalStatus = technicalResponse.validation_summary?.technical_validation?.status;
+        requiresClinical =
+          technicalResponse.validation_summary?.requires_clinical_signoff ?? requiresClinical;
+        clinicalStatus = technicalResponse.validation_summary?.clinical_validation?.status;
       }
 
       if (requiresClinical && clinicalStatus !== 'APPROVED') {
@@ -834,6 +839,9 @@ export function LabResultsEntry({ orderNumber, items, onComplete, onResultAdded,
                 <ResultValidationPanel
                   resultId={activeItem.result.id}
                   verificationStatus={activeItem.result.verification_status}
+                  requiresClinicalSignoff={
+                    activeItem.result.validation_summary?.requires_clinical_signoff ?? true
+                  }
                   onValidationAdded={onResultAdded}
                 />
               )}

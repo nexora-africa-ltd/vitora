@@ -86,6 +86,8 @@ app.conf.task_routes = {
     "laboratory.analyzers.check_channel_health": {"queue": "monitoring"},
     "laboratory.analyzers.retry_failed_messages": {"queue": "maintenance"},
     "laboratory.analyzers.broadcast_work_orders": {"queue": "laboratory"},
+    # Blood bank tasks
+    "hmis.apps.blood_bank.tasks.expire_eligible_blood_units": {"queue": "maintenance"},
 }
 
 # Configure periodic tasks (Celery Beat)
@@ -210,6 +212,11 @@ app.conf.beat_schedule = {
     "billing-poll-ilm-preauth-statuses": {
         "task": "hmis.apps.billing.tasks.poll_ilm_preauth_statuses",
         "schedule": crontab(minute="*/5"),
+    },
+    # Blood bank: Expire eligible blood units daily at 1:15 AM
+    "blood-bank-expire-eligible-units-daily": {
+        "task": "hmis.apps.blood_bank.tasks.expire_eligible_blood_units",
+        "schedule": crontab(minute=15, hour=1),
     },
     # Insurance: Poll private-insurance claim statuses every 30 minutes
     "insurance-poll-claim-statuses": {

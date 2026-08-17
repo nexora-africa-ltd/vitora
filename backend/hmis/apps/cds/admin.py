@@ -43,6 +43,7 @@ class CDSRuleAdmin(TenantScopedAdminMixin, admin.ModelAdmin):
         "created_at",
         "updated_at",
     ]
+    actions = ["activate_selected_rules", "retire_selected_rules"]
 
     fieldsets = (
         (
@@ -146,6 +147,48 @@ class CDSRuleAdmin(TenantScopedAdminMixin, admin.ModelAdmin):
         )
 
     status_badge.short_description = "Status"  # type: ignore[attr-defined]
+
+    @admin.action(description="Activate selected CDS rules")
+    def activate_selected_rules(self, request, queryset):
+        activated = 0
+        skipped = 0
+
+        for rule in queryset:
+            if rule.status in (CDSRuleStatus.DRAFT, CDSRuleStatus.INACTIVE):
+                rule.activate(user=request.user)
+                activated += 1
+            else:
+                skipped += 1
+
+        if activated:
+            self.message_user(request, f"Activated {activated} CDS rule(s).")
+        if skipped:
+            self.message_user(
+                request,
+                f"Skipped {skipped} rule(s) that cannot be activated from their current status.",
+                level="warning",
+            )
+
+    @admin.action(description="Retire selected CDS rules")
+    def retire_selected_rules(self, request, queryset):
+        retired = 0
+        skipped = 0
+
+        for rule in queryset:
+            if rule.status != CDSRuleStatus.RETIRED:
+                rule.retire()
+                retired += 1
+            else:
+                skipped += 1
+
+        if retired:
+            self.message_user(request, f"Retired {retired} CDS rule(s).")
+        if skipped:
+            self.message_user(
+                request,
+                f"Skipped {skipped} rule(s) that are already retired.",
+                level="warning",
+            )
 
 
 @admin.register(CDSAlert)

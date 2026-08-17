@@ -1,6 +1,7 @@
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """Blood Bank views."""
 
+from django.core.exceptions import ValidationError
 from django_filters import rest_framework as filters
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
@@ -19,6 +20,7 @@ from .models import (
     CrossMatchResult,
     RequestStatus,
     UnitStatus,
+    UnitStatusChangeSource,
 )
 from .permissions import CanIssueBloodUnit, CanManageBloodBank, CanPerformCrossMatch
 from .serializers import (
@@ -34,6 +36,7 @@ from .serializers import (
     BloodUnitCreateSerializer,
     BloodUnitDetailSerializer,
     BloodUnitListSerializer,
+    BloodUnitStatusTransitionSerializer,
     CrossMatchCreateSerializer,
     CrossMatchSerializer,
 )
@@ -113,7 +116,7 @@ class BloodUnitViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.ModelV
 
     def get_permissions(self):
         permissions = [IsAuthenticated()]
-        if self.action in ("mark_available", "quarantine") or self.action not in (
+        if self.action in ("mark_available", "quarantine", "transition") or self.action not in (
             "list",
             "retrieve",
         ):
@@ -141,12 +144,15 @@ class BloodUnitViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.ModelV
     def mark_available(self, request, pk=None):
         """Mark unit as available after screening."""
         unit = self.get_object()
-        if unit.status != UnitStatus.TESTING:
-            return Response(
-                {"error": "Only units in TESTING status can be marked available."},
-                status=status.HTTP_400_BAD_REQUEST,
+        try:
+            unit.transition_to(
+                UnitStatus.AVAILABLE,
+                changed_by=request.user,
+                reason="Manual release after screening review.",
+                source=UnitStatusChangeSource.MANUAL,
             )
-        unit.mark_available()
+        except ValidationError as exc:
+            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
         return Response(BloodUnitDetailSerializer(unit).data)
 
     @action(detail=True, methods=["post"])
@@ -154,7 +160,34 @@ class BloodUnitViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.ModelV
         """Quarantine a unit."""
         reason = request.data.get("reason", "")
         unit = self.get_object()
-        unit.quarantine(reason)
+        try:
+            unit.transition_to(
+                UnitStatus.QUARANTINED,
+                changed_by=request.user,
+                reason=reason or "Manual quarantine requested.",
+                source=UnitStatusChangeSource.MANUAL,
+            )
+        except ValidationError as exc:
+            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(BloodUnitDetailSerializer(unit).data)
+
+    @action(detail=True, methods=["post"])
+    def transition(self, request, pk=None):
+        """Transition a blood unit using lifecycle guard rails."""
+        unit = self.get_object()
+        serializer = BloodUnitStatusTransitionSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        try:
+            unit.transition_to(
+                serializer.validated_data["target_status"],
+                changed_by=request.user,
+                reason=serializer.validated_data.get("reason", ""),
+                source=UnitStatusChangeSource.MANUAL,
+            )
+        except ValidationError as exc:
+            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
         return Response(BloodUnitDetailSerializer(unit).data)
 
 
@@ -231,12 +264,39 @@ class CrossMatchViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.Model
             )
         obj.result = result
         obj.save(update_fields=["result", "updated_at"])
-        # If compatible, update request status
+
+        # If compatible, update request status and auto-reserve the blood unit
         if result == CrossMatchResult.COMPATIBLE:
             blood_request = obj.blood_request
             if blood_request.status == RequestStatus.CROSSMATCH_PENDING:
                 blood_request.status = RequestStatus.READY
                 blood_request.save(update_fields=["status", "updated_at"])
+
+            active_request_statuses = {
+                RequestStatus.PENDING,
+                RequestStatus.CROSSMATCH_PENDING,
+                RequestStatus.READY,
+            }
+
+            if blood_request.status in active_request_statuses:
+                blood_unit = obj.blood_unit
+                if blood_unit.status == UnitStatus.AVAILABLE:
+                    try:
+                        blood_unit.transition_to(
+                            UnitStatus.RESERVED,
+                            changed_by=request.user,
+                            reason=(
+                                "Auto-reserved after compatible crossmatch "
+                                f"#{obj.pk} for request {blood_request.request_number}"
+                            ),
+                            source=UnitStatusChangeSource.AUTOMATED,
+                        )
+                    except ValidationError as exc:
+                        reserve_note = f"Auto-reserve failed: {exc}"
+                        obj.notes = (
+                            f"{obj.notes}\n{reserve_note}".strip() if obj.notes else reserve_note
+                        )
+                        obj.save(update_fields=["notes", "updated_at"])
         return Response(CrossMatchSerializer(obj).data)
 
 

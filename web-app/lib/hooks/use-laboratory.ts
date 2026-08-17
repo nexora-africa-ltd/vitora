@@ -458,10 +458,12 @@ export function useVerifyLabResult() {
       comments?: string;
       validationType?: 'TECHNICAL' | 'CLINICAL';
     }) => laboratoryApi.verifyResult(resultId, approved, comments, validationType),
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['lab-orders'] });
       queryClient.invalidateQueries({ queryKey: ['lab-results'] });
       queryClient.invalidateQueries({ queryKey: ['lab-results', 'pending-verification'] });
+      queryClient.invalidateQueries({ queryKey: ['lab-results', variables.resultId, 'validations'] });
+      queryClient.invalidateQueries({ queryKey: ['lab-results', 'pending-validations'] });
     },
   });
 }

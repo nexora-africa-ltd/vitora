@@ -13,6 +13,7 @@ from hmis.apps.blood_bank.models import (
     BloodIssue,
     BloodRequest,
     BloodUnit,
+    BloodUnitStatusEvent,
     CrossMatch,
     CrossMatchResult,
     RequestStatus,
@@ -20,6 +21,7 @@ from hmis.apps.blood_bank.models import (
     TransfusionReaction,
     UnitStatus,
 )
+from hmis.apps.blood_bank.tasks import expire_eligible_blood_units
 
 # =============================================================================
 # Model Tests
@@ -183,6 +185,7 @@ class TestBloodUnitModel:
             donor=donor,
             blood_group=BloodGroup.O_POS,
             status=UnitStatus.TESTING,
+            all_screens_negative=True,
             expiry_date=timezone.now() + timedelta(days=35),
             facility=sample_facility,
             organization=sample_facility.organization,
@@ -214,6 +217,79 @@ class TestBloodUnitModel:
         unit.refresh_from_db()
         assert unit.status == UnitStatus.QUARANTINED
         assert "HIV positive" in unit.notes
+
+    def test_auto_expires_when_expiry_date_is_in_past(self, db, sample_facility):
+        donor = BloodDonor.objects.create(
+            first_name="D",
+            last_name="O",
+            date_of_birth=date(1990, 1, 1),
+            gender="M",
+            blood_group=BloodGroup.O_POS,
+            facility=sample_facility,
+            organization=sample_facility.organization,
+        )
+        unit = BloodUnit.objects.create(
+            donor=donor,
+            blood_group=BloodGroup.O_POS,
+            status=UnitStatus.AVAILABLE,
+            expiry_date=timezone.now() - timedelta(minutes=5),
+            facility=sample_facility,
+            organization=sample_facility.organization,
+        )
+
+        unit.refresh_from_db()
+        assert unit.status == UnitStatus.EXPIRED
+        assert unit.last_status_change_at is not None
+        assert "Automatically marked expired" in unit.status_reason
+
+        event = BloodUnitStatusEvent.objects.filter(blood_unit=unit).first()
+        assert event is not None
+        assert event.from_status == UnitStatus.AVAILABLE
+        assert event.to_status == UnitStatus.EXPIRED
+
+    def test_daily_expiry_sweep_expires_only_eligible_statuses(self, db, sample_facility):
+        donor = BloodDonor.objects.create(
+            first_name="D",
+            last_name="O",
+            date_of_birth=date(1990, 1, 1),
+            gender="M",
+            blood_group=BloodGroup.O_POS,
+            facility=sample_facility,
+            organization=sample_facility.organization,
+        )
+
+        to_expire = BloodUnit.objects.create(
+            donor=donor,
+            blood_group=BloodGroup.O_POS,
+            status=UnitStatus.RESERVED,
+            expiry_date=timezone.now() + timedelta(days=1),
+            facility=sample_facility,
+            organization=sample_facility.organization,
+        )
+        BloodUnit.objects.filter(pk=to_expire.pk).update(
+            expiry_date=timezone.now() - timedelta(minutes=10)
+        )
+
+        issued_unit = BloodUnit.objects.create(
+            donor=donor,
+            blood_group=BloodGroup.O_POS,
+            status=UnitStatus.ISSUED,
+            expiry_date=timezone.now() + timedelta(days=1),
+            facility=sample_facility,
+            organization=sample_facility.organization,
+        )
+        BloodUnit.objects.filter(pk=issued_unit.pk).update(
+            expiry_date=timezone.now() - timedelta(minutes=10)
+        )
+
+        result = expire_eligible_blood_units()
+
+        to_expire.refresh_from_db()
+        issued_unit.refresh_from_db()
+
+        assert result["expired_count"] >= 1
+        assert to_expire.status == UnitStatus.EXPIRED
+        assert issued_unit.status == UnitStatus.ISSUED
 
 
 class TestBloodRequestModel:
@@ -434,6 +510,7 @@ class TestBloodUnitAPI:
             donor=blood_donor,
             blood_group=BloodGroup.O_POS,
             status=UnitStatus.TESTING,
+            all_screens_negative=True,
             expiry_date=timezone.now() + timedelta(days=35),
             facility=sample_facility,
             organization=sample_facility.organization,
@@ -456,6 +533,45 @@ class TestBloodUnitAPI:
         )
         assert response.status_code == status.HTTP_200_OK
         assert response.data["status"] == "QUARANTINED"
+
+    def test_transition_blocks_invalid_available_move(
+        self, authenticated_client, sample_facility, blood_donor
+    ):
+        unit = BloodUnit.objects.create(
+            donor=blood_donor,
+            blood_group=BloodGroup.O_POS,
+            status=UnitStatus.TESTING,
+            all_screens_negative=False,
+            expiry_date=timezone.now() + timedelta(days=35),
+            facility=sample_facility,
+            organization=sample_facility.organization,
+        )
+
+        response = authenticated_client.post(
+            f"/api/blood-bank/units/{unit.pk}/transition/",
+            {"target_status": "AVAILABLE", "reason": "Ready for stock"},
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "Cannot mark unit AVAILABLE" in response.data["error"]
+
+    def test_transition_records_lifecycle_event(self, authenticated_client, blood_unit):
+        response = authenticated_client.post(
+            f"/api/blood-bank/units/{blood_unit.pk}/transition/",
+            {"target_status": "RESERVED", "reason": "Allocated to urgent request"},
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        blood_unit.refresh_from_db()
+        assert blood_unit.status == UnitStatus.RESERVED
+
+        event = BloodUnitStatusEvent.objects.filter(blood_unit=blood_unit).first()
+        assert event is not None
+        assert event.from_status == UnitStatus.AVAILABLE
+        assert event.to_status == UnitStatus.RESERVED
+        assert event.reason == "Allocated to urgent request"
 
     def test_filter_units_by_status(self, authenticated_client, blood_unit):
         response = authenticated_client.get("/api/blood-bank/units/?status=AVAILABLE")
@@ -558,6 +674,32 @@ class TestCrossMatchAPI:
         # Request should move to READY
         blood_request.refresh_from_db()
         assert blood_request.status == RequestStatus.READY
+        # Compatible result should auto-reserve available unit
+        blood_unit.refresh_from_db()
+        assert blood_unit.status == UnitStatus.RESERVED
+
+    def test_record_compatible_result_does_not_reserve_inactive_request(
+        self, authenticated_client, blood_request, blood_unit, test_user
+    ):
+        blood_request.status = RequestStatus.CANCELLED
+        blood_request.save(update_fields=["status", "updated_at"])
+
+        xm = CrossMatch.objects.create(
+            blood_request=blood_request,
+            blood_unit=blood_unit,
+            performed_by=test_user,
+            facility=blood_request.facility,
+            organization=blood_request.organization,
+        )
+
+        response = authenticated_client.post(
+            f"/api/blood-bank/crossmatches/{xm.pk}/record_result/",
+            {"result": "COMPATIBLE"},
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        blood_unit.refresh_from_db()
+        assert blood_unit.status == UnitStatus.AVAILABLE
 
     def test_record_invalid_result(
         self, authenticated_client, blood_request, blood_unit, test_user
