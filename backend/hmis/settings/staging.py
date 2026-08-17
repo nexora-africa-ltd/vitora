@@ -30,13 +30,14 @@ ALLOWED_HOSTS = [
 # Database - Can use SQLite for demos or PostgreSQL for Render
 # =============================================================================
 DATABASE_URL = os.getenv("DATABASE_URL")
+DB_CONN_MAX_AGE = int(os.getenv("DB_CONN_MAX_AGE", "60"))
 
 if DATABASE_URL:
     # PostgreSQL (Neon / Vercel Postgres / Render)
     DATABASES = {
         "default": dj_database_url.config(
             default=DATABASE_URL,
-            conn_max_age=600,
+            conn_max_age=DB_CONN_MAX_AGE,
             conn_health_checks=True,
             ssl_require=True,
         )

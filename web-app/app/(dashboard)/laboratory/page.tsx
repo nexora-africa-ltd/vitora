@@ -201,7 +201,7 @@ function ValidationsQuickView() {
         <div className="p-4 border rounded-lg bg-muted/30">
           <div className="flex items-center gap-2 mb-2">
             <FileText className="h-5 w-5 text-green-600" />
-            <span className="font-medium">Clinical Review</span>
+            <span className="font-medium">Clinical (Pathologist) Review</span>
           </div>
           <p className="text-sm text-muted-foreground">
             Verifies clinical relevance: consistency with patient history,

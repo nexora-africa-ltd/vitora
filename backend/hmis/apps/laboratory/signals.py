@@ -12,12 +12,27 @@ import logging
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
+from hmis.apps.blood_bank.models import UnitStatus
 from hmis.apps.core.events import LaboratoryEvents, publish_event
 from hmis.apps.core.sync_context import is_sync_materialization_active
 
 from .models import LabOrder, LabOrderItem, LabQueue, LabResult, Specimen
 
 logger = logging.getLogger(__name__)
+
+
+@receiver(post_save, sender=LabOrder)
+def sync_linked_blood_unit_to_testing(sender, instance, **kwargs):
+    """Ensure a linked blood unit is marked TESTING for donor-unit lab workflows."""
+    if is_sync_materialization_active() or not instance.blood_bank_unit_id:
+        return
+
+    unit = instance.blood_bank_unit
+    if unit.status in {UnitStatus.TESTING, UnitStatus.EXPIRED, UnitStatus.ISSUED}:
+        return
+
+    unit.status = UnitStatus.TESTING
+    unit.save(update_fields=["status", "updated_at"])
 
 
 @receiver(post_save, sender=LabOrder)

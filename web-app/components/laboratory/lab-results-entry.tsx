@@ -350,11 +350,36 @@ export function LabResultsEntry({ orderNumber, items, onComplete, onResultAdded,
 
   const handleVerify = async (resultId: number) => {
     try {
-      await verifyResult.mutateAsync(resultId);
+      const activeResult = activeItem?.result;
+      const summary = activeResult?.validation_summary;
+      const technicalStatus = summary?.technical_validation?.status;
+      const requiresClinical = summary?.requires_clinical_signoff ?? false;
+      const clinicalStatus = summary?.clinical_validation?.status;
+
+      if (technicalStatus !== 'APPROVED') {
+        await verifyResult.mutateAsync({
+          resultId,
+          approved: true,
+          validationType: 'TECHNICAL',
+        });
+      }
+
+      if (requiresClinical && clinicalStatus !== 'APPROVED') {
+        await verifyResult.mutateAsync({
+          resultId,
+          approved: true,
+          validationType: 'CLINICAL',
+        });
+      }
+
       toast({
         title: 'Result verified',
-        description: 'The result has been verified.',
+        description: requiresClinical
+          ? 'Technical and clinical validations were completed.'
+          : 'Technical validation was completed.',
       });
+
+      await onResultAdded?.();
     } catch (error) {
       toast({
         title: 'Error',
@@ -826,7 +851,7 @@ export function LabResultsEntry({ orderNumber, items, onComplete, onResultAdded,
               {activeItem.result?.verification_status !== 'VERIFIED' && (
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between pt-2 border-t">
                   <p className="text-sm text-muted-foreground">
-                    Or use quick verification (bypasses two-stage review)
+                    Or use quick verification (auto-completes required review stages)
                   </p>
                   <Button
                     variant="outline"

@@ -75,6 +75,7 @@ jobs:
             DJANGO_ENV=${{ env.DEPLOY_ENV }}
             DJANGO_SETTINGS_MODULE=hmis.settings.${{ env.DEPLOY_ENV }}
             DATABASE_URL=secretref:database-url
+            DB_CONN_MAX_AGE=${{ vars.DB_CONN_MAX_AGE || (env.DEPLOY_ENV == 'production' && '600' || '60') }}
             ENCRYPTION_KEY=secretref:encryption-key
             PII_HMAC_KEY=secretref:pii-hmac-key
             DJANGO_SECRET_KEY=secretref:django-secret-key

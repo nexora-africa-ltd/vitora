@@ -114,3 +114,16 @@ class TestStagingSettings:
 
         assert hasattr(staging, "DEMO_FACILITY_NAME")
         assert staging.DEMO_FACILITY_NAME == "Demo Health Facility"
+
+    def test_staging_db_conn_max_age_from_env(self):
+        """Staging should read DB connection max age from environment."""
+        with mock.patch.dict(
+            os.environ,
+            {"DATABASE_URL": "postgres://test:test@localhost/test", "DB_CONN_MAX_AGE": "45"},
+        ):
+            import importlib
+
+            from hmis.settings import staging
+
+            importlib.reload(staging)
+            assert staging.DATABASES["default"]["CONN_MAX_AGE"] == 45

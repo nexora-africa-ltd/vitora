@@ -293,6 +293,55 @@ class TestLabOrderAPI:
         assert response.data["billing_patient"] == recipient.id
         assert response.data["blood_bank_unit"] == unit.id
 
+    def test_patch_lab_order_with_blood_unit_sets_unit_to_testing(
+        self,
+        auth_client,
+        sample_encounter,
+        sample_test_catalog,
+        sample_facility,
+        sample_organization,
+    ):
+        order_response = auth_client.post(
+            "/api/lab/orders/",
+            {
+                "patient": sample_encounter.patient.id,
+                "encounter": sample_encounter.id,
+                "items": [{"test_code": "CBC"}],
+            },
+            format="json",
+        )
+        assert order_response.status_code == status.HTTP_201_CREATED
+
+        donor = BloodDonor.objects.create(
+            first_name="Patch",
+            last_name="Donor",
+            date_of_birth=date(1989, 2, 2),
+            gender="M",
+            blood_group=BloodGroup.O_POS,
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+        unit = BloodUnit.objects.create(
+            donor=donor,
+            blood_group=BloodGroup.O_POS,
+            status=UnitStatus.COLLECTED,
+            expiry_date="2099-01-01T00:00:00Z",
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+
+        patch_response = auth_client.patch(
+            f"/api/lab/orders/{order_response.data['order_number']}/",
+            {"blood_bank_unit": unit.id},
+            format="json",
+        )
+
+        assert patch_response.status_code == status.HTTP_200_OK
+        assert patch_response.data["blood_bank_unit"] == unit.id
+
+        unit.refresh_from_db()
+        assert unit.status == UnitStatus.TESTING
+
     def test_order_number_auto_generated(self, auth_client, sample_encounter, sample_test_catalog):
         """Order number should be auto-generated."""
         order_data = {

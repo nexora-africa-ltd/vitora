@@ -443,11 +443,13 @@ export const laboratoryApi = {
   async verifyResult(
     resultId: number,
     approved: boolean = true,
-    comments?: string
+    comments?: string,
+    validationType: 'TECHNICAL' | 'CLINICAL' = 'TECHNICAL'
   ): Promise<LabResult> {
     const response = await apiClient.post<LabResult>(`/api/lab/results/${resultId}/verify/`, {
       approved,
       comments: comments || '',
+      validation_type: validationType,
     });
     return parseResponse(LabResultSchema, response.data, { context: 'laboratoryApi.verifyResult' });
   },

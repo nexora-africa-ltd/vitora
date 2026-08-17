@@ -202,7 +202,7 @@ export default function ValidationsPage() {
             <TabsTrigger value="clinical" className="gap-2">
               <Stethoscope className="h-4 w-4" />
               <span className="sm:hidden">Clinical</span>
-              <span className="hidden sm:inline">Clinical Review</span>
+              <span className="hidden sm:inline">Clinical (Pathologist) Review</span>
               {clinicalResults.length > 0 && (
                 <Badge variant="secondary" className="ml-1">
                   {clinicalResults.length}

@@ -447,7 +447,17 @@ export function useVerifyLabResult() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (resultId: number) => laboratoryApi.verifyResult(resultId),
+    mutationFn: ({
+      resultId,
+      approved = true,
+      comments,
+      validationType = 'TECHNICAL',
+    }: {
+      resultId: number;
+      approved?: boolean;
+      comments?: string;
+      validationType?: 'TECHNICAL' | 'CLINICAL';
+    }) => laboratoryApi.verifyResult(resultId, approved, comments, validationType),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['lab-orders'] });
       queryClient.invalidateQueries({ queryKey: ['lab-results'] });

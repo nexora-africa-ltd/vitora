@@ -151,7 +151,7 @@ export function ResultValidationPanel({
               className="gap-1"
             >
               <Stethoscope className="h-3 w-3" />
-              <span className="hidden sm:inline">Clinical Review</span>
+              <span className="hidden sm:inline">Clinical (Pathologist) Review</span>
               <span className="sm:hidden">Clin</span>
             </Button>
           )}
@@ -175,7 +175,7 @@ export function ResultValidationPanel({
       <CardHeader className="pb-3">
         <div className="flex items-center gap-2">
           <CardTitle className="text-base">Two-Stage Validation</CardTitle>
-          <HelpPopover content="Results require both technical review (by lab technician) and clinical review (by pathologist) before release." />
+          <HelpPopover content="Results require both technical review (by lab technician) and Clinical (Pathologist) Review before release." />
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -196,8 +196,8 @@ export function ResultValidationPanel({
                 : technicalStatus === 'REJECTED'
                   ? 'Technical Review Rejected'
                   : !clinicalStatus
-                    ? 'Awaiting Clinical Review'
-                    : 'Clinical Review Rejected'}
+                    ? 'Awaiting Clinical (Pathologist) Review'
+                    : 'Clinical (Pathologist) Review Rejected'}
             </span>
           </div>
         )}
@@ -266,7 +266,7 @@ function ValidationCard({
   disabled,
 }: ValidationCardProps) {
   const Icon = type === 'TECHNICAL' ? Shield : Stethoscope;
-  const label = type === 'TECHNICAL' ? 'Technical Review' : 'Clinical Review';
+  const label = type === 'TECHNICAL' ? 'Technical Review' : 'Clinical (Pathologist) Review';
 
   if (!validation) {
     return (
@@ -411,7 +411,7 @@ function AddValidationDialog({
 
   const Icon = validationType === 'TECHNICAL' ? Shield : Stethoscope;
   const typeLabel =
-    validationType === 'TECHNICAL' ? 'Technical Review' : 'Clinical Review';
+    validationType === 'TECHNICAL' ? 'Technical Review' : 'Clinical (Pathologist) Review';
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -426,7 +426,7 @@ function AddValidationDialog({
               content={
                 validationType === 'TECHNICAL'
                   ? 'Technical review verifies analytical accuracy: specimen quality, equipment calibration, and result consistency.'
-                  : 'Clinical review verifies clinical relevance: consistency with patient history, need for repeat testing, and clinical interpretation.'
+                  : 'Clinical (Pathologist) Review verifies clinical relevance: consistency with patient history, need for repeat testing, and clinical interpretation.'
               }
             />
           </div>
