@@ -22,6 +22,7 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array<ArrayBuffer> {
 type PushPermission = 'default' | 'granted' | 'denied' | 'unsupported';
 
 const SW_READY_TIMEOUT_MS = 2000;
+const SW_RECHECK_DELAY_MS = 3000;
 
 async function getServiceWorkerRegistration(): Promise<ServiceWorkerRegistration | null> {
   if (!('serviceWorker' in navigator)) {
@@ -59,6 +60,7 @@ export function usePushSubscription() {
   const [isLoading, setIsLoading] = useState(true);
   const [hasServiceWorkerRegistration, setHasServiceWorkerRegistration] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const swDisabledByConfig = process.env.NEXT_PUBLIC_DISABLE_SW === 'true';
 
   const isSupported =
     typeof window !== 'undefined' &&
@@ -87,6 +89,14 @@ export function usePushSubscription() {
       return;
     }
 
+    if (swDisabledByConfig) {
+      setHasServiceWorkerRegistration(false);
+      setIsSubscribed(false);
+      setIsLoading(false);
+      setStatusMessage('Push is disabled by deployment configuration.');
+      return;
+    }
+
     setPermission(Notification.permission as PushPermission);
 
     let isMounted = true;
@@ -99,7 +109,7 @@ export function usePushSubscription() {
             setHasServiceWorkerRegistration(false);
             setIsSubscribed(false);
             setIsLoading(false);
-            setStatusMessage('Push requires a registered service worker. It may be unavailable in local development.');
+            setStatusMessage('Service worker is not registered yet. Try again in a moment.');
           }
           return;
         }
@@ -121,10 +131,25 @@ export function usePushSubscription() {
 
     checkSubscription();
 
+    const retryTimer = window.setTimeout(() => {
+      if (isMounted) {
+        checkSubscription();
+      }
+    }, SW_RECHECK_DELAY_MS);
+
+    const onLoad = () => {
+      if (isMounted) {
+        checkSubscription();
+      }
+    };
+    window.addEventListener('load', onLoad);
+
     return () => {
       isMounted = false;
+      window.clearTimeout(retryTimer);
+      window.removeEventListener('load', onLoad);
     };
-  }, [isSupported]);
+  }, [isSupported, swDisabledByConfig]);
 
   const isVapidReady = !!vapidData?.vapid_public_key;
 
@@ -132,6 +157,9 @@ export function usePushSubscription() {
   const subscribeMutation = useMutation({
     mutationFn: async (publicKey: string) => {
       setStatusMessage(null);
+      if (swDisabledByConfig) {
+        throw new Error('Push is disabled by deployment configuration.');
+      }
       const perm = await Notification.requestPermission();
       setPermission(perm as PushPermission);
       if (perm !== 'granted') {
@@ -139,13 +167,15 @@ export function usePushSubscription() {
       }
 
       const registration = await getServiceWorkerRegistration();
-      if (!registration) {
+      const ensuredRegistration =
+        registration || (await navigator.serviceWorker.register('/sw.js', { scope: '/' }));
+      if (!ensuredRegistration) {
         throw new Error('Service worker is not ready for push subscriptions');
       }
       setHasServiceWorkerRegistration(true);
       let subscription: PushSubscription;
       try {
-        subscription = await registration.pushManager.subscribe({
+        subscription = await ensuredRegistration.pushManager.subscribe({
           userVisibleOnly: true,
           applicationServerKey: urlBase64ToUint8Array(publicKey),
         });
