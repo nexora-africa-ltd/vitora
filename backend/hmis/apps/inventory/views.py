@@ -18,6 +18,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from hmis.apps.core.audit import AuditedMutationMixin
 from hmis.apps.core.mixins import ReadOnCreateMixin, TenantScopedViewMixin, resolve_request_tenant
 from hmis.apps.core.openapi import SchemaFallbackSerializer
 from hmis.apps.core.permissions import (
@@ -195,10 +196,13 @@ class InventoryBootstrapView(APIView):
 # ---------------------------------------------------------------------------
 
 
-class PaymentTermViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
+class PaymentTermViewSet(AuditedMutationMixin, TenantScopedViewMixin, viewsets.ModelViewSet):
     """CRUD for configurable payment terms. Organization-scoped."""
 
     queryset = PaymentTerm.objects.all()
+    audit_resource_type = "PaymentTerm"
+    audit_action_prefix = "inventory.payment_term"
+    audit_source = "inventory_api"
     serializer_class = PaymentTermSerializer
     permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     tenant_scope = "organization"
@@ -210,10 +214,18 @@ class PaymentTermViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
 # ---------------------------------------------------------------------------
 
 
-class SupplierViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewSet):
+class SupplierViewSet(
+    AuditedMutationMixin,
+    TenantScopedViewMixin,
+    ReadOnCreateMixin,
+    viewsets.ModelViewSet,
+):
     """CRUD for suppliers. Organization-scoped."""
 
     queryset = Supplier.objects.all()
+    audit_resource_type = "Supplier"
+    audit_action_prefix = "inventory.supplier"
+    audit_source = "inventory_api"
     permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     filterset_class = SupplierFilter
     search_fields = ["name", "code", "contact_person"]
@@ -238,12 +250,20 @@ class SupplierViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelVi
 # ---------------------------------------------------------------------------
 
 
-class PurchaseOrderViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewSet):
+class PurchaseOrderViewSet(
+    AuditedMutationMixin,
+    TenantScopedViewMixin,
+    ReadOnCreateMixin,
+    viewsets.ModelViewSet,
+):
     """CRUD + state transitions for purchase orders. Facility-scoped."""
 
     queryset = PurchaseOrder.objects.select_related(
         "supplier", "ordered_by", "approved_by"
     ).prefetch_related("items__drug")
+    audit_resource_type = "PurchaseOrder"
+    audit_action_prefix = "inventory.purchase_order"
+    audit_source = "inventory_api"
     permission_classes = [
         IsAuthenticated,
         RequiresActiveShiftPermission,
@@ -332,12 +352,20 @@ class PurchaseOrderViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.Mo
 # ---------------------------------------------------------------------------
 
 
-class GoodsReceiptNoteViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewSet):
+class GoodsReceiptNoteViewSet(
+    AuditedMutationMixin,
+    TenantScopedViewMixin,
+    ReadOnCreateMixin,
+    viewsets.ModelViewSet,
+):
     """CRUD + confirm for goods receipt notes. Facility-scoped."""
 
     queryset = GoodsReceiptNote.objects.select_related(
         "supplier", "purchase_order", "received_by", "confirmed_by"
     ).prefetch_related("items__drug", "items__po_item", "items__stock_batch")
+    audit_resource_type = "GoodsReceiptNote"
+    audit_action_prefix = "inventory.grn"
+    audit_source = "inventory_api"
     permission_classes = [
         IsAuthenticated,
         RequiresActiveShiftPermission,
@@ -405,10 +433,18 @@ class GoodsReceiptNoteViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets
 # ---------------------------------------------------------------------------
 
 
-class StoreLocationViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewSet):
+class StoreLocationViewSet(
+    AuditedMutationMixin,
+    TenantScopedViewMixin,
+    ReadOnCreateMixin,
+    viewsets.ModelViewSet,
+):
     """CRUD for store locations within a facility. Facility-scoped."""
 
     queryset = StoreLocation.objects.select_related("managed_by")
+    audit_resource_type = "StoreLocation"
+    audit_action_prefix = "inventory.store_location"
+    audit_source = "inventory_api"
     permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     filterset_class = StoreLocationFilter
     search_fields = ["name", "code"]
@@ -425,7 +461,12 @@ class StoreLocationViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.Mo
 # ---------------------------------------------------------------------------
 
 
-class StockTransferViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewSet):
+class StockTransferViewSet(
+    AuditedMutationMixin,
+    TenantScopedViewMixin,
+    ReadOnCreateMixin,
+    viewsets.ModelViewSet,
+):
     """CRUD + state transitions for stock transfers. Organization-scoped."""
 
     queryset = StockTransfer.objects.select_related(
@@ -438,6 +479,9 @@ class StockTransferViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.Mo
         "dispatched_by",
         "received_by",
     ).prefetch_related("items__drug", "items__source_batch", "items__destination_batch")
+    audit_resource_type = "StockTransfer"
+    audit_action_prefix = "inventory.stock_transfer"
+    audit_source = "inventory_api"
     permission_classes = [
         IsAuthenticated,
         RequiresActiveShiftPermission,
@@ -552,10 +596,18 @@ class StockTransferViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.Mo
 # ===========================================================================
 
 
-class WardStockViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewSet):
+class WardStockViewSet(
+    AuditedMutationMixin,
+    TenantScopedViewMixin,
+    ReadOnCreateMixin,
+    viewsets.ModelViewSet,
+):
     """CRUD + consume/replenish/return for ward stock levels. Facility-scoped."""
 
     queryset = WardStock.objects.select_related("store_location", "drug", "ward")
+    audit_resource_type = "WardStock"
+    audit_action_prefix = "inventory.ward_stock"
+    audit_source = "inventory_api"
     permission_classes = [
         IsAuthenticated,
         RequiresActiveShiftPermission,
@@ -697,10 +749,18 @@ class WardStockTransactionViewSet(TenantScopedViewMixin, viewsets.ReadOnlyModelV
 # ===========================================================================
 
 
-class StockCountViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewSet):
+class StockCountViewSet(
+    AuditedMutationMixin,
+    TenantScopedViewMixin,
+    ReadOnCreateMixin,
+    viewsets.ModelViewSet,
+):
     """CRUD + lifecycle actions for stock counts. Facility-scoped."""
 
     queryset = StockCount.objects.select_related("store_location", "started_by", "approved_by")
+    audit_resource_type = "StockCount"
+    audit_action_prefix = "inventory.stock_count"
+    audit_source = "inventory_api"
     permission_classes = [
         IsAuthenticated,
         RequiresActiveShiftPermission,
@@ -984,13 +1044,21 @@ class StockCountViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.Model
 # ===========================================================================
 
 
-class ETIMSConfigViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewSet):
+class ETIMSConfigViewSet(
+    AuditedMutationMixin,
+    TenantScopedViewMixin,
+    ReadOnCreateMixin,
+    viewsets.ModelViewSet,
+):
     """CRUD for eTIMS configuration. Singleton per facility.
 
     Write operations require ``inventory.manage_etims`` permission.
     """
 
     queryset = ETIMSConfig.objects.all()
+    audit_resource_type = "ETIMSConfig"
+    audit_action_prefix = "inventory.etims_config"
+    audit_source = "inventory_api"
     permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     tenant_scope = "facility"
 
@@ -1049,12 +1117,20 @@ class ETIMSConfigViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.Mode
         )
 
 
-class ETIMSInvoiceViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewSet):
+class ETIMSInvoiceViewSet(
+    AuditedMutationMixin,
+    TenantScopedViewMixin,
+    ReadOnCreateMixin,
+    viewsets.ModelViewSet,
+):
     """CRUD + lifecycle actions for eTIMS invoice submissions."""
 
     queryset = ETIMSInvoice.objects.select_related(
         "invoice__patient", "dispensing"
     ).prefetch_related("items")
+    audit_resource_type = "ETIMSInvoice"
+    audit_action_prefix = "inventory.etims_invoice"
+    audit_source = "inventory_api"
     permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     filterset_class = ETIMSInvoiceFilter
     tenant_scope = "facility"

@@ -16,6 +16,7 @@ from rest_framework import status
 from rest_framework.test import APIClient
 
 from hmis.apps.blood_bank.models import BloodDonor, BloodGroup, BloodUnit, UnitStatus
+from hmis.apps.core.models import AuditLog
 from hmis.apps.encounters.models import Encounter
 from hmis.apps.laboratory.models import LabOrder, LabOrderItem, LabResult, TestCatalog
 from hmis.apps.patients.models import Patient
@@ -179,7 +180,13 @@ class TestLabOrderAPI:
         response = api_client.post("/api/lab/orders/", order_data, format="json")
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
-    def test_create_lab_order_with_items(self, auth_client, sample_encounter, sample_test_catalog):
+    def test_create_lab_order_with_items(
+        self,
+        auth_client,
+        sample_encounter,
+        sample_test_catalog,
+        authenticated_user,
+    ):
         """Should create lab order with test items."""
         order_data = {
             "patient": sample_encounter.patient.id,
@@ -198,6 +205,16 @@ class TestLabOrderAPI:
         assert "order_number" in response.data
         assert response.data["order_number"].startswith("LAB-")
         assert len(response.data["items"]) == 2
+
+        created_order = LabOrder.objects.get(order_number=response.data["order_number"])
+        audit_log = AuditLog.objects.filter(
+            action="laboratory.order.create",
+            resource_type="LabOrder",
+            resource_id=created_order.id,
+        ).first()
+        assert audit_log is not None
+        assert audit_log.user == authenticated_user
+        assert audit_log.details.get("source") == "laboratory_api"
 
     def test_create_lab_order_with_billing_patient_and_blood_unit(
         self,

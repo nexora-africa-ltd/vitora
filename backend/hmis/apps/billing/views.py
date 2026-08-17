@@ -55,6 +55,7 @@ from hmis.apps.billing.serializers import (
     ServiceCategorySerializer,
     ServiceSerializer,
 )
+from hmis.apps.core.audit import AuditedMutationMixin
 from hmis.apps.core.mixins import (
     NestedTenantScopeMixin,
     PublicIdLookupMixin,
@@ -71,7 +72,7 @@ from hmis.apps.core.permissions import (
 logger = logging.getLogger(__name__)
 
 
-class ServiceCategoryViewSet(viewsets.ModelViewSet):
+class ServiceCategoryViewSet(AuditedMutationMixin, viewsets.ModelViewSet):
     """
     ViewSet for ServiceCategory model.
 
@@ -79,6 +80,9 @@ class ServiceCategoryViewSet(viewsets.ModelViewSet):
     """
 
     queryset = ServiceCategory.objects.all()
+    audit_resource_type = "ServiceCategory"
+    audit_action_prefix = "billing.service_category"
+    audit_source = "billing_api"
     serializer_class = ServiceCategorySerializer
     permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
@@ -87,7 +91,7 @@ class ServiceCategoryViewSet(viewsets.ModelViewSet):
     ordering = ["display_order"]
 
 
-class ServiceViewSet(viewsets.ModelViewSet):
+class ServiceViewSet(AuditedMutationMixin, viewsets.ModelViewSet):
     """
     ViewSet for Service model.
 
@@ -95,6 +99,9 @@ class ServiceViewSet(viewsets.ModelViewSet):
     """
 
     queryset = Service.objects.select_related("category", "created_by").all()
+    audit_resource_type = "Service"
+    audit_action_prefix = "billing.service"
+    audit_source = "billing_api"
     serializer_class = ServiceSerializer
     permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
@@ -326,7 +333,12 @@ class CatalogItemViewSet(TenantScopedViewMixin, viewsets.GenericViewSet):
         ]
     ),
 )
-class InvoiceViewSet(PublicIdLookupMixin, TenantScopedViewMixin, viewsets.ModelViewSet):
+class InvoiceViewSet(
+    AuditedMutationMixin,
+    PublicIdLookupMixin,
+    TenantScopedViewMixin,
+    viewsets.ModelViewSet,
+):
     """
     ViewSet for Invoice model.
 
@@ -340,6 +352,10 @@ class InvoiceViewSet(PublicIdLookupMixin, TenantScopedViewMixin, viewsets.ModelV
         .prefetch_related("items__service", "items__drug", "items__lab_order", "payers")
         .all()
     )
+    audit_resource_type = "Invoice"
+    audit_action_prefix = "billing.invoice"
+    audit_source = "billing_api"
+    audit_excluded_actions = {"create_copay_proforma", "finalize_and_apply_copay"}
     serializer_class = InvoiceSerializer
     permission_classes = [
         IsAuthenticated,
@@ -941,7 +957,7 @@ class InvoiceViewSet(PublicIdLookupMixin, TenantScopedViewMixin, viewsets.ModelV
         return Response(InvoicePayerSerializer(payer).data)
 
 
-class PaymentViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
+class PaymentViewSet(AuditedMutationMixin, NestedTenantScopeMixin, viewsets.ModelViewSet):
     """
     ViewSet for Payment model.
 
@@ -949,6 +965,10 @@ class PaymentViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     """
 
     queryset = Payment.objects.select_related("invoice", "received_by").all()
+    audit_resource_type = "Payment"
+    audit_action_prefix = "billing.payment"
+    audit_source = "billing_api"
+    audit_excluded_actions = {"create", "reverse"}
     serializer_class = PaymentSerializer
     permission_classes = [
         IsAuthenticated,
@@ -1056,10 +1076,13 @@ class PaymentViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
         return Response(PaymentSerializer(payment).data)
 
 
-class PaymentPointViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
+class PaymentPointViewSet(AuditedMutationMixin, TenantScopedViewMixin, viewsets.ModelViewSet):
     """ViewSet for managing payment points (cashier/till/bank accounts)."""
 
     queryset = PaymentPoint.objects.select_related("created_by").all()
+    audit_resource_type = "PaymentPoint"
+    audit_action_prefix = "billing.payment_point"
+    audit_source = "billing_api"
     serializer_class = PaymentPointSerializer
     permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
@@ -1070,7 +1093,7 @@ class PaymentPointViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     tenant_scope = "facility"
 
 
-class CreditNoteViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
+class CreditNoteViewSet(AuditedMutationMixin, NestedTenantScopeMixin, viewsets.ModelViewSet):
     """
     ViewSet for CreditNote model.
 
@@ -1080,6 +1103,9 @@ class CreditNoteViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     queryset = CreditNote.objects.select_related(
         "invoice", "patient", "requested_by", "approved_by"
     ).all()
+    audit_resource_type = "CreditNote"
+    audit_action_prefix = "billing.credit_note"
+    audit_source = "billing_api"
     serializer_class = CreditNoteSerializer
     permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
@@ -1848,7 +1874,9 @@ class ReportViewSet(viewsets.ViewSet):
 # ============================================================================
 
 
-class FacilityBillingConfigViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
+class FacilityBillingConfigViewSet(
+    AuditedMutationMixin, NestedTenantScopeMixin, viewsets.ModelViewSet
+):
     """
     ViewSet for per-facility billing configuration.
 
@@ -1863,6 +1891,9 @@ class FacilityBillingConfigViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet
 
     tenant_facility_chain = ""
     tenant_org_chain = "facility__organization"
+    audit_resource_type = "FacilityBillingConfig"
+    audit_action_prefix = "billing.facility_config"
+    audit_source = "billing_api"
     permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
     filterset_fields = ["facility", "sha_accreditation_status", "default_payment_type"]
@@ -2090,7 +2121,12 @@ class FacilityBillingConfigViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet
 # ===========================================================================
 
 
-class SupplierBillViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.ModelViewSet):
+class SupplierBillViewSet(
+    AuditedMutationMixin,
+    ReadOnCreateMixin,
+    TenantScopedViewMixin,
+    viewsets.ModelViewSet,
+):
     """
     ViewSet for supplier bills (accounts payable).
 
@@ -2106,6 +2142,10 @@ class SupplierBillViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.Mod
     queryset = SupplierBill.objects.select_related(
         "supplier", "grn", "purchase_order", "created_by", "approved_by"
     ).prefetch_related("items", "payments")
+    audit_resource_type = "SupplierBill"
+    audit_action_prefix = "billing.supplier_bill"
+    audit_source = "billing_api"
+    audit_excluded_actions = {"create", "destroy", "approve"}
     permission_classes = [
         IsAuthenticated,
         RequiresActiveShiftPermission,
@@ -2299,7 +2339,12 @@ class SupplierBillViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.Mod
         return Response(summary)
 
 
-class SupplierPaymentViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.ModelViewSet):
+class SupplierPaymentViewSet(
+    AuditedMutationMixin,
+    ReadOnCreateMixin,
+    TenantScopedViewMixin,
+    viewsets.ModelViewSet,
+):
     """
     ViewSet for supplier payments (outflows to vendors).
 
@@ -2309,6 +2354,10 @@ class SupplierPaymentViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.
     from hmis.apps.billing.models import SupplierPayment
 
     queryset = SupplierPayment.objects.select_related("bill", "supplier", "paid_by").all()
+    audit_resource_type = "SupplierPayment"
+    audit_action_prefix = "billing.supplier_payment"
+    audit_source = "billing_api"
+    audit_excluded_actions = {"create", "destroy", "reverse"}
     permission_classes = [
         IsAuthenticated,
         RequiresActiveShiftPermission,

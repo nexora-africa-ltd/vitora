@@ -21,6 +21,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from hmis.apps.core.audit import AuditedMutationMixin
 from hmis.apps.core.mixins import NestedTenantScopeMixin, ReadOnCreateMixin, TenantScopedViewMixin
 from hmis.apps.core.openapi import SchemaFallbackSerializer
 from hmis.apps.core.permissions import (
@@ -122,7 +123,7 @@ def _parse_date_range(request) -> tuple[date, date]:
     return start_date, end_date
 
 
-class TestCatalogViewSet(viewsets.ModelViewSet):
+class TestCatalogViewSet(AuditedMutationMixin, viewsets.ModelViewSet):
     """
     ViewSet for test catalog.
     Provides full CRUD operations with search functionality.
@@ -131,6 +132,9 @@ class TestCatalogViewSet(viewsets.ModelViewSet):
     """
 
     queryset = TestCatalog.objects.all()
+    audit_resource_type = "TestCatalog"
+    audit_action_prefix = "laboratory.test_catalog"
+    audit_source = "laboratory_api"
     permission_classes = [
         IsAuthenticated,
         LaboratoryModuleRequired,
@@ -495,7 +499,7 @@ class TestCatalogViewSet(viewsets.ModelViewSet):
         )
 
 
-class LabOrderViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
+class LabOrderViewSet(AuditedMutationMixin, TenantScopedViewMixin, viewsets.ModelViewSet):
     """
     ViewSet for lab orders.
     Provides full CRUD operations plus workflow actions.
@@ -513,6 +517,9 @@ class LabOrderViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             "items__result__validations__validated_by",
         )
     )
+    audit_resource_type = "LabOrder"
+    audit_action_prefix = "laboratory.order"
+    audit_source = "laboratory_api"
     permission_classes = [
         IsAuthenticated,
         LaboratoryModuleRequired,
@@ -984,7 +991,7 @@ class LabOrderViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         return Response(serializer.data)
 
 
-class LabResultViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
+class LabResultViewSet(AuditedMutationMixin, NestedTenantScopeMixin, viewsets.ModelViewSet):
     """
     ViewSet for lab results.
     Provides CRUD operations, verification, and search.
@@ -993,6 +1000,9 @@ class LabResultViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     queryset = LabResult.objects.all().select_related(
         "order_item__test", "order_item__lab_order__patient", "entered_by"
     )
+    audit_resource_type = "LabResult"
+    audit_action_prefix = "laboratory.result"
+    audit_source = "laboratory_api"
     permission_classes = [
         IsAuthenticated,
         LaboratoryModuleRequired,
@@ -1418,7 +1428,7 @@ class LOINCSearchView(APIView):
 # ============================================================================
 
 
-class LabQueueViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
+class LabQueueViewSet(AuditedMutationMixin, NestedTenantScopeMixin, viewsets.ModelViewSet):
     """
     ViewSet for lab queue management.
 
@@ -1436,6 +1446,9 @@ class LabQueueViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     """
 
     permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
+    audit_resource_type = "LabQueue"
+    audit_action_prefix = "laboratory.queue"
+    audit_source = "laboratory_api"
     filter_backends = [filters.DjangoFilterBackend]
     filterset_fields = ["queue_status", "priority", "assigned_technician"]
     lookup_field = "queue_number"
@@ -1793,7 +1806,12 @@ class InstrumentFilter(filters.FilterSet):
         return queryset.filter(models.Q(code__icontains=value) | models.Q(name__icontains=value))
 
 
-class InstrumentViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.ModelViewSet):
+class InstrumentViewSet(
+    AuditedMutationMixin,
+    ReadOnCreateMixin,
+    TenantScopedViewMixin,
+    viewsets.ModelViewSet,
+):
     """
     ViewSet for laboratory instruments.
 
@@ -1801,6 +1819,9 @@ class InstrumentViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.Model
     """
 
     queryset = Instrument.objects.all()
+    audit_resource_type = "Instrument"
+    audit_action_prefix = "laboratory.instrument"
+    audit_source = "laboratory_api"
     permission_classes = [
         IsAuthenticated,
         LaboratoryModuleRequired,
@@ -1839,7 +1860,7 @@ class AnalyzerRunFilter(filters.FilterSet):
         }
 
 
-class AnalyzerRunViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
+class AnalyzerRunViewSet(AuditedMutationMixin, NestedTenantScopeMixin, viewsets.ModelViewSet):
     """
     ViewSet for analyzer runs.
 
@@ -1848,6 +1869,9 @@ class AnalyzerRunViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     """
 
     queryset = AnalyzerRun.objects.select_related("specimen", "instrument", "operator").all()
+    audit_resource_type = "AnalyzerRun"
+    audit_action_prefix = "laboratory.analyzer_run"
+    audit_source = "laboratory_api"
     permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     filterset_class = AnalyzerRunFilter
     tenant_facility_chain = "specimen__lab_order__facility"
@@ -1907,7 +1931,7 @@ class DiagnosticReportFilter(filters.FilterSet):
         }
 
 
-class DiagnosticReportViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
+class DiagnosticReportViewSet(AuditedMutationMixin, NestedTenantScopeMixin, viewsets.ModelViewSet):
     """
     ViewSet for diagnostic reports (Phase L4).
 
@@ -1921,6 +1945,9 @@ class DiagnosticReportViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
         "issued_by",
         "amended_by",
     ).all()
+    audit_resource_type = "DiagnosticReport"
+    audit_action_prefix = "laboratory.diagnostic_report"
+    audit_source = "laboratory_api"
     lookup_field = "report_number"
     permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     filterset_class = DiagnosticReportFilter
@@ -2265,10 +2292,17 @@ class SpecimenViewSet(NestedTenantScopeMixin, viewsets.ReadOnlyModelViewSet):
 # =============================================================================
 
 
-class SpecimenRejectionReasonViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
+class SpecimenRejectionReasonViewSet(
+    AuditedMutationMixin,
+    TenantScopedViewMixin,
+    viewsets.ModelViewSet,
+):
     """CRUD for specimen rejection reasons."""
 
     queryset = SpecimenRejectionReason.objects.all()
+    audit_resource_type = "SpecimenRejectionReason"
+    audit_action_prefix = "laboratory.specimen_rejection_reason"
+    audit_source = "laboratory_api"
     serializer_class = SpecimenRejectionReasonSerializer
     permission_classes = [
         IsAuthenticated,
@@ -2293,10 +2327,15 @@ class SpecimenRejectionReasonViewSet(TenantScopedViewMixin, viewsets.ModelViewSe
         serializer.save()
 
 
-class ResultCommentTemplateViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
+class ResultCommentTemplateViewSet(
+    AuditedMutationMixin, TenantScopedViewMixin, viewsets.ModelViewSet
+):
     """CRUD for result comment templates."""
 
     queryset = ResultCommentTemplate.objects.prefetch_related("applicable_tests").all()
+    audit_resource_type = "ResultCommentTemplate"
+    audit_action_prefix = "laboratory.result_comment_template"
+    audit_source = "laboratory_api"
     serializer_class = ResultCommentTemplateSerializer
     permission_classes = [
         IsAuthenticated,
@@ -2324,10 +2363,13 @@ class ResultCommentTemplateViewSet(TenantScopedViewMixin, viewsets.ModelViewSet)
         serializer.save()
 
 
-class ReferralLabViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
+class ReferralLabViewSet(AuditedMutationMixin, TenantScopedViewMixin, viewsets.ModelViewSet):
     """CRUD for referral/outsourced labs."""
 
     queryset = ReferralLab.objects.all()
+    audit_resource_type = "ReferralLab"
+    audit_action_prefix = "laboratory.referral_lab"
+    audit_source = "laboratory_api"
     serializer_class = ReferralLabSerializer
     permission_classes = [
         IsAuthenticated,
@@ -2355,10 +2397,13 @@ class ReferralLabViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         serializer.save()
 
 
-class LabBarcodeConfigViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
+class LabBarcodeConfigViewSet(AuditedMutationMixin, TenantScopedViewMixin, viewsets.ModelViewSet):
     """Singleton barcode configuration per facility. Use GET to retrieve, PATCH to update."""
 
     queryset = LabBarcodeConfig.objects.all()
+    audit_resource_type = "LabBarcodeConfig"
+    audit_action_prefix = "laboratory.barcode_config"
+    audit_source = "laboratory_api"
     serializer_class = LabBarcodeConfigSerializer
     permission_classes = [
         IsAuthenticated,
@@ -2393,10 +2438,15 @@ class LabBarcodeConfigViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         serializer.save()
 
 
-class LabWorkflowSettingsViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
+class LabWorkflowSettingsViewSet(
+    AuditedMutationMixin, TenantScopedViewMixin, viewsets.ModelViewSet
+):
     """Singleton workflow settings per facility. Use GET to retrieve, PATCH to update."""
 
     queryset = LabWorkflowSettings.objects.all()
+    audit_resource_type = "LabWorkflowSettings"
+    audit_action_prefix = "laboratory.workflow_settings"
+    audit_source = "laboratory_api"
     serializer_class = LabWorkflowSettingsSerializer
     permission_classes = [
         IsAuthenticated,

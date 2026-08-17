@@ -6,6 +6,8 @@ from decimal import Decimal
 import pytest  # type: ignore
 from rest_framework import status
 
+from hmis.apps.core.models import AuditLog
+
 
 # ===================================================================
 # InsuranceProvider API
@@ -16,7 +18,7 @@ class TestInsuranceProviderAPI:
         assert response.status_code == status.HTTP_200_OK
         assert response.data["count"] >= 1
 
-    def test_create_provider(self, admin_client):
+    def test_create_provider(self, admin_client, test_user):
         data = {
             "name": "CIC Group",
             "code": "CIC",
@@ -28,6 +30,15 @@ class TestInsuranceProviderAPI:
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data["name"] == "CIC Group"
         assert response.data["code"] == "CIC"
+
+        audit_log = AuditLog.objects.filter(
+            action="insurance.provider.create",
+            resource_type="InsuranceProvider",
+            resource_id=response.data["id"],
+        ).first()
+        assert audit_log is not None
+        assert audit_log.user == test_user
+        assert audit_log.details.get("source") == "insurance_api"
 
     def test_retrieve_provider(self, authenticated_client, insurance_provider):
         response = authenticated_client.get(f"/api/insurance/providers/{insurance_provider.pk}/")

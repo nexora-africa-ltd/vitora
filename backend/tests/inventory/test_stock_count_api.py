@@ -5,6 +5,8 @@ Tests for Stock Count API endpoints (Phase 4).
 import pytest  # type: ignore
 from rest_framework import status
 
+from hmis.apps.core.models import AuditLog
+
 pytestmark = pytest.mark.django_db
 
 
@@ -26,7 +28,7 @@ class TestStockCountAPI:
             "meta",
         }
 
-    def test_create_stock_count(self, authenticated_client, main_store):
+    def test_create_stock_count(self, authenticated_client, main_store, test_user):
         """Should create a stock count."""
         payload = {
             "count_type": "CYCLE",
@@ -37,6 +39,15 @@ class TestStockCountAPI:
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data["status"] == "DRAFT"
         assert response.data["count_number"].startswith("SC-")
+
+        audit_log = AuditLog.objects.filter(
+            action="inventory.stock_count.create",
+            resource_type="StockCount",
+            resource_id=response.data["id"],
+        ).first()
+        assert audit_log is not None
+        assert audit_log.user == test_user
+        assert audit_log.details.get("source") == "inventory_api"
 
     def test_retrieve_stock_count(self, authenticated_client, stock_count):
         """Should retrieve a specific stock count."""

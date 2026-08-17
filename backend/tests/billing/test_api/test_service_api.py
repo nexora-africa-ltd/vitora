@@ -11,6 +11,7 @@ import pytest  # type: ignore
 from rest_framework import status
 from rest_framework.test import APIClient
 
+from hmis.apps.core.models import AuditLog
 from tests.conftest import ensure_staff_profile
 
 pytestmark = pytest.mark.django_db
@@ -82,7 +83,7 @@ class TestServiceAPIEndpoints:
         assert response.data["name"] == sample_service.name
         assert Decimal(response.data["unit_price"]) == sample_service.unit_price
 
-    def test_create_service(self, authenticated_client, sample_category):
+    def test_create_service(self, authenticated_client, sample_category, test_user):
         """Test POST /api/billing/services/ - Create new service."""
         data = {
             "code": "CONS-NEW",
@@ -98,6 +99,15 @@ class TestServiceAPIEndpoints:
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data["code"] == "CONS-NEW"
         assert Decimal(response.data["unit_price"]) == Decimal("1500.00")
+
+        audit_log = AuditLog.objects.filter(
+            action="billing.service.create",
+            resource_type="Service",
+            resource_id=response.data["id"],
+        ).first()
+        assert audit_log is not None
+        assert audit_log.user == test_user
+        assert audit_log.details.get("source") == "billing_api"
 
     def test_update_service(self, authenticated_client, sample_service):
         """Test PATCH /api/billing/services/{id}/ - Update service."""

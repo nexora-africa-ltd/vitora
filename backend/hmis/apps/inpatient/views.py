@@ -17,6 +17,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from hmis.apps.ai.services.icu_lab_enrichment import get_latest_labs_for_icu
+from hmis.apps.core.audit import AuditedMutationMixin
 from hmis.apps.core.mixins import (
     NestedTenantScopeMixin,
     PublicIdLookupMixin,
@@ -121,7 +122,7 @@ from .services.compatibility import ward_compatibility_service
 User = get_user_model()
 
 
-class WardViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
+class WardViewSet(AuditedMutationMixin, TenantScopedViewMixin, viewsets.ModelViewSet):
     tenant_scope = "facility"  # Wards are facility-scoped
     """
     ViewSet for Ward model.
@@ -140,6 +141,9 @@ class WardViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     """
 
     queryset = Ward.objects.filter(is_active=True)
+    audit_resource_type = "InpatientWard"
+    audit_action_prefix = "inpatient.ward"
+    audit_source = "inpatient_api"
     serializer_class = InpatientWardSerializer
     permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]

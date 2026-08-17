@@ -71,6 +71,7 @@ from hmis.apps.billing.sha_serializers import (
     SHAMemberSerializer,
     SHATariffSerializer,
 )
+from hmis.apps.core.audit import AuditedMutationMixin
 from hmis.apps.core.kms import get_kms_provider
 from hmis.apps.core.mixins import TenantScopedViewMixin
 from hmis.apps.core.models import AuditLog
@@ -758,7 +759,7 @@ class SHATariffViewSet(viewsets.ReadOnlyModelViewSet):
         ]
     ),
 )
-class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
+class SHAClaimViewSet(AuditedMutationMixin, TenantScopedViewMixin, viewsets.ModelViewSet):
     """
     ViewSet for SHA Claims management.
 
@@ -772,6 +773,9 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         .prefetch_related("items", "attachments")
         .all()
     )
+    audit_resource_type = "SHAClaim"
+    audit_action_prefix = "billing.sha_claim"
+    audit_source = "sha_api"
     tenant_scope = "facility"
     lookup_value_regex = r"\d+"
     permission_classes = [

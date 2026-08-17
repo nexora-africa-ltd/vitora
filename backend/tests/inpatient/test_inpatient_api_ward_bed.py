@@ -67,6 +67,26 @@ class TestWardAPI:
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data["results"]) >= 1
 
+    def test_update_ward_writes_audit_log(
+        self, authenticated_client, sample_inpatient_ward, test_user
+    ):
+        """PATCH on wards should emit mixin-based audit entry."""
+        response = authenticated_client.patch(
+            f"/api/inpatient/wards/{sample_inpatient_ward.id}/",
+            {"floor": "Updated Level"},
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        audit_log = AuditLog.objects.filter(
+            action="inpatient.ward.partial_update",
+            resource_type="InpatientWard",
+            resource_id=sample_inpatient_ward.id,
+        ).first()
+        assert audit_log is not None
+        assert audit_log.user == test_user
+        assert audit_log.details.get("source") == "inpatient_api"
+
 
 @pytest.mark.django_db
 class TestBedAPI:

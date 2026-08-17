@@ -18,6 +18,7 @@ from rest_framework.permissions import AllowAny, IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from hmis.apps.core.audit import AuditedMutationMixin
 from hmis.apps.core.mixins import ReadOnCreateMixin, TenantScopedViewMixin, resolve_request_tenant
 from hmis.apps.core.models import AuditLog
 from hmis.apps.core.openapi import SchemaFallbackSerializer
@@ -163,10 +164,18 @@ class FacilitySladeCredentialViewSet(
 # ---------------------------------------------------------------------------
 # InsuranceProvider
 # ---------------------------------------------------------------------------
-class InsuranceProviderViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.ModelViewSet):
+class InsuranceProviderViewSet(
+    AuditedMutationMixin,
+    ReadOnCreateMixin,
+    TenantScopedViewMixin,
+    viewsets.ModelViewSet,
+):
     """CRUD for insurance providers (org-scoped)."""
 
     queryset = InsuranceProvider.objects.all()
+    audit_resource_type = "InsuranceProvider"
+    audit_action_prefix = "insurance.provider"
+    audit_source = "insurance_api"
 
     def get_permissions(self):
         if self.action in ["create", "update", "partial_update", "destroy", "seed_slade_defaults"]:
@@ -218,10 +227,18 @@ class InsuranceProviderViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewset
 # ---------------------------------------------------------------------------
 # InsurancePlan
 # ---------------------------------------------------------------------------
-class InsurancePlanViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.ModelViewSet):
+class InsurancePlanViewSet(
+    AuditedMutationMixin,
+    ReadOnCreateMixin,
+    TenantScopedViewMixin,
+    viewsets.ModelViewSet,
+):
     """CRUD for insurance plans (org-scoped)."""
 
     queryset = InsurancePlan.objects.select_related("provider").all()
+    audit_resource_type = "InsurancePlan"
+    audit_action_prefix = "insurance.plan"
+    audit_source = "insurance_api"
 
     def get_permissions(self):
         if self.action in ["create", "update", "partial_update", "destroy"]:
@@ -244,12 +261,20 @@ class InsurancePlanViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.Mo
 # ---------------------------------------------------------------------------
 # PatientInsurance
 # ---------------------------------------------------------------------------
-class PatientInsuranceViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.ModelViewSet):
+class PatientInsuranceViewSet(
+    AuditedMutationMixin,
+    ReadOnCreateMixin,
+    TenantScopedViewMixin,
+    viewsets.ModelViewSet,
+):
     """CRUD for patient insurance enrollments (org-scoped)."""
 
     queryset = PatientInsurance.objects.select_related(
         "patient", "plan", "plan__provider", "provider"
     ).all()
+    audit_resource_type = "PatientInsurance"
+    audit_action_prefix = "insurance.enrollment"
+    audit_source = "insurance_api"
 
     def get_permissions(self):
         if self.action == "destroy":
@@ -855,7 +880,12 @@ class InsuranceVisitAuthorizationViewSet(
 # ---------------------------------------------------------------------------
 # InsuranceClaim
 # ---------------------------------------------------------------------------
-class InsuranceClaimViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.ModelViewSet):
+class InsuranceClaimViewSet(
+    AuditedMutationMixin,
+    ReadOnCreateMixin,
+    TenantScopedViewMixin,
+    viewsets.ModelViewSet,
+):
     """CRUD + lifecycle for insurance claims (facility-scoped)."""
 
     queryset = (
@@ -871,6 +901,9 @@ class InsuranceClaimViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.M
         .prefetch_related("items")
         .all()
     )
+    audit_resource_type = "InsuranceClaim"
+    audit_action_prefix = "insurance.claim"
+    audit_source = "insurance_api"
     tenant_scope = "facility"
 
     # -- Adjudication actions require admin; clinical ops require active shift --
@@ -1522,10 +1555,13 @@ class InsuranceClaimViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.M
 # ---------------------------------------------------------------------------
 # InsuranceClaimItem (nested)
 # ---------------------------------------------------------------------------
-class InsuranceClaimItemViewSet(viewsets.ModelViewSet):
+class InsuranceClaimItemViewSet(AuditedMutationMixin, viewsets.ModelViewSet):
     """CRUD for claim line items (nested under claim)."""
 
     queryset = InsuranceClaimItem.objects.all()
+    audit_resource_type = "InsuranceClaimItem"
+    audit_action_prefix = "insurance.claim_item"
+    audit_source = "insurance_api"
     serializer_class = InsuranceClaimItemSerializer
     permission_classes = [
         IsAuthenticated,
@@ -1543,7 +1579,12 @@ class InsuranceClaimItemViewSet(viewsets.ModelViewSet):
 # ---------------------------------------------------------------------------
 # InsurancePreauth
 # ---------------------------------------------------------------------------
-class InsurancePreauthViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.ModelViewSet):
+class InsurancePreauthViewSet(
+    AuditedMutationMixin,
+    ReadOnCreateMixin,
+    TenantScopedViewMixin,
+    viewsets.ModelViewSet,
+):
     """CRUD + lifecycle for pre-authorizations (facility-scoped)."""
 
     queryset = InsurancePreauth.objects.select_related(
@@ -1552,6 +1593,9 @@ class InsurancePreauthViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets
         "patient_insurance",
         "patient_insurance__plan",
     ).all()
+    audit_resource_type = "InsurancePreauth"
+    audit_action_prefix = "insurance.preauth"
+    audit_source = "insurance_api"
     tenant_scope = "facility"
 
     # -- Adjudication actions require admin; clinical ops require active shift --
@@ -1688,7 +1732,12 @@ class InsurancePreauthViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets
 # ---------------------------------------------------------------------------
 # InsuranceRemittance
 # ---------------------------------------------------------------------------
-class InsuranceRemittanceViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.ModelViewSet):
+class InsuranceRemittanceViewSet(
+    AuditedMutationMixin,
+    ReadOnCreateMixin,
+    TenantScopedViewMixin,
+    viewsets.ModelViewSet,
+):
     """CRUD for insurance remittances (facility-scoped)."""
 
     queryset = (
@@ -1696,6 +1745,9 @@ class InsuranceRemittanceViewSet(ReadOnCreateMixin, TenantScopedViewMixin, views
         .prefetch_related("lines", "lines__claim")
         .all()
     )
+    audit_resource_type = "InsuranceRemittance"
+    audit_action_prefix = "insurance.remittance"
+    audit_source = "insurance_api"
 
     def get_permissions(self):
         if self.action in ["create", "update", "partial_update", "destroy", "reconcile"]:
@@ -1932,10 +1984,13 @@ class InsuranceRemittanceViewSet(ReadOnCreateMixin, TenantScopedViewMixin, views
 # ---------------------------------------------------------------------------
 # InsuranceRemittanceLine
 # ---------------------------------------------------------------------------
-class InsuranceRemittanceLineViewSet(viewsets.ModelViewSet):
+class InsuranceRemittanceLineViewSet(AuditedMutationMixin, viewsets.ModelViewSet):
     """CRUD for remittance lines (nested under remittance)."""
 
     queryset = InsuranceRemittanceLine.objects.select_related("claim").all()
+    audit_resource_type = "InsuranceRemittanceLine"
+    audit_action_prefix = "insurance.remittance_line"
+    audit_source = "insurance_api"
     serializer_class = InsuranceRemittanceLineSerializer
 
     def get_permissions(self):
@@ -1953,10 +2008,18 @@ class InsuranceRemittanceLineViewSet(viewsets.ModelViewSet):
 # ---------------------------------------------------------------------------
 # PayerTariff
 # ---------------------------------------------------------------------------
-class PayerTariffViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.ModelViewSet):
+class PayerTariffViewSet(
+    AuditedMutationMixin,
+    ReadOnCreateMixin,
+    TenantScopedViewMixin,
+    viewsets.ModelViewSet,
+):
     """CRUD for payer tariff mappings (org-scoped)."""
 
     queryset = PayerTariff.objects.select_related("provider", "plan", "service").all()
+    audit_resource_type = "PayerTariff"
+    audit_action_prefix = "insurance.payer_tariff"
+    audit_source = "insurance_api"
 
     def get_permissions(self):
         if self.action in ["create", "update", "partial_update", "destroy"]:
