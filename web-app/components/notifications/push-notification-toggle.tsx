@@ -23,17 +23,44 @@ import { cn } from '@/lib/utils';
 export function PushNotificationToggle({ className }: { className?: string }) {
   const {
     isSupported,
-    isVapidReady,
+    canSubscribe,
     permission,
     isSubscribed,
     isLoading,
+    statusMessage,
     subscribe,
     unsubscribe,
     isSubscribing,
     isUnsubscribing,
   } = usePushSubscription();
 
-  if (!isSupported || isLoading) return null;
+  if (!isSupported) {
+    return (
+      <div
+        className={cn(
+          'flex items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground',
+          className
+        )}
+      >
+        <BellOff className="h-4 w-4" />
+        <span>Push unavailable on this browser</span>
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div
+        className={cn(
+          'flex items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground',
+          className
+        )}
+      >
+        <Loader2 className="h-4 w-4 animate-spin" />
+        <span>Checking push status...</span>
+      </div>
+    );
+  }
 
   if (permission === 'denied') {
     return (
@@ -88,19 +115,26 @@ export function PushNotificationToggle({ className }: { className?: string }) {
   }
 
   return (
-    <Button
-      variant="outline"
-      size="sm"
-      onClick={subscribe}
-      disabled={isSubscribing || !isVapidReady}
-      className={cn('gap-2', className)}
-    >
-      {isSubscribing ? (
-        <Loader2 className="h-4 w-4 animate-spin" />
-      ) : (
-        <Bell className="h-4 w-4" />
+    <div className={cn('flex items-center gap-2', className)}>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={subscribe}
+        disabled={isSubscribing || !canSubscribe}
+        className="gap-2"
+      >
+        {isSubscribing ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : (
+          <Bell className="h-4 w-4" />
+        )}
+        <span className="text-sm">Enable push</span>
+      </Button>
+      {!canSubscribe && (
+        <span className="text-xs text-muted-foreground">
+          {statusMessage || 'Push is not available right now.'}
+        </span>
       )}
-      <span className="text-sm">Enable push</span>
-    </Button>
+    </div>
   );
 }

@@ -3,7 +3,7 @@
 	staging-migrate staging-shell staging-restart staging-env staging-secrets \
 	staging-deploy staging-verify staging-login-test check-ilm \
 	prod-deploy prod-env prod-logs prod-exec prod-shell prod-status prod-restart prod-verify \
-	runserver api api-wsgi kill-api r
+	runserver api api-wsgi kill-api r notif-burst notif-burst5
 
 help:
 	@echo "Vitora HMIS Backend - Make Commands"
@@ -18,6 +18,8 @@ help:
 	@echo "  kill-api      - Kill process running on port 9088"
 	@echo "  r             - Restart API server on port 9088 (kill-api + api)"
 	@echo "  shell         - Open Django shell"
+	@echo "  notif-burst   - Create burst notifications (NOTIF_USER=<username>, COUNT=5 default)"
+	@echo "  notif-burst5  - Create a quick 5-notification burst (NOTIF_USER=<username>)"
 	@echo ""
 	@echo "Testing:"
 	@echo "  test          - Run tests with coverage"
@@ -168,6 +170,20 @@ install:
 
 check-ilm:
 	poetry run python scripts/check_ilm_status.py || true
+
+notif-burst:
+	@if [ -z "$(NOTIF_USER)" ]; then \
+		echo "Usage: make notif-burst NOTIF_USER=<username> [COUNT=<count>]"; \
+		exit 1; \
+	fi
+	./scripts/notif-burst.sh "$(NOTIF_USER)" "$(or $(COUNT),5)"
+
+notif-burst5:
+	@if [ -z "$(NOTIF_USER)" ]; then \
+		echo "Usage: make notif-burst5 NOTIF_USER=<username>"; \
+		exit 1; \
+	fi
+	./scripts/notif-burst.sh "$(NOTIF_USER)" 5
 
 test:
 	poetry run pytest --migrations --cov=hmis --cov-report=term-missing --cov-report=html --cov-report=xml --cov-fail-under=80

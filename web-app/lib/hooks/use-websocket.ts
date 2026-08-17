@@ -22,6 +22,7 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { usePatientJourneyStore } from '@/lib/stores/patient-journey';
+import { toast } from '@/lib/hooks/use-toast';
 import { clinicKeys } from './use-clinics';
 
 // =============================================================================
@@ -1915,7 +1916,11 @@ export function useCommentSocket(
 /** Message shape for the notification WebSocket consumer */
 interface NotificationWebSocketMessage {
   type: string;
-  notification?: Record<string, unknown>;
+  notification?: {
+    id?: number;
+    title?: string;
+    message?: string;
+  };
 }
 
 /**
@@ -1938,6 +1943,13 @@ export function useNotificationSocket(
       if (msg.type === 'new_notification') {
         // Invalidate notification queries for instant badge + list refresh
         queryClient.invalidateQueries({ queryKey: ['notifications'] });
+
+        if (msg.notification?.title) {
+          toast({
+            title: msg.notification.title,
+            description: msg.notification.message,
+          });
+        }
       }
 
       options.onMessage?.(message);

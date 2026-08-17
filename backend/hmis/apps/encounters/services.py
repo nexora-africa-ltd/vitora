@@ -13,7 +13,8 @@ from decimal import Decimal
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 
-from hmis.apps.core.models import AuditLog, Notification
+from hmis.apps.core.models import AuditLog
+from hmis.apps.core.services.notification_service import notify_user
 
 
 class EncounterStateMachine:
@@ -132,7 +133,7 @@ def create_patient_called_notification(encounter, called_by):
 
     # Create notification for staff in waiting room / reception
     # For now, we create one for the calling user (can be expanded)
-    notification = Notification.objects.create(
+    notification = notify_user(
         user=called_by,
         notification_type="patient_called",
         priority="high",
@@ -142,6 +143,9 @@ def create_patient_called_notification(encounter, called_by):
         related_id=encounter.id,
         action_url=f"/encounters/{encounter.id}",
     )
+
+    if notification is None:
+        raise ValueError("Failed to create patient-called notification")
 
     return notification
 
@@ -177,7 +181,7 @@ def broadcast_patient_called_notification(encounter, called_by, target_users=Non
 
     notifications = []
     for user in target_users:
-        notification = Notification.objects.create(
+        notification = notify_user(
             user=user,
             notification_type="patient_called",
             priority="high",
@@ -187,7 +191,8 @@ def broadcast_patient_called_notification(encounter, called_by, target_users=Non
             related_id=encounter.id,
             action_url=f"/encounters/{encounter.id}",
         )
-        notifications.append(notification)
+        if notification is not None:
+            notifications.append(notification)
 
     return notifications
 

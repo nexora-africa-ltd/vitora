@@ -351,8 +351,12 @@ export function NotificationPanel() {
           </div>
         </div>
 
+        <div className="px-6 py-3 border-b border-cyan-300/60 bg-muted/30">
+          <PushNotificationToggle />
+        </div>
+
         {/* Scrollable Content */}
-        <ScrollArea className="h-[calc(100%-88px)]">
+        <ScrollArea className="h-[calc(100%-148px)]">
           <div className="p-4 space-y-6">
             {notifications.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20 text-center">

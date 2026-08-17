@@ -21,6 +21,28 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array<ArrayBuffer> {
 
 type PushPermission = 'default' | 'granted' | 'denied' | 'unsupported';
 
+const SW_READY_TIMEOUT_MS = 2000;
+
+async function getServiceWorkerRegistration(): Promise<ServiceWorkerRegistration | null> {
+  if (!('serviceWorker' in navigator)) {
+    return null;
+  }
+
+  const existing = await navigator.serviceWorker.getRegistration();
+  if (existing) {
+    return existing;
+  }
+
+  const readyOrTimeout = await Promise.race([
+    navigator.serviceWorker.ready,
+    new Promise<null>((resolve) => {
+      window.setTimeout(() => resolve(null), SW_READY_TIMEOUT_MS);
+    }),
+  ]);
+
+  return readyOrTimeout;
+}
+
 /**
  * Hook for managing Web Push notification subscriptions.
  *
@@ -35,9 +57,12 @@ export function usePushSubscription() {
   const [permission, setPermission] = useState<PushPermission>('default');
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [hasServiceWorkerRegistration, setHasServiceWorkerRegistration] = useState(false);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
   const isSupported =
     typeof window !== 'undefined' &&
+    window.isSecureContext &&
     'serviceWorker' in navigator &&
     'PushManager' in window &&
     'Notification' in window;
@@ -64,15 +89,41 @@ export function usePushSubscription() {
 
     setPermission(Notification.permission as PushPermission);
 
-    navigator.serviceWorker.ready
-      .then((reg) => reg.pushManager.getSubscription())
-      .then((sub) => {
-        setIsSubscribed(!!sub);
-        setIsLoading(false);
-      })
-      .catch(() => {
-        setIsLoading(false);
-      });
+    let isMounted = true;
+
+    const checkSubscription = async () => {
+      try {
+        const registration = await getServiceWorkerRegistration();
+        if (!registration) {
+          if (isMounted) {
+            setHasServiceWorkerRegistration(false);
+            setIsSubscribed(false);
+            setIsLoading(false);
+            setStatusMessage('Push requires a registered service worker. It may be unavailable in local development.');
+          }
+          return;
+        }
+
+        const sub = await registration.pushManager.getSubscription();
+        if (isMounted) {
+          setHasServiceWorkerRegistration(true);
+          setIsSubscribed(!!sub);
+          setIsLoading(false);
+          setStatusMessage(null);
+        }
+      } catch {
+        if (isMounted) {
+          setIsLoading(false);
+          setStatusMessage('Unable to check push subscription status.');
+        }
+      }
+    };
+
+    checkSubscription();
+
+    return () => {
+      isMounted = false;
+    };
   }, [isSupported]);
 
   const isVapidReady = !!vapidData?.vapid_public_key;
@@ -80,13 +131,18 @@ export function usePushSubscription() {
   // Subscribe mutation
   const subscribeMutation = useMutation({
     mutationFn: async (publicKey: string) => {
+      setStatusMessage(null);
       const perm = await Notification.requestPermission();
       setPermission(perm as PushPermission);
       if (perm !== 'granted') {
         throw new Error('Notification permission denied');
       }
 
-      const registration = await navigator.serviceWorker.ready;
+      const registration = await getServiceWorkerRegistration();
+      if (!registration) {
+        throw new Error('Service worker is not ready for push subscriptions');
+      }
+      setHasServiceWorkerRegistration(true);
       let subscription: PushSubscription;
       try {
         subscription = await registration.pushManager.subscribe({
@@ -113,7 +169,9 @@ export function usePushSubscription() {
       queryClient.invalidateQueries({ queryKey: ['push-subscriptions'] });
     },
     onError: (error) => {
-      console.warn('[Push] Subscription failed:', error.message);
+      const message = error instanceof Error ? error.message : 'Push subscription failed';
+      setStatusMessage(message);
+      console.warn('[Push] Subscription failed:', message);
     },
     // Prevent bubbling to global error handler
     throwOnError: false,
@@ -123,8 +181,8 @@ export function usePushSubscription() {
   // Unsubscribe mutation
   const unsubscribeMutation = useMutation({
     mutationFn: async () => {
-      const registration = await navigator.serviceWorker.ready;
-      const subscription = await registration.pushManager.getSubscription();
+      const registration = await getServiceWorkerRegistration();
+      const subscription = registration ? await registration.pushManager.getSubscription() : null;
       if (subscription) {
         await subscription.unsubscribe();
       }
@@ -152,12 +210,17 @@ export function usePushSubscription() {
     unsubscribeMutation.mutate();
   }, [unsubscribeMutation]);
 
+  const canSubscribe = isVapidReady && hasServiceWorkerRegistration;
+
   return {
     isSupported,
     isVapidReady,
+    hasServiceWorkerRegistration,
+    canSubscribe,
     permission,
     isSubscribed,
     isLoading,
+    statusMessage,
     subscribe,
     unsubscribe,
     isSubscribing: subscribeMutation.isPending,

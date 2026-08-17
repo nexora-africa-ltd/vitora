@@ -21,6 +21,15 @@ logger = logging.getLogger(__name__)
 User = get_user_model()
 
 
+def _normalize_priority(priority: str) -> str:
+    """Return a valid Notification priority value with safe fallback."""
+    from hmis.apps.core.models import Notification
+
+    if priority in Notification.Priority.values:
+        return priority
+    return Notification.Priority.NORMAL
+
+
 def notify_user(
     user,
     notification_type: str,
@@ -70,7 +79,7 @@ def notify_user(
         return Notification.objects.create(
             user=user,
             notification_type=notification_type,
-            priority=priority,
+            priority=_normalize_priority(priority),
             title=title[:200],
             message=message[:1000],
             related_model=related_model,
@@ -97,28 +106,24 @@ def notify_users(
 
     Returns the number of notifications created.
     """
-    from hmis.apps.core.models import Notification
-
-    notifications = []
+    created = 0
     for user in users:
         if not user or (hasattr(user, "is_anonymous") and user.is_anonymous):
             continue
-        notifications.append(
-            Notification(
-                user=user,
-                notification_type=notification_type,
-                priority=priority,
-                title=title[:200],
-                message=message[:1000],
-                related_model=related_model,
-                related_id=related_id,
-                action_url=action_url,
-            )
+        notification = notify_user(
+            user=user,
+            notification_type=notification_type,
+            priority=priority,
+            title=title,
+            message=message,
+            related_model=related_model,
+            related_id=related_id,
+            action_url=action_url,
         )
+        if notification is not None:
+            created += 1
 
-    if notifications:
-        Notification.objects.bulk_create(notifications)
-    return len(notifications)
+    return created
 
 
 def get_user_from_staff_resource(staff_resource):

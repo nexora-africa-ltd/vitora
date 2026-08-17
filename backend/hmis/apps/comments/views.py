@@ -185,15 +185,15 @@ class ClinicalCommentViewSet(viewsets.ModelViewSet):
 
     def _create_mention_notifications(self, instance, mentioned_users):
         """Create Notification records for mentioned users."""
-        from hmis.apps.core.models import Notification
+        from hmis.apps.core.services.notification_service import notify_user
 
         for user in mentioned_users:
             if user.id == instance.author_id:
                 continue  # Don't notify yourself
-            Notification.objects.create(
+            notify_user(
                 user=user,
                 notification_type="comment_mention",
-                priority=Notification.Priority.NORMAL,
+                priority="normal",
                 title="You were mentioned in a comment",
                 message=f"{instance.author.get_full_name() or instance.author.username} mentioned you in a comment.",
                 related_model=instance.content_type.model

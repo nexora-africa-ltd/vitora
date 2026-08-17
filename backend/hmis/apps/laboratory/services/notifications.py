@@ -12,6 +12,7 @@ from django.core.mail import send_mail
 from django.template.loader import render_to_string
 
 from hmis.apps.core.models import Notification
+from hmis.apps.core.services.notification_service import notify_user
 from hmis.apps.laboratory.models import LabOrder
 
 User = get_user_model()
@@ -43,7 +44,7 @@ class LabNotificationService:
         priority = "critical" if has_critical else "normal"
 
         # Create in-app notification
-        notification = Notification.objects.create(
+        notification = notify_user(
             user=clinician,
             notification_type="lab_result",
             priority=priority,
@@ -53,6 +54,9 @@ class LabNotificationService:
             related_id=lab_order.id,
             action_url=f"/encounters/{lab_order.encounter.id}/lab/{lab_order.id}/",
         )
+
+        if notification is None:
+            raise ValueError("Failed to create lab result notification")
 
         # Send email for critical results
         if has_critical and clinician.email:

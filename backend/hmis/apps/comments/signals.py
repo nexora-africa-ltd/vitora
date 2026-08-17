@@ -86,7 +86,7 @@ def notify_parent_author_on_reply(sender, instance, created, **kwargs):
     if not instance.parent_id:
         return
 
-    from hmis.apps.core.models import Notification
+    from hmis.apps.core.services.notification_service import notify_user
 
     # Don't notify if replying to your own comment
     if instance.parent.author_id == instance.author_id:
@@ -95,10 +95,10 @@ def notify_parent_author_on_reply(sender, instance, created, **kwargs):
     # Don't notify if parent author will already get a mention notification
     # (this is checked after mentions are set in the view, so we do it here
     # conservatively — the view deduplicates later)
-    Notification.objects.create(
+    notify_user(
         user=instance.parent.author,
         notification_type="comment_reply",
-        priority=Notification.Priority.NORMAL,
+        priority="normal",
         title="Someone replied to your comment",
         message=f"{instance.author.get_full_name() or instance.author.username} replied to your comment.",
         related_model=instance.content_type.model if instance.content_type_id else "comment",

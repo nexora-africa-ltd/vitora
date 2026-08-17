@@ -147,7 +147,7 @@ def notify_urgent_referral(sender, instance, created, **kwargs):
         return
 
     try:
-        from hmis.apps.core.models import Notification
+        from hmis.apps.core.services.notification_service import notify_user
 
         # Only create notification if there's an assigned worker
         if not instance.assigned_worker_id:
@@ -158,7 +158,7 @@ def notify_urgent_referral(sender, instance, created, **kwargs):
             return
 
         # Create notification for social work staff
-        Notification.objects.create(
+        notify_user(
             title=f"{'🚨 EMERGENCY' if instance.urgency == 'EMERGENCY' else '⚠️ Urgent'} Social Work Referral",
             message=(
                 f"New {instance.get_urgency_display()} referral for "
@@ -167,6 +167,7 @@ def notify_urgent_referral(sender, instance, created, **kwargs):
                 f"Referral #: {instance.referral_number}"
             ),
             notification_type="alert" if instance.urgency == "EMERGENCY" else "warning",
+            priority="normal",
             user=instance.assigned_worker,  # Will be None if unassigned
             related_model="social_work.SocialWorkReferral",
             related_id=instance.id,

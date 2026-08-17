@@ -176,6 +176,7 @@ def send_shift_reminders(self):
     each shift gets exactly one reminder without duplicates.
     """
     from hmis.apps.core.models import Notification
+    from hmis.apps.core.services.notification_service import notify_user
     from hmis.apps.scheduling.models import Shift
 
     now = timezone.now()
@@ -232,7 +233,7 @@ def send_shift_reminders(self):
         shift_display = shift.get_shift_type_display()
         time_str = shift.start_time.strftime("%I:%M %p").lstrip("0")
 
-        Notification.objects.create(
+        notification = notify_user(
             user=user,
             notification_type="shift_reminder",
             priority=Notification.Priority.HIGH,
@@ -242,6 +243,8 @@ def send_shift_reminders(self):
             related_id=shift.id,
             action_url="/scheduling/my-shifts",
         )
+        if notification is None:
+            continue
         sent += 1
         logger.info(
             "Sent shift reminder for shift %d (staff: %s, starts at: %s)",

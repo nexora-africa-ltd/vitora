@@ -654,8 +654,9 @@ def verify_audit_chain_integrity(count: int = 1000):
     Returns:
         dict: Verification result summary.
     """
-    from hmis.apps.core.models import AuditLog, Notification
+    from hmis.apps.core.models import AuditLog
     from hmis.apps.core.services.audit_integrity import AuditIntegrityService
+    from hmis.apps.core.services.notification_service import notify_user
 
     logger.info(f"Starting audit chain integrity verification (last {count} entries)")
 
@@ -687,10 +688,10 @@ def verify_audit_chain_integrity(count: int = 1000):
         superusers = User.objects.filter(is_superuser=True, is_active=True)
 
         for user in superusers:
-            Notification.objects.create(
+            notify_user(
                 user=user,
                 notification_type="audit_tamper_detected",
-                priority=Notification.Priority.CRITICAL,
+                priority="critical",
                 title="Audit Log Tampering Detected",
                 message=(
                     f"Hash chain integrity violation detected at sequence "
