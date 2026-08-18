@@ -173,20 +173,31 @@ export function usePushSubscription() {
         throw new Error('Service worker is not ready for push subscriptions');
       }
       setHasServiceWorkerRegistration(true);
-      let subscription: PushSubscription;
-      try {
-        subscription = await ensuredRegistration.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(publicKey),
-        });
-      } catch (err) {
-        // AbortError: push service unreachable (common on localhost/dev).
-        // Permission was granted, so treat as success — auto-subscribe will
-        // complete when a working push service is available.
-        if ((err as DOMException)?.name === 'AbortError') {
-          return null;
+      let subscription = await ensuredRegistration.pushManager.getSubscription();
+      if (!subscription) {
+        try {
+          subscription = await ensuredRegistration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(publicKey),
+          });
+        } catch (err) {
+          // AbortError: push service unreachable (common on localhost/dev).
+          // Permission was granted, so treat as success — auto-subscribe will
+          // complete when a working push service is available.
+          if ((err as DOMException)?.name === 'AbortError') {
+            return null;
+          }
+
+          // InvalidStateError: browser already has a subscription. Reuse it
+          // and upsert to backend in case server-side row was cleaned up.
+          if ((err as DOMException)?.name === 'InvalidStateError') {
+            subscription = await ensuredRegistration.pushManager.getSubscription();
+          }
+
+          if (!subscription) {
+            throw err;
+          }
         }
-        throw err;
       }
 
       await pushApi.subscribe(subscription);

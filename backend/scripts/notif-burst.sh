@@ -7,7 +7,7 @@
 # Supported args/inputs:
 #   - Arg 1 (required): username to receive notifications.
 #   - Arg 2 (optional): number of notifications to create (default: 5).
-#   - Uses Poetry + Django manage.py shell in the current backend environment.
+#   - Uses Poetry when available; otherwise falls back to python/python3.
 
 set -euo pipefail
 
@@ -24,7 +24,18 @@ if ! [[ "$COUNT" =~ ^[0-9]+$ ]] || [[ "$COUNT" -lt 1 ]]; then
   exit 1
 fi
 
-BURST_USER="$USERNAME" BURST_COUNT="$COUNT" poetry run python manage.py shell -c '
+if command -v poetry >/dev/null 2>&1; then
+  RUNNER=(poetry run python)
+elif command -v python >/dev/null 2>&1; then
+  RUNNER=(python)
+elif command -v python3 >/dev/null 2>&1; then
+  RUNNER=(python3)
+else
+  echo "Error: poetry, python, or python3 is required"
+  exit 1
+fi
+
+BURST_USER="$USERNAME" BURST_COUNT="$COUNT" "${RUNNER[@]}" manage.py shell -c '
 import os
 from django.contrib.auth import get_user_model
 from hmis.apps.core.services.notification_service import notify_users
