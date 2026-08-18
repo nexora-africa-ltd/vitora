@@ -9,6 +9,7 @@ import os
 import platform
 import sys
 import time
+from copy import deepcopy
 from datetime import UTC, datetime
 from urllib.parse import urlparse
 
@@ -95,6 +96,8 @@ from hmis.apps.patients.views import (
 )
 
 PROCESS_START_MONOTONIC = time.monotonic()
+HEALTH_CACHE_TTL_SECONDS = 5
+_HEALTH_RESPONSE_CACHE: dict[str, dict[str, object]] = {}
 
 
 def _truncate_error(exc: Exception, max_len: int = 300) -> str:
@@ -127,7 +130,7 @@ def _infer_database_provider(host: str, engine: str) -> str:
 
 def _check_database_health() -> dict[str, object]:
     """Check default database connectivity and query latency."""
-    started = time.monotonic()
+    started_total = time.monotonic()
     db_settings = settings.DATABASES.get("default", {})
     db_host = str(db_settings.get("HOST", "") or "")
     if not db_host:
@@ -141,18 +144,31 @@ def _check_database_health() -> dict[str, object]:
         "name": str(db_settings.get("NAME", "")),
         "host": db_host,
         "provider_hint": _infer_database_provider(db_host, db_engine),
+        "connection_acquire_ms": None,
+        "query_ms": None,
+        "connection_reused": None,
     }
 
     try:
-        with connections["default"].cursor() as cursor:
+        db_connection = connections["default"]
+        details["connection_reused"] = db_connection.connection is not None
+
+        started_acquire = time.monotonic()
+        db_connection.ensure_connection()
+        details["connection_acquire_ms"] = round((time.monotonic() - started_acquire) * 1000, 2)
+
+        started_query = time.monotonic()
+        with db_connection.cursor() as cursor:
             cursor.execute("SELECT 1")
             cursor.fetchone()
+        details["query_ms"] = round((time.monotonic() - started_query) * 1000, 2)
+
         details["status"] = "healthy"
     except Exception as exc:
         details["status"] = "unhealthy"
         details["error"] = _truncate_error(exc)
 
-    details["latency_ms"] = round((time.monotonic() - started) * 1000, 2)
+    details["latency_ms"] = round((time.monotonic() - started_total) * 1000, 2)
     return details
 
 
@@ -341,6 +357,30 @@ def _is_truthy(value: str | None) -> bool:
     return value.strip().lower() in {"1", "true", "yes", "on"}
 
 
+def _get_cached_health_payload(cache_key: str) -> dict[str, object] | None:
+    """Return cached health payload if fresh, otherwise None."""
+    entry = _HEALTH_RESPONSE_CACHE.get(cache_key)
+    if not entry:
+        return None
+
+    expires_at = entry.get("expires_at")
+    if not isinstance(expires_at, float) or time.monotonic() >= expires_at:
+        _HEALTH_RESPONSE_CACHE.pop(cache_key, None)
+        return None
+
+    payload = deepcopy(entry.get("payload", {}))
+    payload["cached"] = True
+    return payload
+
+
+def _set_cached_health_payload(cache_key: str, payload: dict[str, object]) -> None:
+    """Store health payload for a short TTL to reduce probe churn."""
+    _HEALTH_RESPONSE_CACHE[cache_key] = {
+        "expires_at": time.monotonic() + HEALTH_CACHE_TTL_SECONDS,
+        "payload": deepcopy(payload),
+    }
+
+
 @csrf_exempt
 @never_cache
 def health_check(request):
@@ -348,26 +388,33 @@ def health_check(request):
     from hmis import __version__
 
     lite_mode = _is_truthy(request.GET.get("lite"))
+    cache_key = "lite" if lite_mode else "full"
+
+    cached_payload = _get_cached_health_payload(cache_key)
+    if cached_payload is not None:
+        return JsonResponse(cached_payload)
+
     uptime_seconds = int(time.monotonic() - PROCESS_START_MONOTONIC)
     timestamp = datetime.now(UTC).isoformat()
 
     if lite_mode:
         database_check = _check_database_health()
         overall_status = "healthy" if database_check.get("status") == "healthy" else "unhealthy"
-        return JsonResponse(
-            {
-                "status": overall_status,
-                "service": "vitora-hmis",
-                "version": __version__,
-                "mode": "lite",
-                "timestamp": timestamp,
-                "uptime_seconds": uptime_seconds,
-                "database_latency_ms": database_check.get("latency_ms"),
-                "checks": {
-                    "database": database_check,
-                },
-            }
-        )
+        payload = {
+            "status": overall_status,
+            "service": "vitora-hmis",
+            "version": __version__,
+            "mode": "lite",
+            "timestamp": timestamp,
+            "uptime_seconds": uptime_seconds,
+            "database_latency_ms": database_check.get("latency_ms"),
+            "checks": {
+                "database": database_check,
+            },
+            "cached": False,
+        }
+        _set_cached_health_payload(cache_key, payload)
+        return JsonResponse(payload)
 
     from hmis.apps.billing.services.icd11_status import get_icd11_local_fallback_status
 
@@ -387,34 +434,35 @@ def health_check(request):
     build_id = os.getenv("VITORA_BUILD_ID")
     deployment_mode = os.getenv("DJANGO_ENV", "development")
 
-    return JsonResponse(
-        {
-            "status": overall_status,
-            "service": "vitora-hmis",
-            "version": __version__,
-            "timestamp": timestamp,
-            "uptime_seconds": uptime_seconds,
-            "uptime_human": f"{uptime_seconds // 3600}h {(uptime_seconds % 3600) // 60}m",
-            "environment": {
-                "django_env": deployment_mode,
-                "debug": settings.DEBUG,
-                "python": platform.python_version(),
-                "python_implementation": platform.python_implementation(),
-                "platform": platform.platform(),
-                "executable": sys.executable,
-            },
-            "build": {
-                "id": build_id,
-                "git_sha": os.getenv("GIT_SHA") or os.getenv("VERCEL_GIT_COMMIT_SHA"),
-            },
-            "websocket_enabled": websocket_enabled,
-            "database_latency_ms": database_latency_ms,
-            "icd11_local_fallback": get_icd11_local_fallback_status(),
-            "pii_encryption": pii_encryption,
-            "tibabot_status": checks["tibabot"].get("status", "unknown"),
-            "checks": checks,
-        }
-    )
+    payload = {
+        "status": overall_status,
+        "service": "vitora-hmis",
+        "version": __version__,
+        "timestamp": timestamp,
+        "uptime_seconds": uptime_seconds,
+        "uptime_human": f"{uptime_seconds // 3600}h {(uptime_seconds % 3600) // 60}m",
+        "environment": {
+            "django_env": deployment_mode,
+            "debug": settings.DEBUG,
+            "python": platform.python_version(),
+            "python_implementation": platform.python_implementation(),
+            "platform": platform.platform(),
+            "executable": sys.executable,
+        },
+        "build": {
+            "id": build_id,
+            "git_sha": os.getenv("GIT_SHA") or os.getenv("VERCEL_GIT_COMMIT_SHA"),
+        },
+        "websocket_enabled": websocket_enabled,
+        "database_latency_ms": database_latency_ms,
+        "icd11_local_fallback": get_icd11_local_fallback_status(),
+        "pii_encryption": pii_encryption,
+        "tibabot_status": checks["tibabot"].get("status", "unknown"),
+        "checks": checks,
+        "cached": False,
+    }
+    _set_cached_health_payload(cache_key, payload)
+    return JsonResponse(payload)
 
 
 @never_cache
