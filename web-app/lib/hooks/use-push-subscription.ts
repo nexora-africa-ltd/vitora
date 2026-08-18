@@ -68,6 +68,17 @@ async function getServiceWorkerRegistration(): Promise<ServiceWorkerRegistration
   return readyOrTimeout;
 }
 
+async function ensureServiceWorkerRegistrationForPush(): Promise<ServiceWorkerRegistration> {
+  const existing = await getServiceWorkerRegistration();
+  if (existing?.active) {
+    return existing;
+  }
+
+  await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+  const ready = await navigator.serviceWorker.ready;
+  return ready;
+}
+
 /**
  * Hook for managing Web Push notification subscriptions.
  *
@@ -196,12 +207,7 @@ export function usePushSubscription() {
         throw new Error('Notification permission denied');
       }
 
-      const registration = await getServiceWorkerRegistration();
-      const ensuredRegistration =
-        registration || (await navigator.serviceWorker.register('/sw.js', { scope: '/' }));
-      if (!ensuredRegistration) {
-        throw new Error('Service worker is not ready for push subscriptions');
-      }
+      const ensuredRegistration = await ensureServiceWorkerRegistrationForPush();
       setHasServiceWorkerRegistration(true);
       let subscription = await ensuredRegistration.pushManager.getSubscription();
       if (!subscription) {
