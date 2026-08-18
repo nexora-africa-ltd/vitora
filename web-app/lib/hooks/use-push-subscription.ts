@@ -24,6 +24,29 @@ type PushPermission = 'default' | 'granted' | 'denied' | 'unsupported';
 const SW_READY_TIMEOUT_MS = 2000;
 const SW_RECHECK_DELAY_MS = 3000;
 
+function getErrorMessage(error: unknown): string {
+  if (error && typeof error === 'object') {
+    const maybeAxios = error as {
+      response?: { data?: { detail?: string; error?: string }; status?: number };
+      message?: string;
+    };
+    const apiDetail = maybeAxios.response?.data?.detail || maybeAxios.response?.data?.error;
+    if (apiDetail) {
+      return apiDetail;
+    }
+    if (maybeAxios.response?.status === 503) {
+      return 'Push is not configured on the server right now.';
+    }
+    if (maybeAxios.message) {
+      return maybeAxios.message;
+    }
+  }
+  if (error instanceof Error) {
+    return error.message;
+  }
+  return 'Push subscription failed';
+}
+
 async function getServiceWorkerRegistration(): Promise<ServiceWorkerRegistration | null> {
   if (!('serviceWorker' in navigator)) {
     return null;
@@ -79,6 +102,9 @@ export function usePushSubscription() {
     retryDelay: 1000,
     throwOnError: false,
     meta: { skipGlobalErrorHandler: true },
+    onError: (error) => {
+      setStatusMessage(getErrorMessage(error));
+    },
   });
 
   // Check current subscription state
@@ -178,16 +204,9 @@ export function usePushSubscription() {
         try {
           subscription = await ensuredRegistration.pushManager.subscribe({
             userVisibleOnly: true,
-            applicationServerKey: urlBase64ToUint8Array(publicKey),
+            applicationServerKey: urlBase64ToUint8Array(publicKey.trim()),
           });
         } catch (err) {
-          // AbortError: push service unreachable (common on localhost/dev).
-          // Permission was granted, so treat as success — auto-subscribe will
-          // complete when a working push service is available.
-          if ((err as DOMException)?.name === 'AbortError') {
-            return null;
-          }
-
           // InvalidStateError: browser already has a subscription. Reuse it
           // and upsert to backend in case server-side row was cleaned up.
           if ((err as DOMException)?.name === 'InvalidStateError') {
@@ -195,6 +214,16 @@ export function usePushSubscription() {
           }
 
           if (!subscription) {
+            const domError = err as DOMException;
+            if (domError?.name === 'AbortError') {
+              throw new Error('Could not reach browser push service. Check network/VPN and try again.');
+            }
+            if (domError?.name === 'NotAllowedError') {
+              throw new Error('Browser blocked push notifications for this site.');
+            }
+            if (domError?.name === 'InvalidCharacterError') {
+              throw new Error('Server VAPID key is invalid. Ask admin to verify VAPID_PUBLIC_KEY.');
+            }
             throw err;
           }
         }
@@ -204,13 +233,12 @@ export function usePushSubscription() {
       return subscription;
     },
     onSuccess: () => {
-      // Even if subscription is null (push service unreachable), the user
-      // granted permission — mark as subscribed so UI reflects intent.
       setIsSubscribed(true);
+      setStatusMessage(null);
       queryClient.invalidateQueries({ queryKey: ['push-subscriptions'] });
     },
     onError: (error) => {
-      const message = error instanceof Error ? error.message : 'Push subscription failed';
+      const message = getErrorMessage(error);
       setStatusMessage(message);
       console.warn('[Push] Subscription failed:', message);
     },
@@ -241,7 +269,7 @@ export function usePushSubscription() {
   const subscribe = useCallback(() => {
     const publicKey = vapidData?.vapid_public_key;
     if (!publicKey) {
-      // VAPID key hasn't loaded yet (or backend not configured) — skip silently.
+      setStatusMessage('Waiting for server push key. Reload and try again.');
       return;
     }
     subscribeMutation.mutate(publicKey);

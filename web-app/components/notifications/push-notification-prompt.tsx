@@ -84,7 +84,6 @@ export function PushNotificationPrompt() {
 
   const handleEnable = () => {
     subscribe();
-    handleDismiss();
   };
 
   return (

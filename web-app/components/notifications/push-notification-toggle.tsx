@@ -130,10 +130,13 @@ export function PushNotificationToggle({ className }: { className?: string }) {
         )}
         <span className="text-sm">Enable push</span>
       </Button>
-      {!canSubscribe && (
+      {statusMessage && (
         <span className="text-xs text-muted-foreground">
-          {statusMessage || 'Push is not available right now.'}
+          {statusMessage}
         </span>
+      )}
+      {!statusMessage && !canSubscribe && (
+        <span className="text-xs text-muted-foreground">Push is not available right now.</span>
       )}
     </div>
   );
