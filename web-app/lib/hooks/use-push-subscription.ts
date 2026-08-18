@@ -251,7 +251,7 @@ export function usePushSubscription() {
     unsubscribeMutation.mutate();
   }, [unsubscribeMutation]);
 
-  const canSubscribe = isVapidReady && hasServiceWorkerRegistration;
+  const canSubscribe = isVapidReady && !swDisabledByConfig;
 
   return {
     isSupported,
