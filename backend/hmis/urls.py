@@ -10,6 +10,7 @@ import platform
 import sys
 import time
 from datetime import UTC, datetime
+from urllib.parse import urlparse
 
 from django.conf import settings
 from django.conf.urls.static import static
@@ -102,14 +103,44 @@ def _truncate_error(exc: Exception, max_len: int = 300) -> str:
     return message[:max_len]
 
 
+def _infer_database_provider(host: str, engine: str) -> str:
+    """Infer provider label from database host/engine for diagnostics."""
+    normalized_host = host.lower()
+    normalized_engine = engine.lower()
+
+    if "sqlite" in normalized_engine:
+        return "sqlite"
+    if "postgres.database.azure.com" in normalized_host:
+        return "azure-postgresql"
+    if "neon.tech" in normalized_host:
+        return "neon"
+    if "rds.amazonaws.com" in normalized_host:
+        return "aws-rds"
+    if "googleapis.com" in normalized_host or "cloudsql" in normalized_host:
+        return "gcp-cloudsql"
+    if "render.com" in normalized_host:
+        return "render-postgresql"
+    if normalized_host:
+        return "custom-postgresql"
+    return "unknown"
+
+
 def _check_database_health() -> dict[str, object]:
     """Check default database connectivity and query latency."""
     started = time.monotonic()
     db_settings = settings.DATABASES.get("default", {})
+    db_host = str(db_settings.get("HOST", "") or "")
+    if not db_host:
+        parsed = urlparse(str(os.getenv("DATABASE_URL", "") or ""))
+        db_host = parsed.hostname or ""
+
+    db_engine = str(db_settings.get("ENGINE", ""))
     details: dict[str, object] = {
         "status": "unknown",
-        "engine": db_settings.get("ENGINE", ""),
+        "engine": db_engine,
         "name": str(db_settings.get("NAME", "")),
+        "host": db_host,
+        "provider_hint": _infer_database_provider(db_host, db_engine),
     }
 
     try:
@@ -331,6 +362,7 @@ def health_check(request):
                 "mode": "lite",
                 "timestamp": timestamp,
                 "uptime_seconds": uptime_seconds,
+                "database_latency_ms": database_check.get("latency_ms"),
                 "checks": {
                     "database": database_check,
                 },
@@ -350,6 +382,7 @@ def health_check(request):
     overall_status = _compute_overall_health(checks)
     websocket_enabled = bool(checks["websocket"].get("enabled"))
     pii_encryption = str(checks["kms"].get("status", "unknown"))
+    database_latency_ms = checks["database"].get("latency_ms")
 
     build_id = os.getenv("VITORA_BUILD_ID")
     deployment_mode = os.getenv("DJANGO_ENV", "development")
@@ -375,6 +408,7 @@ def health_check(request):
                 "git_sha": os.getenv("GIT_SHA") or os.getenv("VERCEL_GIT_COMMIT_SHA"),
             },
             "websocket_enabled": websocket_enabled,
+            "database_latency_ms": database_latency_ms,
             "icd11_local_fallback": get_icd11_local_fallback_status(),
             "pii_encryption": pii_encryption,
             "tibabot_status": checks["tibabot"].get("status", "unknown"),
