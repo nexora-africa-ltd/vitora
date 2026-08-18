@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { pushApi } from '@/lib/api/push';
+import type { VapidKeyResponse } from '@/lib/api/push';
 
 /**
  * Convert a base64url-encoded VAPID public key to a Uint8Array
@@ -93,7 +94,7 @@ export function usePushSubscription() {
     'Notification' in window;
 
   // Fetch VAPID public key
-  const { data: vapidData } = useQuery({
+  const { data: vapidData, error: vapidError, isError: isVapidError } = useQuery<VapidKeyResponse>({
     queryKey: ['vapid-key'],
     queryFn: () => pushApi.getVapidKey(),
     enabled: isSupported,
@@ -102,10 +103,13 @@ export function usePushSubscription() {
     retryDelay: 1000,
     throwOnError: false,
     meta: { skipGlobalErrorHandler: true },
-    onError: (error) => {
-      setStatusMessage(getErrorMessage(error));
-    },
   });
+
+  useEffect(() => {
+    if (isVapidError) {
+      setStatusMessage(getErrorMessage(vapidError));
+    }
+  }, [isVapidError, vapidError]);
 
   // Check current subscription state
   useEffect(() => {
