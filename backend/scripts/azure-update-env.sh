@@ -119,7 +119,7 @@ az containerapp update \
     "DJANGO_SETTINGS_MODULE=${DJANGO_SETTINGS_MODULE:-hmis.settings.staging}" \
     "DJANGO_SECRET_KEY=secretref:django-secret-key" \
     "DATABASE_URL=secretref:database-url" \
-    "DB_CONN_MAX_AGE=${DB_CONN_MAX_AGE:-60}" \
+    "DB_CONN_MAX_AGE=${DB_CONN_MAX_AGE:-300}" \
     "ENCRYPTION_KEY=secretref:encryption-key" \
     "PII_HMAC_KEY=secretref:pii-hmac-key" \
     "DEBUG=false" \
