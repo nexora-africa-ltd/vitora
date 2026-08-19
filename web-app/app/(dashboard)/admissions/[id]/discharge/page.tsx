@@ -91,6 +91,44 @@ import { useDischargeDraft } from '@/lib/discharge/use-discharge-draft';
 import { buildAdmissionAIClinicalNotes, getLatestWardRound } from '@/lib/utils/inpatient-ai-context';
 import type { WardRound } from '@/lib/types/inpatient';
 
+const resolveCanAmbulate = (mobilityStatus?: string | null): boolean | null => {
+  if (!mobilityStatus) return null;
+  const rawCode = mobilityStatus.split('::')[0] ?? mobilityStatus;
+  const normalized = rawCode.trim().toUpperCase().replace(/\s+/g, '_');
+
+  if (['INDEPENDENT', 'AMBULATORY_WITH_ASSISTANCE', 'AMBULANT', 'WALKS_INDEPENDENTLY'].includes(normalized)) {
+    return true;
+  }
+  if (['BEDBOUND', 'NON_AMBULATORY', 'WHEELCHAIR_ONLY', 'BED_TO_CHAIR_ONLY'].includes(normalized)) {
+    return false;
+  }
+  if (normalized.includes('BED') || normalized.includes('WHEELCHAIR') || normalized.includes('NON_AMBULAT')) {
+    return false;
+  }
+  if (normalized.includes('AMBULAT') || normalized.includes('WALK') || normalized.includes('INDEPENDENT')) {
+    return true;
+  }
+  return null;
+};
+
+const resolveCanTolerateOral = (dietaryRequirements?: string | null): boolean | null => {
+  if (!dietaryRequirements) return null;
+  const rawCode = dietaryRequirements.split('::')[0] ?? dietaryRequirements;
+  const normalized = rawCode.trim().toUpperCase().replace(/\s+/g, '_');
+
+  if (normalized === 'CAN_TOLERATE_ORAL') return true;
+  if (['CANNOT_TOLERATE_ORAL', 'NIL_BY_MOUTH', 'NBM', 'NPO', 'IV_ONLY'].includes(normalized)) {
+    return false;
+  }
+  if (normalized.includes('CANNOT') || normalized.includes('NPO') || normalized.includes('NBM') || normalized.includes('IV_ONLY')) {
+    return false;
+  }
+  if (normalized.includes('ORAL') && normalized.includes('TOLERAT')) {
+    return true;
+  }
+  return null;
+};
+
 /**
  * Derive the attending consultant name from available data sources:
  * 1. admission.attending_doctor_username (explicitly set)
@@ -1666,8 +1704,8 @@ export default function DischargePage() {
               }))
           )}
           currentMedications={patientCtx.current_medications}
-          canAmbulate={kardex?.mobility_status ? ['AMBULANT', 'INDEPENDENT', 'WALKS_INDEPENDENTLY'].includes(kardex.mobility_status.toUpperCase()) : null}
-          canTolerateOral={kardex?.dietary_requirements ? !['NIL_BY_MOUTH', 'NBM', 'NPO', 'IV_ONLY'].includes(kardex.dietary_requirements.toUpperCase().replace(/\s+/g, '_')) : null}
+          canAmbulate={resolveCanAmbulate(kardex?.mobility_status)}
+          canTolerateOral={resolveCanTolerateOral(kardex?.dietary_requirements)}
           hasFollowUpArranged={!!followUpDate}
           hasCaregiverAtHome={null}
           hasNhifOrSha={patientContext?.hasSHA ?? null}

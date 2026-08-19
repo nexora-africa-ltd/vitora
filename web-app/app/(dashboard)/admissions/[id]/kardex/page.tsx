@@ -112,6 +112,93 @@ const MATERNITY_CONTINUITY_ACTIONS: { value: MaternityContinuityAction; label: s
   { value: 'ROUTE_TO_PNC_QUEUE', label: 'Prepare Direct PNC Queue Routing' },
 ];
 
+const MOBILITY_STATUS_OPTIONS = [
+  { value: 'INDEPENDENT', label: 'Independent ambulation' },
+  { value: 'AMBULATORY_WITH_ASSISTANCE', label: 'Ambulatory with assistance' },
+  { value: 'BED_TO_CHAIR_ONLY', label: 'Bed to chair only' },
+  { value: 'WHEELCHAIR_ONLY', label: 'Wheelchair only' },
+  { value: 'BEDBOUND', label: 'Bedbound / non-ambulatory' },
+  { value: 'UNKNOWN', label: 'Unknown / not assessed' },
+] as const;
+
+const ORAL_TOLERANCE_OPTIONS = [
+  { value: 'CAN_TOLERATE_ORAL', label: 'Can tolerate oral intake' },
+  { value: 'CANNOT_TOLERATE_ORAL', label: 'Cannot tolerate oral intake' },
+  { value: 'UNKNOWN', label: 'Unknown / not assessed' },
+] as const;
+
+const MOBILITY_STATUS_LABELS: Map<string, string> = new Map(
+  MOBILITY_STATUS_OPTIONS.map((option) => [option.value, option.label])
+);
+const ORAL_TOLERANCE_LABELS: Map<string, string> = new Map(
+  ORAL_TOLERANCE_OPTIONS.map((option) => [option.value, option.label])
+);
+
+const normalizeMobilityStatus = (value?: string | null): string => {
+  if (!value) return '';
+  const normalized = value.trim().toUpperCase().replace(/\s+/g, '_');
+  if (MOBILITY_STATUS_LABELS.has(normalized)) return normalized;
+  if (normalized.includes('BEDBOUND') || normalized.includes('NON_AMBULATORY')) return 'BEDBOUND';
+  if (normalized.includes('WHEELCHAIR')) return 'WHEELCHAIR_ONLY';
+  if (normalized.includes('BED') && normalized.includes('CHAIR')) return 'BED_TO_CHAIR_ONLY';
+  if (normalized.includes('AMBUL') || normalized.includes('WALK')) return 'AMBULATORY_WITH_ASSISTANCE';
+  if (normalized.includes('INDEPENDENT')) return 'INDEPENDENT';
+  return 'UNKNOWN';
+};
+
+const normalizeOralTolerance = (value?: string | null): string => {
+  if (!value) return '';
+  const normalized = value.trim().toUpperCase().replace(/\s+/g, '_');
+  if (ORAL_TOLERANCE_LABELS.has(normalized)) return normalized;
+  if (["NIL_BY_MOUTH", "NBM", "NPO", "IV_ONLY"].includes(normalized)) return 'CANNOT_TOLERATE_ORAL';
+  if (normalized.includes('ORAL') && normalized.includes('TOLERAT')) return 'CAN_TOLERATE_ORAL';
+  return 'UNKNOWN';
+};
+
+const formatMobilityStatus = (value?: string | null): string => {
+  if (!value) return 'Not specified';
+  const [rawCodeValue, rawNotes] = value.split('::');
+  const rawCode = rawCodeValue ?? '';
+  const normalized = rawCode.trim().toUpperCase().replace(/\s+/g, '_');
+  const label = MOBILITY_STATUS_LABELS.get(normalized) ?? rawCode;
+  const notes = rawNotes?.trim();
+  return notes ? `${label} - ${notes}` : label;
+};
+
+const formatOralTolerance = (value?: string | null): string => {
+  if (!value) return 'Not specified';
+  const [rawCodeValue, rawNotes] = value.split('::');
+  const rawCode = rawCodeValue ?? '';
+  const normalized = rawCode.trim().toUpperCase().replace(/\s+/g, '_');
+  const label = ORAL_TOLERANCE_LABELS.get(normalized) ?? rawCode;
+  const notes = rawNotes?.trim();
+  return notes ? `${label} - ${notes}` : label;
+};
+
+const decodeStructuredStatus = (
+  value: string | null | undefined,
+  normalize: (raw?: string | null) => string
+): { code: string; notes: string } => {
+  if (!value) return { code: '', notes: '' };
+  const [rawCode, ...rawNotesParts] = value.split('::');
+  const normalizedCode = normalize(rawCode);
+  const notesFromDelimited = rawNotesParts.join('::').trim();
+  if (notesFromDelimited) {
+    return { code: normalizedCode, notes: notesFromDelimited };
+  }
+  if (normalizedCode === 'UNKNOWN') {
+    return { code: normalizedCode, notes: value.trim() };
+  }
+  return { code: normalizedCode, notes: '' };
+};
+
+const encodeStructuredStatus = (code: string, notes: string): string | undefined => {
+  const normalizedCode = code.trim();
+  if (!normalizedCode) return undefined;
+  const normalizedNotes = notes.trim();
+  return normalizedNotes ? `${normalizedCode}::${normalizedNotes}` : normalizedCode;
+};
+
 const KARDEX_QUICK_ACTIONS: AIQuickAction[] = [
   {
     id: 'kardex-care-plan',
@@ -169,7 +256,9 @@ export default function KardexPage() {
   // Edit state
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [mobilityStatus, setMobilityStatus] = useState('');
+  const [mobilityNotes, setMobilityNotes] = useState('');
   const [dietaryRequirements, setDietaryRequirements] = useState('');
+  const [oralToleranceNotes, setOralToleranceNotes] = useState('');
   const [allergies, setAllergies] = useState('');
   const [ivAccess, setIvAccess] = useState('');
   const [maternityContinuityAction, setMaternityContinuityAction] =
@@ -419,9 +508,12 @@ export default function KardexPage() {
         bed_number: admission.bed_number ?? undefined,
         admission_status: admission.admission_status ?? undefined,
         length_of_stay_days: daysLOS,
-        diet: kardex.dietary_requirements || admission.diet || undefined,
+        diet: admission.diet || undefined,
         special_instructions:
           [
+            kardex.dietary_requirements
+              ? `Oral intake: ${formatOralTolerance(kardex.dietary_requirements)}`
+              : null,
             kardex.isolation_required && kardex.isolation_type
               ? `Isolation required: ${kardex.isolation_type}`
               : admission.special_instructions || null,
@@ -465,8 +557,15 @@ export default function KardexPage() {
   // Initialize edit form when kardex loads
   const initEditForm = () => {
     if (kardex) {
-      setMobilityStatus(kardex.mobility_status || '');
-      setDietaryRequirements(kardex.dietary_requirements || '');
+      const decodedMobility = decodeStructuredStatus(kardex.mobility_status, normalizeMobilityStatus);
+      const decodedOralTolerance = decodeStructuredStatus(
+        kardex.dietary_requirements,
+        normalizeOralTolerance
+      );
+      setMobilityStatus(decodedMobility.code);
+      setMobilityNotes(decodedMobility.notes);
+      setDietaryRequirements(decodedOralTolerance.code);
+      setOralToleranceNotes(decodedOralTolerance.notes);
       setAllergies(kardex.allergies || '');
       setIvAccess(kardex.iv_access || '');
       setMaternityContinuityAction(kardex.maternity_continuity_action || 'NONE');
@@ -507,8 +606,8 @@ export default function KardexPage() {
       await updateKardex.mutateAsync({
         id: kardex.id,
         data: {
-          mobility_status: mobilityStatus || undefined,
-          dietary_requirements: dietaryRequirements || undefined,
+          mobility_status: encodeStructuredStatus(mobilityStatus, mobilityNotes),
+          dietary_requirements: encodeStructuredStatus(dietaryRequirements, oralToleranceNotes),
           allergies: allergies || undefined,
           iv_access: ivAccess || undefined,
           maternity_continuity_action: admission?.mch_registration
@@ -840,14 +939,16 @@ export default function KardexPage() {
           </CardContent>
         </Card>
 
-        {/* Diet */}
+        {/* Oral intake */}
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm">Diet</CardTitle>
+            <CardTitle className="text-sm">Oral Intake</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="font-medium">
-              {kardex.dietary_requirements || kardex.diet || 'Regular diet'}
+              {kardex.dietary_requirements
+                ? formatOralTolerance(kardex.dietary_requirements)
+                : kardex.diet || 'Not specified'}
             </p>
           </CardContent>
         </Card>
@@ -858,7 +959,7 @@ export default function KardexPage() {
             <CardTitle className="text-sm">Mobility</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="font-medium">{kardex.mobility_status || 'Not specified'}</p>
+            <p className="font-medium">{formatMobilityStatus(kardex.mobility_status)}</p>
           </CardContent>
         </Card>
 
@@ -968,18 +1069,45 @@ export default function KardexPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Mobility Status</Label>
+                <Select value={mobilityStatus || 'UNKNOWN'} onValueChange={setMobilityStatus}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select mobility status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {MOBILITY_STATUS_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 <Input
-                  value={mobilityStatus}
-                  onChange={(e) => setMobilityStatus(e.target.value)}
-                  placeholder="e.g., Ambulatory, Wheelchair"
+                  value={mobilityNotes}
+                  onChange={(e) => setMobilityNotes(e.target.value)}
+                  placeholder="Optional mobility notes (e.g. uses walker)"
                 />
               </div>
               <div className="space-y-2">
-                <Label>Dietary Requirements</Label>
+                <Label>Can Tolerate Oral</Label>
+                <Select
+                  value={dietaryRequirements || 'UNKNOWN'}
+                  onValueChange={setDietaryRequirements}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select oral tolerance" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ORAL_TOLERANCE_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 <Input
-                  value={dietaryRequirements}
-                  onChange={(e) => setDietaryRequirements(e.target.value)}
-                  placeholder="e.g., Regular, Diabetic, NPO"
+                  value={oralToleranceNotes}
+                  onChange={(e) => setOralToleranceNotes(e.target.value)}
+                  placeholder="Optional oral intake notes"
                 />
               </div>
             </div>
