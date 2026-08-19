@@ -152,6 +152,40 @@ const SCHEDULE_ITEM_STATUS_OPTIONS: { value: KardexScheduleItemStatus; label: st
   { value: 'CANCELLED', label: 'Cancelled' },
 ];
 
+const CARE_PLAN_FIELD_LABELS: Record<string, string> = {
+  implementation: 'Implementation',
+  evaluation: 'Evaluation',
+  status: 'Status',
+  last_reviewed_at: 'Last Reviewed At',
+};
+
+const formatHistoryValue = (value: unknown): string => {
+  if (value == null) return 'None';
+  if (typeof value === 'string') return value.trim() || 'Empty';
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
+};
+
+const areHistoryValuesEqual = (beforeValue: unknown, afterValue: unknown): boolean => {
+  if (beforeValue === afterValue) return true;
+
+  if (beforeValue == null && afterValue == null) return true;
+
+  if (typeof beforeValue === 'object' && typeof afterValue === 'object') {
+    try {
+      return JSON.stringify(beforeValue) === JSON.stringify(afterValue);
+    } catch {
+      return false;
+    }
+  }
+
+  return String(beforeValue ?? '') === String(afterValue ?? '');
+};
+
 const formatFieldChangeValue = (fieldName: string, value?: string | null): string => {
   if (value == null || value === '') return 'Not specified';
   if (fieldName === 'mobility_status') return formatMobilityStatus(value);
@@ -1832,11 +1866,43 @@ export default function KardexPage() {
                             by {historyItem.changed_by_username || 'System'}
                           </span>
                         </div>
-                        {historyItem.changed_fields && historyItem.changed_fields.length > 0 && (
-                          <p className="text-xs text-muted-foreground">
-                            Fields: {historyItem.changed_fields.join(', ')}
-                          </p>
-                        )}
+                        {historyItem.changed_fields && historyItem.changed_fields.length > 0 && (() => {
+                          const diffFields = historyItem.changed_fields.filter((field) => {
+                            const beforeRaw = historyItem.before_data?.[field];
+                            const afterRaw = historyItem.after_data?.[field];
+                            return !areHistoryValuesEqual(beforeRaw, afterRaw);
+                          });
+
+                          if (diffFields.length === 0) return null;
+
+                          return (
+                            <div className="space-y-1">
+                              {diffFields.map((field) => {
+                                const beforeRaw = historyItem.before_data?.[field];
+                                const afterRaw = historyItem.after_data?.[field];
+                                const beforeValue = formatHistoryValue(beforeRaw);
+                                const afterValue = formatHistoryValue(afterRaw);
+
+                                return (
+                                  <div
+                                    key={`${historyItem.id}-${field}`}
+                                    className="rounded-md border border-border/70 bg-muted/30 p-2"
+                                  >
+                                    <p className="text-xs font-medium text-foreground">
+                                      {CARE_PLAN_FIELD_LABELS[field] || field}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground">
+                                      <span className="font-medium">From:</span> {beforeValue}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground">
+                                      <span className="font-medium">To:</span> {afterValue}
+                                    </p>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          );
+                        })()}
                         {historyItem.notes && (
                           <p className="whitespace-pre-wrap break-words text-sm">
                             {historyItem.notes}
