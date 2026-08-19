@@ -35,7 +35,13 @@ import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { HelpPopover } from '@/components/shared/help-popover';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { useAICarePlanGenerate, useAIEnabled, useStoredCarePlans, aiKeys } from '@/lib/hooks/use-ai';
+import {
+  useAICarePlanConditions,
+  useAICarePlanGenerate,
+  useAIEnabled,
+  useStoredCarePlans,
+  aiKeys,
+} from '@/lib/hooks/use-ai';
 import { aiApi } from '@/lib/api/ai';
 import { toast } from 'sonner';
 import { AIFeedbackButtons } from '@/components/shared/ai-feedback-buttons';
@@ -91,9 +97,9 @@ export interface CarePlanPanelProps {
   autoTrigger?: boolean;
   /** Called after auto-trigger is consumed */
   onAutoTriggerConsumed?: () => void;
-  /** Callback to apply AI care plan as ADPIE nursing entries. When provided, shows "Apply to Kardex" button. */
+  /** Callback to create ADPIE nursing care-plan entries in Kardex. */
   onApplyToKardex?: (entries: NursingCarePlanEntryCreateData[]) => void;
-  /** Whether Apply to Kardex is currently pending */
+  /** Whether ADPIE creation is currently pending */
   isApplyingToKardex?: boolean;
   /** Whether this care plan was already applied to the Kardex (idempotency guard). */
   appliedToKardex?: boolean;
@@ -274,6 +280,19 @@ const CATEGORY_LABELS_MAP: Record<string, string> = {
 function mapAIToADPIE(plan: AICarePlanResponse): NursingCarePlanEntryCreateData[] {
   const now = new Date().toISOString();
 
+  if (Array.isArray(plan.adpie_entries) && plan.adpie_entries.length > 0) {
+    return plan.adpie_entries.map((entry) => ({
+      recorded_at: now,
+      assessment: entry.assessment,
+      nursing_diagnosis: entry.nursing_diagnosis,
+      goal_and_outcome_criteria: entry.goal_and_outcome_criteria,
+      plan_of_action: entry.plan_of_action,
+      scientific_rationale: entry.scientific_rationale,
+      implementation: entry.implementation || undefined,
+      evaluation: entry.evaluation || undefined,
+    }));
+  }
+
   // Format all interventions into a plan-of-action text block
   const planOfAction = plan.interventions
     .map((cat) => {
@@ -346,6 +365,7 @@ export function CarePlanPanel({
   appliedToKardex: appliedToKardexProp,
 }: CarePlanPanelProps) {
   const isAIEnabled = useAIEnabled();
+  const { data: carePlanConditions, isLoading: isLoadingConditions } = useAICarePlanConditions();
   const queryClient = useQueryClient();
   const { mutate, data: result, isPending, isError, reset } = useAICarePlanGenerate();
   const [isExporting, setIsExporting] = React.useState(false);
@@ -461,13 +481,32 @@ export function CarePlanPanel({
         current_medications: currentMedications,
         vitals,
         lab_results: labResults,
+        output_format: 'adpie',
       });
       onAutoTriggerConsumed?.();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoTrigger]);
 
+  const diagnosisCandidate = (primaryDiagnosis || chiefComplaint || '').trim().toLowerCase();
+  const isDiagnosisSupported = React.useMemo(() => {
+    if (!diagnosisCandidate) return false;
+    const conditions = carePlanConditions?.conditions ?? [];
+    if (conditions.length === 0) return false;
+
+    return conditions.some((condition) => {
+      const key = (condition.key || '').toLowerCase();
+      const name = (condition.name || '').toLowerCase();
+      return (
+        (key && (diagnosisCandidate.includes(key) || key.includes(diagnosisCandidate))) ||
+        (name && (diagnosisCandidate.includes(name) || name.includes(diagnosisCandidate)))
+      );
+    });
+  }, [carePlanConditions?.conditions, diagnosisCandidate]);
+
   if (!isAIEnabled) return null;
+  if (isLoadingConditions) return null;
+  if (!isDiagnosisSupported) return null;
 
   const handleGenerate = () => {
     mutate({
@@ -486,6 +525,7 @@ export function CarePlanPanel({
       current_medications: currentMedications,
       vitals,
       lab_results: labResults,
+      output_format: 'adpie',
     });
   };
 
@@ -508,6 +548,7 @@ export function CarePlanPanel({
         current_medications: currentMedications,
         vitals,
         lab_results: labResults,
+        output_format: 'adpie',
       });
       const blob = new Blob([JSON.stringify(fhirData, null, 2)], { type: 'application/fhir+json' });
       const url = URL.createObjectURL(blob);
@@ -790,12 +831,12 @@ export function CarePlanPanel({
                               className="gap-1.5 text-xs"
                             >
                               <ClipboardCheck className="h-3.5 w-3.5" />
-                              Applied to Kardex
+                              ADPIE Created
                             </Button>
                           </span>
                         </TooltipTrigger>
                         <TooltipContent>
-                          <p>Already applied to the Kardex. Use &ldquo;Generate New&rdquo; to create a different plan.</p>
+                          <p>Already created in Kardex. Use &ldquo;Generate New&rdquo; to create a different ADPIE plan.</p>
                         </TooltipContent>
                       </Tooltip>
                     ) : (
@@ -816,7 +857,7 @@ export function CarePlanPanel({
                         ) : (
                           <ClipboardCheck className="h-3.5 w-3.5" />
                         )}
-                        Apply to Kardex ({displayResult.goals.length})
+                        Create ADPIE Care Plan ({displayResult.goals.length})
                       </Button>
                     )
                   )}

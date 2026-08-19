@@ -418,6 +418,17 @@ export const AICarePlanFollowUpSchema = z.object({
   red_flags: z.array(z.string()).nullish().transform(v => v ?? undefined),
 }).passthrough();
 
+/** Schema for ADPIE-aligned nursing entry */
+export const AICarePlanADPIEEntrySchema = z.object({
+  assessment: z.string(),
+  nursing_diagnosis: z.string(),
+  goal_and_outcome_criteria: z.string(),
+  plan_of_action: z.string(),
+  scientific_rationale: z.string(),
+  implementation: z.string().optional(),
+  evaluation: z.string().optional(),
+}).passthrough();
+
 /** Schema for POST /api/ai/care-plan/generate/ response */
 export const AICarePlanResponseSchema = z.object({
   primary_diagnosis: z.string(),
@@ -427,6 +438,7 @@ export const AICarePlanResponseSchema = z.object({
   interventions: z.array(AICarePlanInterventionCategorySchema),
   discharge_criteria: z.array(z.string()).optional(),
   follow_up: AICarePlanFollowUpSchema.nullable().optional(),
+  adpie_entries: z.array(AICarePlanADPIEEntrySchema).optional(),
   references: z.array(z.string()).optional(),
   cds_alerts: z.array(z.record(z.unknown())).optional(),
   facility_level_notes: z.array(z.string()).optional(),

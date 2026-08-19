@@ -1525,6 +1525,12 @@ class CarePlanGenerateRequestSerializer(serializers.Serializer):
         required=False,
         default=list,
     )
+    output_format = serializers.ChoiceField(
+        choices=["standard", "adpie"],
+        required=False,
+        default="adpie",
+        help_text="Requested output contract for care plan generation.",
+    )
 
 
 class CarePlanGoalSerializer(serializers.Serializer):
@@ -1565,6 +1571,18 @@ class CarePlanFollowUpSerializer(serializers.Serializer):
     )
 
 
+class CarePlanADPIEEntrySerializer(serializers.Serializer):
+    """ADPIE-aligned nursing care-plan row derived from generated output."""
+
+    assessment = serializers.CharField()
+    nursing_diagnosis = serializers.CharField()
+    goal_and_outcome_criteria = serializers.CharField()
+    plan_of_action = serializers.CharField()
+    scientific_rationale = serializers.CharField()
+    implementation = serializers.CharField(required=False, allow_blank=True)
+    evaluation = serializers.CharField(required=False, allow_blank=True)
+
+
 class CarePlanResponseSerializer(serializers.Serializer):
     """Response from POST /api/ai/care-plan/generate/."""
 
@@ -1578,6 +1596,7 @@ class CarePlanResponseSerializer(serializers.Serializer):
         required=False,
     )
     follow_up = CarePlanFollowUpSerializer(required=False, allow_null=True)
+    adpie_entries = CarePlanADPIEEntrySerializer(many=True, required=False)
     references = serializers.ListField(
         child=serializers.CharField(),
         required=False,

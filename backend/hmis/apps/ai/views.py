@@ -225,6 +225,163 @@ def _record_response_tokens(request: Request, result: dict) -> None:
         org.record_ai_token_usage(total)
 
 
+def _normalize_care_plan_result(result: dict[str, Any], data: dict[str, Any]) -> dict[str, Any]:
+    """Normalize care plan output to ADPIE-compatible minima.
+
+    Ensures generated payloads (TibaBot or fallback) always include required
+    core sections and ADPIE rows compatible with manual Kardex format.
+    """
+    primary_diagnosis = (
+        result.get("primary_diagnosis") or data.get("primary_diagnosis") or ""
+    ).strip()
+    if not primary_diagnosis:
+        primary_diagnosis = "Undifferentiated clinical condition"
+    result["primary_diagnosis"] = primary_diagnosis
+
+    goals = result.get("goals")
+    if not isinstance(goals, list) or not goals:
+        goals = [
+            {
+                "description": f"Stabilize and improve {primary_diagnosis}",
+                "priority": "high",
+                "timeframe": "During admission",
+                "measurable_target": "Clinical status improves with no deterioration",
+            }
+        ]
+
+    normalized_goals: list[dict[str, Any]] = []
+    for goal in goals:
+        if not isinstance(goal, dict):
+            continue
+        description = str(goal.get("description") or "").strip()
+        if not description:
+            continue
+        priority = str(goal.get("priority") or "medium").lower()
+        if priority not in {"high", "medium", "low"}:
+            priority = "medium"
+        normalized_goals.append(
+            {
+                "description": description,
+                "priority": priority,
+                "timeframe": str(goal.get("timeframe") or "During admission").strip(),
+                "measurable_target": str(
+                    goal.get("measurable_target") or "Demonstrable clinical improvement"
+                ).strip(),
+            }
+        )
+    if not normalized_goals:
+        normalized_goals = [
+            {
+                "description": f"Stabilize and improve {primary_diagnosis}",
+                "priority": "high",
+                "timeframe": "During admission",
+                "measurable_target": "Clinical status improves with no deterioration",
+            }
+        ]
+    result["goals"] = normalized_goals
+
+    interventions = result.get("interventions")
+    if not isinstance(interventions, list):
+        interventions = []
+    normalized_interventions: list[dict[str, Any]] = []
+    for category_block in interventions:
+        if not isinstance(category_block, dict):
+            continue
+        category = str(category_block.get("category") or "nursing").strip() or "nursing"
+        items = category_block.get("items")
+        if not isinstance(items, list):
+            continue
+        normalized_items: list[dict[str, Any]] = []
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            action = str(item.get("action") or "").strip()
+            if not action:
+                continue
+            normalized_items.append(
+                {
+                    "action": action,
+                    "frequency": str(item.get("frequency") or "As ordered").strip(),
+                    "rationale": str(
+                        item.get("rationale")
+                        or "Supports safe and effective management of current condition"
+                    ).strip(),
+                }
+            )
+        if normalized_items:
+            normalized_interventions.append({"category": category, "items": normalized_items})
+    if not normalized_interventions:
+        normalized_interventions = [
+            {
+                "category": "nursing",
+                "items": [
+                    {
+                        "action": "Monitor vitals, symptoms, and response to treatment",
+                        "frequency": "Every shift or as clinically indicated",
+                        "rationale": "Early detection of deterioration and timely escalation",
+                    }
+                ],
+            }
+        ]
+    result["interventions"] = normalized_interventions
+
+    adpie_entries: list[dict[str, Any]] = []
+    plan_lines = [
+        f"[{block.get('category', 'nursing')}] {item.get('action', '')}"
+        for block in normalized_interventions
+        for item in block.get("items", [])
+        if isinstance(item, dict) and item.get("action")
+    ]
+    rationale_lines = [
+        f"[{block.get('category', 'nursing')}] {item.get('rationale', '')}"
+        for block in normalized_interventions
+        for item in block.get("items", [])
+        if isinstance(item, dict) and item.get("rationale")
+    ]
+    plan_of_action = "\n".join(plan_lines[:8]).strip() or "Continue condition-directed nursing care"
+    scientific_rationale = (
+        "\n".join(rationale_lines[:8]).strip()
+        or "Interventions are selected to improve outcomes and reduce complications"
+    )
+
+    for goal in normalized_goals:
+        adpie_entries.append(
+            {
+                "assessment": (
+                    f"{primary_diagnosis}. "
+                    f"Severity: {(result.get('severity') or data.get('severity') or 'not specified')}."
+                ),
+                "nursing_diagnosis": primary_diagnosis,
+                "goal_and_outcome_criteria": (
+                    f"{goal['description']}. "
+                    f"Target: {goal.get('measurable_target') or 'Demonstrable improvement'}. "
+                    f"Timeframe: {goal.get('timeframe') or 'During admission'}."
+                ),
+                "plan_of_action": plan_of_action,
+                "scientific_rationale": scientific_rationale,
+                "implementation": "",
+                "evaluation": "",
+            }
+        )
+    result["adpie_entries"] = adpie_entries
+
+    follow_up = result.get("follow_up")
+    if follow_up is None:
+        follow_up = {}
+    if not isinstance(follow_up, dict):
+        follow_up = {}
+    if "timing" not in follow_up and "appointment" in follow_up:
+        follow_up["timing"] = follow_up.get("appointment")
+    if "instructions" not in follow_up and "investigations" in follow_up:
+        follow_up["instructions"] = follow_up.get("investigations")
+    follow_up.setdefault("timing", "Review in 1-2 weeks")
+    follow_up.setdefault("instructions", "Return earlier if red flags develop")
+    follow_up.setdefault("red_flags", [])
+    result["follow_up"] = follow_up
+
+    return result
+
+
 # Accepted verbosity values — aligned with TibaBot's API.
 _VALID_VERBOSITY = {"concise", "standard", "educational"}
 
@@ -2503,14 +2660,7 @@ class CarePlanGenerateView(AIFeatureGatedMixin, APIView):
 
             result = generate_care_plan_fallback(data)
 
-        # Normalize follow_up: LLM may return "appointment"/"investigations"
-        # instead of the canonical "timing"/"instructions" field names.
-        follow_up = result.get("follow_up")
-        if isinstance(follow_up, dict):
-            if "timing" not in follow_up and "appointment" in follow_up:
-                follow_up["timing"] = follow_up.pop("appointment")
-            if "instructions" not in follow_up and "investigations" in follow_up:
-                follow_up["instructions"] = follow_up.pop("investigations")
+        result = _normalize_care_plan_result(result, data)
 
         # Persist result
         try:

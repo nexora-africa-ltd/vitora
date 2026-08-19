@@ -773,6 +773,7 @@ export interface AICarePlanGenerateRequest {
   current_medications?: string[];
   vitals?: Record<string, number>;
   lab_results?: AILabResultItem[];
+  output_format?: 'standard' | 'adpie';
 }
 
 /** A care plan goal */
@@ -819,6 +820,17 @@ export interface AICarePlanFollowUp {
   red_flags?: string[];
 }
 
+/** ADPIE-aligned care plan row for nursing documentation */
+export interface AICarePlanADPIEEntry {
+  assessment: string;
+  nursing_diagnosis: string;
+  goal_and_outcome_criteria: string;
+  plan_of_action: string;
+  scientific_rationale: string;
+  implementation?: string;
+  evaluation?: string;
+}
+
 /** Response from POST /api/ai/care-plan/generate/ */
 export interface AICarePlanResponse {
   primary_diagnosis: string;
@@ -828,6 +840,7 @@ export interface AICarePlanResponse {
   interventions: AICarePlanInterventionCategory[];
   discharge_criteria?: string[];
   follow_up?: AICarePlanFollowUp | null;
+  adpie_entries?: AICarePlanADPIEEntry[];
   references?: string[];
   cds_alerts?: Record<string, unknown>[];
   facility_level_notes?: string[];
