@@ -1681,6 +1681,8 @@ class NursingCarePlanEntrySerializer(serializers.ModelSerializer):
 
     recorded_by_username = serializers.CharField(source="recorded_by.username", read_only=True)
     status_display = serializers.CharField(source="get_status_display", read_only=True)
+    is_review_due = serializers.BooleanField(read_only=True)
+    review_due_at = serializers.DateTimeField(read_only=True)
 
     class Meta:
         model = NursingCarePlanEntry
@@ -1699,6 +1701,8 @@ class NursingCarePlanEntrySerializer(serializers.ModelSerializer):
             "evaluation",
             "status",
             "status_display",
+            "is_review_due",
+            "review_due_at",
             "created_at",
             "updated_at",
         ]

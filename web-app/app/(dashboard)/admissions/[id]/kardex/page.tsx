@@ -7,6 +7,7 @@ import {
   ClipboardList,
   Plus,
   AlertTriangle,
+  Clock3,
   FileText,
   CheckCircle2,
   XCircle,
@@ -898,9 +899,24 @@ export default function KardexPage() {
     }
   };
 
-  const pendingCarePlanCount =
-    kardex?.care_plan_entries?.filter((e) => e.status === 'ACTIVE' || e.status === 'ONGOING')
-      .length ?? 0;
+  const activeCarePlanEntries = useMemo(
+    () =>
+      (kardex?.care_plan_entries ?? []).filter(
+        (entry) => entry.status === 'ACTIVE' || entry.status === 'ONGOING'
+      ),
+    [kardex?.care_plan_entries]
+  );
+
+  const reviewDueCarePlanEntryIds = useMemo(() => {
+    return new Set(
+      activeCarePlanEntries
+        .filter((entry) => entry.is_review_due)
+        .map((entry) => entry.id)
+    );
+  }, [activeCarePlanEntries]);
+
+  const pendingCarePlanCount = activeCarePlanEntries.length;
+  const reviewDueCarePlanCount = reviewDueCarePlanEntryIds.size;
 
   if (isLoading) {
     return <KardexSkeleton />;
@@ -1413,10 +1429,15 @@ export default function KardexPage() {
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-2">
               <h3 className="text-lg font-semibold">Nursing Care Plan (24 Hours)</h3>
-              <HelpPopover content="Structured nursing care plan following the ADPIE process: Assessment, Diagnosis, Planning, Implementation, Evaluation. Each row represents one nursing problem and its care plan." />
+              <HelpPopover content="Structured nursing care plan following ADPIE: Assessment, Diagnosis, Planning, Implementation, Evaluation. Entries are reviewed during shift/24-hour cycles; they are not auto-regenerated every 24 hours." />
               {pendingCarePlanCount > 0 && (
                 <Badge variant="outline" className="text-xs">
                   {pendingCarePlanCount} pending
+                </Badge>
+              )}
+              {reviewDueCarePlanCount > 0 && (
+                <Badge variant="warning" className="text-xs">
+                  {reviewDueCarePlanCount} review due
                 </Badge>
               )}
             </div>
@@ -1571,6 +1592,18 @@ export default function KardexPage() {
               isApplyingToKardex={isApplyingAIToKardex}
               appliedToKardex={appliedAIToKardex}
             />
+          )}
+
+          {reviewDueCarePlanCount > 0 && (
+            <div className="flex items-start gap-2 rounded-md border border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
+              <Clock3 className="mt-0.5 h-4 w-4 shrink-0" />
+              <p>
+                {reviewDueCarePlanCount} active/ongoing care plan{' '}
+                {reviewDueCarePlanCount === 1 ? 'entry is' : 'entries are'} older than 24 hours.
+                Review and update implementation/evaluation, then resolve or discontinue where
+                appropriate.
+              </p>
+            </div>
           )}
 
           {/* Update Care Plan Entry Dialog */}
@@ -1740,6 +1773,7 @@ export default function KardexPage() {
             <div className="space-y-4">
               {kardex.care_plan_entries?.map((entry) => {
                 const isTerminal = entry.status === 'RESOLVED' || entry.status === 'DISCONTINUED';
+                const isReviewDue = reviewDueCarePlanEntryIds.has(entry.id);
                 return (
                   <Card key={entry.id} className={isTerminal ? 'opacity-75' : ''}>
                     <CardHeader className="pb-2">
@@ -1762,6 +1796,11 @@ export default function KardexPage() {
                           <span className="text-sm text-muted-foreground">
                             {formatDateTime(entry.recorded_at)}
                           </span>
+                          {!isTerminal && isReviewDue && (
+                            <Badge variant="warning" className="w-fit shrink-0 text-xs">
+                              Review due
+                            </Badge>
+                          )}
                         </div>
                         <div className="flex items-center gap-2">
                           <span className="text-sm text-muted-foreground">

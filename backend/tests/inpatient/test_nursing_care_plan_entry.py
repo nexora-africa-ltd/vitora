@@ -460,3 +460,54 @@ class TestNursingCarePlanEntryAPI:
         assert entry["status_display"] == "Resolved"
         assert "recorded_by_username" in entry
         assert "recorded_at" in entry
+
+    def test_care_plan_entry_review_due_fields_in_kardex_detail(
+        self, authenticated_client, sample_admission, test_user
+    ):
+        """Kardex detail should expose API-computed review-due fields per care-plan entry."""
+        kardex = sample_admission.kardex
+
+        NursingCarePlanEntry.objects.create(
+            kardex=kardex,
+            recorded_at=timezone.now() - timezone.timedelta(hours=25),
+            recorded_by=test_user,
+            assessment="Assessment",
+            nursing_diagnosis="Diagnosis",
+            goal_and_outcome_criteria="Goal",
+            plan_of_action="Plan",
+            scientific_rationale="Rationale",
+            status="ACTIVE",
+        )
+
+        response = authenticated_client.get(f"/api/inpatient/kardex/{kardex.id}/")
+        assert response.status_code == status.HTTP_200_OK
+
+        entry = response.data["care_plan_entries"][0]
+        assert entry["is_review_due"] is True
+        assert entry["review_due_at"] is not None
+
+    def test_terminal_care_plan_entry_is_not_review_due(
+        self, authenticated_client, sample_admission, test_user
+    ):
+        """Resolved/discontinued entries should not be marked review-due."""
+        kardex = sample_admission.kardex
+
+        NursingCarePlanEntry.objects.create(
+            kardex=kardex,
+            recorded_at=timezone.now() - timezone.timedelta(hours=48),
+            recorded_by=test_user,
+            assessment="Assessment",
+            nursing_diagnosis="Diagnosis",
+            goal_and_outcome_criteria="Goal",
+            plan_of_action="Plan",
+            scientific_rationale="Rationale",
+            status="RESOLVED",
+        )
+
+        response = authenticated_client.get(f"/api/inpatient/kardex/{kardex.id}/")
+        assert response.status_code == status.HTTP_200_OK
+
+        entry = response.data["care_plan_entries"][0]
+        assert entry["status"] == "RESOLVED"
+        assert entry["is_review_due"] is False
+        assert entry["review_due_at"] is not None

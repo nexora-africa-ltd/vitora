@@ -781,6 +781,8 @@ export const NursingCarePlanEntrySchema = z.object({
   evaluation: z.string(),
   status: CarePlanEntryStatusSchema,
   status_display: z.string().optional(),
+  is_review_due: z.boolean().optional(),
+  review_due_at: z.string().nullable().optional(),
   created_at: z.string().optional(),
   updated_at: z.string().optional(),
 });

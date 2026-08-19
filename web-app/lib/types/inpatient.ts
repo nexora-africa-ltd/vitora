@@ -973,6 +973,8 @@ export interface NursingCarePlanEntry {
   evaluation: string;
   status: CarePlanEntryStatus;
   status_display?: string;
+  is_review_due?: boolean;
+  review_due_at?: string | null;
   created_at?: string;
   updated_at?: string;
 }

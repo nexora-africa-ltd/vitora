@@ -2496,6 +2496,7 @@ class NursingCarePlanEntry(models.Model):
 
     # Terminal statuses — entries in these states cannot be further updated
     TERMINAL_STATUSES = {"RESOLVED", "DISCONTINUED"}
+    REVIEW_WINDOW_HOURS = 24
 
     kardex = models.ForeignKey(
         NursingKardex,
@@ -2569,6 +2570,23 @@ class NursingCarePlanEntry(models.Model):
             f"Care Plan: {self.nursing_diagnosis[:50]} "
             f"({self.get_status_display()}) - {self.recorded_at:%Y-%m-%d %H:%M}"
         )
+
+    @property
+    def review_due_at(self):
+        """Datetime when this entry should be reviewed (24h after recording)."""
+        if not self.recorded_at:
+            return None
+        return self.recorded_at + timedelta(hours=self.REVIEW_WINDOW_HOURS)
+
+    @property
+    def is_review_due(self) -> bool:
+        """Whether an active/ongoing entry has crossed its 24-hour review window."""
+        if self.status in self.TERMINAL_STATUSES:
+            return False
+        review_due_at = self.review_due_at
+        if review_due_at is None:
+            return False
+        return timezone.now() >= review_due_at
 
 
 class KardexShiftNote(models.Model):
