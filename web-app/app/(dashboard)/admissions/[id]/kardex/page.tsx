@@ -46,6 +46,9 @@ import {
   useUpdateKardex,
   useAddKardexShiftNote,
   useAddKardexHandoverNote,
+  useAddKardexScheduleItem,
+  useUpdateKardexScheduleItem,
+  useDeleteKardexScheduleItem,
   useAddCarePlanEntry,
   useUpdateCarePlanEntry,
   useResolveAllCarePlans,
@@ -57,9 +60,22 @@ import { ConsumableUsagePanel } from '@/components/inpatient';
 import { useUser } from '@/lib/auth';
 import { useToast } from '@/lib/hooks/use-toast';
 import { formatDateTime } from '@/lib/utils/format';
+import {
+  decodeStructuredStatus,
+  encodeStructuredStatus,
+  formatMobilityStatus,
+  formatOralTolerance,
+  MOBILITY_STATUS_OPTIONS,
+  normalizeMobilityStatus,
+  normalizeOralTolerance,
+  ORAL_TOLERANCE_OPTIONS,
+} from '@/lib/utils/kardex-status';
 import type {
   CarePlanEntryStatus,
   MaternityContinuityAction,
+  KardexCodeStatus,
+  KardexScheduleItemType,
+  KardexScheduleItemStatus,
   NursingCarePlanEntryCreateData,
   RiskLevel,
   ShiftType,
@@ -112,91 +128,37 @@ const MATERNITY_CONTINUITY_ACTIONS: { value: MaternityContinuityAction; label: s
   { value: 'ROUTE_TO_PNC_QUEUE', label: 'Prepare Direct PNC Queue Routing' },
 ];
 
-const MOBILITY_STATUS_OPTIONS = [
-  { value: 'INDEPENDENT', label: 'Independent ambulation' },
-  { value: 'AMBULATORY_WITH_ASSISTANCE', label: 'Ambulatory with assistance' },
-  { value: 'BED_TO_CHAIR_ONLY', label: 'Bed to chair only' },
-  { value: 'WHEELCHAIR_ONLY', label: 'Wheelchair only' },
-  { value: 'BEDBOUND', label: 'Bedbound / non-ambulatory' },
-  { value: 'UNKNOWN', label: 'Unknown / not assessed' },
-] as const;
+const CODE_STATUS_OPTIONS: { value: KardexCodeStatus; label: string }[] = [
+  { value: 'FULL_CODE', label: 'Full Code' },
+  { value: 'DNR', label: 'Do Not Resuscitate (DNR)' },
+  { value: 'DNI', label: 'Do Not Intubate (DNI)' },
+  { value: 'LIMITED', label: 'Limited Intervention' },
+  { value: 'UNKNOWN', label: 'Unknown / Not Documented' },
+];
 
-const ORAL_TOLERANCE_OPTIONS = [
-  { value: 'CAN_TOLERATE_ORAL', label: 'Can tolerate oral intake' },
-  { value: 'CANNOT_TOLERATE_ORAL', label: 'Cannot tolerate oral intake' },
-  { value: 'UNKNOWN', label: 'Unknown / not assessed' },
-] as const;
+const SCHEDULE_ITEM_TYPE_OPTIONS: { value: KardexScheduleItemType; label: string }[] = [
+  { value: 'TREATMENT', label: 'Treatment' },
+  { value: 'DIAGNOSTIC_TEST', label: 'Diagnostic Test' },
+  { value: 'VITALS_CHECK', label: 'Vitals Check' },
+  { value: 'MEDICATION', label: 'Medication' },
+];
 
-const MOBILITY_STATUS_LABELS: Map<string, string> = new Map(
-  MOBILITY_STATUS_OPTIONS.map((option) => [option.value, option.label])
-);
-const ORAL_TOLERANCE_LABELS: Map<string, string> = new Map(
-  ORAL_TOLERANCE_OPTIONS.map((option) => [option.value, option.label])
-);
+const SCHEDULE_ITEM_STATUS_OPTIONS: { value: KardexScheduleItemStatus; label: string }[] = [
+  { value: 'PENDING', label: 'Pending' },
+  { value: 'COMPLETED', label: 'Completed' },
+  { value: 'CANCELLED', label: 'Cancelled' },
+];
 
-const normalizeMobilityStatus = (value?: string | null): string => {
-  if (!value) return '';
-  const normalized = value.trim().toUpperCase().replace(/\s+/g, '_');
-  if (MOBILITY_STATUS_LABELS.has(normalized)) return normalized;
-  if (normalized.includes('BEDBOUND') || normalized.includes('NON_AMBULATORY')) return 'BEDBOUND';
-  if (normalized.includes('WHEELCHAIR')) return 'WHEELCHAIR_ONLY';
-  if (normalized.includes('BED') && normalized.includes('CHAIR')) return 'BED_TO_CHAIR_ONLY';
-  if (normalized.includes('AMBUL') || normalized.includes('WALK')) return 'AMBULATORY_WITH_ASSISTANCE';
-  if (normalized.includes('INDEPENDENT')) return 'INDEPENDENT';
-  return 'UNKNOWN';
-};
-
-const normalizeOralTolerance = (value?: string | null): string => {
-  if (!value) return '';
-  const normalized = value.trim().toUpperCase().replace(/\s+/g, '_');
-  if (ORAL_TOLERANCE_LABELS.has(normalized)) return normalized;
-  if (["NIL_BY_MOUTH", "NBM", "NPO", "IV_ONLY"].includes(normalized)) return 'CANNOT_TOLERATE_ORAL';
-  if (normalized.includes('ORAL') && normalized.includes('TOLERAT')) return 'CAN_TOLERATE_ORAL';
-  return 'UNKNOWN';
-};
-
-const formatMobilityStatus = (value?: string | null): string => {
-  if (!value) return 'Not specified';
-  const [rawCodeValue, rawNotes] = value.split('::');
-  const rawCode = rawCodeValue ?? '';
-  const normalized = rawCode.trim().toUpperCase().replace(/\s+/g, '_');
-  const label = MOBILITY_STATUS_LABELS.get(normalized) ?? rawCode;
-  const notes = rawNotes?.trim();
-  return notes ? `${label} - ${notes}` : label;
-};
-
-const formatOralTolerance = (value?: string | null): string => {
-  if (!value) return 'Not specified';
-  const [rawCodeValue, rawNotes] = value.split('::');
-  const rawCode = rawCodeValue ?? '';
-  const normalized = rawCode.trim().toUpperCase().replace(/\s+/g, '_');
-  const label = ORAL_TOLERANCE_LABELS.get(normalized) ?? rawCode;
-  const notes = rawNotes?.trim();
-  return notes ? `${label} - ${notes}` : label;
-};
-
-const decodeStructuredStatus = (
-  value: string | null | undefined,
-  normalize: (raw?: string | null) => string
-): { code: string; notes: string } => {
-  if (!value) return { code: '', notes: '' };
-  const [rawCode, ...rawNotesParts] = value.split('::');
-  const normalizedCode = normalize(rawCode);
-  const notesFromDelimited = rawNotesParts.join('::').trim();
-  if (notesFromDelimited) {
-    return { code: normalizedCode, notes: notesFromDelimited };
+const formatFieldChangeValue = (fieldName: string, value?: string | null): string => {
+  if (value == null || value === '') return 'Not specified';
+  if (fieldName === 'mobility_status') return formatMobilityStatus(value);
+  if (fieldName === 'dietary_requirements') return formatOralTolerance(value);
+  if (fieldName === 'isolation_required') {
+    const normalized = value.trim().toLowerCase();
+    if (normalized === 'true') return 'Required';
+    if (normalized === 'false') return 'Not required';
   }
-  if (normalizedCode === 'UNKNOWN') {
-    return { code: normalizedCode, notes: value.trim() };
-  }
-  return { code: normalizedCode, notes: '' };
-};
-
-const encodeStructuredStatus = (code: string, notes: string): string | undefined => {
-  const normalizedCode = code.trim();
-  if (!normalizedCode) return undefined;
-  const normalizedNotes = notes.trim();
-  return normalizedNotes ? `${normalizedCode}::${normalizedNotes}` : normalizedCode;
+  return value;
 };
 
 const KARDEX_QUICK_ACTIONS: AIQuickAction[] = [
@@ -244,10 +206,13 @@ export default function KardexPage() {
 
   const { data: admission, isLoading: admissionLoading } = useAdmission(admissionRouteId);
   const admissionId = admission?.id ?? 0;
-  const { data: kardex, isLoading: kardexLoading, refetch } = useKardexByAdmission(admissionId);
+  const { data: kardex, isLoading: kardexLoading } = useKardexByAdmission(admissionId);
   const updateKardex = useUpdateKardex();
   const addShiftNote = useAddKardexShiftNote();
   const addHandoverNote = useAddKardexHandoverNote();
+  const addScheduleItem = useAddKardexScheduleItem();
+  const updateScheduleItem = useUpdateKardexScheduleItem();
+  const deleteScheduleItem = useDeleteKardexScheduleItem();
   const addCarePlanEntry = useAddCarePlanEntry();
   const updateCarePlanEntry = useUpdateCarePlanEntry();
   const resolveAllCarePlans = useResolveAllCarePlans();
@@ -261,6 +226,11 @@ export default function KardexPage() {
   const [oralToleranceNotes, setOralToleranceNotes] = useState('');
   const [allergies, setAllergies] = useState('');
   const [ivAccess, setIvAccess] = useState('');
+  const [codeStatus, setCodeStatus] = useState<KardexCodeStatus>('UNKNOWN');
+  const [codeStatusNotes, setCodeStatusNotes] = useState('');
+  const [currentMedications, setCurrentMedications] = useState('');
+  const [ivFluids, setIvFluids] = useState('');
+  const [hygienePrecautions, setHygienePrecautions] = useState('');
   const [maternityContinuityAction, setMaternityContinuityAction] =
     useState<MaternityContinuityAction>('NONE');
   const [maternityContinuityNotes, setMaternityContinuityNotes] = useState('');
@@ -310,6 +280,13 @@ export default function KardexPage() {
   const [handoverEscalations, setHandoverEscalations] = useState('');
   const [handoverShiftTouched, setHandoverShiftTouched] = useState(false);
   const [selectedTaskPresets, setSelectedTaskPresets] = useState<string[]>([]);
+  const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
+  const [scheduleItemType, setScheduleItemType] = useState<KardexScheduleItemType>('VITALS_CHECK');
+  const [scheduleTitle, setScheduleTitle] = useState('');
+  const [scheduleAt, setScheduleAt] = useState('');
+  const [scheduleFrequency, setScheduleFrequency] = useState('');
+  const [scheduleStatus, setScheduleStatus] = useState<KardexScheduleItemStatus>('PENDING');
+  const [scheduleNotes, setScheduleNotes] = useState('');
   const [selectedCriticalConcerns, setSelectedCriticalConcerns] = useState<string[]>([]);
   const [includeAutoSummary, setIncludeAutoSummary] = useState(true);
   const [autoTriggerCarePlan, setAutoTriggerCarePlan] = useState(false);
@@ -568,6 +545,11 @@ export default function KardexPage() {
       setOralToleranceNotes(decodedOralTolerance.notes);
       setAllergies(kardex.allergies || '');
       setIvAccess(kardex.iv_access || '');
+      setCodeStatus(kardex.code_status || 'UNKNOWN');
+      setCodeStatusNotes(kardex.code_status_notes || '');
+      setCurrentMedications(kardex.current_medications || '');
+      setIvFluids(kardex.iv_fluids || '');
+      setHygienePrecautions(kardex.hygiene_precautions || '');
       setMaternityContinuityAction(kardex.maternity_continuity_action || 'NONE');
       setMaternityContinuityNotes(kardex.maternity_continuity_notes || '');
 
@@ -610,6 +592,11 @@ export default function KardexPage() {
           dietary_requirements: encodeStructuredStatus(dietaryRequirements, oralToleranceNotes),
           allergies: allergies || undefined,
           iv_access: ivAccess || undefined,
+          code_status: codeStatus,
+          code_status_notes: codeStatusNotes || undefined,
+          current_medications: currentMedications || undefined,
+          iv_fluids: ivFluids || undefined,
+          hygiene_precautions: hygienePrecautions || undefined,
           maternity_continuity_action: admission?.mch_registration
             ? maternityContinuityAction
             : undefined,
@@ -628,13 +615,68 @@ export default function KardexPage() {
         description: 'Kardex updated successfully',
       });
       setEditDialogOpen(false);
-      refetch();
     } catch (error) {
       toast({
         title: 'Error',
         description: 'Failed to update kardex',
         variant: 'destructive',
       });
+      console.error(error);
+    }
+  };
+
+  const resetScheduleForm = () => {
+    setScheduleItemType('VITALS_CHECK');
+    setScheduleTitle('');
+    setScheduleAt('');
+    setScheduleFrequency('');
+    setScheduleStatus('PENDING');
+    setScheduleNotes('');
+  };
+
+  const handleAddScheduleItem = async () => {
+    if (!kardex || !scheduleTitle.trim() || !scheduleAt) return;
+    try {
+      await addScheduleItem.mutateAsync({
+        kardexId: kardex.id,
+        data: {
+          item_type: scheduleItemType,
+          title: scheduleTitle.trim(),
+          scheduled_for: new Date(scheduleAt).toISOString(),
+          frequency: scheduleFrequency.trim() || undefined,
+          status: scheduleStatus,
+          notes: scheduleNotes.trim() || undefined,
+        },
+      });
+      toast({ title: 'Success', description: 'Schedule item added' });
+      setScheduleDialogOpen(false);
+      resetScheduleForm();
+    } catch (error) {
+      toast({ title: 'Error', description: 'Failed to add schedule item', variant: 'destructive' });
+      console.error(error);
+    }
+  };
+
+  const handleMarkScheduleCompleted = async (itemId: number) => {
+    if (!kardex) return;
+    try {
+      await updateScheduleItem.mutateAsync({
+        kardexId: kardex.id,
+        itemId,
+        data: { status: 'COMPLETED' },
+      });
+    } catch (error) {
+      toast({ title: 'Error', description: 'Failed to update schedule item', variant: 'destructive' });
+      console.error(error);
+    }
+  };
+
+  const handleDeleteScheduleItem = async (itemId: number) => {
+    if (!kardex) return;
+    try {
+      await deleteScheduleItem.mutateAsync({ kardexId: kardex.id, itemId });
+    } catch (error) {
+      toast({ title: 'Error', description: 'Failed to delete schedule item', variant: 'destructive' });
       console.error(error);
     }
   };
@@ -656,7 +698,6 @@ export default function KardexPage() {
       setShiftNoteOpen(false);
       setShiftNoteContent('');
       setShiftNoteTypeTouched(false);
-      refetch();
     } catch (error) {
       toast({
         title: 'Error',
@@ -690,7 +731,6 @@ export default function KardexPage() {
       setSelectedTaskPresets([]);
       setSelectedCriticalConcerns([]);
       setHandoverShiftTouched(false);
-      refetch();
     } catch (error) {
       toast({
         title: 'Error',
@@ -734,7 +774,6 @@ export default function KardexPage() {
       setCpRationale('');
       setCpImplementation('');
       setCpEvaluation('');
-      refetch();
     } catch (error) {
       toast({
         title: 'Error',
@@ -773,7 +812,6 @@ export default function KardexPage() {
       toast({ title: 'Success', description: 'Care plan entry updated' });
       setUpdateCpDialogOpen(false);
       setUpdateCpEntryId(null);
-      refetch();
     } catch (error) {
       toast({
         title: 'Error',
@@ -796,7 +834,6 @@ export default function KardexPage() {
       setDiscontinueCpDialogOpen(false);
       setDiscontinueCpEntryId(null);
       setDiscontinueCpReason('');
-      refetch();
     } catch (error) {
       toast({
         title: 'Error',
@@ -817,7 +854,6 @@ export default function KardexPage() {
       toast({ title: 'Success', description: result.message });
       setResolveAllDialogOpen(false);
       setResolveAllEvaluation('');
-      refetch();
     } catch (error) {
       toast({
         title: 'Error',
@@ -922,8 +958,21 @@ export default function KardexPage() {
         </Button>
       </div>
 
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm">Basic Details</CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-3">
+          <p><span className="text-muted-foreground">Patient:</span> {kardex.patient_name || 'Unknown'}</p>
+          <p><span className="text-muted-foreground">Age:</span> {admission.patient_age ?? 'Unknown'}</p>
+          <p><span className="text-muted-foreground">Room/Bed:</span> {kardex.ward_name || 'N/A'} / {kardex.bed_number || 'N/A'}</p>
+          <p className="lg:col-span-2"><span className="text-muted-foreground">Diagnosis:</span> {admission.admitting_diagnosis_text || admission.admitting_diagnosis || 'Not documented'}</p>
+          <p><span className="text-muted-foreground">Code status:</span> {kardex.code_status_display || 'Unknown'}</p>
+        </CardContent>
+      </Card>
+
       {/* Quick Summary Cards - Always Visible */}
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-6">
         {/* Allergies */}
         <Card className="border-destructive/50">
           <CardHeader className="pb-2">
@@ -970,6 +1019,24 @@ export default function KardexPage() {
           </CardHeader>
           <CardContent>
             <p className="font-medium">{kardex.iv_access || 'None'}</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">IV Fluids</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="font-medium text-sm">{kardex.iv_fluids || 'Not specified'}</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">Medications</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="font-medium text-sm">{kardex.current_medications || 'Not specified'}</p>
           </CardContent>
         </Card>
       </div>
@@ -1129,6 +1196,60 @@ export default function KardexPage() {
                 />
               </div>
             </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Code Status</Label>
+                <Select value={codeStatus} onValueChange={(v) => setCodeStatus(v as KardexCodeStatus)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CODE_STATUS_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Code Status Notes</Label>
+                <Input
+                  value={codeStatusNotes}
+                  onChange={(e) => setCodeStatusNotes(e.target.value)}
+                  placeholder="e.g., confirmed with family on ward round"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Current Medications</Label>
+              <Textarea
+                value={currentMedications}
+                onChange={(e) => setCurrentMedications(e.target.value)}
+                placeholder="List active medications relevant for nursing care"
+                rows={3}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>IV Fluids</Label>
+                <Textarea
+                  value={ivFluids}
+                  onChange={(e) => setIvFluids(e.target.value)}
+                  placeholder="e.g., Ringer's lactate 100ml/hr"
+                  rows={3}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Hygiene / Safety Precautions</Label>
+                <Textarea
+                  value={hygienePrecautions}
+                  onChange={(e) => setHygienePrecautions(e.target.value)}
+                  placeholder="e.g., assisted bathing, fall mat, bed rails"
+                  rows={3}
+                />
+              </div>
+            </div>
             {admission.mch_registration && (
               <>
                 <div className="space-y-2">
@@ -1252,13 +1373,19 @@ export default function KardexPage() {
       )}
 
       <Tabs defaultValue="care-plan" className="space-y-4">
-        <TabsList className="grid h-auto w-full grid-cols-3">
+        <TabsList className="grid h-auto w-full grid-cols-5">
           <TabsTrigger
             value="care-plan"
             className="text-xs transition-all sm:text-sm md:text-base md:data-[state=active]:text-lg md:data-[state=active]:font-semibold"
           >
             <span className="sm:hidden">Plan</span>
             <span className="hidden sm:inline">Care Plan</span>
+          </TabsTrigger>
+          <TabsTrigger
+            value="schedule"
+            className="text-xs transition-all sm:text-sm md:text-base md:data-[state=active]:text-lg md:data-[state=active]:font-semibold"
+          >
+            Schedule
           </TabsTrigger>
           <TabsTrigger
             value="notes"
@@ -1272,6 +1399,12 @@ export default function KardexPage() {
             className="text-xs transition-all sm:text-sm md:text-base md:data-[state=active]:text-lg md:data-[state=active]:font-semibold"
           >
             Handover
+          </TabsTrigger>
+          <TabsTrigger
+            value="timeline"
+            className="text-xs transition-all sm:text-sm md:text-base md:data-[state=active]:text-lg md:data-[state=active]:font-semibold"
+          >
+            Timeline
           </TabsTrigger>
         </TabsList>
 
@@ -1724,6 +1857,164 @@ export default function KardexPage() {
                   </Card>
                 );
               })}
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="timeline" className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-semibold">Kardex Field Change Timeline</h3>
+          </div>
+
+          {(kardex.field_change_history?.length ?? 0) === 0 ? (
+            <Card>
+              <CardContent className="py-8 text-center">
+                <p className="text-muted-foreground">No Kardex field changes recorded yet.</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-3">
+              {kardex.field_change_history?.map((change) => (
+                <Card key={change.id}>
+                  <CardHeader className="pb-2">
+                    <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                      <Badge variant="outline" className="w-fit text-xs">
+                        {change.field_label || change.field_name.replace(/_/g, ' ')}
+                      </Badge>
+                      <span className="text-xs text-muted-foreground">
+                        {formatDateTime(change.changed_at)}
+                      </span>
+                    </div>
+                    <CardDescription>
+                      By {change.changed_by_username || 'System'}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-1.5">
+                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      Before
+                    </p>
+                    <p className="text-sm">{formatFieldChangeValue(change.field_name, change.old_value)}</p>
+                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground pt-1">
+                      After
+                    </p>
+                    <p className="text-sm">{formatFieldChangeValue(change.field_name, change.new_value)}</p>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="schedule" className="space-y-4">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <h3 className="text-lg font-semibold">Care Schedule</h3>
+            <Dialog open={scheduleDialogOpen} onOpenChange={setScheduleDialogOpen}>
+              <DialogTrigger asChild>
+                <Button className="w-full sm:w-auto" size="sm">
+                  <Plus className="h-4 w-4 sm:mr-1.5" />
+                  <span className="hidden sm:inline">Add Schedule Item</span>
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Add Schedule Item</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-3 py-2">
+                  <div className="space-y-2">
+                    <Label>Item Type</Label>
+                    <Select
+                      value={scheduleItemType}
+                      onValueChange={(value) => setScheduleItemType(value as KardexScheduleItemType)}
+                    >
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {SCHEDULE_ITEM_TYPE_OPTIONS.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Title</Label>
+                    <Input value={scheduleTitle} onChange={(e) => setScheduleTitle(e.target.value)} placeholder="e.g., Vitals q4h" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Scheduled Time</Label>
+                    <Input type="datetime-local" value={scheduleAt} onChange={(e) => setScheduleAt(e.target.value)} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <Label>Frequency</Label>
+                      <Input value={scheduleFrequency} onChange={(e) => setScheduleFrequency(e.target.value)} placeholder="Q4H" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Status</Label>
+                      <Select
+                        value={scheduleStatus}
+                        onValueChange={(value) => setScheduleStatus(value as KardexScheduleItemStatus)}
+                      >
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {SCHEDULE_ITEM_STATUS_OPTIONS.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Notes</Label>
+                    <Textarea value={scheduleNotes} onChange={(e) => setScheduleNotes(e.target.value)} rows={3} />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setScheduleDialogOpen(false)}>Cancel</Button>
+                  <Button onClick={handleAddScheduleItem} disabled={addScheduleItem.isPending || !scheduleTitle.trim() || !scheduleAt}>
+                    {addScheduleItem.isPending ? 'Saving...' : 'Save'}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
+
+          {(kardex.schedule_items?.length ?? 0) === 0 ? (
+            <Card>
+              <CardContent className="py-8 text-center">
+                <p className="text-muted-foreground">No schedule items yet.</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-3">
+              {kardex.schedule_items?.map((item) => (
+                <Card key={item.id}>
+                  <CardHeader className="pb-2">
+                    <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="text-xs">{item.item_type_display || item.item_type}</Badge>
+                        <Badge variant={item.status === 'COMPLETED' ? 'success' : item.status === 'CANCELLED' ? 'destructive' : 'secondary'} className="text-xs">{item.status_display || item.status}</Badge>
+                      </div>
+                      <span className="text-xs text-muted-foreground">{formatDateTime(item.scheduled_for)}</span>
+                    </div>
+                    <CardTitle className="text-base">{item.title}</CardTitle>
+                    <CardDescription>
+                      {item.frequency ? `Frequency: ${item.frequency}` : 'One-time'}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    {item.notes && <p className="text-sm text-muted-foreground">{item.notes}</p>}
+                    <div className="flex gap-2">
+                      {item.status !== 'COMPLETED' && (
+                        <Button size="sm" variant="outline" onClick={() => handleMarkScheduleCompleted(item.id)} disabled={updateScheduleItem.isPending}>
+                          Mark Completed
+                        </Button>
+                      )}
+                      <Button size="sm" variant="ghost" onClick={() => handleDeleteScheduleItem(item.id)} disabled={deleteScheduleItem.isPending}>
+                        Delete
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
             </div>
           )}
         </TabsContent>

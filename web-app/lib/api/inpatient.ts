@@ -22,6 +22,7 @@ import {
   NursingCarePlanEntrySchema,
   KardexShiftNoteSchema,
   KardexHandoverNoteSchema,
+  KardexScheduleItemSchema,
   InpatientConsumableUsageArraySchema,
   InpatientConsumableUsageSchema,
   ShiftHandoverSchema,
@@ -100,6 +101,9 @@ import type {
   KardexListResponse,
   KardexShiftNote,
   KardexShiftNoteCreateData,
+  KardexScheduleItem,
+  KardexScheduleItemCreateData,
+  KardexScheduleItemUpdateData,
   KardexUpdateData,
   NursingKardex,
   NursingCarePlanEntry,
@@ -731,6 +735,30 @@ export const inpatientApi = {
       data
     );
     return parseResponse(KardexHandoverNoteSchema, response.data, { context: 'inpatientApi.addKardexHandoverNote' });
+  },
+
+  async addKardexScheduleItem(kardexId: number, data: KardexScheduleItemCreateData): Promise<KardexScheduleItem> {
+    const response = await apiClient.post<KardexScheduleItem>(
+      `/api/inpatient/kardex/${kardexId}/add-schedule-item/`,
+      data
+    );
+    return parseResponse(KardexScheduleItemSchema, response.data, { context: 'inpatientApi.addKardexScheduleItem' });
+  },
+
+  async updateKardexScheduleItem(
+    kardexId: number,
+    itemId: number,
+    data: KardexScheduleItemUpdateData
+  ): Promise<KardexScheduleItem> {
+    const response = await apiClient.patch<KardexScheduleItem>(
+      `/api/inpatient/kardex/${kardexId}/update-schedule-item/${itemId}/`,
+      data
+    );
+    return parseResponse(KardexScheduleItemSchema, response.data, { context: 'inpatientApi.updateKardexScheduleItem' });
+  },
+
+  async deleteKardexScheduleItem(kardexId: number, itemId: number): Promise<void> {
+    await apiClient.delete(`/api/inpatient/kardex/${kardexId}/delete-schedule-item/${itemId}/`);
   },
 
   async addCarePlanEntry(kardexId: number, data: NursingCarePlanEntryCreateData): Promise<NursingCarePlanEntry> {

@@ -9,8 +9,14 @@ import pytest  # type: ignore
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 from django.utils import timezone
+from rest_framework import status
 
-from hmis.apps.inpatient.models import KardexHandoverNote, KardexShiftNote, NursingKardex
+from hmis.apps.inpatient.models import (
+    KardexFieldChange,
+    KardexHandoverNote,
+    KardexShiftNote,
+    NursingKardex,
+)
 
 
 @pytest.mark.django_db
@@ -384,3 +390,117 @@ class TestKardexIntegration:
         # Kardex and notes should be deleted (CASCADE)
         assert not NursingKardex.objects.filter(id=kardex_id).exists()
         assert not KardexShiftNote.objects.filter(kardex_id=kardex_id).exists()
+
+
+@pytest.mark.django_db
+class TestKardexFieldChangeHistoryAPI:
+    """Tests for tracked NursingKardex field-change history over API updates."""
+
+    def test_patch_kardex_creates_history_entries_for_changed_fields(
+        self, authenticated_client, sample_admission
+    ):
+        kardex = sample_admission.kardex
+
+        response = authenticated_client.patch(
+            f"/api/inpatient/kardex/{kardex.id}/",
+            {
+                "mobility_status": "INDEPENDENT",
+                "dietary_requirements": "CAN_TOLERATE_ORAL",
+            },
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        history = KardexFieldChange.objects.filter(kardex=kardex)
+        assert history.count() == 2
+        changed_fields = set(history.values_list("field_name", flat=True))
+        assert changed_fields == {"mobility_status", "dietary_requirements"}
+
+    def test_kardex_detail_includes_field_change_history(
+        self, authenticated_client, sample_admission
+    ):
+        kardex = sample_admission.kardex
+
+        authenticated_client.patch(
+            f"/api/inpatient/kardex/{kardex.id}/",
+            {
+                "mobility_status": "BEDBOUND",
+            },
+            format="json",
+        )
+
+        response = authenticated_client.get(f"/api/inpatient/kardex/{kardex.id}/")
+
+        assert response.status_code == status.HTTP_200_OK
+        assert "field_change_history" in response.data
+        assert len(response.data["field_change_history"]) >= 1
+        assert response.data["field_change_history"][0]["field_name"] == "mobility_status"
+
+    def test_patch_kardex_supports_code_status_and_clinical_fields(
+        self, authenticated_client, sample_admission
+    ):
+        kardex = sample_admission.kardex
+
+        response = authenticated_client.patch(
+            f"/api/inpatient/kardex/{kardex.id}/",
+            {
+                "code_status": "DNR",
+                "code_status_notes": "Discussed and confirmed with next of kin.",
+                "current_medications": "Aspirin 75mg OD, Atorvastatin 20mg ON",
+                "iv_fluids": "Normal saline 1L over 8h",
+                "hygiene_precautions": "Fall precautions, assisted toileting",
+            },
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["code_status"] == "DNR"
+        assert "Aspirin" in response.data["current_medications"]
+
+    def test_add_schedule_item_endpoint(self, authenticated_client, sample_admission):
+        kardex = sample_admission.kardex
+
+        response = authenticated_client.post(
+            f"/api/inpatient/kardex/{kardex.id}/add-schedule-item/",
+            {
+                "item_type": "VITALS_CHECK",
+                "title": "Vitals q4h",
+                "scheduled_for": timezone.now().isoformat(),
+                "frequency": "Q4H",
+                "notes": "Escalate if SBP < 90",
+            },
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data["item_type"] == "VITALS_CHECK"
+        assert response.data["title"] == "Vitals q4h"
+
+    def test_schedule_item_lifecycle_update_and_delete(
+        self, authenticated_client, sample_admission
+    ):
+        kardex = sample_admission.kardex
+
+        create_response = authenticated_client.post(
+            f"/api/inpatient/kardex/{kardex.id}/add-schedule-item/",
+            {
+                "item_type": "MEDICATION",
+                "title": "Administer morning medications",
+                "scheduled_for": timezone.now().isoformat(),
+            },
+            format="json",
+        )
+        item_id = create_response.data["id"]
+
+        update_response = authenticated_client.patch(
+            f"/api/inpatient/kardex/{kardex.id}/update-schedule-item/{item_id}/",
+            {"status": "COMPLETED"},
+            format="json",
+        )
+        assert update_response.status_code == status.HTTP_200_OK
+        assert update_response.data["status"] == "COMPLETED"
+
+        delete_response = authenticated_client.delete(
+            f"/api/inpatient/kardex/{kardex.id}/delete-schedule-item/{item_id}/"
+        )
+        assert delete_response.status_code == status.HTTP_204_NO_CONTENT

@@ -997,9 +997,12 @@ export function useUpdateKardex() {
   return useMutation({
     mutationFn: ({ id, data }: { id: number; data: KardexUpdateData }) =>
       inpatientApi.updateKardex(id, data),
-    onSuccess: (_data, variables) => {
+    onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.kardexById(variables.id) });
-      queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.kardex() });
+      queryClient.invalidateQueries({ queryKey: [...inpatientQueryKeys.all, 'kardex'] });
+      queryClient.invalidateQueries({
+        queryKey: inpatientQueryKeys.kardexByAdmission(data.admission),
+      });
     },
   });
 }
@@ -1011,6 +1014,7 @@ export function useAddKardexShiftNote() {
       inpatientApi.addKardexShiftNote(kardexId, data),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.kardexById(variables.kardexId) });
+      queryClient.invalidateQueries({ queryKey: [...inpatientQueryKeys.all, 'kardex'] });
     },
   });
 }
@@ -1022,6 +1026,43 @@ export function useAddKardexHandoverNote() {
       inpatientApi.addKardexHandoverNote(kardexId, data),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.kardexById(variables.kardexId) });
+      queryClient.invalidateQueries({ queryKey: [...inpatientQueryKeys.all, 'kardex'] });
+    },
+  });
+}
+
+export function useAddKardexScheduleItem() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ kardexId, data }: { kardexId: number; data: import('@/lib/types/inpatient').KardexScheduleItemCreateData }) =>
+      inpatientApi.addKardexScheduleItem(kardexId, data),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.kardexById(variables.kardexId) });
+      queryClient.invalidateQueries({ queryKey: [...inpatientQueryKeys.all, 'kardex'] });
+    },
+  });
+}
+
+export function useUpdateKardexScheduleItem() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ kardexId, itemId, data }: { kardexId: number; itemId: number; data: import('@/lib/types/inpatient').KardexScheduleItemUpdateData }) =>
+      inpatientApi.updateKardexScheduleItem(kardexId, itemId, data),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.kardexById(variables.kardexId) });
+      queryClient.invalidateQueries({ queryKey: [...inpatientQueryKeys.all, 'kardex'] });
+    },
+  });
+}
+
+export function useDeleteKardexScheduleItem() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ kardexId, itemId }: { kardexId: number; itemId: number }) =>
+      inpatientApi.deleteKardexScheduleItem(kardexId, itemId),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.kardexById(variables.kardexId) });
+      queryClient.invalidateQueries({ queryKey: [...inpatientQueryKeys.all, 'kardex'] });
     },
   });
 }
@@ -1033,6 +1074,7 @@ export function useAddCarePlanEntry() {
       inpatientApi.addCarePlanEntry(kardexId, data),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.kardexById(variables.kardexId) });
+      queryClient.invalidateQueries({ queryKey: [...inpatientQueryKeys.all, 'kardex'] });
     },
   });
 }
@@ -1044,6 +1086,7 @@ export function useUpdateCarePlanEntry() {
       inpatientApi.updateCarePlanEntry(kardexId, entryId, data),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.kardexById(variables.kardexId) });
+      queryClient.invalidateQueries({ queryKey: [...inpatientQueryKeys.all, 'kardex'] });
     },
   });
 }
@@ -1055,6 +1098,7 @@ export function useResolveAllCarePlans() {
       inpatientApi.resolveAllCarePlans(kardexId, evaluation),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.kardexById(variables.kardexId) });
+      queryClient.invalidateQueries({ queryKey: [...inpatientQueryKeys.all, 'kardex'] });
     },
   });
 }
@@ -1066,6 +1110,7 @@ export function useDiscontinueCarePlanEntry() {
       inpatientApi.discontinueCarePlanEntry(kardexId, entryId, reason),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.kardexById(variables.kardexId) });
+      queryClient.invalidateQueries({ queryKey: [...inpatientQueryKeys.all, 'kardex'] });
     },
   });
 }

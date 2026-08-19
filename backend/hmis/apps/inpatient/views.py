@@ -51,7 +51,9 @@ from .models import (
     InpatientConsumableUsage,
     InterFacilityTransfer,
     InterFacilityTransferEvent,
+    KardexFieldChange,
     KardexHandoverNote,
+    KardexScheduleItem,
     KardexShiftNote,
     MedicationAdministration,
     NursingCarePlanEntry,
@@ -96,6 +98,9 @@ from .serializers import (
     InterFacilityTransferEventSerializer,
     InterFacilityTransferSerializer,
     KardexHandoverNoteSerializer,
+    KardexScheduleItemCreateSerializer,
+    KardexScheduleItemSerializer,
+    KardexScheduleItemUpdateSerializer,
     KardexShiftNoteSerializer,
     MedicationAdministrationActionSerializer,
     MedicationAdministrationCreateSerializer,
@@ -3996,6 +4001,161 @@ class NursingKardexViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     ]
     ordering_fields = ["created_at", "updated_at"]
     ordering = ["-created_at"]
+
+    TRACKED_KARDEX_FIELDS = [
+        "mobility_status",
+        "dietary_requirements",
+        "allergies",
+        "iv_access",
+        "code_status",
+        "code_status_notes",
+        "current_medications",
+        "iv_fluids",
+        "hygiene_precautions",
+        "maternity_continuity_action",
+        "maternity_continuity_notes",
+        "fall_risk",
+        "pressure_sore_risk",
+        "isolation_required",
+        "isolation_type",
+    ]
+
+    def perform_update(self, serializer):
+        """Persist kardex updates and append field-change history for tracked fields."""
+        instance = serializer.instance
+        previous_values = {
+            field: getattr(instance, field, None) for field in self.TRACKED_KARDEX_FIELDS
+        }
+        updated_instance = serializer.save()
+
+        changed_fields: list[str] = []
+        history_entries: list[KardexFieldChange] = []
+        for field_name in self.TRACKED_KARDEX_FIELDS:
+            if field_name not in serializer.validated_data:
+                continue
+
+            old_value = previous_values.get(field_name)
+            new_value = getattr(updated_instance, field_name, None)
+            if old_value == new_value:
+                continue
+
+            changed_fields.append(field_name)
+            history_entries.append(
+                KardexFieldChange(
+                    kardex=updated_instance,
+                    field_name=field_name,
+                    old_value="" if old_value is None else str(old_value),
+                    new_value="" if new_value is None else str(new_value),
+                    changed_by=self.request.user,
+                )
+            )
+
+        if history_entries:
+            KardexFieldChange.objects.bulk_create(history_entries)
+            AuditLog.log(
+                action="kardex_update",
+                user=self.request.user,
+                resource_type="NursingKardex",
+                resource_id=updated_instance.id,
+                details={
+                    "admission_number": updated_instance.admission.admission_number,
+                    "updated_fields": changed_fields,
+                },
+                ip_address=get_client_ip(self.request),
+            )
+
+    @action(detail=True, methods=["post"], url_path="add-schedule-item")
+    def add_schedule_item(self, request, pk=None):
+        """Add a scheduled treatment/test/vitals/medication item to the kardex."""
+        kardex = self.get_object()
+        serializer = KardexScheduleItemCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        item = KardexScheduleItem.objects.create(
+            kardex=kardex,
+            created_by=request.user,
+            **serializer.validated_data,
+        )
+
+        AuditLog.log(
+            action="kardex_schedule_item_create",
+            user=request.user,
+            resource_type="KardexScheduleItem",
+            resource_id=item.id,
+            details={
+                "kardex_id": kardex.id,
+                "admission_number": kardex.admission.admission_number,
+                "item_type": item.item_type,
+                "scheduled_for": item.scheduled_for.isoformat(),
+            },
+            ip_address=get_client_ip(request),
+        )
+
+        return Response(KardexScheduleItemSerializer(item).data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=["patch"], url_path=r"update-schedule-item/(?P<item_id>\d+)")
+    def update_schedule_item(self, request, pk=None, item_id=None):
+        """Update an existing kardex schedule item."""
+        kardex = self.get_object()
+        try:
+            item = kardex.schedule_items.get(id=item_id)
+        except KardexScheduleItem.DoesNotExist:
+            return Response({"error": "Schedule item not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = KardexScheduleItemUpdateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        if not serializer.validated_data:
+            return Response(
+                {"error": "No valid fields to update"}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        for field_name, value in serializer.validated_data.items():
+            setattr(item, field_name, value)
+        item.save(update_fields=list(serializer.validated_data.keys()) + ["updated_at"])
+
+        AuditLog.log(
+            action="kardex_schedule_item_update",
+            user=request.user,
+            resource_type="KardexScheduleItem",
+            resource_id=item.id,
+            details={
+                "kardex_id": kardex.id,
+                "admission_number": kardex.admission.admission_number,
+                "updated_fields": list(serializer.validated_data.keys()),
+            },
+            ip_address=get_client_ip(request),
+        )
+
+        return Response(KardexScheduleItemSerializer(item).data)
+
+    @action(detail=True, methods=["delete"], url_path=r"delete-schedule-item/(?P<item_id>\d+)")
+    def delete_schedule_item(self, request, pk=None, item_id=None):
+        """Delete a kardex schedule item."""
+        kardex = self.get_object()
+        try:
+            item = kardex.schedule_items.get(id=item_id)
+        except KardexScheduleItem.DoesNotExist:
+            return Response({"error": "Schedule item not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        deleted_details = {
+            "kardex_id": kardex.id,
+            "admission_number": kardex.admission.admission_number,
+            "item_id": item.id,
+            "item_type": item.item_type,
+            "title": item.title,
+        }
+        item.delete()
+
+        AuditLog.log(
+            action="kardex_schedule_item_delete",
+            user=request.user,
+            resource_type="KardexScheduleItem",
+            resource_id=item_id,
+            details=deleted_details,
+            ip_address=get_client_ip(request),
+        )
+
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(detail=True, methods=["post"], url_path="add-shift-note")
     def add_shift_note(self, request, pk=None):

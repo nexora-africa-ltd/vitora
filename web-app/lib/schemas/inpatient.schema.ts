@@ -122,6 +122,17 @@ export const GenderRestrictionSchema = z.enum(['ANY', 'MALE_ONLY', 'FEMALE_ONLY'
 
 export const CarePlanEntryStatusSchema = z.enum(['ACTIVE', 'ONGOING', 'RESOLVED', 'DISCONTINUED']);
 
+export const KardexCodeStatusSchema = z.enum(['FULL_CODE', 'DNR', 'DNI', 'LIMITED', 'UNKNOWN']);
+
+export const KardexScheduleItemTypeSchema = z.enum([
+  'TREATMENT',
+  'DIAGNOSTIC_TEST',
+  'VITALS_CHECK',
+  'MEDICATION',
+]);
+
+export const KardexScheduleItemStatusSchema = z.enum(['PENDING', 'COMPLETED', 'CANCELLED']);
+
 // =============================================================================
 // WARD SCHEMAS
 // =============================================================================
@@ -722,6 +733,39 @@ export const KardexHandoverNoteSchema = z.object({
 
 export type KardexHandoverNoteSchemaType = z.infer<typeof KardexHandoverNoteSchema>;
 
+export const KardexFieldChangeSchema = z.object({
+  id: z.number(),
+  kardex: z.number(),
+  field_name: z.string(),
+  field_label: z.string().optional(),
+  old_value: z.string().optional(),
+  new_value: z.string().optional(),
+  changed_by: z.number().nullable().optional(),
+  changed_by_username: z.string().optional(),
+  changed_at: z.string(),
+});
+
+export type KardexFieldChangeSchemaType = z.infer<typeof KardexFieldChangeSchema>;
+
+export const KardexScheduleItemSchema = z.object({
+  id: z.number(),
+  kardex: z.number(),
+  item_type: KardexScheduleItemTypeSchema,
+  item_type_display: z.string().optional(),
+  title: z.string(),
+  scheduled_for: z.string(),
+  frequency: z.string().optional(),
+  status: KardexScheduleItemStatusSchema,
+  status_display: z.string().optional(),
+  notes: z.string().optional(),
+  created_by: z.number().nullable().optional(),
+  created_by_username: z.string().optional(),
+  created_at: z.string().optional(),
+  updated_at: z.string().optional(),
+});
+
+export type KardexScheduleItemSchemaType = z.infer<typeof KardexScheduleItemSchema>;
+
 export const NursingCarePlanEntrySchema = z.object({
   id: z.number(),
   kardex: z.number(),
@@ -756,6 +800,12 @@ export const NursingKardexSchema = z.object({
   diet: z.string().optional(),
   allergies: z.string().optional(),
   iv_access: z.string().optional(),
+  code_status: KardexCodeStatusSchema.optional(),
+  code_status_display: z.string().optional(),
+  code_status_notes: z.string().optional(),
+  current_medications: z.string().optional(),
+  iv_fluids: z.string().optional(),
+  hygiene_precautions: z.string().optional(),
   maternity_continuity_action: MaternityContinuityActionSchema.optional(),
   maternity_continuity_action_display: z.string().optional(),
   maternity_continuity_notes: z.string().optional(),
@@ -770,6 +820,8 @@ export const NursingKardexSchema = z.object({
   // Related notes and care plan entries
   shift_notes: z.array(KardexShiftNoteSchema).optional(),
   handover_notes: z.array(KardexHandoverNoteSchema).optional(),
+  schedule_items: z.array(KardexScheduleItemSchema).optional(),
+  field_change_history: z.array(KardexFieldChangeSchema).optional(),
   care_plan_entries: z.array(NursingCarePlanEntrySchema).optional(),
   created_at: z.string().optional(),
   updated_at: z.string().optional(),

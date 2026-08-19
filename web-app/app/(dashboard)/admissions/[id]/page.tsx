@@ -87,46 +87,9 @@ import { useFacility } from '@/lib/context/facility-context';
 import { useCommentCount } from '@/lib/hooks/use-comment-count';
 import { useInterfacilityTransfersEnabled } from '@/lib/hooks/use-interfacility-transfers-enabled';
 import { CommentThread } from '@/components/comments';
+import { resolveCanAmbulate, resolveCanTolerateOral } from '@/lib/utils/kardex-status';
 import type { BedOverrideRequest, NursingCarePlanEntryCreateData, OverrideReason, ReviewType, ReviewUrgency } from '@/lib/types/inpatient';
 import type { AIQuickAction } from '@/lib/types/ai';
-
-const resolveCanAmbulate = (mobilityStatus?: string | null): boolean | null => {
-  if (!mobilityStatus) return null;
-  const rawCode = mobilityStatus.split('::')[0] ?? mobilityStatus;
-  const normalized = rawCode.trim().toUpperCase().replace(/\s+/g, '_');
-
-  if (['INDEPENDENT', 'AMBULATORY_WITH_ASSISTANCE', 'AMBULANT', 'WALKS_INDEPENDENTLY'].includes(normalized)) {
-    return true;
-  }
-  if (['BEDBOUND', 'NON_AMBULATORY', 'WHEELCHAIR_ONLY', 'BED_TO_CHAIR_ONLY'].includes(normalized)) {
-    return false;
-  }
-  if (normalized.includes('BED') || normalized.includes('WHEELCHAIR') || normalized.includes('NON_AMBULAT')) {
-    return false;
-  }
-  if (normalized.includes('AMBULAT') || normalized.includes('WALK') || normalized.includes('INDEPENDENT')) {
-    return true;
-  }
-  return null;
-};
-
-const resolveCanTolerateOral = (dietaryRequirements?: string | null): boolean | null => {
-  if (!dietaryRequirements) return null;
-  const rawCode = dietaryRequirements.split('::')[0] ?? dietaryRequirements;
-  const normalized = rawCode.trim().toUpperCase().replace(/\s+/g, '_');
-
-  if (normalized === 'CAN_TOLERATE_ORAL') return true;
-  if (['CANNOT_TOLERATE_ORAL', 'NIL_BY_MOUTH', 'NBM', 'NPO', 'IV_ONLY'].includes(normalized)) {
-    return false;
-  }
-  if (normalized.includes('CANNOT') || normalized.includes('NPO') || normalized.includes('NBM') || normalized.includes('IV_ONLY')) {
-    return false;
-  }
-  if (normalized.includes('ORAL') && normalized.includes('TOLERAT')) {
-    return true;
-  }
-  return null;
-};
 
 const OVERRIDE_REASON_OPTIONS: { value: OverrideReason; label: string }[] = [
   { value: 'PATIENT_REQUEST', label: 'Patient Request' },

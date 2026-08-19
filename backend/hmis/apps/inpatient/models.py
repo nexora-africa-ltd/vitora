@@ -2286,6 +2286,13 @@ class NursingKardex(models.Model):
         ("MODERATE", "Moderate"),
         ("HIGH", "High"),
     ]
+    CODE_STATUS_CHOICES = [
+        ("FULL_CODE", "Full Code"),
+        ("DNR", "Do Not Resuscitate (DNR)"),
+        ("DNI", "Do Not Intubate (DNI)"),
+        ("LIMITED", "Limited Intervention"),
+        ("UNKNOWN", "Unknown / Not Documented"),
+    ]
 
     admission = models.OneToOneField(
         Admission,
@@ -2306,6 +2313,28 @@ class NursingKardex(models.Model):
     allergies = models.TextField(blank=True, help_text="Known allergies")
     iv_access = models.CharField(
         max_length=200, blank=True, help_text="IV access details (e.g., Right arm IV cannula)"
+    )
+    code_status = models.CharField(
+        max_length=20,
+        choices=CODE_STATUS_CHOICES,
+        default="UNKNOWN",
+        help_text="Resuscitation/code status (e.g., Full Code, DNR)",
+    )
+    code_status_notes = models.TextField(
+        blank=True,
+        help_text="Optional context for code status decisions",
+    )
+    current_medications = models.TextField(
+        blank=True,
+        help_text="Current medications snapshot for nursing handoff",
+    )
+    iv_fluids = models.TextField(
+        blank=True,
+        help_text="Current IV fluids and rates",
+    )
+    hygiene_precautions = models.TextField(
+        blank=True,
+        help_text="Personal hygiene needs or safety precautions",
     )
     maternity_continuity_action = models.CharField(
         max_length=40,
@@ -2364,6 +2393,87 @@ class NursingKardex(models.Model):
 
     def __str__(self):
         return f"Kardex for {self.admission.patient} - Admission {self.admission.admission_number}"
+
+
+class KardexFieldChange(models.Model):
+    """Audit trail of key NursingKardex field updates over time."""
+
+    kardex = models.ForeignKey(
+        NursingKardex,
+        on_delete=models.CASCADE,
+        related_name="field_change_history",
+        help_text="Kardex this field change belongs to",
+    )
+    field_name = models.CharField(max_length=100, help_text="Field that was changed")
+    old_value = models.TextField(blank=True, help_text="Previous value before update")
+    new_value = models.TextField(blank=True, help_text="New value after update")
+    changed_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="kardex_field_changes",
+        help_text="User who made the change",
+    )
+    changed_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-changed_at"]
+        indexes = [
+            models.Index(fields=["kardex", "-changed_at"]),
+            models.Index(fields=["field_name", "-changed_at"]),
+        ]
+
+    def __str__(self):
+        return f"Kardex {self.kardex_id}: {self.field_name} updated at {self.changed_at}"
+
+
+class KardexScheduleItem(models.Model):
+    """Scheduled nursing/clinical tasks linked to a Kardex record."""
+
+    ITEM_TYPE_CHOICES = [
+        ("TREATMENT", "Treatment"),
+        ("DIAGNOSTIC_TEST", "Diagnostic Test"),
+        ("VITALS_CHECK", "Vitals Check"),
+        ("MEDICATION", "Medication"),
+    ]
+    STATUS_CHOICES = [
+        ("PENDING", "Pending"),
+        ("COMPLETED", "Completed"),
+        ("CANCELLED", "Cancelled"),
+    ]
+
+    kardex = models.ForeignKey(
+        NursingKardex,
+        on_delete=models.CASCADE,
+        related_name="schedule_items",
+        help_text="Kardex this schedule item belongs to",
+    )
+    item_type = models.CharField(max_length=30, choices=ITEM_TYPE_CHOICES)
+    title = models.CharField(max_length=255)
+    scheduled_for = models.DateTimeField(help_text="Scheduled date and time for this task")
+    frequency = models.CharField(max_length=100, blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="PENDING")
+    notes = models.TextField(blank=True)
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="kardex_schedule_items_created",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["scheduled_for", "id"]
+        indexes = [
+            models.Index(fields=["kardex", "scheduled_for"]),
+            models.Index(fields=["status", "scheduled_for"]),
+        ]
+
+    def __str__(self):
+        return f"{self.get_item_type_display()}: {self.title} ({self.scheduled_for:%Y-%m-%d %H:%M})"
 
 
 class NursingCarePlanEntry(models.Model):

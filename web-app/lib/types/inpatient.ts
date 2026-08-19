@@ -796,6 +796,40 @@ export interface KardexHandoverNote {
   created_at: string;
 }
 
+export interface KardexFieldChange {
+  id: number;
+  kardex: number;
+  field_name: string;
+  field_label?: string;
+  old_value?: string;
+  new_value?: string;
+  changed_by?: number | null;
+  changed_by_username?: string;
+  changed_at: string;
+}
+
+export type KardexCodeStatus = 'FULL_CODE' | 'DNR' | 'DNI' | 'LIMITED' | 'UNKNOWN';
+
+export type KardexScheduleItemType = 'TREATMENT' | 'DIAGNOSTIC_TEST' | 'VITALS_CHECK' | 'MEDICATION';
+export type KardexScheduleItemStatus = 'PENDING' | 'COMPLETED' | 'CANCELLED';
+
+export interface KardexScheduleItem {
+  id: number;
+  kardex: number;
+  item_type: KardexScheduleItemType;
+  item_type_display?: string;
+  title: string;
+  scheduled_for: string;
+  frequency?: string;
+  status: KardexScheduleItemStatus;
+  status_display?: string;
+  notes?: string;
+  created_by?: number | null;
+  created_by_username?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
 export interface NursingKardex {
   id: number;
   admission: number;
@@ -809,6 +843,12 @@ export interface NursingKardex {
   diet?: string; // Legacy alias
   allergies?: string;
   iv_access?: string;
+  code_status?: KardexCodeStatus;
+  code_status_display?: string;
+  code_status_notes?: string;
+  current_medications?: string;
+  iv_fluids?: string;
+  hygiene_precautions?: string;
   maternity_continuity_action?: MaternityContinuityAction;
   maternity_continuity_action_display?: string;
   maternity_continuity_notes?: string;
@@ -823,6 +863,8 @@ export interface NursingKardex {
   // Related notes and care plan entries
   shift_notes?: KardexShiftNote[];
   handover_notes?: KardexHandoverNote[];
+  schedule_items?: KardexScheduleItem[];
+  field_change_history?: KardexFieldChange[];
   care_plan_entries?: NursingCarePlanEntry[];
   created_at?: string;
   updated_at?: string;
@@ -867,6 +909,11 @@ export interface KardexUpdateData {
   dietary_requirements?: string;
   allergies?: string;
   iv_access?: string;
+  code_status?: KardexCodeStatus;
+  code_status_notes?: string;
+  current_medications?: string;
+  iv_fluids?: string;
+  hygiene_precautions?: string;
   maternity_continuity_action?: MaternityContinuityAction;
   maternity_continuity_notes?: string;
   fall_risk?: RiskLevel;
@@ -885,6 +932,24 @@ export interface KardexHandoverNoteCreateData {
   shift_ending: ShiftType;
   pending_tasks: string;
   escalations?: string;
+}
+
+export interface KardexScheduleItemCreateData {
+  item_type: KardexScheduleItemType;
+  title: string;
+  scheduled_for: string;
+  frequency?: string;
+  status?: KardexScheduleItemStatus;
+  notes?: string;
+}
+
+export interface KardexScheduleItemUpdateData {
+  item_type?: KardexScheduleItemType;
+  title?: string;
+  scheduled_for?: string;
+  frequency?: string;
+  status?: KardexScheduleItemStatus;
+  notes?: string;
 }
 
 // ============================================================================

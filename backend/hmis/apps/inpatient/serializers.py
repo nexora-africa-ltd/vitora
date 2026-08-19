@@ -36,7 +36,9 @@ from .models import (
     InpatientConsumableUsage,
     InterFacilityTransfer,
     InterFacilityTransferEvent,
+    KardexFieldChange,
     KardexHandoverNote,
+    KardexScheduleItem,
     KardexShiftNote,
     MedicationAdministration,
     NursingCarePlanEntry,
@@ -1835,6 +1837,33 @@ class InpatientConsumableUsageReverseSerializer(serializers.Serializer):
     reason = serializers.CharField()
 
 
+class KardexFieldChangeSerializer(serializers.ModelSerializer):
+    """Serializer for NursingKardex field change history entries."""
+
+    changed_by_username = serializers.CharField(source="changed_by.username", read_only=True)
+    field_label = serializers.SerializerMethodField()
+
+    class Meta:
+        model = KardexFieldChange
+        fields = [
+            "id",
+            "kardex",
+            "field_name",
+            "field_label",
+            "old_value",
+            "new_value",
+            "changed_by",
+            "changed_by_username",
+            "changed_at",
+        ]
+
+    def get_field_label(self, obj) -> str:
+        try:
+            return str(NursingKardex._meta.get_field(obj.field_name).verbose_name).replace("_", " ")
+        except Exception:
+            return obj.field_name.replace("_", " ")
+
+
 class NursingKardexSerializer(serializers.ModelSerializer):
     """Serializer for NursingKardex model."""
 
@@ -1852,6 +1881,13 @@ class NursingKardexSerializer(serializers.ModelSerializer):
     maternity_continuity_action_display = serializers.CharField(
         source="get_maternity_continuity_action_display", read_only=True
     )
+    code_status_display = serializers.CharField(source="get_code_status_display", read_only=True)
+    field_change_history = KardexFieldChangeSerializer(many=True, read_only=True)
+    schedule_items = serializers.SerializerMethodField()
+
+    def get_schedule_items(self, obj):
+        items = obj.schedule_items.all().order_by("scheduled_for")
+        return KardexScheduleItemSerializer(items, many=True).data
 
     class Meta:
         model = NursingKardex
@@ -1867,6 +1903,12 @@ class NursingKardexSerializer(serializers.ModelSerializer):
             "dietary_requirements",
             "allergies",
             "iv_access",
+            "code_status",
+            "code_status_display",
+            "code_status_notes",
+            "current_medications",
+            "iv_fluids",
+            "hygiene_precautions",
             "maternity_continuity_action",
             "maternity_continuity_action_display",
             "maternity_continuity_notes",
@@ -1886,7 +1928,9 @@ class NursingKardexSerializer(serializers.ModelSerializer):
             # Related notes and care plan entries
             "shift_notes",
             "handover_notes",
+            "schedule_items",
             "care_plan_entries",
+            "field_change_history",
             "created_at",
             "updated_at",
         ]
@@ -1896,6 +1940,64 @@ class NursingKardexSerializer(serializers.ModelSerializer):
         """Get patient full name."""
         patient = obj.admission.patient
         return f"{patient.first_name} {patient.last_name}"
+
+
+class KardexScheduleItemSerializer(serializers.ModelSerializer):
+    """Serializer for kardex schedule/timing entries."""
+
+    item_type_display = serializers.CharField(source="get_item_type_display", read_only=True)
+    status_display = serializers.CharField(source="get_status_display", read_only=True)
+    created_by_username = serializers.CharField(source="created_by.username", read_only=True)
+
+    class Meta:
+        model = KardexScheduleItem
+        fields = [
+            "id",
+            "kardex",
+            "item_type",
+            "item_type_display",
+            "title",
+            "scheduled_for",
+            "frequency",
+            "status",
+            "status_display",
+            "notes",
+            "created_by",
+            "created_by_username",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "kardex", "created_by", "created_at", "updated_at"]
+
+
+class KardexScheduleItemCreateSerializer(serializers.Serializer):
+    """Request serializer for creating a kardex schedule item."""
+
+    item_type = serializers.ChoiceField(
+        choices=[c[0] for c in KardexScheduleItem.ITEM_TYPE_CHOICES]
+    )
+    title = serializers.CharField(max_length=255)
+    scheduled_for = serializers.DateTimeField()
+    frequency = serializers.CharField(max_length=100, required=False, allow_blank=True, default="")
+    status = serializers.ChoiceField(
+        choices=[c[0] for c in KardexScheduleItem.STATUS_CHOICES], required=False, default="PENDING"
+    )
+    notes = serializers.CharField(required=False, allow_blank=True, default="")
+
+
+class KardexScheduleItemUpdateSerializer(serializers.Serializer):
+    """Request serializer for partially updating a kardex schedule item."""
+
+    item_type = serializers.ChoiceField(
+        choices=[c[0] for c in KardexScheduleItem.ITEM_TYPE_CHOICES], required=False
+    )
+    title = serializers.CharField(max_length=255, required=False)
+    scheduled_for = serializers.DateTimeField(required=False)
+    frequency = serializers.CharField(max_length=100, required=False, allow_blank=True)
+    status = serializers.ChoiceField(
+        choices=[c[0] for c in KardexScheduleItem.STATUS_CHOICES], required=False
+    )
+    notes = serializers.CharField(required=False, allow_blank=True)
 
 
 class ShiftHandoverSerializer(serializers.ModelSerializer):
