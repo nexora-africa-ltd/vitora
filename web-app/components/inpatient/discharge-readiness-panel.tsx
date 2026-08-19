@@ -276,6 +276,10 @@ export function DischargeReadinessPanel({
   const hasResult = displayResult && displayResult.readiness_level;
   const readinessConfig = hasResult ? READINESS_CONFIG[displayResult.readiness_level] : null;
   const isFallback = displayResult?.mode === 'fallback';
+  const readmissionRiskLabel = displayResult?.readmission_risk != null
+    ? `${Math.round(displayResult.readmission_risk * 100)}%`
+    : 'N/A';
+  const readmissionRiskLevelLabel = displayResult?.readmission_risk_level?.trim() || 'Not provided';
 
   return (
     <Card className={cn(
@@ -389,17 +393,13 @@ export function DischargeReadinessPanel({
             )}
 
             {/* Readmission Risk */}
-            {displayResult.readmission_risk != null && (
-              <div className="flex items-center gap-2 text-sm">
-                <span className="text-muted-foreground">Readmission risk:</span>
-                <span className="font-medium">{Math.round(displayResult.readmission_risk * 100)}%</span>
-                {displayResult.readmission_risk_level && (
-                  <Badge variant="secondary" className="text-xs">
-                    {displayResult.readmission_risk_level}
-                  </Badge>
-                )}
-              </div>
-            )}
+            <div className="flex items-center gap-2 text-sm">
+              <span className="text-muted-foreground">Readmission risk:</span>
+              <span className="font-medium">{readmissionRiskLabel}</span>
+              <Badge variant="secondary" className="text-xs">
+                {readmissionRiskLevelLabel}
+              </Badge>
+            </div>
 
             {/* Criteria Checklist */}
             <Button

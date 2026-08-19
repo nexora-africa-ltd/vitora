@@ -20,6 +20,7 @@ import re
 from typing import Any
 
 from django.conf import settings
+from django.core.serializers.json import DjangoJSONEncoder
 from django.http import StreamingHttpResponse
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema
@@ -2313,6 +2314,7 @@ class DischargeAssessView(AIFeatureGatedMixin, APIView):
 
         # Sanitize diagnosis text
         data["primary_diagnosis"] = sanitize_clinical_text(data["primary_diagnosis"])
+        json_safe_data = json.loads(json.dumps(data, cls=DjangoJSONEncoder))
 
         AuditLog.log(
             action="ai_discharge_assess",
@@ -2330,7 +2332,7 @@ class DischargeAssessView(AIFeatureGatedMixin, APIView):
         try:
             client = get_tibabot_client()
             # Strip internal-only fields before sending to TibaBot
-            tibabot_payload = {k: v for k, v in data.items() if k != "admission_id"}
+            tibabot_payload = {k: v for k, v in json_safe_data.items() if k != "admission_id"}
             result = client.assess_discharge(tibabot_payload)
             result["mode"] = "tibabot"
 
@@ -2339,7 +2341,7 @@ class DischargeAssessView(AIFeatureGatedMixin, APIView):
             from .services.discharge_fallback import assess_discharge_fallback
 
             tibabot_categories = {c.get("category") for c in result.get("criteria", [])}
-            fallback = assess_discharge_fallback(data)
+            fallback = assess_discharge_fallback(json_safe_data)
             supplemented = []
             for fc in fallback.get("criteria", []):
                 if fc["category"] not in tibabot_categories:
@@ -2373,21 +2375,21 @@ class DischargeAssessView(AIFeatureGatedMixin, APIView):
             logger.warning("TibaBot unavailable for discharge assess — using fallback")
             from .services.discharge_fallback import assess_discharge_fallback
 
-            result = assess_discharge_fallback(data)
+            result = assess_discharge_fallback(json_safe_data)
         except TibaBotError as e:
             logger.error("TibaBot error for discharge assess: %s", e)
             from .services.discharge_fallback import assess_discharge_fallback
 
-            result = assess_discharge_fallback(data)
+            result = assess_discharge_fallback(json_safe_data)
 
         # Persist result
         try:
             stored = AIDischargeResult.objects.create(
                 created_by=request.user,
-                admission_id=data.get("admission_id"),
+                admission_id=json_safe_data.get("admission_id"),
                 readiness_level=result.get("readiness_level", ""),
                 readiness_score=result.get("readiness_score"),
-                request_data={k: v for k, v in data.items() if k != "admission_id"},
+                request_data={k: v for k, v in json_safe_data.items() if k != "admission_id"},
                 result_data=result,
                 service_mode=result.get("mode", "tibabot"),
                 **_get_tenant_kwargs(request),

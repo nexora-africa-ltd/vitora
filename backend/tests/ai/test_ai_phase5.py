@@ -289,6 +289,40 @@ class TestDischargeAssessEndpoint:
         assert response.data["mode"] == "tibabot"
 
     @override_settings(TIBABOT_ENABLED=True)
+    def test_serializes_vitals_timestamp_before_tibabot_call(
+        self, authenticated_client, mock_tibabot
+    ):
+        mock_tibabot.assess_discharge.return_value = {
+            "readiness_score": 0.7,
+            "readiness_level": "near_ready",
+            "criteria": [],
+            "unmet_criteria_count": 0,
+            "recommendations": [],
+        }
+
+        response = authenticated_client.post(
+            "/api/ai/discharge/assess/",
+            {
+                "patient_age": 50,
+                "primary_diagnosis": "Pneumonia",
+                "days_admitted": 5,
+                "vitals_history": [
+                    {
+                        "timestamp": "2026-08-01T08:30:00Z",
+                        "heart_rate": 90,
+                        "systolic_bp": 120,
+                        "diastolic_bp": 80,
+                    }
+                ],
+            },
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        called_payload = mock_tibabot.assess_discharge.call_args.args[0]
+        assert isinstance(called_payload["vitals_history"][0]["timestamp"], str)
+
+    @override_settings(TIBABOT_ENABLED=True)
     def test_fallback_on_tibabot_unavailable(self, authenticated_client):
         from hmis.apps.ai.client import TibaBotUnavailableError
 
