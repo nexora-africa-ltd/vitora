@@ -511,3 +511,74 @@ class TestNursingCarePlanEntryAPI:
         assert entry["status"] == "RESOLVED"
         assert entry["is_review_due"] is False
         assert entry["review_due_at"] is not None
+
+    def test_update_resets_care_plan_review_window(
+        self, authenticated_client, sample_admission, test_user
+    ):
+        """Updating an active/ongoing entry should set last_reviewed_at and clear review-due state."""
+        kardex = sample_admission.kardex
+
+        entry = NursingCarePlanEntry.objects.create(
+            kardex=kardex,
+            recorded_at=timezone.now() - timezone.timedelta(hours=30),
+            recorded_by=test_user,
+            assessment="Assessment",
+            nursing_diagnosis="Diagnosis",
+            goal_and_outcome_criteria="Goal",
+            plan_of_action="Plan",
+            scientific_rationale="Rationale",
+            status="ACTIVE",
+        )
+
+        response = authenticated_client.patch(
+            f"/api/inpatient/kardex/{kardex.id}/update-care-plan-entry/{entry.id}/",
+            {"implementation": "Reviewed and intervention updated"},
+            format="json",
+        )
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["last_reviewed_at"] is not None
+        assert response.data["is_review_due"] is False
+
+    def test_care_plan_entry_history_endpoint_returns_lifecycle_events(
+        self, authenticated_client, sample_admission, test_user
+    ):
+        """Entry history endpoint should expose create/update/discontinue events."""
+        kardex = sample_admission.kardex
+
+        create_response = authenticated_client.post(
+            f"/api/inpatient/kardex/{kardex.id}/add-care-plan-entry/",
+            {
+                "recorded_at": timezone.now().isoformat(),
+                "assessment": "Assessment",
+                "nursing_diagnosis": "Diagnosis",
+                "goal_and_outcome_criteria": "Goal",
+                "plan_of_action": "Plan",
+                "scientific_rationale": "Rationale",
+            },
+            format="json",
+        )
+        assert create_response.status_code == status.HTTP_201_CREATED
+        entry_id = create_response.data["id"]
+
+        update_response = authenticated_client.patch(
+            f"/api/inpatient/kardex/{kardex.id}/update-care-plan-entry/{entry_id}/",
+            {"evaluation": "Improved response after intervention", "status": "ONGOING"},
+            format="json",
+        )
+        assert update_response.status_code == status.HTTP_200_OK
+
+        discontinue_response = authenticated_client.post(
+            f"/api/inpatient/kardex/{kardex.id}/discontinue-care-plan-entry/{entry_id}/",
+            {"reason": "Superseded by revised diagnosis"},
+            format="json",
+        )
+        assert discontinue_response.status_code == status.HTTP_200_OK
+
+        history_response = authenticated_client.get(
+            f"/api/inpatient/kardex/{kardex.id}/care-plan-entry-history/{entry_id}/"
+        )
+        assert history_response.status_code == status.HTTP_200_OK
+        actions = [item["action"] for item in history_response.data]
+        assert "CREATE" in actions
+        assert "UPDATE" in actions
+        assert "DISCONTINUE" in actions

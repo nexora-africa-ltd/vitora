@@ -2555,6 +2555,11 @@ class NursingCarePlanEntry(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    last_reviewed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When this care plan was last clinically reviewed/updated",
+    )
 
     class Meta:
         verbose_name = "Nursing Care Plan Entry"
@@ -2572,11 +2577,17 @@ class NursingCarePlanEntry(models.Model):
         )
 
     @property
+    def review_anchor_at(self):
+        """Reference datetime for review cadence: last review, else original recording time."""
+        return self.last_reviewed_at or self.recorded_at
+
+    @property
     def review_due_at(self):
         """Datetime when this entry should be reviewed (24h after recording)."""
-        if not self.recorded_at:
+        review_anchor = self.review_anchor_at
+        if not review_anchor:
             return None
-        return self.recorded_at + timedelta(hours=self.REVIEW_WINDOW_HOURS)
+        return review_anchor + timedelta(hours=self.REVIEW_WINDOW_HOURS)
 
     @property
     def is_review_due(self) -> bool:
@@ -2587,6 +2598,47 @@ class NursingCarePlanEntry(models.Model):
         if review_due_at is None:
             return False
         return timezone.now() >= review_due_at
+
+
+class NursingCarePlanEntryChange(models.Model):
+    """Audit-friendly change history entries for NursingCarePlanEntry lifecycle and edits."""
+
+    ACTION_CHOICES = [
+        ("CREATE", "Created"),
+        ("UPDATE", "Updated"),
+        ("RESOLVE", "Resolved"),
+        ("DISCONTINUE", "Discontinued"),
+        ("BULK_RESOLVE", "Bulk Resolved"),
+    ]
+
+    care_plan_entry = models.ForeignKey(
+        NursingCarePlanEntry,
+        on_delete=models.CASCADE,
+        related_name="change_history",
+    )
+    action = models.CharField(max_length=20, choices=ACTION_CHOICES)
+    changed_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="nursing_care_plan_changes",
+    )
+    changed_fields = models.JSONField(default=list, blank=True)
+    before_data = models.JSONField(default=dict, blank=True)
+    after_data = models.JSONField(default=dict, blank=True)
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at", "-id"]
+        indexes = [
+            models.Index(fields=["care_plan_entry", "-created_at"]),
+            models.Index(fields=["action", "-created_at"]),
+        ]
+
+    def __str__(self):
+        return f"CarePlanChange[{self.action}] entry={self.care_plan_entry_id} at {self.created_at}"
 
 
 class KardexShiftNote(models.Model):

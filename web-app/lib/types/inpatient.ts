@@ -957,6 +957,12 @@ export interface KardexScheduleItemUpdateData {
 // ============================================================================
 
 export type CarePlanEntryStatus = 'ACTIVE' | 'ONGOING' | 'RESOLVED' | 'DISCONTINUED';
+export type CarePlanEntryChangeAction =
+  | 'CREATE'
+  | 'UPDATE'
+  | 'RESOLVE'
+  | 'DISCONTINUE'
+  | 'BULK_RESOLVE';
 
 export interface NursingCarePlanEntry {
   id: number;
@@ -975,8 +981,23 @@ export interface NursingCarePlanEntry {
   status_display?: string;
   is_review_due?: boolean;
   review_due_at?: string | null;
+  last_reviewed_at?: string | null;
   created_at?: string;
   updated_at?: string;
+}
+
+export interface NursingCarePlanEntryChange {
+  id: number;
+  care_plan_entry: number;
+  action: CarePlanEntryChangeAction;
+  action_display?: string;
+  changed_by?: number | null;
+  changed_by_username?: string;
+  changed_fields?: string[];
+  before_data?: Record<string, unknown>;
+  after_data?: Record<string, unknown>;
+  notes?: string;
+  created_at: string;
 }
 
 export interface NursingCarePlanEntryCreateData {

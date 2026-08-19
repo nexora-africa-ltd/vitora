@@ -121,6 +121,13 @@ export const ShiftEndingTypeSchema = z.enum(['DAY', 'EVENING', 'NIGHT']);
 export const GenderRestrictionSchema = z.enum(['ANY', 'MALE_ONLY', 'FEMALE_ONLY']);
 
 export const CarePlanEntryStatusSchema = z.enum(['ACTIVE', 'ONGOING', 'RESOLVED', 'DISCONTINUED']);
+export const CarePlanEntryChangeActionSchema = z.enum([
+  'CREATE',
+  'UPDATE',
+  'RESOLVE',
+  'DISCONTINUE',
+  'BULK_RESOLVE',
+]);
 
 export const KardexCodeStatusSchema = z.enum(['FULL_CODE', 'DNR', 'DNI', 'LIMITED', 'UNKNOWN']);
 
@@ -783,11 +790,28 @@ export const NursingCarePlanEntrySchema = z.object({
   status_display: z.string().optional(),
   is_review_due: z.boolean().optional(),
   review_due_at: z.string().nullable().optional(),
+  last_reviewed_at: z.string().nullable().optional(),
   created_at: z.string().optional(),
   updated_at: z.string().optional(),
 });
 
 export type NursingCarePlanEntrySchemaType = z.infer<typeof NursingCarePlanEntrySchema>;
+
+export const NursingCarePlanEntryChangeSchema = z.object({
+  id: z.number(),
+  care_plan_entry: z.number(),
+  action: CarePlanEntryChangeActionSchema,
+  action_display: z.string().optional(),
+  changed_by: z.number().nullable().optional(),
+  changed_by_username: z.string().optional(),
+  changed_fields: z.array(z.string()).optional(),
+  before_data: z.record(z.string(), z.unknown()).optional(),
+  after_data: z.record(z.string(), z.unknown()).optional(),
+  notes: z.string().optional(),
+  created_at: z.string(),
+});
+
+export type NursingCarePlanEntryChangeSchemaType = z.infer<typeof NursingCarePlanEntryChangeSchema>;
 
 export const NursingKardexSchema = z.object({
   id: z.number(),

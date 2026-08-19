@@ -57,6 +57,7 @@ from .models import (
     KardexShiftNote,
     MedicationAdministration,
     NursingCarePlanEntry,
+    NursingCarePlanEntryChange,
     NursingKardex,
     ReviewRequest,
     ShiftHandover,
@@ -105,6 +106,7 @@ from .serializers import (
     MedicationAdministrationActionSerializer,
     MedicationAdministrationCreateSerializer,
     MedicationAdministrationSerializer,
+    NursingCarePlanEntryChangeSerializer,
     NursingCarePlanEntryCreateSerializer,
     NursingCarePlanEntrySerializer,
     NursingKardexSerializer,
@@ -4020,6 +4022,18 @@ class NursingKardexViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
         "isolation_type",
     ]
 
+    @staticmethod
+    def _snapshot_care_plan_entry(entry: NursingCarePlanEntry) -> dict:
+        """Compact snapshot used for care-plan change history and audit logs."""
+        return {
+            "implementation": entry.implementation,
+            "evaluation": entry.evaluation,
+            "status": entry.status,
+            "last_reviewed_at": (
+                entry.last_reviewed_at.isoformat() if entry.last_reviewed_at else None
+            ),
+        }
+
     def perform_update(self, serializer):
         """Persist kardex updates and append field-change history for tracked fields."""
         instance = serializer.instance
@@ -4277,6 +4291,25 @@ class NursingKardexViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
             **serializer.validated_data,
         )
 
+        NursingCarePlanEntryChange.objects.create(
+            care_plan_entry=entry,
+            action="CREATE",
+            changed_by=request.user,
+            changed_fields=[
+                "assessment",
+                "nursing_diagnosis",
+                "goal_and_outcome_criteria",
+                "plan_of_action",
+                "scientific_rationale",
+                "implementation",
+                "evaluation",
+                "status",
+            ],
+            before_data={},
+            after_data=self._snapshot_care_plan_entry(entry),
+            notes="Care plan entry created",
+        )
+
         # Log care plan entry creation
         AuditLog.log(
             action="kardex_care_plan_entry_create",
@@ -4287,6 +4320,7 @@ class NursingKardexViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
                 "kardex_id": kardex.id,
                 "admission_number": kardex.admission.admission_number,
                 "nursing_diagnosis": entry.nursing_diagnosis[:100],
+                "status": entry.status,
             },
             ip_address=get_client_ip(request),
         )
@@ -4335,9 +4369,34 @@ class NursingKardexViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        before_snapshot = self._snapshot_care_plan_entry(entry)
+        previous_status = entry.status
+
+        # Any implementation/evaluation/status update is treated as a clinical review.
+        entry.last_reviewed_at = timezone.now()
+
         for field, value in update_data.items():
             setattr(entry, field, value)
-        entry.save(update_fields=list(update_data.keys()) + ["updated_at"])
+        entry.save(update_fields=list(update_data.keys()) + ["last_reviewed_at", "updated_at"])
+
+        after_snapshot = self._snapshot_care_plan_entry(entry)
+        status_transitioned_to_resolved = (
+            "status" in update_data and previous_status != "RESOLVED" and entry.status == "RESOLVED"
+        )
+        history_action = "RESOLVE" if status_transitioned_to_resolved else "UPDATE"
+        NursingCarePlanEntryChange.objects.create(
+            care_plan_entry=entry,
+            action=history_action,
+            changed_by=request.user,
+            changed_fields=list(update_data.keys()) + ["last_reviewed_at"],
+            before_data=before_snapshot,
+            after_data=after_snapshot,
+            notes=(
+                "Care plan resolved via single-entry update"
+                if status_transitioned_to_resolved
+                else "Care plan entry updated"
+            ),
+        )
 
         # Log care plan entry update
         AuditLog.log(
@@ -4349,6 +4408,8 @@ class NursingKardexViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
                 "kardex_id": kardex.id,
                 "admission_number": kardex.admission.admission_number,
                 "updated_fields": list(update_data.keys()),
+                "before": before_snapshot,
+                "after": after_snapshot,
             },
             ip_address=get_client_ip(request),
         )
@@ -4375,11 +4436,31 @@ class NursingKardexViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
                 {"message": "No active care plan entries to resolve", "resolved_count": 0}
             )
 
-        update_fields = {"status": "RESOLVED"}
-        if evaluation:
-            update_fields["evaluation"] = evaluation
+        resolved_entries = []
+        history_rows = []
+        review_timestamp = timezone.now()
+        for entry in pending_entries:
+            before_snapshot = self._snapshot_care_plan_entry(entry)
+            entry.status = "RESOLVED"
+            if evaluation:
+                entry.evaluation = evaluation
+            entry.last_reviewed_at = review_timestamp
+            entry.save(update_fields=["status", "evaluation", "last_reviewed_at", "updated_at"])
+            resolved_entries.append(entry.id)
+            history_rows.append(
+                NursingCarePlanEntryChange(
+                    care_plan_entry=entry,
+                    action="BULK_RESOLVE",
+                    changed_by=request.user,
+                    changed_fields=["status", "evaluation", "last_reviewed_at"],
+                    before_data=before_snapshot,
+                    after_data=self._snapshot_care_plan_entry(entry),
+                    notes="Care plan entry resolved via bulk action",
+                )
+            )
 
-        pending_entries.update(**update_fields)
+        if history_rows:
+            NursingCarePlanEntryChange.objects.bulk_create(history_rows)
 
         AuditLog.log(
             action="kardex_care_plan_bulk_resolve",
@@ -4389,6 +4470,7 @@ class NursingKardexViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
             details={
                 "admission_number": kardex.admission.admission_number,
                 "resolved_count": count,
+                "resolved_entry_ids": resolved_entries,
                 "evaluation": evaluation[:200] if evaluation else "",
             },
             ip_address=get_client_ip(request),
@@ -4431,13 +4513,27 @@ class NursingKardexViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        before_snapshot = self._snapshot_care_plan_entry(entry)
+
         entry.status = "DISCONTINUED"
         entry.evaluation = (
             f"[Discontinued] {reason}"
             if not entry.evaluation
             else f"{entry.evaluation}\n[Discontinued] {reason}"
         )
-        entry.save(update_fields=["status", "evaluation", "updated_at"])
+        entry.last_reviewed_at = timezone.now()
+        entry.save(update_fields=["status", "evaluation", "last_reviewed_at", "updated_at"])
+
+        after_snapshot = self._snapshot_care_plan_entry(entry)
+        NursingCarePlanEntryChange.objects.create(
+            care_plan_entry=entry,
+            action="DISCONTINUE",
+            changed_by=request.user,
+            changed_fields=["status", "evaluation", "last_reviewed_at"],
+            before_data=before_snapshot,
+            after_data=after_snapshot,
+            notes=reason,
+        )
 
         AuditLog.log(
             action="kardex_care_plan_entry_discontinue",
@@ -4448,12 +4544,29 @@ class NursingKardexViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
                 "kardex_id": kardex.id,
                 "admission_number": kardex.admission.admission_number,
                 "reason": reason[:200],
+                "before": before_snapshot,
+                "after": after_snapshot,
             },
             ip_address=get_client_ip(request),
         )
 
         result_serializer = NursingCarePlanEntrySerializer(entry)
         return Response(result_serializer.data)
+
+    @action(detail=True, methods=["get"], url_path=r"care-plan-entry-history/(?P<entry_id>\d+)")
+    def care_plan_entry_history(self, request, pk=None, entry_id=None):
+        """List change history entries for a single care-plan entry."""
+        kardex = self.get_object()
+        try:
+            entry = kardex.care_plan_entries.get(id=entry_id)
+        except NursingCarePlanEntry.DoesNotExist:
+            return Response(
+                {"error": "Care plan entry not found"}, status=status.HTTP_404_NOT_FOUND
+            )
+
+        history_qs = entry.change_history.select_related("changed_by").all()
+        serializer = NursingCarePlanEntryChangeSerializer(history_qs, many=True)
+        return Response(serializer.data)
 
 
 class ShiftHandoverViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):

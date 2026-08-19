@@ -9,6 +9,7 @@ import {
   AlertTriangle,
   Clock3,
   FileText,
+  History,
   CheckCircle2,
   XCircle,
   Ban,
@@ -54,6 +55,7 @@ import {
   useUpdateCarePlanEntry,
   useResolveAllCarePlans,
   useDiscontinueCarePlanEntry,
+  useCarePlanEntryHistory,
 } from '@/lib/hooks/use-inpatient';
 import { useAIEnabled, useAIStatus } from '@/lib/hooks/use-ai';
 import { useOptionalAIChatContext } from '@/lib/context/ai-chat-context';
@@ -262,6 +264,15 @@ export default function KardexPage() {
   const [discontinueCpDialogOpen, setDiscontinueCpDialogOpen] = useState(false);
   const [discontinueCpEntryId, setDiscontinueCpEntryId] = useState<number | null>(null);
   const [discontinueCpReason, setDiscontinueCpReason] = useState('');
+
+  // Resolve single care plan entry dialog state
+  const [resolveCpDialogOpen, setResolveCpDialogOpen] = useState(false);
+  const [resolveCpEntryId, setResolveCpEntryId] = useState<number | null>(null);
+  const [resolveCpEvaluation, setResolveCpEvaluation] = useState('');
+
+  // Care plan history dialog state
+  const [carePlanHistoryDialogOpen, setCarePlanHistoryDialogOpen] = useState(false);
+  const [carePlanHistoryEntryId, setCarePlanHistoryEntryId] = useState<number | null>(null);
 
   // Bulk resolve dialog state
   const [resolveAllDialogOpen, setResolveAllDialogOpen] = useState(false);
@@ -845,6 +856,31 @@ export default function KardexPage() {
     }
   };
 
+  const handleResolveCarePlanEntry = async () => {
+    if (!kardex || !resolveCpEntryId) return;
+    try {
+      await updateCarePlanEntry.mutateAsync({
+        kardexId: kardex.id,
+        entryId: resolveCpEntryId,
+        data: {
+          status: 'RESOLVED',
+          evaluation: resolveCpEvaluation.trim() || undefined,
+        },
+      });
+      toast({ title: 'Success', description: 'Care plan entry resolved' });
+      setResolveCpDialogOpen(false);
+      setResolveCpEntryId(null);
+      setResolveCpEvaluation('');
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to resolve care plan entry',
+        variant: 'destructive',
+      });
+      console.error(error);
+    }
+  };
+
   const handleResolveAllCarePlans = async () => {
     if (!kardex) return;
     try {
@@ -871,8 +907,21 @@ export default function KardexPage() {
     setDiscontinueCpDialogOpen(true);
   };
 
+  const openResolveEntry = (entryId: number) => {
+    setResolveCpEntryId(entryId);
+    setResolveCpEvaluation('');
+    setResolveCpDialogOpen(true);
+  };
+
+  const openCarePlanHistory = (entryId: number) => {
+    setCarePlanHistoryEntryId(entryId);
+    setCarePlanHistoryDialogOpen(true);
+  };
+
   const [isApplyingAIToKardex, setIsApplyingAIToKardex] = useState(false);
   const [appliedAIToKardex, setAppliedAIToKardex] = useState(false);
+  const { data: carePlanEntryHistory = [], isLoading: carePlanEntryHistoryLoading } =
+    useCarePlanEntryHistory(kardex?.id, carePlanHistoryEntryId);
 
   const handleApplyAIToKardex = async (entries: NursingCarePlanEntryCreateData[]) => {
     if (!kardex) return;
@@ -1712,6 +1761,95 @@ export default function KardexPage() {
             </DialogContent>
           </Dialog>
 
+          {/* Resolve Single Care Plan Entry Dialog */}
+          <Dialog open={resolveCpDialogOpen} onOpenChange={setResolveCpDialogOpen}>
+            <DialogContent className="sm:max-w-lg">
+              <DialogHeader>
+                <div className="flex items-center gap-2">
+                  <DialogTitle>Resolve Care Plan Entry</DialogTitle>
+                  <HelpPopover content="Mark this care plan as resolved when goals have been met. Add an optional evaluation note to document outcomes." />
+                </div>
+              </DialogHeader>
+              <div className="space-y-4 py-2">
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Evaluation Note (optional)</Label>
+                  <Textarea
+                    value={resolveCpEvaluation}
+                    onChange={(e) => setResolveCpEvaluation(e.target.value)}
+                    placeholder="e.g., Goal met, symptoms improved, patient stable for ongoing routine monitoring..."
+                    className="min-h-[80px] resize-none"
+                  />
+                </div>
+              </div>
+              <DialogFooter className="flex-col-reverse gap-2 sm:flex-row sm:gap-0">
+                <Button
+                  variant="outline"
+                  onClick={() => setResolveCpDialogOpen(false)}
+                  className="w-full sm:w-auto"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleResolveCarePlanEntry}
+                  disabled={updateCarePlanEntry.isPending}
+                  className="w-full sm:w-auto"
+                >
+                  {updateCarePlanEntry.isPending ? 'Resolving...' : 'Resolve'}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* Care Plan Entry History Dialog */}
+          <Dialog open={carePlanHistoryDialogOpen} onOpenChange={setCarePlanHistoryDialogOpen}>
+            <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
+              <DialogHeader>
+                <div className="flex items-center gap-2">
+                  <DialogTitle>Care Plan Change History</DialogTitle>
+                  <HelpPopover content="Timeline of updates for this care plan entry, including who changed it and which fields were updated." />
+                </div>
+              </DialogHeader>
+              {carePlanEntryHistoryLoading ? (
+                <div className="space-y-2 py-2">
+                  <Skeleton className="h-16 w-full" />
+                  <Skeleton className="h-16 w-full" />
+                </div>
+              ) : carePlanEntryHistory.length === 0 ? (
+                <p className="py-2 text-sm text-muted-foreground">No history entries found.</p>
+              ) : (
+                <div className="space-y-3 py-2">
+                  {carePlanEntryHistory.map((historyItem) => (
+                    <Card key={historyItem.id}>
+                      <CardContent className="space-y-2 p-3">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Badge variant="outline">
+                            {historyItem.action_display || historyItem.action}
+                          </Badge>
+                          <span className="text-xs text-muted-foreground">
+                            {formatDateTime(historyItem.created_at)}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            by {historyItem.changed_by_username || 'System'}
+                          </span>
+                        </div>
+                        {historyItem.changed_fields && historyItem.changed_fields.length > 0 && (
+                          <p className="text-xs text-muted-foreground">
+                            Fields: {historyItem.changed_fields.join(', ')}
+                          </p>
+                        )}
+                        {historyItem.notes && (
+                          <p className="whitespace-pre-wrap break-words text-sm">
+                            {historyItem.notes}
+                          </p>
+                        )}
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </DialogContent>
+          </Dialog>
+
           {/* Resolve All Care Plans Dialog */}
           <Dialog open={resolveAllDialogOpen} onOpenChange={setResolveAllDialogOpen}>
             <DialogContent className="sm:max-w-lg">
@@ -1796,6 +1934,11 @@ export default function KardexPage() {
                           <span className="text-sm text-muted-foreground">
                             {formatDateTime(entry.recorded_at)}
                           </span>
+                          {entry.last_reviewed_at && (
+                            <span className="text-xs text-muted-foreground">
+                              Reviewed {formatDateTime(entry.last_reviewed_at)}
+                            </span>
+                          )}
                           {!isTerminal && isReviewDue && (
                             <Badge variant="warning" className="w-fit shrink-0 text-xs">
                               Review due
@@ -1806,6 +1949,14 @@ export default function KardexPage() {
                           <span className="text-sm text-muted-foreground">
                             By {entry.recorded_by_username}
                           </span>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => openCarePlanHistory(entry.id)}
+                          >
+                            <History className="h-3.5 w-3.5 sm:mr-1" />
+                            <span className="hidden sm:inline">History</span>
+                          </Button>
                           {!isTerminal && (
                             <>
                               <Button
@@ -1814,6 +1965,14 @@ export default function KardexPage() {
                                 onClick={() => openUpdateCarePlanEntry(entry)}
                               >
                                 Update
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => openResolveEntry(entry.id)}
+                              >
+                                <CheckCircle2 className="h-3.5 w-3.5 sm:mr-1" />
+                                <span className="hidden sm:inline">Resolve</span>
                               </Button>
                               <Button
                                 variant="ghost"

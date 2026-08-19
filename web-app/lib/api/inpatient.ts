@@ -3,6 +3,7 @@
  */
 
 import { apiClient } from './client';
+import { z } from 'zod';
 import { parseResponse } from '@/lib/schemas/validation';
 import {
   WardSchema,
@@ -20,6 +21,7 @@ import {
   PaginatedReviewRequestSchema,
   NursingKardexSchema,
   NursingCarePlanEntrySchema,
+  NursingCarePlanEntryChangeSchema,
   KardexShiftNoteSchema,
   KardexHandoverNoteSchema,
   KardexScheduleItemSchema,
@@ -107,6 +109,7 @@ import type {
   KardexUpdateData,
   NursingKardex,
   NursingCarePlanEntry,
+  NursingCarePlanEntryChange,
   NursingCarePlanEntryCreateData,
   NursingCarePlanEntryUpdateData,
   ReviewRequest,
@@ -791,6 +794,18 @@ export const inpatientApi = {
       { reason }
     );
     return parseResponse(NursingCarePlanEntrySchema, response.data, { context: 'inpatientApi.discontinueCarePlanEntry' });
+  },
+
+  async listCarePlanEntryHistory(
+    kardexId: number,
+    entryId: number
+  ): Promise<NursingCarePlanEntryChange[]> {
+    const response = await apiClient.get<NursingCarePlanEntryChange[]>(
+      `/api/inpatient/kardex/${kardexId}/care-plan-entry-history/${entryId}/`
+    );
+    return parseResponse(z.array(NursingCarePlanEntryChangeSchema), response.data, {
+      context: 'inpatientApi.listCarePlanEntryHistory',
+    });
   },
 
   // ============================================================================

@@ -42,6 +42,7 @@ from .models import (
     KardexShiftNote,
     MedicationAdministration,
     NursingCarePlanEntry,
+    NursingCarePlanEntryChange,
     NursingKardex,
     RenalReaction,
     ReviewRequest,
@@ -1683,6 +1684,7 @@ class NursingCarePlanEntrySerializer(serializers.ModelSerializer):
     status_display = serializers.CharField(source="get_status_display", read_only=True)
     is_review_due = serializers.BooleanField(read_only=True)
     review_due_at = serializers.DateTimeField(read_only=True)
+    last_reviewed_at = serializers.DateTimeField(read_only=True)
 
     class Meta:
         model = NursingCarePlanEntry
@@ -1703,10 +1705,35 @@ class NursingCarePlanEntrySerializer(serializers.ModelSerializer):
             "status_display",
             "is_review_due",
             "review_due_at",
+            "last_reviewed_at",
             "created_at",
             "updated_at",
         ]
         read_only_fields = ["id", "recorded_by", "created_at", "updated_at"]
+
+
+class NursingCarePlanEntryChangeSerializer(serializers.ModelSerializer):
+    """Serializer for per-entry care-plan lifecycle/edit history."""
+
+    changed_by_username = serializers.CharField(source="changed_by.username", read_only=True)
+    action_display = serializers.CharField(source="get_action_display", read_only=True)
+
+    class Meta:
+        model = NursingCarePlanEntryChange
+        fields = [
+            "id",
+            "care_plan_entry",
+            "action",
+            "action_display",
+            "changed_by",
+            "changed_by_username",
+            "changed_fields",
+            "before_data",
+            "after_data",
+            "notes",
+            "created_at",
+        ]
+        read_only_fields = fields
 
 
 class NursingCarePlanEntryCreateSerializer(serializers.ModelSerializer):

@@ -36,6 +36,7 @@ import type {
   InpatientConsumableUsage,
   NursingKardex,
   NursingCarePlanEntry,
+  NursingCarePlanEntryChange,
   NursingCarePlanEntryCreateData,
   NursingCarePlanEntryUpdateData,
   ReviewRequest,
@@ -127,6 +128,8 @@ export const inpatientQueryKeys = {
   kardex: (params?: KardexListParams) =>
     [...inpatientQueryKeys.all, 'kardex', params] as const,
   kardexById: (id: number) => [...inpatientQueryKeys.all, 'kardex', id] as const,
+  carePlanEntryHistory: (kardexId: number, entryId: number) =>
+    [...inpatientQueryKeys.kardexById(kardexId), 'care-plan-entry-history', entryId] as const,
   kardexByAdmission: (admissionId: string | number) =>
     [...inpatientQueryKeys.all, 'kardex', 'admission', admissionId] as const,
   admissionClearanceStatus: (admissionId: string | number) =>
@@ -1112,6 +1115,15 @@ export function useDiscontinueCarePlanEntry() {
       queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.kardexById(variables.kardexId) });
       queryClient.invalidateQueries({ queryKey: [...inpatientQueryKeys.all, 'kardex'] });
     },
+  });
+}
+
+export function useCarePlanEntryHistory(kardexId: number | undefined, entryId: number | null) {
+  const hasValidIds = typeof kardexId === 'number' && kardexId > 0 && typeof entryId === 'number';
+  return useQuery<NursingCarePlanEntryChange[]>({
+    queryKey: inpatientQueryKeys.carePlanEntryHistory(kardexId ?? 0, entryId ?? 0),
+    enabled: hasValidIds,
+    queryFn: () => inpatientApi.listCarePlanEntryHistory(kardexId!, entryId!),
   });
 }
 
