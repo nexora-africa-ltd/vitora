@@ -19,6 +19,30 @@ WAIT_SLEEP_SECONDS="${WAIT_SLEEP_SECONDS:-10}"
 EXEC_ATTEMPTS="${EXEC_ATTEMPTS:-5}"
 EXEC_SLEEP_SECONDS="${EXEC_SLEEP_SECONDS:-20}"
 
+run_postdeploy_exec() {
+  local output
+
+  if [ -t 0 ]; then
+    az containerapp exec \
+      --name "$APP_NAME" \
+      --resource-group "$RESOURCE_GROUP" \
+      --command "bash scripts/aca-postdeploy.sh"
+    return $?
+  fi
+
+  if command -v script >/dev/null 2>&1; then
+    output="$(script -q -e -c "az containerapp exec --name \"$APP_NAME\" --resource-group \"$RESOURCE_GROUP\" --command \"bash scripts/aca-postdeploy.sh\"" /dev/null 2>&1)"
+    local exit_code=$?
+    printf '%s\n' "$output"
+    return $exit_code
+  fi
+
+  az containerapp exec \
+    --name "$APP_NAME" \
+    --resource-group "$RESOURCE_GROUP" \
+    --command "bash scripts/aca-postdeploy.sh"
+}
+
 if [ -z "$APP_NAME" ]; then
   echo "Usage: bash scripts/aca-run-postdeploy.sh <container-app-name> [resource-group]"
   echo "Example: bash scripts/aca-run-postdeploy.sh vitora-api-prod vitora-rg"
@@ -60,10 +84,7 @@ for attempt in $(seq 1 "$WAIT_ATTEMPTS"); do
 done
 
 for attempt in $(seq 1 "$EXEC_ATTEMPTS"); do
-  exec_output="$(az containerapp exec \
-    --name "$APP_NAME" \
-    --resource-group "$RESOURCE_GROUP" \
-    --command "bash scripts/aca-postdeploy.sh" 2>&1)" && {
+  exec_output="$(run_postdeploy_exec 2>&1)" && {
       echo "$exec_output"
       echo "==> Post-deploy maintenance completed"
       exit 0
