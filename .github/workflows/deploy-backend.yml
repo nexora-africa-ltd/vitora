@@ -216,25 +216,4 @@ jobs:
 
       - name: Run post-deploy maintenance
         run: |
-          az containerapp update \
-            --name "${{ env.CONTAINER_APP_NAME }}" \
-            --resource-group "${{ env.AZURE_RESOURCE_GROUP }}" \
-            --min-replicas 1 \
-            --output none
-
-          for attempt in 1 2 3 4 5; do
-            if az containerapp exec \
-              --name "${{ env.CONTAINER_APP_NAME }}" \
-              --resource-group "${{ env.AZURE_RESOURCE_GROUP }}" \
-              --command "bash scripts/aca-postdeploy.sh"; then
-              break
-            fi
-
-            if [ "$attempt" -eq 5 ]; then
-              echo "Post-deploy maintenance failed after 5 attempts"
-              exit 1
-            fi
-
-            echo "Post-deploy maintenance attempt ${attempt} failed, retrying..."
-            sleep 20
-          done
+          bash backend/scripts/aca-run-postdeploy.sh "${{ env.CONTAINER_APP_NAME }}" "${{ env.AZURE_RESOURCE_GROUP }}"
