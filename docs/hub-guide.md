@@ -552,6 +552,17 @@ The hub's update service periodically checks for new versions:
 5. Health-checks the new version
 6. Rolls back on failure
 
+### Native Updater Backup Behavior (Linux + Windows)
+
+When using the native updater scripts (`update-hub.sh` on Linux, `update-hub.ps1` on Windows), both platforms now use the same backup policy:
+
+- Keep exactly one rolling pre-update snapshot (overwrite on each update)
+- Linux path: `/opt/vitora/backup/pre-update-current`
+- Windows path: `C:\VitoraHub\backup\pre-update-current`
+- Rollback restores from this snapshot if extraction/migration/service start fails
+
+This avoids unbounded growth from per-version backup folders while preserving a safe rollback point.
+
 ### Manual Update (Native Mode — Linux)
 
 ```bash

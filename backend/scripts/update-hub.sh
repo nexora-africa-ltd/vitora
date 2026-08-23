@@ -4,6 +4,7 @@
 #
 # Updates an existing hub installation to the latest (or specified) version.
 # Preserves database, configuration, and service settings.
+# Keeps a single rolling pre-update backup at /opt/vitora/backup/pre-update-current.
 #
 # Usage:
 #   sudo bash /opt/vitora/scripts/update-hub.sh
@@ -17,6 +18,8 @@ APP_DIR="/opt/vitora"
 VENV_DIR="${APP_DIR}/venv"
 SERVICE_NAME="vitora-hub"
 VERSION=""
+BACKUP_DIR="${APP_DIR}/backup"
+BACKUP_PATH="${BACKUP_DIR}/pre-update-current"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -79,9 +82,18 @@ info "Stopping hub service..."
 systemctl stop "$SERVICE_NAME"
 
 # Backup current code (not data — that's in /var/lib/vitora)
-if [[ -d "$APP_DIR/hmis" ]]; then
-    mv "$APP_DIR/hmis" "$APP_DIR/hmis.bak.$(date +%Y%m%d%H%M%S)"
-fi
+info "Creating rolling pre-update backup..."
+mkdir -p "$BACKUP_DIR"
+rm -rf "$BACKUP_PATH"
+mkdir -p "$BACKUP_PATH"
+
+BACKUP_ITEMS=("hmis" "manage.py" "requirements-hub.txt" "VERSION" "scripts")
+for item in "${BACKUP_ITEMS[@]}"; do
+    if [[ -e "$APP_DIR/$item" ]]; then
+        mv "$APP_DIR/$item" "$BACKUP_PATH/$item"
+    fi
+done
+info "Rolling pre-update backup stored at: $BACKUP_PATH"
 
 # Extract new code
 info "Extracting new version..."
@@ -108,9 +120,6 @@ export DJANGO_SETTINGS_MODULE=hmis.settings
 info "Starting hub service..."
 systemctl start "$SERVICE_NAME"
 
-# Clean old backups (keep last 3)
-ls -dt "$APP_DIR"/hmis.bak.* 2>/dev/null | tail -n +4 | xargs rm -rf 2>/dev/null || true
-
 # Verify
 sleep 2
 if systemctl is-active --quiet "$SERVICE_NAME"; then
@@ -118,12 +127,15 @@ if systemctl is-active --quiet "$SERVICE_NAME"; then
 else
     error "Service failed to start after update."
     warn "Restoring previous version..."
-    LATEST_BACKUP=$(ls -dt "$APP_DIR"/hmis.bak.* 2>/dev/null | head -1)
-    if [[ -n "$LATEST_BACKUP" ]]; then
-        rm -rf "$APP_DIR/hmis"
-        mv "$LATEST_BACKUP" "$APP_DIR/hmis"
-        systemctl start "$SERVICE_NAME"
-        warn "Rolled back. Check logs: journalctl -u $SERVICE_NAME -n 50"
+    if [[ -d "$BACKUP_PATH" ]]; then
+        for item in "${BACKUP_ITEMS[@]}"; do
+            rm -rf "$APP_DIR/$item"
+            if [[ -e "$BACKUP_PATH/$item" ]]; then
+                mv "$BACKUP_PATH/$item" "$APP_DIR/$item"
+            fi
+        done
+        systemctl start "$SERVICE_NAME" || true
+        warn "Rolled back from $BACKUP_PATH. Check logs: journalctl -u $SERVICE_NAME -n 50"
     fi
     exit 1
 fi

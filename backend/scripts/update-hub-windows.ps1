@@ -4,6 +4,7 @@
 # Updates an existing hub installation to the latest (or specified) version.
 # Downloads from Azure CDN, stops service, extracts, migrates, restarts.
 # Auto-rollback on failure.
+# Keeps a single rolling pre-update backup at C:\VitoraHub\backup\pre-update-current.
 #
 # Usage (Run as Administrator):
 #   powershell -ExecutionPolicy Bypass -File C:\VitoraHub\scripts\update-hub.ps1
@@ -240,7 +241,17 @@ Log "Service stopped"
 
 # --- Step 4: Backup current installation ---
 Write-Step 4 "Creating backup..."
-$backupPath = "$BackupDir\pre-update-$CurrentVersion"
+$backupPath = "$BackupDir\pre-update-current"
+New-Item -ItemType Directory -Path $BackupDir -Force | Out-Null
+
+# Keep a single rolling pre-update snapshot to prevent unbounded backup growth.
+Get-ChildItem -Path $BackupDir -Directory -Filter "pre-update-*" -ErrorAction SilentlyContinue |
+    Where-Object { $_.Name -ne "pre-update-current" } |
+    ForEach-Object {
+        Remove-Item -Path $_.FullName -Recurse -Force
+        Log "Removed legacy backup directory: $($_.FullName)"
+    }
+
 if (Test-Path $backupPath) { Remove-Item -Recurse -Force $backupPath }
 New-Item -ItemType Directory -Path $backupPath -Force | Out-Null
 

@@ -220,7 +220,13 @@ export function LabInterpretPanel({
 
   // Auto-trigger from widget quick action
   React.useEffect(() => {
-    if (autoTrigger && isAIEnabled && !isPending && !displayResult && labResults?.length > 0) {
+    if (
+      autoTrigger
+      && isAIEnabled
+      && !isPending
+      && (!displayResult || displayResult.mode === 'fallback')
+      && labResults?.length > 0
+    ) {
       mutate({
         lab_result_id: labResultId,
         encounter_id: encounterId,
@@ -272,8 +278,12 @@ export function LabInterpretPanel({
             <HelpPopover content="AI-powered lab result interpretation. Flags abnormal values, detects multi-lab patterns, and suggests follow-up tests. Advisory only — clinician must confirm." />
           </div>
           {isFallback && (
-            <Badge variant="outline" className="text-xs text-muted-foreground">
-              Offline Mode
+            <Badge
+              variant="outline"
+              className="text-xs text-muted-foreground"
+              title="TibaBot was unavailable. Showing local reference-range fallback interpretation."
+            >
+              Fallback Mode
             </Badge>
           )}
         </div>
