@@ -1,10 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, SquareDashedTopSolid, Beaker, FileText, ClipboardClock, Shield, ExternalLink } from 'lucide-react';
+import { Plus, SquareDashedTopSolid, Beaker, FileText, ClipboardClock, Shield, ExternalLink, ChevronLeft, ChevronRight } from 'lucide-react';
 import { LabOrderTable } from '@/components/laboratory/lab-order-table';
 import { LabQueueView } from '@/components/laboratory/lab-queue-view';
 import { PageHeader } from '@/components/shared/page-header';
@@ -34,8 +34,22 @@ export default function LaboratoryPage() {
     search: debouncedSearch || undefined,
   });
 
-  const orders = data?.results || [];
-  const totalPages = Math.ceil((data?.count || 0) / 20);
+  useEffect(() => {
+    setPage(1);
+  }, [statusFilter, priorityFilter, debouncedSearch]);
+
+  const pageSize = 20;
+  const allOrders = data?.results || [];
+  const isClientPaginationFallback = allOrders.length > pageSize
+    && !data?.next
+    && !data?.previous;
+  const orders = isClientPaginationFallback
+    ? allOrders.slice((page - 1) * pageSize, page * pageSize)
+    : allOrders;
+  const totalCount = data?.count || (isClientPaginationFallback ? allOrders.length : 0);
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+  const hasNextPage = isClientPaginationFallback ? page < totalPages : Boolean(data?.next);
+  const hasPreviousPage = isClientPaginationFallback ? page > 1 : Boolean(data?.previous);
 
   return (
     <PullToRefresh onRefresh={refresh} isRefreshing={isRefreshing} className="min-h-full">
@@ -79,6 +93,8 @@ export default function LaboratoryPage() {
               error={error as Error | null}
               page={page}
               totalPages={totalPages}
+              hasNextPage={hasNextPage}
+              hasPreviousPage={hasPreviousPage}
               onPageChange={setPage}
               onStatusFilter={setStatusFilter}
               onPriorityFilter={setPriorityFilter}
@@ -106,13 +122,31 @@ export default function LaboratoryPage() {
 // Pending verification component
 function PendingVerificationView() {
   const router = useRouter();
+  const [page, setPage] = useState(1);
+  const pageSize = 20;
   const { data: pendingResults, isLoading } = useLabOrders({
     status: 'COMPLETED',
-    page_size: 50,
+    page,
+    page_size: pageSize,
   });
 
+  const allCompletedOrders = pendingResults?.results || [];
+  const isClientPaginationFallback = allCompletedOrders.length > pageSize
+    && !pendingResults?.next
+    && !pendingResults?.previous;
+  const pagedCompletedOrders = isClientPaginationFallback
+    ? allCompletedOrders.slice((page - 1) * pageSize, page * pageSize)
+    : allCompletedOrders;
+
+  const hasNextPage = isClientPaginationFallback
+    ? page < Math.ceil(allCompletedOrders.length / pageSize)
+    : Boolean(pendingResults?.next);
+  const hasPreviousPage = isClientPaginationFallback ? page > 1 : Boolean(pendingResults?.previous);
+  const totalCount = pendingResults?.count || (isClientPaginationFallback ? allCompletedOrders.length : 0);
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+
   // Filter orders where any result is unverified
-  const ordersWithUnverified = (pendingResults?.results || []).filter(
+  const ordersWithUnverified = pagedCompletedOrders.filter(
     order => order.items?.some(
       item => item.result && item.result.verification_status === 'UNVERIFIED'
     )
@@ -160,6 +194,32 @@ function PendingVerificationView() {
           </div>
         </div>
       ))}
+
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-muted-foreground">
+          Page {page} of {totalPages}
+        </p>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={!hasPreviousPage}
+          >
+            <ChevronLeft className="h-4 w-4 mr-1" />
+            Previous
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setPage((p) => p + 1)}
+            disabled={!hasNextPage}
+          >
+            Next
+            <ChevronRight className="h-4 w-4 ml-1" />
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }

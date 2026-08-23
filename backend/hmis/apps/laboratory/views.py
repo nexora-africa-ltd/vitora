@@ -24,6 +24,7 @@ from rest_framework.views import APIView
 from hmis.apps.core.audit import AuditedMutationMixin
 from hmis.apps.core.mixins import NestedTenantScopeMixin, ReadOnCreateMixin, TenantScopedViewMixin
 from hmis.apps.core.openapi import SchemaFallbackSerializer
+from hmis.apps.core.pagination import StandardPagination
 from hmis.apps.core.permissions import (
     ReadRequiresModelPermission,
     RequiresActiveShiftPermission,
@@ -544,6 +545,7 @@ class LabOrderViewSet(AuditedMutationMixin, TenantScopedViewMixin, viewsets.Mode
         "items__test__name",
     ]
     lookup_field = "order_number"
+    pagination_class = StandardPagination
 
     # Per-action role gating (additive to base permission_classes).
     _ACTION_PERMISSIONS = {
@@ -1019,6 +1021,7 @@ class LabResultViewSet(AuditedMutationMixin, NestedTenantScopeMixin, viewsets.Mo
     ]
     tenant_facility_chain = "order_item__lab_order__facility"
     tenant_org_chain = "order_item__lab_order__organization"
+    pagination_class = StandardPagination
 
     # Per-action role gating (additive to base permission_classes).
     # ``verify`` / ``add_validation`` are the two-stage validation entrypoints:
@@ -1165,7 +1168,7 @@ class LabResultViewSet(AuditedMutationMixin, NestedTenantScopeMixin, viewsets.Mo
         """
 
         validation_type = request.query_params.get("validation_type")
-        results = self.queryset.filter(verification_status="UNVERIFIED")
+        results = self.get_queryset().filter(verification_status="UNVERIFIED")
 
         if validation_type == "TECHNICAL":
             # Results without any technical validation
@@ -1180,7 +1183,13 @@ class LabResultViewSet(AuditedMutationMixin, NestedTenantScopeMixin, viewsets.Mo
                 validations__status="APPROVED",
             ).exclude(validations__validation_type="CLINICAL", validations__status="APPROVED")
 
-        serializer = self.get_serializer(results.distinct(), many=True)
+        results = results.distinct()
+        page = self.paginate_queryset(results)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(results, many=True)
         return Response(serializer.data)
 
     @action(detail=False, methods=["get"], url_path="pending-clinical-signoff")
@@ -1452,6 +1461,7 @@ class LabQueueViewSet(AuditedMutationMixin, NestedTenantScopeMixin, viewsets.Mod
     filter_backends = [filters.DjangoFilterBackend]
     filterset_fields = ["queue_status", "priority", "assigned_technician"]
     lookup_field = "queue_number"
+    pagination_class = StandardPagination
     tenant_facility_chain = "lab_order__facility"
     tenant_org_chain = "lab_order__organization"
 

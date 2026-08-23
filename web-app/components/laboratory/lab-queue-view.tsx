@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -49,6 +49,8 @@ import {
   UserPlus,
   Search,
   Timer,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { LabQueue, QueueStatus, LabPriority, SpecimenStatus } from '@/lib/types/laboratory';
 import {
@@ -129,6 +131,7 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
   // State
   const [statusFilter, setStatusFilter] = useState<QueueStatus | ''>(defaultStatus);
   const [quickSearch, setQuickSearch] = useState('');
+  const [queuePage, setQueuePage] = useState(1);
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
   const [actionsDialogOpen, setActionsDialogOpen] = useState(false);
 
@@ -351,6 +354,16 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
     );
   });
 
+  const queuePageSize = 20;
+  const queueTotalPages = Math.max(1, Math.ceil(filteredQueue.length / queuePageSize));
+  const currentQueuePage = Math.min(queuePage, queueTotalPages);
+  const pageStart = (currentQueuePage - 1) * queuePageSize;
+  const paginatedQueue = filteredQueue.slice(pageStart, pageStart + queuePageSize);
+
+  useEffect(() => {
+    setQueuePage(1);
+  }, [statusFilter, quickSearch]);
+
   // Count by status for summary cards
   const statusCounts = (queue || []).reduce((acc, item) => {
     acc[item.queue_status] = (acc[item.queue_status] || 0) + 1;
@@ -443,7 +456,9 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
                   <CardTitle>Lab Queue</CardTitle>
                   <HelpPopover content="Review and manage samples through collection, processing, review, and release." />
                 </div>
-                <p className="text-sm text-muted-foreground">{filteredQueue.length} item(s) in queue</p>
+                <p className="text-sm text-muted-foreground">
+                  {filteredQueue.length} item(s) in queue
+                </p>
               </div>
               <div className="flex items-center gap-2 flex-wrap">
                 {/* Quick Search */}
@@ -494,8 +509,8 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
                 <p>No items in queue</p>
               </div>
             ) : (
-              <ResponsiveTable
-                data={filteredQueue}
+                <ResponsiveTable
+                  data={paginatedQueue}
                 keyExtractor={(item) => item.id}
                 onRowClick={(item) => {
                   setSelectedQueueEntry(item);
@@ -789,7 +804,35 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
                     </Card>
                   );
                 }}
-              />
+                />
+              )}
+
+            {filteredQueue.length > 0 && (
+              <div className="mt-4 flex items-center justify-between">
+                <p className="text-sm text-muted-foreground">
+                  Page {currentQueuePage} of {queueTotalPages}
+                </p>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setQueuePage((p) => Math.max(1, p - 1))}
+                    disabled={currentQueuePage <= 1}
+                  >
+                    <ChevronLeft className="mr-1 h-4 w-4" />
+                    Previous
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setQueuePage((p) => Math.min(queueTotalPages, p + 1))}
+                    disabled={currentQueuePage >= queueTotalPages}
+                  >
+                    Next
+                    <ChevronRight className="ml-1 h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
             )}
           </CardContent>
         </Card>

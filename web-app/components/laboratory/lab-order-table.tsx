@@ -33,6 +33,8 @@ interface LabOrderTableProps {
   error: Error | null;
   page: number;
   totalPages: number;
+  hasNextPage?: boolean;
+  hasPreviousPage?: boolean;
   onPageChange: (page: number) => void;
   onStatusFilter?: (status: LabOrderStatus | '') => void;
   onPriorityFilter?: (priority: LabPriority | '') => void;
@@ -61,6 +63,8 @@ export function LabOrderTable({
   error,
   page,
   totalPages,
+  hasNextPage,
+  hasPreviousPage,
   onPageChange,
   onStatusFilter,
   onPriorityFilter,
@@ -291,7 +295,7 @@ export function LabOrderTable({
       />
 
       {/* Pagination */}
-      {totalPages > 1 && (
+      {
         <div className="flex items-center justify-between">
           <p className="text-sm text-muted-foreground">
             Page {page} of {totalPages}
@@ -301,7 +305,7 @@ export function LabOrderTable({
               variant="outline"
               size="sm"
               onClick={() => onPageChange(page - 1)}
-              disabled={page <= 1}
+              disabled={hasPreviousPage === undefined ? page <= 1 : !hasPreviousPage}
             >
               <ChevronLeft className="h-4 w-4 mr-1" />
               Previous
@@ -310,14 +314,14 @@ export function LabOrderTable({
               variant="outline"
               size="sm"
               onClick={() => onPageChange(page + 1)}
-              disabled={page >= totalPages}
+              disabled={hasNextPage === undefined ? page >= totalPages : !hasNextPage}
             >
               Next
               <ChevronRight className="h-4 w-4 ml-1" />
             </Button>
           </div>
         </div>
-      )}
+      }
     </div>
   );
 }

@@ -502,6 +502,42 @@ export const laboratoryApi = {
    * Get results pending verification.
    */
   async getPendingVerification(): Promise<LabResult[]> {
+    const response = await apiClient.get<LabResult[] | PaginatedResponse<LabResult>>('/api/lab/results/pending-verification/');
+    if (Array.isArray(response.data)) {
+      return parseResponse(z.array(LabResultSchema), response.data, {
+        context: 'laboratoryApi.getPendingVerification.array',
+      });
+    }
+    const parsed = parseResponse(z.object({
+      count: z.number(),
+      next: z.string().nullable(),
+      previous: z.string().nullable(),
+      results: z.array(LabResultSchema),
+    }), response.data, {
+      context: 'laboratoryApi.getPendingVerification.paginated',
+    });
+    return parsed.results;
+  },
+
+  /**
+   * Get paginated results pending verification.
+   */
+  async getPendingVerificationPaginated(params?: { page?: number; page_size?: number; validation_type?: string }): Promise<PaginatedResponse<LabResult>> {
+    const response = await apiClient.get<PaginatedResponse<LabResult>>('/api/lab/results/pending-verification/', { params });
+    return parseResponse(z.object({
+      count: z.number(),
+      next: z.string().nullable(),
+      previous: z.string().nullable(),
+      results: z.array(LabResultSchema),
+    }), response.data, {
+      context: 'laboratoryApi.getPendingVerificationPaginated',
+    });
+  },
+
+  /**
+   * @deprecated Prefer getPendingVerificationPaginated for list screens.
+   */
+  async getPendingVerificationLegacy(): Promise<LabResult[]> {
     const response = await apiClient.get<LabResult[]>('/api/lab/results/pending-verification/');
     return parseResponse(z.array(LabResultSchema), response.data, {
       context: 'laboratoryApi.getPendingVerification',

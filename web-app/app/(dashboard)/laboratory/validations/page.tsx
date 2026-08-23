@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -25,12 +25,14 @@ import {
   Loader2,
   ExternalLink,
   RefreshCw,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
 import { HelpPopover } from '@/components/shared/help-popover';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
-import { usePendingVerification } from '@/lib/hooks/use-laboratory';
+import { usePendingVerificationPaginated } from '@/lib/hooks/use-laboratory';
 import { ValidationStatusBadge } from '@/components/laboratory/validation-status-badge';
 import { ResultValidationPanel } from '@/components/laboratory/result-validation-panel';
 import { cn } from '@/lib/utils/cn';
@@ -63,8 +65,17 @@ export default function ValidationsPage() {
   const [categoryFilter, setCategoryFilter] = useState<TestCategory | ''>('');
   const [priorityFilter, setPriorityFilter] = useState<LabPriority | ''>('');
   const [selectedResultId, setSelectedResultId] = useState<number | null>(null);
+  const [page, setPage] = useState(1);
+  const pageSize = 20;
 
-  const { data: pendingResults, isLoading, error, refetch } = usePendingVerification();
+  const { data: pendingResults, isLoading, error, refetch } = usePendingVerificationPaginated({
+    page,
+    page_size: pageSize,
+  });
+
+  useEffect(() => {
+    setPage(1);
+  }, [searchQuery, categoryFilter, priorityFilter, activeTab]);
 
   // Filter results based on validation stage needed
   const filterResults = useCallback(
@@ -96,8 +107,11 @@ export default function ValidationsPage() {
     [searchQuery]
   );
 
-  const technicalResults = filterResults(pendingResults, 'technical');
-  const clinicalResults = filterResults(pendingResults, 'clinical');
+  const technicalResults = filterResults(pendingResults?.results, 'technical');
+  const clinicalResults = filterResults(pendingResults?.results, 'clinical');
+  const totalPages = Math.max(1, Math.ceil((pendingResults?.count || 0) / pageSize));
+  const hasNextPage = Boolean(pendingResults?.next);
+  const hasPreviousPage = Boolean(pendingResults?.previous);
 
   const handleResultClick = (resultId: number) => {
     setSelectedResultId(selectedResultId === resultId ? null : resultId);
@@ -222,6 +236,13 @@ export default function ValidationsPage() {
               onViewOrder={handleViewOrder}
               onValidationAdded={handleValidationAdded}
             />
+            <ValidationPagination
+              page={page}
+              totalPages={totalPages}
+              hasNextPage={hasNextPage}
+              hasPreviousPage={hasPreviousPage}
+              onPageChange={setPage}
+            />
           </TabsContent>
 
           <TabsContent value="clinical" className="mt-4">
@@ -235,10 +256,59 @@ export default function ValidationsPage() {
               onViewOrder={handleViewOrder}
               onValidationAdded={handleValidationAdded}
             />
+            <ValidationPagination
+              page={page}
+              totalPages={totalPages}
+              hasNextPage={hasNextPage}
+              hasPreviousPage={hasPreviousPage}
+              onPageChange={setPage}
+            />
           </TabsContent>
         </Tabs>
       </div>
     </PullToRefresh>
+  );
+}
+
+function ValidationPagination({
+  page,
+  totalPages,
+  hasNextPage,
+  hasPreviousPage,
+  onPageChange,
+}: {
+  page: number;
+  totalPages: number;
+  hasNextPage: boolean;
+  hasPreviousPage: boolean;
+  onPageChange: (page: number) => void;
+}) {
+  return (
+    <div className="mt-4 flex items-center justify-between">
+      <p className="text-sm text-muted-foreground">
+        Page {page} of {totalPages}
+      </p>
+      <div className="flex gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => onPageChange(Math.max(1, page - 1))}
+          disabled={!hasPreviousPage}
+        >
+          <ChevronLeft className="h-4 w-4 mr-1" />
+          Previous
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => onPageChange(page + 1)}
+          disabled={!hasNextPage}
+        >
+          Next
+          <ChevronRight className="h-4 w-4 ml-1" />
+        </Button>
+      </div>
+    </div>
   );
 }
 

@@ -494,6 +494,20 @@ export function usePendingVerification() {
   });
 }
 
+/**
+ * Hook for fetching paginated results pending verification.
+ */
+export function usePendingVerificationPaginated(params?: {
+  page?: number;
+  page_size?: number;
+  validation_type?: ValidationType;
+}) {
+  return useQuery({
+    queryKey: ['lab-results', 'pending-verification', 'paginated', params],
+    queryFn: () => laboratoryApi.getPendingVerificationPaginated(params),
+  });
+}
+
 // ============ Lab Queue Hooks ============
 
 /**
