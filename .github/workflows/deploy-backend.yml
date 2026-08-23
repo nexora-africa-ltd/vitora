@@ -20,11 +20,11 @@ on:
           - production
 
 env:
-  AZURE_RESOURCE_GROUP: vitora-rg
-  AZURE_LOCATION: eastus
-  CONTAINER_APP_ENV: vitora-env
-  REGISTRY_NAME: vitoraacr
-  IMAGE_NAME: vitora-api
+  AZURE_RESOURCE_GROUP: vitora-rg-sa
+  AZURE_LOCATION: southafricanorth
+  CONTAINER_APP_ENV: vitora-env-private-sa
+  REGISTRY_NAME: vitoraacrsa
+  IMAGE_NAME: vitora-api-private-sa
 
 jobs:
   build-and-deploy:
@@ -37,7 +37,7 @@ jobs:
 
     env:
       DEPLOY_ENV: ${{ github.event.inputs.environment || (github.ref_name == 'main' && 'production') || 'staging' }}
-      CONTAINER_APP_NAME: ${{ (github.event.inputs.environment == 'production' || github.ref_name == 'main') && 'vitora-api-prod' || 'vitora-api' }}
+      CONTAINER_APP_NAME: ${{ (github.event.inputs.environment == 'production' || github.ref_name == 'main') && 'vitora-api-private-prod-sa' || 'vitora-api-private-sa' }}
 
     steps:
       - name: Checkout code
