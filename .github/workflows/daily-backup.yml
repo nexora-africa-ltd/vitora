@@ -16,7 +16,7 @@ on:
           - staging
 
 env:
-  AZURE_RESOURCE_GROUP: vitora-rg
+  AZURE_RESOURCE_GROUP: vitora-rg-sa
   STORAGE_ACCOUNT: vitorabackups
   STORAGE_CONTAINER: db-backups
 
@@ -30,7 +30,7 @@ jobs:
       contents: read
 
     env:
-      CONTAINER_APP_NAME: ${{ (github.event.inputs.environment == 'staging') && 'vitora-api' || 'vitora-api-prod' }}
+      CONTAINER_APP_NAME: ${{ (github.event.inputs.environment == 'staging') && 'vitora-api-private-sa' || 'vitora-api-private-prod-sa' }}
 
     steps:
       - name: Log in to Azure (OIDC)
@@ -63,12 +63,77 @@ jobs:
           echo "::add-mask::$SAS"
           echo "token=$SAS" >> "$GITHUB_OUTPUT"
 
+      - name: Ensure container app replica is available
+        id: ensure_replica
+        run: |
+          ORIGINAL_MIN=$(az containerapp show \
+            --name ${{ env.CONTAINER_APP_NAME }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --query "properties.template.scale.minReplicas" \
+            -o tsv)
+
+          if [[ -z "$ORIGINAL_MIN" || "$ORIGINAL_MIN" == "null" ]]; then
+            ORIGINAL_MIN=0
+          fi
+
+          echo "original_min=$ORIGINAL_MIN" >> "$GITHUB_OUTPUT"
+
+          REPLICA_COUNT=$(az containerapp replica list \
+            --name ${{ env.CONTAINER_APP_NAME }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --query "length(@)" -o tsv 2>/dev/null || echo 0)
+
+          SCALE_UP=false
+          if [[ "$REPLICA_COUNT" -eq 0 ]]; then
+            echo "No active replicas found. Temporarily scaling min replicas to 1..."
+            az containerapp update \
+              --name ${{ env.CONTAINER_APP_NAME }} \
+              --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+              --min-replicas 1 \
+              --output none
+            SCALE_UP=true
+          fi
+
+          echo "scaled_up=$SCALE_UP" >> "$GITHUB_OUTPUT"
+
+          echo "Waiting for at least one replica..."
+          for _ in $(seq 1 30); do
+            REPLICA_COUNT=$(az containerapp replica list \
+              --name ${{ env.CONTAINER_APP_NAME }} \
+              --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+              --query "length(@)" -o tsv 2>/dev/null || echo 0)
+
+            if [[ "$REPLICA_COUNT" -gt 0 ]]; then
+              echo "Replica available."
+              exit 0
+            fi
+
+            sleep 10
+          done
+
+          echo "ERROR: No replica became available after waiting 5 minutes."
+          az containerapp show \
+            --name ${{ env.CONTAINER_APP_NAME }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --query "{latestRevisionName:properties.latestRevisionName,runningStatus:properties.runningStatus,provisioningState:properties.provisioningState,scale:properties.template.scale}" \
+            -o json
+          exit 1
+
       - name: Run backup in container
         run: |
           az containerapp exec \
             --name ${{ env.CONTAINER_APP_NAME }} \
             --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
             --command "bash -c 'export AZURE_STORAGE_ACCOUNT=${{ env.STORAGE_ACCOUNT }} AZURE_STORAGE_CONTAINER=${{ env.STORAGE_CONTAINER }} AZURE_STORAGE_SAS_TOKEN=\"${{ steps.sas.outputs.token }}\" && bash scripts/backup-db.sh'"
+
+      - name: Restore original min replica setting
+        if: always() && steps.ensure_replica.outputs.scaled_up == 'true'
+        run: |
+          az containerapp update \
+            --name ${{ env.CONTAINER_APP_NAME }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --min-replicas ${{ steps.ensure_replica.outputs.original_min }} \
+            --output none
 
       - name: Prune old backups (30-day retention)
         run: |

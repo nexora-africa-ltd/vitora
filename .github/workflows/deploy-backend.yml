@@ -87,14 +87,14 @@ jobs:
             DEMO_MODE=${{ env.DEPLOY_ENV == 'staging' && 'true' || 'false' }}
             ACTIVE_SHIFT_ENFORCEMENT=${{ env.DEPLOY_ENV == 'production' && 'true' || 'false' }}
             ONBOARDING_ENFORCEMENT=${{ env.DEPLOY_ENV == 'production' && 'true' || 'false' }}
-            ALLOWED_HOSTS=${{ vars.ALLOWED_HOSTS || (env.DEPLOY_ENV == 'production' && 'vitora-api-prod.agreeabledune-6cc420cc.eastus.azurecontainerapps.io,app.vitora.digital,api.vitora.digital,vitora-navy.vercel.app' || 'vitora-api.agreeabledune-6cc420cc.eastus.azurecontainerapps.io,staging.vitora.digital,localhost') }}
+            ALLOWED_HOSTS=${{ vars.ALLOWED_HOSTS || (env.DEPLOY_ENV == 'production' && 'api.vitora.digital,app.vitora.digital,vitora-navy.vercel.app' || 'staging-api.vitora.digital,staging.vitora.digital') }}
             SECURE_SSL_REDIRECT=true
             CORS_ALLOWED_ORIGINS=${{ vars.CORS_ALLOWED_ORIGINS || (env.DEPLOY_ENV == 'production' && 'https://app.vitora.digital,https://api.vitora.digital,https://vitora-navy.vercel.app' || 'https://staging.vitora.digital,http://localhost:3009') }}
             CSRF_TRUSTED_ORIGINS=${{ vars.CSRF_TRUSTED_ORIGINS || (env.DEPLOY_ENV == 'production' && 'https://app.vitora.digital,https://api.vitora.digital,https://vitora-navy.vercel.app' || 'https://staging.vitora.digital') }}
             FRONTEND_URL=${{ vars.FRONTEND_URL || (env.DEPLOY_ENV == 'production' && 'https://app.vitora.digital' || 'https://staging.vitora.digital') }}
             DOCUMENT_VERIFICATION_URL=${{ vars.DOCUMENT_VERIFICATION_URL || (env.DEPLOY_ENV == 'production' && 'https://app.vitora.digital/verify' || 'https://staging.vitora.digital/verify') }}
-            CLOUD_API_BASE_URL=${{ vars.CLOUD_API_BASE_URL }}
-            SYNC_SERVER_URL=${{ vars.SYNC_SERVER_URL }}
+            CLOUD_API_BASE_URL=${{ vars.CLOUD_API_BASE_URL || (env.DEPLOY_ENV == 'production' && 'https://api.vitora.digital' || 'https://staging-api.vitora.digital') }}
+            SYNC_SERVER_URL=${{ vars.SYNC_SERVER_URL || (env.DEPLOY_ENV == 'production' && 'https://api.vitora.digital/api/sync' || 'https://staging-api.vitora.digital/api/sync') }}
             DEFAULT_FROM_EMAIL=noreply@vitora.digital
             CELERY_TASK_ALWAYS_EAGER=${{ env.DEPLOY_ENV == 'staging' && 'true' || 'false' }}
             SHA_ENABLED=true
@@ -127,10 +127,10 @@ jobs:
             MPESA_CONSUMER_SECRET=secretref:mpesa-consumer-secret
             MPESA_SHORTCODE=174379
             MPESA_PASSKEY=secretref:mpesa-passkey
-            MPESA_CALLBACK_URL=${{ vars.MPESA_CALLBACK_URL || 'https://vitora-api.azurecontainerapps.io/api/billing/mpesa/callback/' }}
+            MPESA_CALLBACK_URL=${{ vars.MPESA_CALLBACK_URL || (env.DEPLOY_ENV == 'production' && 'https://api.vitora.digital/api/billing/mpesa/callback/' || 'https://staging-api.vitora.digital/api/billing/mpesa/callback/') }}
             ICD11_USE_LOCAL=false
             HAPI_FHIR_ENABLED=true
-            HAPI_FHIR_BASE_URL=http://vitora-hapi-fhir.internal.agreeabledune-6cc420cc.eastus.azurecontainerapps.io/fhir
+            HAPI_FHIR_BASE_URL=${{ vars.HAPI_FHIR_BASE_URL || '' }}
             HAPI_FHIR_TIMEOUT=10
             SYNC_ENABLED=${{ env.DEPLOY_ENV == 'production' && 'true' || 'false' }}
             HL7_INTEGRATION_ENABLED=true
@@ -138,7 +138,7 @@ jobs:
             HL7_SENDING_FACILITY=DEMO_FACILITY
             HL7_RECEIVING_APPLICATION=LAB_LIS
             HL7_RECEIVING_FACILITY=STAGING_LIS
-            MLLP_HOST=vitora-hl7-mock.internal.agreeabledune-6cc420cc.eastus.azurecontainerapps.io
+            MLLP_HOST=${{ vars.MLLP_HOST || '' }}
             MLLP_PORT=2575
             HL7_LIS_CODE_SYSTEM=LIS_DEFAULT
             HIE_AUTO_CR_LOOKUP=true
@@ -159,7 +159,7 @@ jobs:
             TIBABOT_JWT_ISSUER=vitora.nexora.africa
             TIBABOT_JWT_AUDIENCE=tibabot-api
             TIBABOT_JWT_EXPIRY_SECONDS=300
-            TIBABOT_JWKS_URL=${{ vars.TIBABOT_JWKS_URL }}
+            TIBABOT_JWKS_URL=${{ vars.TIBABOT_JWKS_URL || (env.DEPLOY_ENV == 'production' && 'https://api.vitora.digital/.well-known/jwks.json' || 'https://staging-api.vitora.digital/.well-known/jwks.json') }}
             TIBABOT_ADMIN_KEY=secretref:tibabot-admin-key
             SETUP_WIZARD_ENABLED=true
             ADMIN_MFA_ALLOW_DISABLE_OVERRIDE=${{ vars.ADMIN_MFA_ALLOW_DISABLE_OVERRIDE || (env.DEPLOY_ENV == 'staging' && 'true' || 'false') }}
@@ -180,9 +180,9 @@ jobs:
             PRICING_NONCE_TTL_SECONDS=${{ vars.PRICING_NONCE_TTL_SECONDS || '300' }}
             PRICING_QUOTE_CACHE_TTL_SECONDS=${{ vars.PRICING_QUOTE_CACHE_TTL_SECONDS || '120' }}
             PRICING_QUOTE_SNAPSHOT_TTL_DAYS=${{ vars.PRICING_QUOTE_SNAPSHOT_TTL_DAYS || '30' }}
-            WEBAUTHN_RP_ID=${{ vars.WEBAUTHN_RP_ID || 'staging.vitora.digital' }}
-            WEBAUTHN_ORIGIN=${{ vars.WEBAUTHN_ORIGIN || 'https://staging.vitora.digital' }}
-            METABASE_SITE_URL=${{ vars.METABASE_SITE_URL || 'https://vitora-metabase.agreeabledune-6cc420cc.eastus.azurecontainerapps.io' }}
+            WEBAUTHN_RP_ID=${{ vars.WEBAUTHN_RP_ID || (env.DEPLOY_ENV == 'production' && 'app.vitora.digital' || 'staging.vitora.digital') }}
+            WEBAUTHN_ORIGIN=${{ vars.WEBAUTHN_ORIGIN || (env.DEPLOY_ENV == 'production' && 'https://app.vitora.digital' || 'https://staging.vitora.digital') }}
+            METABASE_SITE_URL=${{ vars.METABASE_SITE_URL || (env.DEPLOY_ENV == 'production' && 'https://metabase.vitora.digital' || 'https://metabase.staging.vitora.digital') }}
             METABASE_API_URL=${{ vars.METABASE_API_URL || 'http://vitora-metabase' }}
             METABASE_EMBEDDING_SECRET=secretref:metabase-embedding-secret
             METABASE_API_KEY=secretref:metabase-api-key
