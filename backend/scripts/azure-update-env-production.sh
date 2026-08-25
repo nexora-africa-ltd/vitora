@@ -119,7 +119,7 @@ az containerapp update \
     "DJANGO_SETTINGS_MODULE=hmis.settings.production" \
     "DJANGO_SECRET_KEY=secretref:django-secret-key" \
     "DATABASE_URL=secretref:database-url" \
-    "DB_CONN_MAX_AGE=${DB_CONN_MAX_AGE:-600}" \
+    "DB_CONN_MAX_AGE=${DB_CONN_MAX_AGE:-300}" \
     "ENCRYPTION_KEY=secretref:encryption-key" \
     "PII_HMAC_KEY=secretref:pii-hmac-key" \
     "DEBUG=false" \
@@ -188,7 +188,7 @@ az containerapp update \
     "FHIR_BASE_URL=${FHIR_BASE_URL:-${PUBLIC_API_BASE_URL}}" \
     "KMS_PROVIDER=${KMS_PROVIDER:-local}" \
     "TIBABOT_ENABLED=${TIBABOT_ENABLED:-true}" \
-    "TIBABOT_API_URL=${TIBABOT_API_URL:-}" \
+    "TIBABOT_API_URL=${TIBABOT_API_URL:-api.vitora.digital}" \
     "TIBABOT_API_KEY=secretref:tibabot-api-key" \
     "TIBABOT_TIMEOUT=${TIBABOT_TIMEOUT:-30}" \
     "TIBABOT_JWT_SECRET=secretref:tibabot-jwt-secret" \
