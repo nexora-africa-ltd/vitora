@@ -37,7 +37,13 @@ from hmis.apps.core.permissions import ReadRequiresModelPermission
 from hmis.apps.encounters.models import ChronicCondition, CurrentMedication, Encounter
 from hmis.apps.patients.models import Allergy
 
-from .client import TibaBotError, TibaBotUnavailableError, extract_token_usage, get_tibabot_client
+from .client import (
+    TibaBotError,
+    TibaBotUnavailableError,
+    extract_token_usage,
+    get_tibabot_client,
+    tibabot_user_context,
+)
 from .context import build_facility_context, build_user_context
 from .feature_flags import AIFeatureGatedMixin, AISchemaMixin, is_ai_enabled
 from .models import (
@@ -655,9 +661,12 @@ class AIStatusView(AISchemaMixin, APIView):
 
         if enabled:
             try:
-                client = get_tibabot_client()
-                # Quick health check — returns rag/demo status
-                health = client._request("GET", "/health")
+                resolve_request_tenant(request)
+                facility = getattr(request, "facility", None)
+                with tibabot_user_context(request.user, facility):
+                    client = get_tibabot_client()
+                    # Quick health check — returns rag/demo status
+                    health = client._request("GET", "/health")
                 service_available = True
                 rag_initialized = bool(health.get("rag_initialized", False))
                 demo_mode = bool(health.get("demo_mode", False))
