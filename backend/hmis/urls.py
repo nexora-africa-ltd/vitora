@@ -97,7 +97,9 @@ from hmis.apps.patients.views import (
 
 PROCESS_START_MONOTONIC = time.monotonic()
 HEALTH_CACHE_TTL_SECONDS = 5
+TIBABOT_HEALTH_CACHE_TTL_SECONDS = 60
 _HEALTH_RESPONSE_CACHE: dict[str, dict[str, object]] = {}
+_TIBABOT_HEALTH_CACHE: dict[str, object] = {}
 
 
 def _truncate_error(exc: Exception, max_len: int = 300) -> str:
@@ -285,6 +287,10 @@ def _check_kms_health() -> dict[str, object]:
 
 def _check_tibabot_health() -> dict[str, object]:
     """Check TibaBot feature flag, configuration, and remote service availability."""
+    cached_details = _get_cached_tibabot_health()
+    if cached_details is not None:
+        return cached_details
+
     details: dict[str, object] = {
         "status": "unknown",
         "enabled": bool(getattr(settings, "TIBABOT_ENABLED", False)),
@@ -320,6 +326,7 @@ def _check_tibabot_health() -> dict[str, object]:
         details["latency_ms"] = round((time.monotonic() - started) * 1000, 2)
         details["rag_initialized"] = bool(health.get("rag_initialized", False))
         details["demo_mode"] = bool(health.get("demo_mode", False))
+        _set_cached_tibabot_health(details)
     except TibaBotError as exc:
         details["status"] = "unhealthy"
         details["error"] = _truncate_error(exc)
@@ -379,6 +386,27 @@ def _set_cached_health_payload(cache_key: str, payload: dict[str, object]) -> No
         "expires_at": time.monotonic() + HEALTH_CACHE_TTL_SECONDS,
         "payload": deepcopy(payload),
     }
+
+
+def _get_cached_tibabot_health() -> dict[str, object] | None:
+    """Return cached TibaBot health check details if still fresh."""
+    expires_at = _TIBABOT_HEALTH_CACHE.get("expires_at")
+    if not isinstance(expires_at, float) or time.monotonic() >= expires_at:
+        _TIBABOT_HEALTH_CACHE.clear()
+        return None
+
+    payload = _TIBABOT_HEALTH_CACHE.get("payload")
+    if not isinstance(payload, dict):
+        _TIBABOT_HEALTH_CACHE.clear()
+        return None
+
+    return deepcopy(payload)
+
+
+def _set_cached_tibabot_health(payload: dict[str, object]) -> None:
+    """Cache TibaBot health probe result to avoid repeated upstream checks."""
+    _TIBABOT_HEALTH_CACHE["expires_at"] = time.monotonic() + TIBABOT_HEALTH_CACHE_TTL_SECONDS
+    _TIBABOT_HEALTH_CACHE["payload"] = deepcopy(payload)
 
 
 @csrf_exempt

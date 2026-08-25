@@ -612,6 +612,8 @@ export const imagingApi = {
     options?: {
       imagingOrderId?: number;
       patientId?: number;
+      timeoutMs?: number;
+      signal?: AbortSignal;
       onUploadProgress?: (progressEvent: { loaded: number; total: number }) => void;
     }
   ): Promise<DICOMUploadResponse> {
@@ -629,7 +631,8 @@ export const imagingApi = {
       formData,
       {
         headers: { 'Content-Type': 'multipart/form-data' },
-        timeout: 10 * 60 * 1000, // 10 minutes for large DICOM uploads
+        timeout: options?.timeoutMs ?? 20 * 60 * 1000,
+        signal: options?.signal,
         onUploadProgress: options?.onUploadProgress
           ? (event) => {
               options.onUploadProgress!({

@@ -45,6 +45,7 @@ import { AxiosError } from 'axios';
 const ACCEPTED_EXTENSIONS = ['.dcm', '.dicom', '.DCM', '.DICOM'];
 const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB per file
 const MAX_FILES = 50;
+const UPLOAD_REQUEST_TIMEOUT_MS = 20 * 60 * 1000;
 
 type Step = 1 | 2 | 3;
 
@@ -63,6 +64,16 @@ function formatFileSize(bytes: number): string {
 
 /** Extract a human-readable error message from an Axios or generic error. */
 function getUploadErrorMessage(error: Error): string {
+  if (error instanceof AxiosError) {
+    if (error.code === 'ERR_CANCELED') return 'Upload canceled.';
+    if (error.code === 'ECONNABORTED') {
+      return 'Upload timed out. Connection may be unstable. You can resume the upload.';
+    }
+    if (!error.response || error.code === 'ERR_NETWORK') {
+      return 'Network interruption detected. You can resume the upload.';
+    }
+  }
+
   if (error instanceof AxiosError && error.response?.data) {
     const data = error.response.data as Record<string, unknown>;
     if (typeof data.error === 'string') return data.error;
@@ -82,10 +93,18 @@ function getUploadErrorDetails(error: Error): { file: string; errors: string[] }
   return [];
 }
 
+function isRetryableUploadError(error: Error): boolean {
+  if (!(error instanceof AxiosError)) return false;
+  if (error.code === 'ERR_CANCELED') return false;
+  if (error.code === 'ECONNABORTED' || error.code === 'ERR_NETWORK') return true;
+  return !error.response;
+}
+
 export default function DICOMUploadPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   // Wizard step
   const [step, setStep] = useState<Step>(1);
@@ -99,6 +118,7 @@ export default function DICOMUploadPage() {
   const [uploadedBytes, setUploadedBytes] = useState(0);
   const [totalBytes, setTotalBytes] = useState(0);
   const [serverProcessing, setServerProcessing] = useState(false);
+  const [canResumeUpload, setCanResumeUpload] = useState(false);
 
   // Patient search — only fires when user is typing on step 2
   const searchEnabled = step === 2 && patientSearch.length >= 2;
@@ -124,42 +144,127 @@ export default function DICOMUploadPage() {
 
   // Upload mutation
   const uploadMutation = useMutation({
-    mutationFn: async (filesToUpload: File[]) => {
-      const total = filesToUpload.reduce((sum, f) => sum + f.size, 0);
+    mutationFn: async (filesToUpload: UploadFile[]) => {
+      const total = filesToUpload.reduce((sum, f) => sum + f.file.size, 0);
       setTotalBytes(total);
       setUploadedBytes(0);
       setServerProcessing(false);
+      setCanResumeUpload(false);
 
-      return imagingApi.uploadDICOM(filesToUpload, {
-        patientId: patientId || undefined,
-        imagingOrderId: selectedOrderId || undefined,
-        onUploadProgress: (event) => {
-          setUploadedBytes(event.loaded);
-          if (event.total > 0) setTotalBytes(event.total);
-          // When loaded >= total, browser finished sending bytes.
-          // Server is now parsing DICOM files — switch to processing phase.
-          if (event.total > 0 && event.loaded >= event.total) {
-            setServerProcessing(true);
+      const aggregateStudyUids = new Set<string>();
+      const aggregateErrors: { file: string; errors: string[] }[] = [];
+      let aggregateInstancesCreated = 0;
+      let aggregateDuplicatesSkipped = 0;
+      let uploadedBase = 0;
+      let firstStudyUid: string | null = null;
+      let interruptedError: Error | null = null;
+      let canceled = false;
+
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+
+      for (const uploadFile of filesToUpload) {
+        setFiles((prev) =>
+          prev.map((f) =>
+            f.id === uploadFile.id ? { ...f, status: 'uploading' as const, error: undefined } : f
+          )
+        );
+
+        try {
+          const response = await imagingApi.uploadDICOM([uploadFile.file], {
+            patientId: patientId || undefined,
+            imagingOrderId: selectedOrderId || undefined,
+            timeoutMs: UPLOAD_REQUEST_TIMEOUT_MS,
+            signal: controller.signal,
+            onUploadProgress: (event) => {
+              setUploadedBytes(uploadedBase + event.loaded);
+              if (event.total > 0 && uploadedBase + event.total > 0) {
+                setTotalBytes(Math.max(total, uploadedBase + event.total));
+              }
+              if (event.total > 0 && event.loaded >= event.total) {
+                setServerProcessing(true);
+              }
+            },
+          });
+
+          setServerProcessing(false);
+          uploadedBase += uploadFile.file.size;
+          setUploadedBytes(uploadedBase);
+
+          aggregateInstancesCreated += response.instances_created;
+          aggregateDuplicatesSkipped += response.duplicates_skipped;
+          if (response.study_instance_uid && !firstStudyUid) {
+            firstStudyUid = response.study_instance_uid;
           }
-        },
-      });
+          (response.study_instance_uids ?? []).forEach((uid) => aggregateStudyUids.add(uid));
+          if (response.study_instance_uid) aggregateStudyUids.add(response.study_instance_uid);
+          if (response.errors?.length) {
+            aggregateErrors.push(...response.errors);
+          }
+
+          setFiles((prev) =>
+            prev.map((f) => (f.id === uploadFile.id ? { ...f, status: 'success' as const } : f))
+          );
+        } catch (error) {
+          const fileError = getUploadErrorMessage(error as Error);
+          setServerProcessing(false);
+
+          setFiles((prev) =>
+            prev.map((f) =>
+              f.id === uploadFile.id ? { ...f, status: 'error' as const, error: fileError } : f
+            )
+          );
+          aggregateErrors.push({ file: uploadFile.file.name, errors: [fileError] });
+
+          if (error instanceof AxiosError && error.code === 'ERR_CANCELED') {
+            canceled = true;
+            break;
+          }
+
+          if (isRetryableUploadError(error as Error)) {
+            interruptedError = error as Error;
+            setCanResumeUpload(true);
+            break;
+          }
+        }
+      }
+
+      abortControllerRef.current = null;
+
+      if (canceled) {
+        throw new Error('Upload canceled. You can resume when ready.');
+      }
+
+      if (interruptedError) {
+        throw interruptedError;
+      }
+
+      if (aggregateInstancesCreated === 0 && aggregateDuplicatesSkipped === 0) {
+        throw new Error('No valid DICOM files were uploaded.');
+      }
+
+      return {
+        study_instance_uid: firstStudyUid,
+        study_instance_uids: Array.from(aggregateStudyUids),
+        instances_created: aggregateInstancesCreated,
+        duplicates_skipped: aggregateDuplicatesSkipped,
+        files_submitted: filesToUpload.length,
+        errors: aggregateErrors.length > 0 ? aggregateErrors : undefined,
+      };
     },
     onSuccess: (data) => {
-      setFiles((prev) =>
-        prev.map((f) => ({ ...f, status: 'success' as const }))
-      );
       queryClient.invalidateQueries({ queryKey: ['dicom-studies'] });
 
-      if (data.study_instance_uid) {
+      if (!data.errors?.length && data.study_instance_uid) {
         setTimeout(() => {
           router.push(`/imaging/studies/${data.study_instance_uid}`);
         }, 2000);
       }
     },
     onError: (error: Error) => {
-      setFiles((prev) =>
-        prev.map((f) => ({ ...f, status: 'error' as const, error: error.message }))
-      );
+      if (isRetryableUploadError(error)) {
+        setCanResumeUpload(true);
+      }
     },
   });
 
@@ -209,9 +314,22 @@ export default function DICOMUploadPage() {
   // Start upload
   const handleUpload = useCallback(() => {
     if (files.length === 0 || !patientId) return;
-    setFiles((prev) => prev.map((f) => ({ ...f, status: 'uploading' as const })));
-    uploadMutation.mutate(files.map((f) => f.file));
+    const filesToUpload = files.filter((f) => f.status !== 'success');
+    if (filesToUpload.length === 0) return;
+    const uploadIds = new Set(filesToUpload.map((f) => f.id));
+    setFiles((prev) =>
+      prev.map((f) =>
+        uploadIds.has(f.id) ? { ...f, status: 'pending' as const, error: undefined } : f
+      )
+    );
+    uploadMutation.reset();
+    uploadMutation.mutate(filesToUpload);
   }, [files, patientId, uploadMutation]);
+
+  const cancelUpload = useCallback(() => {
+    abortControllerRef.current?.abort();
+    setServerProcessing(false);
+  }, []);
 
   // Select patient
   const selectPatient = useCallback((id: number, name: string) => {
@@ -413,7 +531,7 @@ export default function DICOMUploadPage() {
                 {/* Patient Search Results */}
                 {showPatientSearch && patientSearch.length >= 2 && (
                   <Card className="absolute z-10 w-full mt-1 shadow-lg">
-                    <ScrollArea className="max-h-[250px]">
+                    <div className="max-h-[250px] overflow-y-auto overscroll-contain">
                       {searchingPatients ? (
                         <div className="p-4 text-center text-muted-foreground">
                           Searching...
@@ -447,7 +565,7 @@ export default function DICOMUploadPage() {
                           No patients found
                         </div>
                       )}
-                    </ScrollArea>
+                    </div>
                   </Card>
                 )}
               </div>
@@ -589,6 +707,11 @@ export default function DICOMUploadPage() {
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription className="space-y-2">
                   <p>{getUploadErrorMessage(uploadMutation.error)}</p>
+                  {canResumeUpload && (
+                    <p className="text-xs">
+                      Resume is safe: instances already accepted by PACS are deduplicated on retry.
+                    </p>
+                  )}
                   {getUploadErrorDetails(uploadMutation.error).map((detail, i) => (
                     <p key={i} className="text-xs">
                       <span className="font-medium">{detail.file}:</span>{' '}
@@ -609,6 +732,11 @@ export default function DICOMUploadPage() {
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Back
               </Button>
+              {uploadMutation.isPending && (
+                <Button variant="outline" onClick={cancelUpload}>
+                  Cancel Upload
+                </Button>
+              )}
               {!uploadMutation.isSuccess && (
                 <Button
                   onClick={handleUpload}
@@ -622,11 +750,11 @@ export default function DICOMUploadPage() {
                       `Uploading… ${uploadPercent}%`
                     )
                   ) : uploadMutation.isError ? (
-                    <>Retry Upload</>
+                    <>{canResumeUpload ? 'Resume Upload' : 'Retry Upload'}</>
                   ) : (
                     <>
                       <Upload className="h-4 w-4 mr-2" />
-                      Upload {files.length} File{files.length !== 1 ? 's' : ''}
+                      Upload {files.filter((f) => f.status !== 'success').length} File{files.filter((f) => f.status !== 'success').length !== 1 ? 's' : ''}
                     </>
                   )}
                 </Button>

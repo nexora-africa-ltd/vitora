@@ -18,6 +18,7 @@ import { NavigationModeProvider } from '@/lib/context/navigation-mode-context';
 import { createQueryClient } from '@/lib/query-client';
 import { initChunkErrorHandler } from '@/lib/utils/chunk-error-handler';
 import { initDesktopApiUrl } from '@/lib/api/client';
+import { isDesktop } from '@/lib/desktop';
 
 // Only load devtools in development - use dynamic import to avoid build errors
 const ReactQueryDevtools = dynamic(
@@ -45,6 +46,7 @@ interface ProvidersProps {
 export function Providers({ children }: ProvidersProps) {
   // Use centralized createQueryClient for consistent config and global error handling
   const [queryClient] = useState(() => createQueryClient());
+  const desktopMode = isDesktop();
 
   // Initialize chunk error handler to recover from stale chunks after deployment
   useEffect(() => {
@@ -79,8 +81,8 @@ export function Providers({ children }: ProvidersProps) {
                   </Suspense>
                   {children}
                   <Toaster />
-                  {/* New version notification toast */}
-                  <NewVersionToast />
+                  {/* New version notification toast (web only) */}
+                  {!desktopMode && <NewVersionToast />}
                   {/* Demo watermark - subtle indicator for screenshots */}
                   <DemoWatermark />
                 </NavigationModeProvider>

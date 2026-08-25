@@ -137,8 +137,8 @@ export function PatientSelector({
 
       {/* Dropdown results */}
       {isOpen && (
-        <Card className="absolute z-50 mt-1 w-full shadow-lg max-h-[320px] overflow-y-auto">
-          <CardContent className="p-2">
+        <Card className="absolute z-50 mt-1 w-full shadow-lg">
+          <CardContent className="max-h-[320px] overflow-y-auto overscroll-contain p-2 touch-pan-y">
             {/* Section header */}
             {searchQuery.length < 2 && (
               <div className="flex items-center gap-2 px-2 py-1 text-xs text-accent-foreground mb-2">
