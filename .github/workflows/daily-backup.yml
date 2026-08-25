@@ -17,7 +17,7 @@ on:
 
 env:
   AZURE_RESOURCE_GROUP: vitora-rg-sa
-  STORAGE_ACCOUNT: vitorabackups
+  STORAGE_ACCOUNT: vitorabackupssa
   STORAGE_CONTAINER: db-backups
 
 jobs:
