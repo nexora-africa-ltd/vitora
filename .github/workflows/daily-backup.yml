@@ -42,24 +42,55 @@ jobs:
 
       - name: Ensure storage container exists
         run: |
-          az storage container create \
-            --account-name ${{ env.STORAGE_ACCOUNT }} \
-            --name ${{ env.STORAGE_CONTAINER }} \
-            --auth-mode login \
-            --public-access off 2>/dev/null || true
+          STORAGE_KEY="${{ secrets.AZURE_STORAGE_ACCOUNT_KEY }}"
+
+          if [[ -n "$STORAGE_KEY" ]]; then
+            az storage container create \
+              --account-name ${{ env.STORAGE_ACCOUNT }} \
+              --name ${{ env.STORAGE_CONTAINER }} \
+              --account-key "$STORAGE_KEY" \
+              --public-access off \
+              --output none
+          else
+            az storage container create \
+              --account-name ${{ env.STORAGE_ACCOUNT }} \
+              --name ${{ env.STORAGE_CONTAINER }} \
+              --auth-mode login \
+              --public-access off \
+              --output none
+          fi
 
       - name: Generate SAS token (24h write)
         id: sas
         run: |
           EXPIRY=$(date -u -d "+24 hours" +"%Y-%m-%dT%H:%MZ")
-          SAS=$(az storage container generate-sas \
-            --account-name ${{ env.STORAGE_ACCOUNT }} \
-            --name ${{ env.STORAGE_CONTAINER }} \
-            --permissions rcwdl \
-            --expiry "$EXPIRY" \
-            --auth-mode login \
-            --as-user \
-            -o tsv)
+          STORAGE_KEY="${{ secrets.AZURE_STORAGE_ACCOUNT_KEY }}"
+
+          if [[ -n "$STORAGE_KEY" ]]; then
+            SAS=$(az storage container generate-sas \
+              --account-name ${{ env.STORAGE_ACCOUNT }} \
+              --name ${{ env.STORAGE_CONTAINER }} \
+              --permissions rcwdl \
+              --expiry "$EXPIRY" \
+              --account-key "$STORAGE_KEY" \
+              -o tsv)
+          else
+            SAS=$(az storage container generate-sas \
+              --account-name ${{ env.STORAGE_ACCOUNT }} \
+              --name ${{ env.STORAGE_CONTAINER }} \
+              --permissions rcwdl \
+              --expiry "$EXPIRY" \
+              --auth-mode login \
+              --as-user \
+              -o tsv)
+          fi
+
+          if [[ -z "$SAS" ]]; then
+            echo "ERROR: Failed to generate SAS token."
+            echo "Provide AZURE_STORAGE_ACCOUNT_KEY secret or grant Blob Data role to OIDC principal."
+            exit 1
+          fi
+
           echo "::add-mask::$SAS"
           echo "token=$SAS" >> "$GITHUB_OUTPUT"
 
@@ -141,7 +172,7 @@ jobs:
           OLD_BLOBS=$(az storage blob list \
             --account-name ${{ env.STORAGE_ACCOUNT }} \
             --container-name ${{ env.STORAGE_CONTAINER }} \
-            --auth-mode login \
+            --sas-token "${{ steps.sas.outputs.token }}" \
             --query "[?properties.creationTime < '${CUTOFF}'].name" \
             -o tsv 2>/dev/null || true)
 
@@ -151,7 +182,7 @@ jobs:
               --account-name ${{ env.STORAGE_ACCOUNT }} \
               --container-name ${{ env.STORAGE_CONTAINER }} \
               --name "$blob" \
-              --auth-mode login && ((DELETED++)) || true
+              --sas-token "${{ steps.sas.outputs.token }}" && ((DELETED++)) || true
           done
           echo "Pruned ${DELETED} backup(s) older than 30 days"
 
@@ -160,7 +191,7 @@ jobs:
           LATEST=$(az storage blob list \
             --account-name ${{ env.STORAGE_ACCOUNT }} \
             --container-name ${{ env.STORAGE_CONTAINER }} \
-            --auth-mode login \
+            --sas-token "${{ steps.sas.outputs.token }}" \
             --query "sort_by([].{name:name, size:properties.contentLength, created:properties.creationTime}, &created) | [-1]" \
             -o table)
           echo "$LATEST"
