@@ -918,6 +918,26 @@ class ClinicalChatView(AIFeatureGatedMixin, APIView):
                 return str(payload.get("response"))
             return ""
 
+        def _iter_stream_events(payload: dict[str, Any]):
+            resolve_request_tenant(request)
+            facility = getattr(request, "facility", None)
+            with tibabot_user_context(request.user, facility):
+                client = get_tibabot_client()
+                yield from client.clinical_chat_stream(payload)
+
+        def _run_chat(payload: dict[str, Any]) -> dict[str, Any]:
+            resolve_request_tenant(request)
+            facility = getattr(request, "facility", None)
+            with tibabot_user_context(request.user, facility):
+                client = get_tibabot_client()
+                return client.clinical_chat(payload)
+
+        def _generate_title(user_message: str, assistant_content: str) -> str | None:
+            resolve_request_tenant(request)
+            facility = getattr(request, "facility", None)
+            with tibabot_user_context(request.user, facility):
+                return get_tibabot_client().generate_chat_title(user_message, assistant_content)
+
         def event_stream():
             chunks: list[str] = []
             model_id: str | None = None
@@ -927,8 +947,7 @@ class ClinicalChatView(AIFeatureGatedMixin, APIView):
             yield _sse({"type": "session", "session_id": str(session.id)})
 
             try:
-                client = get_tibabot_client()
-                for event in client.clinical_chat_stream(dict(data)):
+                for event in _iter_stream_events(dict(data)):
                     event_name = str(event.get("event", "message")).lower()
                     payload = event.get("data")
 
@@ -968,8 +987,7 @@ class ClinicalChatView(AIFeatureGatedMixin, APIView):
             if not chunks and not fallback_error:
                 try:
                     stream_mode = "fallback"
-                    client = get_tibabot_client()
-                    result = client.clinical_chat(dict(data))
+                    result = _run_chat(dict(data))
 
                     tibabot_msg = result.get("message", {}) if isinstance(result, dict) else {}
                     assistant_content = ""
@@ -1008,9 +1026,7 @@ class ClinicalChatView(AIFeatureGatedMixin, APIView):
 
             if is_first_message:
                 try:
-                    inferred = get_tibabot_client().generate_chat_title(
-                        data["message"], final_content
-                    )
+                    inferred = _generate_title(data["message"], final_content)
                 except Exception:
                     inferred = None
                 session.title = (
