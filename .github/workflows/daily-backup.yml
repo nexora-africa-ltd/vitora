@@ -152,10 +152,21 @@ jobs:
 
       - name: Run backup in container
         run: |
-          az containerapp exec \
-            --name ${{ env.CONTAINER_APP_NAME }} \
-            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-            --command "bash -c 'export AZURE_STORAGE_ACCOUNT=${{ env.STORAGE_ACCOUNT }} AZURE_STORAGE_CONTAINER=${{ env.STORAGE_CONTAINER }} AZURE_STORAGE_SAS_TOKEN=\"${{ steps.sas.outputs.token }}\" && bash scripts/backup-db.sh'"
+          EXEC_CMD="bash -c 'export AZURE_STORAGE_ACCOUNT=${{ env.STORAGE_ACCOUNT }} AZURE_STORAGE_CONTAINER=${{ env.STORAGE_CONTAINER }} AZURE_STORAGE_SAS_TOKEN=\"${{ steps.sas.outputs.token }}\" && bash scripts/backup-db.sh'"
+
+          if [ -t 0 ]; then
+            az containerapp exec \
+              --name ${{ env.CONTAINER_APP_NAME }} \
+              --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+              --command "$EXEC_CMD"
+          elif command -v script >/dev/null 2>&1; then
+            script -q -e -c "az containerapp exec --name ${{ env.CONTAINER_APP_NAME }} --resource-group ${{ env.AZURE_RESOURCE_GROUP }} --command \"$EXEC_CMD\"" /dev/null
+          else
+            az containerapp exec \
+              --name ${{ env.CONTAINER_APP_NAME }} \
+              --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+              --command "$EXEC_CMD"
+          fi
 
       - name: Restore original min replica setting
         if: always() && steps.ensure_replica.outputs.scaled_up == 'true'
