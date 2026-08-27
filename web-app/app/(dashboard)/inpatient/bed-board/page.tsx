@@ -49,7 +49,15 @@ import {
 } from '@/lib/hooks/use-inpatient';
 import { useSupervisorAlerts } from '@/lib/hooks';
 import { formatDateTime } from '@/lib/utils/format';
-import type { Admission, NursingKardex, ShiftHandover } from '@/lib/types/inpatient';
+import type { PaginatedResponse } from '@/lib/types';
+import type { Admission, Bed as InpatientBed, InpatientWard, NursingKardex, ShiftHandover } from '@/lib/types/inpatient';
+
+function getResults<T>(data: PaginatedResponse<T> | T[] | undefined): T[] {
+  if (!data) {
+    return [];
+  }
+  return Array.isArray(data) ? data : data.results;
+}
 
 function getCleaningAgeBadgeMeta(cleaningSince?: string | null): {
   label: string;
@@ -112,11 +120,11 @@ export default function InpatientBedBoardPage() {
     24
   );
 
-  const wardsList = useMemo(() => ((wards as any)?.results ?? wards ?? []), [wards]);
-  const admissionsList = useMemo(() => ((admissions as any)?.results ?? admissions ?? []), [admissions]);
-  const cleaningBeds = useMemo(() => ((cleaningBedsData as any)?.results ?? cleaningBedsData ?? []), [cleaningBedsData]);
-  const kardexEntries = useMemo(() => ((kardexList as any)?.results ?? kardexList ?? []), [kardexList]);
-  const handoverEntries = useMemo(() => ((shiftHandovers as any)?.results ?? shiftHandovers ?? []), [shiftHandovers]);
+  const wardsList = useMemo(() => getResults<InpatientWard>(wards), [wards]);
+  const admissionsList = useMemo(() => getResults<Admission>(admissions), [admissions]);
+  const cleaningBeds = useMemo(() => getResults<InpatientBed>(cleaningBedsData), [cleaningBedsData]);
+  const kardexEntries = useMemo(() => getResults<NursingKardex>(kardexList), [kardexList]);
+  const handoverEntries = useMemo(() => getResults<ShiftHandover>(shiftHandovers), [shiftHandovers]);
 
   const admissionsById = useMemo(() => {
     return new Map<number, Admission>(admissionsList.map((admission: Admission) => [admission.id, admission]));
@@ -175,7 +183,7 @@ export default function InpatientBedBoardPage() {
     }
 
     const query = searchQuery.toLowerCase();
-    return wardsList.filter((ward: any) => (
+    return wardsList.filter((ward: InpatientWard) => (
       ward.name.toLowerCase().includes(query)
       || ward.code.toLowerCase().includes(query)
       || (ward.ward_type_display || ward.ward_type || '').toLowerCase().includes(query)
@@ -184,8 +192,8 @@ export default function InpatientBedBoardPage() {
 
   const activeAdmissions = admissions?.count ?? admissions?.results?.length ?? 0;
   const pendingAlerts = alerts.filter((alert) => !alert.is_acknowledged);
-  const totalBeds = wardsList.reduce((sum: number, ward: any) => sum + (ward.total_beds || 0), 0);
-  const occupiedBeds = wardsList.reduce((sum: number, ward: any) => sum + (ward.occupied_beds || 0), 0);
+  const totalBeds = wardsList.reduce((sum: number, ward: InpatientWard) => sum + (ward.total_beds || 0), 0);
+  const occupiedBeds = wardsList.reduce((sum: number, ward: InpatientWard) => sum + (ward.occupied_beds || 0), 0);
   const occupancyRate = totalBeds > 0 ? Math.round((occupiedBeds / totalBeds) * 100) : 0;
 
   if (wardsLoading || admissionsLoading || kardexLoading || handoversLoading || cleaningBedsLoading) {
@@ -316,7 +324,7 @@ export default function InpatientBedBoardPage() {
               </div>
             ) : (
               <div className="grid gap-4 xl:grid-cols-2">
-                {filteredWards.map((ward: any) => (
+                {filteredWards.map((ward) => (
                   <BedBoardWardCard
                     key={ward.id}
                     ward={ward}
@@ -364,8 +372,11 @@ export default function InpatientBedBoardPage() {
                     No beds are currently waiting for housekeeping turnover.
                   </div>
                 ) : (
-                  cleaningBeds.slice(0, 8).map((bed: any) => {
-                    const cleaningAge = getCleaningAgeBadgeMeta(bed.status_changed_at);
+                  cleaningBeds.slice(0, 8).map((bed) => {
+                    const statusChangedAt = 'status_changed_at' in bed && typeof bed.status_changed_at === 'string'
+                      ? bed.status_changed_at
+                      : null;
+                    const cleaningAge = getCleaningAgeBadgeMeta(statusChangedAt);
                     return (
                       <div key={bed.id} className="rounded-xl border bg-muted/20 p-4">
                         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
@@ -377,8 +388,8 @@ export default function InpatientBedBoardPage() {
                                 {cleaningAge.label}
                               </Badge>
                             </div>
-                            {bed.status_changed_at && (
-                              <p className="mt-1 text-xs text-muted-foreground">Entered cleaning {formatDateTime(bed.status_changed_at)}</p>
+                            {statusChangedAt && (
+                              <p className="mt-1 text-xs text-muted-foreground">Entered cleaning {formatDateTime(statusChangedAt)}</p>
                             )}
                           </div>
                           <Button
@@ -577,7 +588,7 @@ function BedBoardWardCard({
   planningSnapshot,
   onOpenPredictions,
 }: {
-  ward: any;
+  ward: InpatientWard;
   planningSnapshot?: WardPlanningSnapshot;
   onOpenPredictions: () => void;
 }) {

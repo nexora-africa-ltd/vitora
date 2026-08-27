@@ -44,7 +44,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/lib/hooks/use-toast';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { useWardCompatibilityUpdates } from '@/lib/hooks';
-import type { BedStatus } from '@/lib/types/inpatient';
+import type { PaginatedResponse } from '@/lib/types';
+import type { Admission, Bed as InpatientBed, BedStatus } from '@/lib/types/inpatient';
 import {
   useInpatientWard,
   useWardBeds,
@@ -55,6 +56,17 @@ import {
   useGenerateWardBeds,
 } from '@/lib/hooks/use-inpatient';
 import { formatDateTime } from '@/lib/utils/format';
+
+type WardBed = InpatientBed & {
+  current_patient_name?: string | null;
+};
+
+function getResults<T>(data: PaginatedResponse<T> | T[] | undefined): T[] {
+  if (!data) {
+    return [];
+  }
+  return Array.isArray(data) ? data : data.results;
+}
 
 const BED_STATUSES = [
   { value: 'AVAILABLE', label: 'Available' },
@@ -73,7 +85,7 @@ export default function WardDetailPage() {
 
   const updateBed = useUpdateBed();
 
-  const [selectedBed, setSelectedBed] = useState<any>(null);
+  const [selectedBed, setSelectedBed] = useState<WardBed | null>(null);
   const [statusDialogOpen, setStatusDialogOpen] = useState(false);
 
   const { data: ward, isLoading: wardLoading } = useInpatientWard(wardId);
@@ -94,14 +106,14 @@ export default function WardDetailPage() {
   const isLoading = wardLoading || bedsLoading || admissionsLoading;
 
   const bedsList = useMemo(() => {
-    return (Array.isArray(beds) ? beds : beds?.results ?? []);
+    return getResults<WardBed>(beds);
   }, [beds]);
 
   const admissionsList = useMemo(() => {
     return admissions?.results ?? [];
   }, [admissions]);
 
-  const handleBedClick = (bed: any) => {
+  const handleBedClick = (bed: WardBed) => {
     // Don't allow status change for occupied beds
     if (bed.status === 'OCCUPIED') {
       toast({
@@ -167,9 +179,9 @@ export default function WardDetailPage() {
     const occupancyRate = ward?.occupancy_rate ?? 0;
 
     // Count maintenance/reserved from actual bed records for display
-    const maintenance = bedsList.filter((b: any) => b.status === 'MAINTENANCE').length;
-    const cleaning = bedsList.filter((b: any) => b.status === 'CLEANING').length;
-    const reserved = bedsList.filter((b: any) => b.status === 'RESERVED').length;
+    const maintenance = bedsList.filter((b: WardBed) => b.status === 'MAINTENANCE').length;
+    const cleaning = bedsList.filter((b: WardBed) => b.status === 'CLEANING').length;
+    const reserved = bedsList.filter((b: WardBed) => b.status === 'RESERVED').length;
 
     return {
       available,
@@ -544,7 +556,7 @@ export default function WardDetailPage() {
                 </CardContent>
               </Card>
             ) : (
-              bedsList.map((bed: any) => (
+              bedsList.map((bed) => (
                 <BedCard key={bed.id} bed={bed} onStatusChange={handleBedClick} />
               ))
             )}
@@ -562,7 +574,7 @@ export default function WardDetailPage() {
             </Card>
           ) : (
             <div className="space-y-3">
-              {admissionsList.map((admission: any) => (
+              {admissionsList.map((admission: Admission) => (
                 <Card key={admission.id}>
                   <CardContent className="py-4">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -632,7 +644,7 @@ export default function WardDetailPage() {
   );
 }
 
-function BedCard({ bed, onStatusChange }: { bed: any; onStatusChange?: (bed: any) => void }) {
+function BedCard({ bed, onStatusChange }: { bed: WardBed; onStatusChange?: (bed: WardBed) => void }) {
   const statusVariant: 'default' | 'secondary' | 'outline' =
     bed.status === 'OCCUPIED'
       ? 'default'
@@ -671,7 +683,7 @@ function BedStatusDialog({
   onSave,
   isSaving
 }: {
-  bed: any;
+  bed: WardBed;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSave: (bedId: number, status: BedStatus, notes: string) => void;

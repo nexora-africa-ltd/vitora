@@ -39,6 +39,15 @@ import {
   useGenerateWardBeds,
   useSeedDefaultWards,
 } from '@/lib/hooks/use-inpatient';
+import type { PaginatedResponse } from '@/lib/types';
+import type { Bed as InpatientBed, InpatientWard } from '@/lib/types/inpatient';
+
+function getResults<T>(data: PaginatedResponse<T> | T[] | undefined): T[] {
+  if (!data) {
+    return [];
+  }
+  return Array.isArray(data) ? data : data.results;
+}
 
 export default function WardsPage() {
   const { refresh, isRefreshing } = usePageRefresh();
@@ -54,14 +63,12 @@ export default function WardsPage() {
   });
   const seedDefaultWards = useSeedDefaultWards();
 
-  const wardsList = useMemo(() => {
-    return ((wards as any)?.results ?? wards ?? []);
-  }, [wards]);
+  const wardsList = useMemo(() => wards?.results ?? [], [wards]);
 
   const filteredWards = useMemo(() => {
     if (!searchQuery && selectedWardType === 'all') return wardsList;
 
-    return wardsList.filter((ward: any) => {
+    return wardsList.filter((ward: InpatientWard) => {
       const matchesSearch = !searchQuery ||
         ward.name.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesFilter = selectedWardType === 'all' || ward.ward_type === selectedWardType;
@@ -70,11 +77,11 @@ export default function WardsPage() {
   }, [wardsList, searchQuery, selectedWardType]);
 
   const totalBeds = useMemo(() => {
-    return wardsList.reduce((sum: number, ward: any) => sum + (ward.total_beds || 0), 0);
+    return wardsList.reduce((sum: number, ward: InpatientWard) => sum + (ward.total_beds || 0), 0);
   }, [wardsList]);
 
   const occupiedBeds = useMemo(() => {
-    return wardsList.reduce((sum: number, ward: any) => sum + (ward.occupied_beds || 0), 0);
+    return wardsList.reduce((sum: number, ward: InpatientWard) => sum + (ward.occupied_beds || 0), 0);
   }, [wardsList]);
 
   const occupancyRate = totalBeds > 0 ? Math.round((occupiedBeds / totalBeds) * 100) : 0;
@@ -263,7 +270,7 @@ export default function WardsPage() {
             </CardContent>
           </Card>
         ) : (
-          filteredWards.map((ward: any) => (
+          filteredWards.map((ward) => (
             <WardCard key={ward.id} ward={ward} />
           ))
         )}
@@ -273,7 +280,7 @@ export default function WardsPage() {
   );
 }
 
-function WardCard({ ward }: { ward: any }) {
+function WardCard({ ward }: { ward: InpatientWard }) {
   const { data: beds } = useWardBeds(ward.id);
   const generateBeds = useGenerateWardBeds();
   const { toast } = useToast();
@@ -281,13 +288,13 @@ function WardCard({ ward }: { ward: any }) {
   const totalBeds = ward.total_beds || 0;
   const occupiedBeds = ward.occupied_beds || 0;
   const bedStatusCounts = useMemo(() => {
-    const bedsList = (Array.isArray(beds) ? beds : beds?.results ?? []);
+    const bedsList = getResults<InpatientBed>(beds);
     return {
-      available: bedsList.filter((b: any) => b.status === 'AVAILABLE').length,
-      occupied: bedsList.filter((b: any) => b.status === 'OCCUPIED').length,
-      cleaning: bedsList.filter((b: any) => b.status === 'CLEANING').length,
-      maintenance: bedsList.filter((b: any) => b.status === 'MAINTENANCE').length,
-      reserved: bedsList.filter((b: any) => b.status === 'RESERVED').length,
+      available: bedsList.filter((b: InpatientBed) => b.status === 'AVAILABLE').length,
+      occupied: bedsList.filter((b: InpatientBed) => b.status === 'OCCUPIED').length,
+      cleaning: bedsList.filter((b: InpatientBed) => b.status === 'CLEANING').length,
+      maintenance: bedsList.filter((b: InpatientBed) => b.status === 'MAINTENANCE').length,
+      reserved: bedsList.filter((b: InpatientBed) => b.status === 'RESERVED').length,
     };
   }, [beds]);
 

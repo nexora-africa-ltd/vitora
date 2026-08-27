@@ -26,7 +26,14 @@ import { Switch } from '@/components/ui/switch';
 import { VitoraLogo } from '@/components/ui/vitora-logo';
 import { AnimatedThemeToggle } from '@/components/ui/animated-theme-toggle';
 import { useCounties, useSubCounties, useWards } from '@/lib/hooks/use-locations';
-import type { FacilityLevel, FacilityOwnership, FacilityDetail } from '@/lib/types/facility';
+import type { County, SubCounty, Ward as LocationWard } from '@/lib/api/locations';
+import type {
+  FacilityCreateData,
+  FacilityDetail,
+  FacilityLevel,
+  FacilityOwnership,
+  FacilityUpdateData,
+} from '@/lib/types/facility';
 
 // =============================================================================
 // Constants
@@ -95,6 +102,54 @@ const WIZARD_STEPS: { key: WizardStep; label: string; icon: React.ComponentType<
   { key: 'clinic', label: 'Clinic', icon: Stethoscope },
   { key: 'invite', label: 'Team', icon: Users },
 ];
+
+type ErrorPayload = Record<string, unknown>;
+
+function getErrorPayload(error: unknown): ErrorPayload | null {
+  if (!error || typeof error !== 'object' || !('response' in error)) {
+    return null;
+  }
+
+  const response = (error as { response?: { data?: unknown } }).response;
+  if (!response?.data || typeof response.data !== 'object' || Array.isArray(response.data)) {
+    return null;
+  }
+
+  return response.data as ErrorPayload;
+}
+
+function getErrorDetail(error: unknown): string | null {
+  const payload = getErrorPayload(error);
+  if (!payload) {
+    return null;
+  }
+
+  const detail = payload.detail;
+  if (typeof detail === 'string') {
+    return detail;
+  }
+
+  const email = payload.email;
+  if (typeof email === 'string') {
+    return email;
+  }
+  if (Array.isArray(email) && typeof email[0] === 'string') {
+    return email[0];
+  }
+
+  return null;
+}
+
+function formatErrorPayload(payload: ErrorPayload): string {
+  return Object.entries(payload)
+    .map(([key, value]) => {
+      if (Array.isArray(value)) {
+        return `${key}: ${value.join(', ')}`;
+      }
+      return `${key}: ${String(value)}`;
+    })
+    .join('; ');
+}
 
 // =============================================================================
 // Main Page
@@ -243,29 +298,26 @@ export default function OnboardingPage() {
     setIsSavingFacility(true);
     setError(null);
     try {
-      const payload: Record<string, unknown> = {
+      const payload: FacilityCreateData = {
         name: facilityName.trim(),
         mfl_code: mflCode.trim(),
         level,
         ownership,
         county: countyId,
         sub_county: subCountyId,
-        ...(wardId ? { ward: wardId } : {}),
+        ward: wardId ?? null,
         sha_contracted: shaContracted,
-        ...(shaFacilityCode ? { sha_facility_code: shaFacilityCode } : {}),
+        sha_facility_code: shaFacilityCode || undefined,
         is_active: true,
       };
-      const facility = await facilitiesApi.create(payload as any);
+      const facility = await facilitiesApi.create(payload);
       setCreatedFacility(facility);
       setStepsStatus((prev) => ({ ...prev, facility: true }));
       goForward();
-    } catch (err: any) {
-      const detail = err?.response?.data;
+    } catch (err: unknown) {
+      const detail = getErrorPayload(err);
       if (detail && typeof detail === 'object') {
-        const messages = Object.entries(detail)
-          .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : v}`)
-          .join('; ');
-        setError(messages);
+        setError(formatErrorPayload(detail));
       } else {
         setError(err instanceof Error ? err.message : 'Failed to create facility');
       }
@@ -287,7 +339,7 @@ export default function OnboardingPage() {
     setIsSavingModules(true);
     setError(null);
     try {
-      await facilitiesApi.update(createdFacility.id, enabledModules as any);
+      await facilitiesApi.update(createdFacility.id, enabledModules as FacilityUpdateData);
       setStepsStatus((prev) => ({ ...prev, modules: true }));
       goForward();
     } catch (err) {
@@ -310,8 +362,8 @@ export default function OnboardingPage() {
       if (result.created.length > 0) {
         setStepsStatus((prev) => ({ ...prev, clinic: true }));
       }
-    } catch (err: any) {
-      const detail = err?.response?.data?.detail;
+    } catch (err: unknown) {
+      const detail = getErrorDetail(err);
       setError(typeof detail === 'string' ? detail : (err instanceof Error ? err.message : 'Failed to seed clinics'));
     } finally {
       setIsSeeding(false);
@@ -324,7 +376,7 @@ export default function OnboardingPage() {
     setError(null);
     try {
       const code = manualClinicCode.trim() || manualClinicName.trim().toUpperCase().replace(/\s+/g, '-').slice(0, 20);
-      await clinicsApi.create({
+      const payload: Parameters<typeof clinicsApi.create>[0] & { facility: number; organization?: number } = {
         name: manualClinicName.trim(),
         code,
         clinic_type: 'GENERAL_OPD',
@@ -333,18 +385,16 @@ export default function OnboardingPage() {
         status: 'ACTIVE',
         accepts_walk_ins: true,
         triage_required: true,
-      } as any);
+      };
+      await clinicsApi.create(payload);
       setCreatedClinics((prev) => [...prev, { code, name: manualClinicName.trim() }]);
       setManualClinicName('');
       setManualClinicCode('');
       setStepsStatus((prev) => ({ ...prev, clinic: true }));
-    } catch (err: any) {
-      const detail = err?.response?.data;
+    } catch (err: unknown) {
+      const detail = getErrorPayload(err);
       if (detail && typeof detail === 'object' && !Array.isArray(detail)) {
-        const messages = Object.entries(detail)
-          .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : v}`)
-          .join('; ');
-        setError(messages);
+        setError(formatErrorPayload(detail));
       } else {
         setError(err instanceof Error ? err.message : 'Failed to create clinic');
       }
@@ -371,8 +421,8 @@ export default function OnboardingPage() {
       setInvitedEmails((prev) => [...prev, inviteEmail.trim()]);
       setInviteEmail('');
       setStepsStatus((prev) => ({ ...prev, invite: true }));
-    } catch (err: any) {
-      const detail = err?.response?.data?.detail || err?.response?.data?.email;
+    } catch (err: unknown) {
+      const detail = getErrorDetail(err);
       setError(typeof detail === 'string' ? detail : err instanceof Error ? err.message : 'Failed to send invitation');
     } finally {
       setIsInviting(false);
@@ -395,8 +445,8 @@ export default function OnboardingPage() {
       } catch { /* best-effort */ }
       sessionStorage.removeItem('vitora_onboarding_banner_dismissed');
       window.location.href = '/dashboard';
-    } catch (err: any) {
-      const detail = err?.response?.data?.detail;
+    } catch (err: unknown) {
+      const detail = getErrorDetail(err);
       if (typeof detail === 'string') {
         setError(detail);
       } else if (err instanceof Error) {
@@ -575,7 +625,7 @@ export default function OnboardingPage() {
                         }}
                       >
                         <option value="">Select county</option>
-                        {(counties || []).map((c: any) => (
+                        {(counties || []).map((c: County) => (
                           <option key={c.id} value={c.id}>{c.name}</option>
                         ))}
                       </select>
@@ -594,7 +644,7 @@ export default function OnboardingPage() {
                         disabled={!countyId}
                       >
                         <option value="">Select sub-county</option>
-                        {(subCounties || []).map((sc: any) => (
+                        {(subCounties || []).map((sc: SubCounty) => (
                           <option key={sc.id} value={sc.id}>{sc.name}</option>
                         ))}
                       </select>
@@ -609,7 +659,7 @@ export default function OnboardingPage() {
                         disabled={!subCountyId}
                       >
                         <option value="">Select ward (optional)</option>
-                        {(wards || []).map((w: any) => (
+                        {(wards || []).map((w: LocationWard) => (
                           <option key={w.id} value={w.id}>{w.name}</option>
                         ))}
                       </select>
