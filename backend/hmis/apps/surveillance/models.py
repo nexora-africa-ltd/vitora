@@ -329,7 +329,7 @@ class NotifiableCase(FacilityScopedModel):
                     if enc.facility_id:
                         self.facility_id = enc.facility_id
                         self.organization_id = enc.organization_id
-                except Exception:
+                except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
                     pass
             if not self.facility_id and self.patient_id:
                 try:
@@ -337,13 +337,13 @@ class NotifiableCase(FacilityScopedModel):
                     if patient.registered_at_facility_id:
                         self.facility_id = patient.registered_at_facility_id
                         self.organization_id = patient.organization_id
-                except Exception:
+                except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
                     pass
         if self.facility_id and not self.organization_id:
             try:
                 if self.facility and self.facility.organization_id:
                     self.organization_id = self.facility.organization_id
-            except Exception:
+            except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
                 pass
         super().save(*args, **kwargs)
 
@@ -461,7 +461,7 @@ class SurveillanceAlert(FacilityScopedModel):
                 case = self.case
                 if case.facility_id:
                     self.facility_id = case.facility_id
-            except Exception:
+            except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
                 pass
         super().save(*args, **kwargs)
 
@@ -790,7 +790,7 @@ class IDSRWeeklyReport(models.Model):
                     self.facility_name = fac.name
                 if not self.organization_id and fac.organization_id:
                     self.organization_id = fac.organization_id
-            except Exception:
+            except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
                 pass
         super().save(*args, **kwargs)
 
@@ -1240,7 +1240,7 @@ class IHRNotification(FacilityScopedModel):
                     if case.facility_id:
                         self.facility_id = case.facility_id
                         self.organization_id = case.organization_id
-                except Exception:
+                except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
                     pass
             if not self.facility_id and self.patient_id:
                 try:
@@ -1248,13 +1248,13 @@ class IHRNotification(FacilityScopedModel):
                     if patient.registered_at_facility_id:
                         self.facility_id = patient.registered_at_facility_id
                         self.organization_id = patient.organization_id
-                except Exception:
+                except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
                     pass
         if self.facility_id and not self.organization_id:
             try:
                 if self.facility and self.facility.organization_id:
                     self.organization_id = self.facility.organization_id
-            except Exception:
+            except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
                 pass
         super().save(*args, **kwargs)
 

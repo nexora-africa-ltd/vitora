@@ -10,7 +10,8 @@ from collections import defaultdict
 from datetime import datetime
 
 from django.conf import settings
-from django.db import models
+from django.core.exceptions import ObjectDoesNotExist, ValidationError
+from django.db import DatabaseError, IntegrityError, models
 from django.http import FileResponse, HttpResponse
 from django_filters import rest_framework as filters
 from drf_spectacular.types import OpenApiTypes
@@ -79,6 +80,21 @@ from .services import (
 from .standalone.models import ExternalImagingOrderRequest
 
 logger = logging.getLogger(__name__)
+
+
+def _imaging_action_exceptions() -> tuple[type[Exception], ...]:
+    """Expected exceptions for imaging workflow actions and uploads."""
+    return (
+        ValidationError,
+        ObjectDoesNotExist,
+        DatabaseError,
+        IntegrityError,
+        OSError,
+        AttributeError,
+        TypeError,
+        ValueError,
+        RuntimeError,
+    )
 
 
 def get_client_ip(request):
@@ -696,7 +712,7 @@ class ImagingOrderViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
 
             serializer = self.get_serializer(order)
             return Response(serializer.data)
-        except Exception as e:
+        except _imaging_action_exceptions() as e:
             logger.exception("Error submitting imaging order %s", order.pk)
             return Response(
                 {"error": str(e)},
@@ -806,7 +822,7 @@ class ImagingOrderViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
 
             return Response(output_data)
 
-        except Exception as e:
+        except _imaging_action_exceptions() as e:
             logger.exception("Error scheduling imaging order %s", order.pk)
             return Response(
                 {"error": str(e)},
@@ -832,7 +848,7 @@ class ImagingOrderViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
 
             serializer = self.get_serializer(order)
             return Response(serializer.data)
-        except Exception as e:
+        except _imaging_action_exceptions() as e:
             logger.exception("Error starting imaging order %s", order.pk)
             return Response(
                 {"error": str(e)},
@@ -858,7 +874,7 @@ class ImagingOrderViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
 
             serializer = self.get_serializer(order)
             return Response(serializer.data)
-        except Exception as e:
+        except _imaging_action_exceptions() as e:
             logger.exception("Error completing imaging order %s", order.pk)
             return Response(
                 {"error": str(e)},
@@ -888,7 +904,7 @@ class ImagingOrderViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
 
             serializer = self.get_serializer(order)
             return Response(serializer.data)
-        except Exception as e:
+        except _imaging_action_exceptions() as e:
             logger.exception("Error cancelling imaging order %s", order.pk)
             return Response(
                 {"error": str(e)},
@@ -1610,7 +1626,7 @@ class DICOMUploadView(APIView):
                 else:
                     duplicates_skipped += 1
 
-            except Exception as exc:
+            except _imaging_action_exceptions() as exc:
                 logger.exception("Error processing DICOM file %s", uploaded_file.name)
                 errors.append({"file": uploaded_file.name, "errors": [str(exc)]})
                 # Clean up temp file
@@ -1838,6 +1854,7 @@ class DICOMFrameRenderView(APIView):
         import numpy as np
         import pydicom
         from PIL import Image
+        from pydicom.errors import InvalidDicomError
 
         try:
             instance = DICOMInstance.objects.select_related("series__study__patient").get(
@@ -1965,7 +1982,7 @@ class DICOMFrameRenderView(APIView):
                 content_type="image/png",
             )
 
-        except Exception as e:
+        except (InvalidDicomError, OSError, ValueError, TypeError, AttributeError) as e:
             logger.exception("Failed to render DICOM frame: %s", e)
             return Response(
                 {"error": "Failed to render image."},
@@ -2262,7 +2279,7 @@ class RadiologyReportViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
             serializer = RadiologyReportSerializer(report)
             return Response(serializer.data)
 
-        except Exception as e:
+        except _imaging_action_exceptions() as e:
             logger.exception("Error signing radiology report %s", report.pk)
             return Response(
                 {"error": str(e)},
@@ -2324,7 +2341,7 @@ class RadiologyReportViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
             output_serializer = RadiologyReportSerializer(report)
             return Response(output_serializer.data)
 
-        except Exception as e:
+        except _imaging_action_exceptions() as e:
             logger.exception("Error amending radiology report %s", report.pk)
             return Response(
                 {"error": str(e)},
@@ -2847,6 +2864,7 @@ class StudyShareFrameView(ImagingSchemaMixin, APIView):
         import numpy as np
         import pydicom
         from PIL import Image
+        from pydicom.errors import InvalidDicomError
 
         link = StudyShareAccessView._resolve(token)
         if isinstance(link, Response):
@@ -2935,7 +2953,7 @@ class StudyShareFrameView(ImagingSchemaMixin, APIView):
 
             return HttpResponse(buffer.getvalue(), content_type="image/png")
 
-        except Exception as e:
+        except (InvalidDicomError, OSError, ValueError, TypeError, AttributeError) as e:
             logger.exception("Failed to render shared DICOM frame: %s", e)
             return Response(
                 {"error": "Failed to render image."},

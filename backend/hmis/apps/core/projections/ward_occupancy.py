@@ -94,7 +94,7 @@ class WardOccupancyProjection(Projection):
                     "discharges_today": stats.discharges_today,
                 },
             )
-        except Exception:
+        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
             logger.debug("Failed to broadcast ward occupancy stats", exc_info=True)
 
     def reset(self, **filters) -> None:

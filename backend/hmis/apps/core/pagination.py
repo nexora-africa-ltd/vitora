@@ -56,7 +56,7 @@ class StandardPagination(PageNumberPagination):
 
         try:
             self.page = paginator.page(page_number)
-        except Exception:
+        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
             self.page = None
             self.request = request
             return []

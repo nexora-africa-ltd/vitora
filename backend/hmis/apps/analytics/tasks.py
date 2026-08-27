@@ -53,7 +53,7 @@ def refresh_daily_analytics(target_date_iso: str | None = None):
                 created += 1
             else:
                 updated += 1
-        except Exception:
+        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
             logger.exception(
                 "Failed to compute daily summary for facility=%s date=%s",
                 facility.pk,
@@ -131,7 +131,7 @@ def refresh_monthly_analytics(year: int | None = None, month: int | None = None)
                     },
                 )
                 dx_count += 1
-        except Exception:
+        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
             logger.exception(
                 "Failed monthly analytics for facility=%s %d/%02d",
                 facility.pk,
@@ -182,7 +182,7 @@ def refresh_demographics_snapshot():
                 defaults={**defaults, "organization": facility.organization},
             )
             count += 1
-        except Exception:
+        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
             logger.exception("Failed demographics snapshot for facility=%s", facility.pk)
 
     logger.info("Demographics snapshots: %d facilities processed", count)

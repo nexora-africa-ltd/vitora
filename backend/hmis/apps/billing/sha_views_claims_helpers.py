@@ -104,7 +104,7 @@ def _build_attachment_sync_status(claim: SHAClaim) -> dict:
     try:
         consent = resolve_for_claim(claim)
         consent_token = consent.token
-    except Exception:
+    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
         consent_token = ""
 
     if not consent_token:

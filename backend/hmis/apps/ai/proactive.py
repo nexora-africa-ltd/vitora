@@ -596,7 +596,7 @@ def generate_llm_insights(
     except (TibaBotUnavailableError, TibaBotError) as e:
         logger.warning("TibaBot unavailable for proactive insights: %s", e)
         return []
-    except Exception:
+    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
         logger.exception("Unexpected error generating LLM insights")
         return []
 
@@ -714,7 +714,7 @@ def evaluate_cds_insights(
     except (TibaBotError, TibaBotUnavailableError) as e:
         logger.debug("CDS evaluate unavailable for proactive insights: %s", e)
         return []
-    except Exception:
+    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
         logger.debug("Unexpected error in CDS evaluate for proactive insights", exc_info=True)
         return []
 

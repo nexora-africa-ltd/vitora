@@ -7,7 +7,7 @@ import re
 from decimal import ROUND_HALF_UP, Decimal
 
 from django.core.exceptions import ValidationError
-from django.db import IntegrityError, transaction
+from django.db import DatabaseError, IntegrityError, transaction
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
@@ -103,6 +103,30 @@ from hmis.apps.insurance.services.insurance_services import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _insurance_handled_exceptions() -> tuple[type[Exception], ...]:
+    return (
+        InsuranceApiError,
+        ValidationError,
+        DRFValidationError,
+        IntegrityError,
+        DatabaseError,
+        ValueError,
+        TypeError,
+        RuntimeError,
+    )
+
+
+def _insurance_error_response(
+    *, action: str, exc: Exception, fallback: str = "Insurance operation failed."
+) -> Response:
+    logger.warning(
+        "Insurance action failed",
+        extra={"action": action, "error_class": exc.__class__.__name__, "error": str(exc)},
+    )
+    message = str(exc) or fallback
+    return Response({"error": message}, status=status.HTTP_400_BAD_REQUEST)
 
 
 # ---------------------------------------------------------------------------
@@ -423,8 +447,8 @@ class PatientInsuranceViewSet(
         service = InsuranceEligibilityService()
         try:
             result = service.verify(enrollment, facility=getattr(request, "facility", None))
-        except Exception as exc:
-            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        except _insurance_handled_exceptions() as exc:
+            return _insurance_error_response(action="verify_via_healthcloud", exc=exc)
         return Response(self._eligibility_payload(result))
 
     @action(detail=False, methods=["post"], url_path="verify-via-healthcloud-preview")
@@ -482,8 +506,8 @@ class PatientInsuranceViewSet(
         )()
         try:
             result = adapter.verify_eligibility(preview_enrollment)
-        except Exception as exc:
-            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        except _insurance_handled_exceptions() as exc:
+            return _insurance_error_response(action="verify_via_healthcloud_preview", exc=exc)
 
         plan = self._ensure_plan_from_eligibility(provider, organization, result)
         payload = self._eligibility_payload(result)
@@ -549,8 +573,8 @@ class PatientInsuranceViewSet(
                 organization=organization,
                 eligibility_result=result,
             )
-        except Exception as exc:
-            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        except _insurance_handled_exceptions() as exc:
+            return _insurance_error_response(action="healthcloud_session_start", exc=exc)
 
         return Response(
             {
@@ -578,8 +602,8 @@ class PatientInsuranceViewSet(
                 organization=getattr(request, "organization", None),
                 payload=dict(serializer.validated_data),
             )
-        except Exception as exc:
-            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        except _insurance_handled_exceptions() as exc:
+            return _insurance_error_response(action="healthcloud_post_profile", exc=exc)
 
         refreshed = PatientInsurance.objects.select_related(
             "patient", "plan", "plan__provider", "provider"
@@ -612,8 +636,8 @@ class PatientInsuranceViewSet(
                 organization=getattr(request, "organization", None),
                 profile_id=serializer.validated_data.get("profile_id", ""),
             )
-        except Exception as exc:
-            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        except _insurance_handled_exceptions() as exc:
+            return _insurance_error_response(action="healthcloud_get_health_id", exc=exc)
 
         refreshed = PatientInsurance.objects.select_related(
             "patient", "plan", "plan__provider", "provider"
@@ -651,7 +675,7 @@ class PatientInsuranceViewSet(
             payload, content_type = read_decrypted_card_image(enrollment=enrollment, side=side)
         except FileNotFoundError:
             return Response({"error": "Card image not found."}, status=status.HTTP_404_NOT_FOUND)
-        except Exception as exc:
+        except (OSError, ValueError, TypeError) as exc:
             logger.exception(
                 "Failed to read insurance card image",
                 extra={"enrollment_id": enrollment.id, "side": side},
@@ -706,8 +730,8 @@ class PatientInsuranceViewSet(
                 organization=getattr(request, "organization", None),
                 contact_id=serializer.validated_data["contact_id"],
             )
-        except Exception as exc:
-            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        except _insurance_handled_exceptions() as exc:
+            return _insurance_error_response(action="healthcloud_session_request_otp", exc=exc)
 
         return Response(InsuranceVisitAuthorizationSerializer(updated).data)
 
@@ -748,8 +772,8 @@ class PatientInsuranceViewSet(
                 payload=data,
                 encounter=encounter,
             )
-        except Exception as exc:
-            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        except _insurance_handled_exceptions() as exc:
+            return _insurance_error_response(action="healthcloud_session_start_visit", exc=exc)
 
         return Response(InsuranceVisitAuthorizationSerializer(updated).data)
 
@@ -770,8 +794,8 @@ class PatientInsuranceViewSet(
                 organization=getattr(request, "organization", None),
                 contact_id=serializer.validated_data["contact_id"],
             )
-        except Exception as exc:
-            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        except _insurance_handled_exceptions() as exc:
+            return _insurance_error_response(action="request_otp", exc=exc)
         return Response(InsuranceVisitAuthorizationSerializer(auth).data)
 
     @action(detail=True, methods=["post"], url_path="start-visit")
@@ -801,8 +825,8 @@ class PatientInsuranceViewSet(
                 payload=data,
                 encounter=encounter,
             )
-        except Exception as exc:
-            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        except _insurance_handled_exceptions() as exc:
+            return _insurance_error_response(action="start_visit", exc=exc)
         return Response(InsuranceVisitAuthorizationSerializer(auth).data)
 
 
@@ -872,8 +896,8 @@ class InsuranceVisitAuthorizationViewSet(
                 organization=getattr(request, "organization", None),
                 payload=serializer.validated_data,
             )
-        except Exception as exc:
-            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        except _insurance_handled_exceptions() as exc:
+            return _insurance_error_response(action="validate_token", exc=exc)
         return Response(response)
 
 
@@ -1338,8 +1362,8 @@ class InsuranceClaimViewSet(
                 amount=serializer.validated_data["amount"],
                 invoice_number=serializer.validated_data["invoice_number"],
             )
-        except Exception as exc:
-            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        except _insurance_handled_exceptions() as exc:
+            return _insurance_error_response(action="reserve_balance", exc=exc)
         return Response(
             {
                 "id": reservation.pk,
@@ -1377,8 +1401,8 @@ class InsuranceClaimViewSet(
                 facility=getattr(request, "facility", None),
                 organization=getattr(request, "organization", None),
             )
-        except Exception as exc:
-            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        except _insurance_handled_exceptions() as exc:
+            return _insurance_error_response(action="submit_to_healthcloud", exc=exc)
         return Response({"claim": InsuranceClaimSerializer(claim).data, "external": response})
 
     @action(detail=True, methods=["post"], url_path="submit-invoice")
@@ -1413,8 +1437,8 @@ class InsuranceClaimViewSet(
                 organization=getattr(request, "organization", None),
                 payload=payload,
             )
-        except Exception as exc:
-            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        except _insurance_handled_exceptions() as exc:
+            return _insurance_error_response(action="submit_invoice", exc=exc)
         return Response(response)
 
     @action(detail=True, methods=["post"], url_path="refresh-external-status")
@@ -1431,7 +1455,7 @@ class InsuranceClaimViewSet(
                 facility=getattr(request, "facility", None),
                 organization=getattr(request, "organization", None),
             )
-        except Exception as exc:
+        except _insurance_handled_exceptions() as exc:
             return self._upstream_error_response(
                 exc, fallback="Failed to refresh external claim status"
             )
@@ -1456,8 +1480,8 @@ class InsuranceClaimViewSet(
                 organization=getattr(request, "organization", None),
                 payload=payload,
             )
-        except Exception as exc:
-            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        except _insurance_handled_exceptions() as exc:
+            return _insurance_error_response(action="submit_credit_note", exc=exc)
         return Response(response)
 
     @action(detail=True, methods=["post"], url_path="upload-attachment")
@@ -1482,8 +1506,8 @@ class InsuranceClaimViewSet(
                     attachment_type=attachment_type,
                     description=description,
                 )
-            except Exception as exc:
-                return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+            except _insurance_handled_exceptions() as exc:
+                return _insurance_error_response(action="upload_attachment_file_inline", exc=exc)
             return Response(response)
 
         serializer = UploadClaimAttachmentSerializer(data=request.data)
@@ -1497,8 +1521,8 @@ class InsuranceClaimViewSet(
                 organization=getattr(request, "organization", None),
                 payload=payload,
             )
-        except Exception as exc:
-            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        except _insurance_handled_exceptions() as exc:
+            return _insurance_error_response(action="upload_attachment", exc=exc)
         return Response(response)
 
     @action(detail=True, methods=["post"], url_path="upload-attachment-file")
@@ -1529,8 +1553,8 @@ class InsuranceClaimViewSet(
                 attachment_type=attachment_type,
                 description=description,
             )
-        except Exception as exc:
-            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        except _insurance_handled_exceptions() as exc:
+            return _insurance_error_response(action="upload_attachment_file", exc=exc)
         return Response(response)
 
     @action(detail=True, methods=["post"], url_path="check-remittance")
@@ -1547,7 +1571,7 @@ class InsuranceClaimViewSet(
                 facility=getattr(request, "facility", None),
                 organization=getattr(request, "organization", None),
             )
-        except Exception as exc:
+        except _insurance_handled_exceptions() as exc:
             return self._upstream_error_response(exc, fallback="Failed to fetch claim remittance")
         return Response({"claim": InsuranceClaimSerializer(claim).data, "remittance": response})
 
@@ -1638,7 +1662,7 @@ class InsurancePreauthViewSet(
             service = InsurancePreauthService()
             try:
                 result = service.submit(preauth, user=request.user)
-            except Exception as e:
+            except _insurance_handled_exceptions() as e:
                 return Response(
                     {
                         "error": str(e),
@@ -1678,8 +1702,8 @@ class InsurancePreauthViewSet(
         service = InsurancePreauthService()
         try:
             result = service.check_status(preauth)
-        except Exception as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        except _insurance_handled_exceptions() as e:
+            return _insurance_error_response(action="preauth_check_status", exc=e)
         return Response(
             {
                 "preauth": InsurancePreauthSerializer(preauth).data,
@@ -1784,8 +1808,8 @@ class InsuranceRemittanceViewSet(
                 facility=getattr(request, "facility", None),
                 organization=getattr(request, "organization", None),
             )
-        except Exception as exc:
-            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        except _insurance_handled_exceptions() as exc:
+            return _insurance_error_response(action="claims_drilldown", exc=exc)
 
         refreshed = (
             InsuranceRemittance.objects.select_related("provider")

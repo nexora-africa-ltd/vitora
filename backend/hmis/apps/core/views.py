@@ -3,6 +3,8 @@
 Views for core app.
 """
 
+import logging
+
 from django.apps import apps
 from django.conf import settings as django_settings
 from django.contrib.auth.models import Permission
@@ -104,6 +106,8 @@ from .serializers import (
     VerifySignatureRequestSerializer,
     WardSerializer,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def _get_client_ip(request) -> str | None:
@@ -2160,7 +2164,7 @@ def _parse_qr_data(qr_data: str) -> tuple | None:
             return None
 
         return (doc_type, doc_number, amount, date, signature)
-    except Exception:
+    except (AttributeError, TypeError, ValueError):
         return None
 
 
@@ -2892,10 +2896,29 @@ class DHIS2ConfigViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
                 {"status": "error", "detail": "Connection timed out (15s)."},
                 status=status.HTTP_504_GATEWAY_TIMEOUT,
             )
-        except Exception as exc:
+        except http_requests.RequestException as exc:
+            logger.warning(
+                "DHIS2 connectivity test request failed",
+                extra={"config_id": config.pk, "api_url": config.api_url, "error": str(exc)},
+            )
             return Response(
-                {"status": "error", "detail": str(exc)},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                {
+                    "status": "error",
+                    "detail": "Unexpected transport error while testing DHIS2 connection.",
+                },
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+        except ValueError as exc:
+            logger.warning(
+                "DHIS2 connectivity test returned invalid JSON payload",
+                extra={"config_id": config.pk, "api_url": config.api_url, "error": str(exc)},
+            )
+            return Response(
+                {
+                    "status": "error",
+                    "detail": "DHIS2 returned an invalid response payload.",
+                },
+                status=status.HTTP_502_BAD_GATEWAY,
             )
 
 

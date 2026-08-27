@@ -264,7 +264,13 @@ class Command(BaseCommand):
                 self.stdout.write(
                     self.style.SUCCESS(f"Updated StaffProfile.organization: {message}")
                 )
-            except Exception as exc:  # pragma: no cover - defensive safety path
+            except (
+                AttributeError,
+                TypeError,
+                RuntimeError,
+                OSError,
+                AssertionError,
+            ) as exc:  # pragma: no cover - defensive safety path
                 skipped += 1
                 self.stdout.write(self.style.ERROR(f"Skip {message}; error={exc!s}"))
 

@@ -684,7 +684,7 @@ class HubWatermarkMiddleware:
                 from hmis.apps.licensing.watermark import get_build_id
 
                 self._build_id = get_build_id() or ""
-            except Exception:
+            except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
                 self._build_id = ""
 
         if self._build_id:
@@ -910,7 +910,7 @@ class HubLicenseGuardMiddleware:
                 self._cached_payload = payload
                 self._cache_time = now
                 return payload, "expired"
-            except Exception:
+            except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
                 return None, "invalid"
         except (pyjwt.InvalidSignatureError, pyjwt.DecodeError) as exc:
             import logging
@@ -919,7 +919,7 @@ class HubLicenseGuardMiddleware:
                 "License token verification failed: %s", exc
             )
             return None, "invalid"
-        except Exception as exc:
+        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as exc:
             import logging
 
             logging.getLogger("hmis.licensing").warning("License token verification error: %s", exc)

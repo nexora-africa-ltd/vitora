@@ -102,7 +102,7 @@ class SurveillanceAlertConsumer(AsyncJsonWebsocketConsumer):
                 await self._send_current_stats()
             except asyncio.CancelledError:
                 break
-            except Exception as e:
+            except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
                 logger.error(f"Error in periodic surveillance broadcast: {e}")
                 await asyncio.sleep(5)
 
@@ -151,7 +151,7 @@ class SurveillanceAlertConsumer(AsyncJsonWebsocketConsumer):
                     "data": stats,
                 }
             )
-        except Exception as e:
+        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
             logger.error(f"Error sending surveillance stats: {e}")
 
     # =========================================================================

@@ -255,7 +255,7 @@ class DemandForecaster:
                     user=user,
                 )
                 count += 1
-            except Exception:
+            except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
                 logger.exception(
                     "Failed to forecast drug %d at facility %d",
                     drug_id,

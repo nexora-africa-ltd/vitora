@@ -95,7 +95,7 @@ class Command(BaseCommand):
                             defaults={**defaults, "organization": facility.organization},
                         )
                         daily_count += 1
-                    except Exception as e:
+                    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
                         self.stderr.write(f"  ERROR: {facility.name} – {current}: {e}")
             current += timedelta(days=1)
 
@@ -153,7 +153,13 @@ class Command(BaseCommand):
                                         "organization": facility.organization,
                                     },
                                 )
-                        except Exception as e:
+                        except (
+                            AttributeError,
+                            TypeError,
+                            RuntimeError,
+                            OSError,
+                            AssertionError,
+                        ) as e:
                             self.stderr.write(f"  ERROR monthly: {facility.name} – {ym}: {e}")
             # Advance to next month
             if current.month == 12:
@@ -177,7 +183,7 @@ class Command(BaseCommand):
                         defaults={**defaults, "organization": facility.organization},
                     )
                     demo_count += 1
-                except Exception as e:
+                except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
                     self.stderr.write(f"  ERROR demographics: {facility.name}: {e}")
 
         self.stdout.write(self.style.SUCCESS(f"Demographics snapshots: {demo_count} rows"))

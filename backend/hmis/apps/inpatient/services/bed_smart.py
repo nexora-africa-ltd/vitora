@@ -470,7 +470,7 @@ class SmartBedAllocationService:
                 kardex = admission.kardex
                 if kardex.isolation_required:
                     return True, f"Kardex: {kardex.isolation_type or 'isolation required'}"
-            except Exception:
+            except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
                 pass  # No kardex yet
 
         # Check for critical infection-related lab results
@@ -487,7 +487,7 @@ class SmartBedAllocationService:
                 test_code = (result.test_item.code or "").upper()
                 if any(marker in test_code for marker in infection_markers):
                     return True, f"Critical lab: {result.test_item.name} ({result.result_flag})"
-        except Exception:
+        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
             pass  # Lab module may not exist or have different structure
 
         return False, ""
@@ -741,7 +741,7 @@ class SmartBedAllocationService:
                         )
                         if fallback:
                             return fallback
-        except Exception:
+        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
             pass
 
         # Try from admission recommendation
@@ -756,7 +756,7 @@ class SmartBedAllocationService:
             )
             if rec:
                 return rec.provisional_diagnosis
-        except Exception:
+        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
             pass
 
         return None

@@ -98,7 +98,7 @@ def create_invoice_item_for_completed_session(sender, instance, created, **kwarg
 
     except ImportError:
         logger.warning("Billing module not available. Skipping invoice item creation.")
-    except Exception as e:
+    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
         logger.error(f"Error creating invoice item for physiotherapy session: {e}")
 
 
@@ -150,7 +150,7 @@ def handle_order_status_change(sender, instance, created, **kwargs):
 
         except ImportError:
             logger.warning("Clinics module not available. Skipping queue integration.")
-        except Exception as e:
+        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
             logger.error(f"Error creating clinic visit for physiotherapy order: {e}")
 
 
@@ -169,5 +169,5 @@ def update_order_payment_status(sender, instance, created, **kwargs):
             instance.is_paid = True
             instance.save(update_fields=["is_paid"])
             logger.info(f"Marked physiotherapy order {instance.order_number} as paid")
-    except Exception as e:
+    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
         logger.error(f"Error updating payment status for physiotherapy order: {e}")

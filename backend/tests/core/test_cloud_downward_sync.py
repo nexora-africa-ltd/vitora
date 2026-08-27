@@ -5,6 +5,7 @@ from datetime import time
 
 import pytest  # type: ignore
 from django.apps import apps
+from django.db import DatabaseError
 from django.test import override_settings
 from django.utils import timezone
 
@@ -278,6 +279,36 @@ class TestCloudDownwardSyncSignal:
             change["table"] == "clinics.ClinicSchedule" and change["record_id"] == schedule.pk
             for change in changes
         )
+
+    def test_full_downward_snapshot_skips_model_when_count_query_fails(
+        self, monkeypatch, sample_facility
+    ):
+        """Snapshot builder should skip broken table counts instead of raising 500."""
+
+        class BrokenCountQuerySet:
+            def order_by(self, *_args, **_kwargs):
+                return self
+
+            def select_related(self, *_args, **_kwargs):
+                return self
+
+            def count(self):
+                raise DatabaseError("count failed")
+
+        monkeypatch.setattr(
+            "hmis.apps.core.sync_views._scope_snapshot_queryset",
+            lambda *_args, **_kwargs: BrokenCountQuerySet(),
+        )
+
+        changes, has_more = _build_downward_snapshot_changes(
+            tables={"core.Organization"},
+            facility=sample_facility,
+            organization=sample_facility.organization,
+            limit=10,
+        )
+
+        assert changes == []
+        assert has_more is False
 
     @override_settings(SYNC_ENABLED=True, ENVIRONMENT="production")
     def test_tibabot_facility_key_save_creates_downward_entry(self, sample_facility):

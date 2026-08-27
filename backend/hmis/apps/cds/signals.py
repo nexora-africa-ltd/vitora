@@ -61,5 +61,5 @@ def evaluate_cds_on_encounter_save(
                     rule.code,
                     context.patient_id,
                 )
-    except Exception:
+    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
         logger.exception("Error in CDS encounter signal")

@@ -236,7 +236,7 @@ class HL7IntegrationService:
                 message_control_id="",
                 error=f"MLLP transport error: {e!s}",
             )
-        except Exception as e:
+        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
             logger.exception("Unexpected error sending order %s", lab_order.order_number)
             return SendOrderResult(
                 success=False,
@@ -310,7 +310,7 @@ class HL7IntegrationService:
                             f"order {hl7_result.placer_order_number}"
                         )
 
-                except Exception as e:
+                except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
                     logger.exception("Error importing result for test %s", hl7_result.test_code)
                     errors.append(f"Error importing {hl7_result.test_code}: {e!s}")
                     results_skipped += 1
@@ -334,7 +334,7 @@ class HL7IntegrationService:
                 errors=[f"HL7 parse error: {e!s}"],
                 lab_results=[],
             )
-        except Exception as e:
+        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
             logger.exception("Unexpected error processing ORU message")
             return ProcessResultsResult(
                 success=False,
@@ -551,7 +551,7 @@ class HL7IntegrationService:
             return True, f"Valid ORU message with {len(results)} result(s)"
         except (HL7ParseError, HL7ServiceError) as e:
             return False, str(e)
-        except Exception as e:
+        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
             return False, f"Unexpected error: {e!s}"
 
 

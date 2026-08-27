@@ -15,6 +15,7 @@ checked into these clinics directly.
 
 from datetime import date, timedelta
 
+from django.db import DatabaseError
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema
 from rest_framework.permissions import IsAuthenticated
@@ -33,6 +34,11 @@ ALLIED_HEALTH_CLINIC_TYPES = [
     "MENTAL_HEALTH",
     "SOCIAL_WORK",
 ]
+
+
+def _allied_dashboard_handled_exceptions() -> tuple[type[Exception], ...]:
+    """Exceptions tolerated by optional allied-health dashboard sections."""
+    return (DatabaseError, ImportError, AttributeError, TypeError, ValueError)
 
 
 class AlliedHealthDashboardView(APIView):
@@ -113,7 +119,7 @@ class AlliedHealthDashboardView(APIView):
                     session_date=today, status="COMPLETED"
                 ).count(),
             }
-        except Exception:
+        except _allied_dashboard_handled_exceptions():
             return {
                 "pending_count": 0,
                 "in_progress_count": 0,
@@ -141,7 +147,7 @@ class AlliedHealthDashboardView(APIView):
                     status__in=["PENDING", "IN_PROGRESS", "SCHEDULED"]
                 ).count(),
             }
-        except Exception:
+        except _allied_dashboard_handled_exceptions():
             return {
                 "pending_count": 0,
                 "in_progress_count": 0,
@@ -168,7 +174,7 @@ class AlliedHealthDashboardView(APIView):
                     session_date=today, status="COMPLETED"
                 ).count(),
             }
-        except Exception:
+        except _allied_dashboard_handled_exceptions():
             return {
                 "pending_count": 0,
                 "in_progress_count": 0,
@@ -189,7 +195,7 @@ class AlliedHealthDashboardView(APIView):
                 + cases.filter(urgency="HIGH").count(),
                 "this_week_count": cases.filter(created_at__date__gte=week_start).count(),
             }
-        except Exception:
+        except _allied_dashboard_handled_exceptions():
             return {
                 "open_cases_count": 0,
                 "urgent_count": 0,
@@ -217,7 +223,7 @@ class AlliedHealthDashboardView(APIView):
                     session_type="FOLLOW_UP", status="SCHEDULED"
                 ).count(),
             }
-        except Exception:
+        except _allied_dashboard_handled_exceptions():
             return {
                 "pending_count": 0,
                 "in_progress_count": 0,
@@ -265,7 +271,7 @@ class AlliedHealthDashboardView(APIView):
             }
 
             return stats_by_type
-        except Exception:
+        except _allied_dashboard_handled_exceptions():
             return {}
 
     def _get_todays_sessions(self, today):
@@ -299,7 +305,7 @@ class AlliedHealthDashboardView(APIView):
                         "status": session.status,
                     }
                 )
-        except Exception:
+        except _allied_dashboard_handled_exceptions():
             pass
 
         # OT sessions
@@ -329,7 +335,7 @@ class AlliedHealthDashboardView(APIView):
                         "status": session.status,
                     }
                 )
-        except Exception:
+        except _allied_dashboard_handled_exceptions():
             pass
 
         # Counselling sessions
@@ -359,7 +365,7 @@ class AlliedHealthDashboardView(APIView):
                         "status": session.status,
                     }
                 )
-        except Exception:
+        except _allied_dashboard_handled_exceptions():
             pass
 
         # Include ClinicVisits from allied health clinic types
@@ -404,7 +410,7 @@ class AlliedHealthDashboardView(APIView):
                         "source": "CLINIC_QUEUE",  # Indicate this is from clinic queue
                     }
                 )
-        except Exception:
+        except _allied_dashboard_handled_exceptions():
             pass
 
         # Sort by scheduled time

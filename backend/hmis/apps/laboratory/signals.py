@@ -9,6 +9,8 @@ Publishes domain events for cross-cutting observability.
 
 import logging
 
+from django.core.exceptions import ObjectDoesNotExist, ValidationError
+from django.db import DatabaseError, IntegrityError
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
@@ -19,6 +21,21 @@ from hmis.apps.core.sync_context import is_sync_materialization_active
 from .models import LabOrder, LabOrderItem, LabQueue, LabResult, Specimen
 
 logger = logging.getLogger(__name__)
+
+
+def _laboratory_signal_handled_exceptions() -> tuple[type[Exception], ...]:
+    """Exceptions that lab signals may safely log and continue on."""
+    return (
+        ValidationError,
+        ObjectDoesNotExist,
+        DatabaseError,
+        IntegrityError,
+        ImportError,
+        AttributeError,
+        TypeError,
+        ValueError,
+        RuntimeError,
+    )
 
 
 @receiver(post_save, sender=LabOrder)
@@ -80,7 +97,7 @@ def create_lab_queue_entry(sender, instance, created, **kwargs):
                 },
                 facility_id=getattr(instance, "facility_id", None),
             )
-        except Exception as e:
+        except _laboratory_signal_handled_exceptions() as e:
             logger.error(f"Failed to create LabQueue entry for order {instance.order_number}: {e}")
 
 
@@ -117,7 +134,7 @@ def create_lab_queue_on_item_add(sender, instance, created, **kwargs):
             queue_status="PENDING",
         )
         logger.info(f"Created LabQueue entry for order {lab_order.order_number} (on item add)")
-    except Exception as e:
+    except _laboratory_signal_handled_exceptions() as e:
         logger.error(f"Failed to create LabQueue entry for order {lab_order.order_number}: {e}")
 
     queue_entry = LabQueue.objects.filter(lab_order=lab_order).first()
@@ -145,7 +162,7 @@ def sync_lab_queue_priority(sender, instance, created, **kwargs):
             queue_entry.priority = instance.priority
             queue_entry.save(update_fields=["priority", "priority_order"])
             logger.info(f"Synced priority for queue entry {queue_entry.queue_number}")
-    except Exception as e:
+    except _laboratory_signal_handled_exceptions() as e:
         logger.error(f"Failed to sync priority for order {instance.order_number}: {e}")
 
 
@@ -187,7 +204,7 @@ def create_specimen_for_queue(sender, instance, created, **kwargs):
         instance.specimen = specimen
         instance.save(update_fields=["specimen"])
         logger.info("Created Specimen %s for queue %s", specimen.barcode, instance.queue_number)
-    except Exception as e:
+    except _laboratory_signal_handled_exceptions() as e:
         logger.error("Failed to create Specimen for queue %s: %s", instance.queue_number, e)
 
 
@@ -258,7 +275,7 @@ def update_order_status_on_result(sender, instance, created, **kwargs):
                     f"Queue {queue_entry.queue_number} transitioned to REVIEW (all results entered)"
                 )
 
-    except Exception as e:
+    except _laboratory_signal_handled_exceptions() as e:
         logger.error(f"Failed to update order status after result entry: {e}")
 
 
@@ -343,7 +360,13 @@ def notify_on_result_verification(sender, instance, created, **kwargs):
 
                 try:
                     LabNotificationService().send_result_notification(lab_order)
-                except Exception as notif_error:
+                except (
+                    AttributeError,
+                    TypeError,
+                    RuntimeError,
+                    OSError,
+                    AssertionError,
+                ) as notif_error:
                     logger.error(f"Failed to send in-app notification: {notif_error}")
 
                 # Trigger SHA document attachment for the associated claim
@@ -359,10 +382,10 @@ def notify_on_result_verification(sender, instance, created, **kwargs):
                         ).first()
                         if claim:
                             trigger_sha_document_attachment(claim.id)
-                except Exception:
-                    logger.debug("SHA document attachment trigger skipped")
+                except _laboratory_signal_handled_exceptions() as exc:
+                    logger.debug("SHA document attachment trigger skipped: %s", exc)
 
-    except Exception as e:
+    except _laboratory_signal_handled_exceptions() as e:
         logger.error(f"Failed to send verification notification for result {instance.id}: {e}")
 
 
@@ -408,7 +431,7 @@ def handle_lab_order_billing(sender, instance, **kwargs):
             payload={"order_number": instance.order_number},
             facility_id=getattr(instance, "facility_id", None),
         )
-    except Exception as e:
+    except _laboratory_signal_handled_exceptions() as e:
         logger.error(
             "Billing agent: failed to bill lab order %s: %s",
             instance.order_number,
@@ -554,7 +577,7 @@ def auto_trigger_egfr_on_creatinine(sender, instance, created, **kwargs):
             result_data=result_data,
         )
 
-    except Exception as e:
+    except _laboratory_signal_handled_exceptions() as e:
         logger.error("eGFR auto-trigger failed for result %s: %s", instance.id, e)
 
 

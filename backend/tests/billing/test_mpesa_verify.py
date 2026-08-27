@@ -261,6 +261,16 @@ class TestMpesaVerifyAPI:
         assert response.data["verified"] is False
         assert response.data["error"] == "Transaction not found"
 
+    @patch("hmis.apps.billing.services.MpesaService")
+    def test_verify_runtime_error_returns_502(self, MockService, authenticated_client):
+        mock_instance = MockService.return_value
+        mock_instance.verify_transaction.side_effect = RuntimeError("safaricom unavailable")
+
+        response = authenticated_client.post(self._url(), {"transaction_id": "SLK4H42RQO"})
+
+        assert response.status_code == status.HTTP_502_BAD_GATEWAY
+        assert response.data["code"] == "mpesa_transport_error"
+
 
 # ============================================================================
 # Receipt Serializer M-Pesa fields

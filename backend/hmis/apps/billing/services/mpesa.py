@@ -110,7 +110,7 @@ class MpesaService:
                         ),
                         "environment": billing_config.mpesa_environment or "sandbox",
                     }
-            except Exception:
+            except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
                 # No billing_config (RelatedObjectDoesNotExist) — fall through
                 pass
 

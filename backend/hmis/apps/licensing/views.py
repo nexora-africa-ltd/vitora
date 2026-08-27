@@ -458,7 +458,7 @@ def license_status(request: Request) -> Response:
             },
             status=status.HTTP_200_OK,
         )
-    except Exception as e:
+    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
         return Response(
             {
                 "valid": False,

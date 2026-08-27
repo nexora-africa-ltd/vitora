@@ -96,7 +96,7 @@ class HubDiscoveryService:
                 "zeroconf package not installed. mDNS discovery disabled. "
                 "Install with: pip install zeroconf"
             )
-        except Exception:
+        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
             logger.exception("Failed to start mDNS advertisement")
 
     def _stop_mdns(self):
@@ -106,7 +106,7 @@ class HubDiscoveryService:
                 self._zeroconf.unregister_service(self._mdns_info)
                 self._zeroconf.close()
                 logger.info("mDNS: Service unregistered.")
-        except Exception:
+        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
             logger.exception("Error stopping mDNS")
         finally:
             self._zeroconf = None
@@ -165,7 +165,7 @@ class HubDiscoveryService:
                     logger.debug("UDP discovery: responded to %s", addr)
             except TimeoutError:
                 continue
-            except Exception:
+            except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
                 if not self._udp_stop.is_set():
                     logger.exception("UDP discovery error")
 
@@ -185,5 +185,5 @@ class HubDiscoveryService:
             ip = s.getsockname()[0]
             s.close()
             return ip
-        except Exception:
+        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
             return None

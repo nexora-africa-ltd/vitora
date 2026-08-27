@@ -179,7 +179,7 @@ class SHAClaimReportingMixin:
         # Fallback for SQLite (dev) which doesn't have TO_CHAR
         try:
             monthly_list = list(monthly_breakdown)
-        except Exception:
+        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
             from django.db.models.functions import TruncMonth
 
             monthly_breakdown = (

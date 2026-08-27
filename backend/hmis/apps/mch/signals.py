@@ -4,6 +4,8 @@
 import logging
 from datetime import date, datetime, time, timedelta
 
+from django.core.exceptions import ObjectDoesNotExist, ValidationError
+from django.db import DatabaseError, IntegrityError
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
@@ -19,6 +21,21 @@ from hmis.apps.mch.models import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _mch_signal_handled_exceptions() -> tuple[type[Exception], ...]:
+    """Exceptions that signal handlers may safely log and swallow."""
+    return (
+        ValidationError,
+        ObjectDoesNotExist,
+        DatabaseError,
+        IntegrityError,
+        ImportError,
+        AttributeError,
+        TypeError,
+        ValueError,
+        RuntimeError,
+    )
 
 
 # Maximum age in days for auto-generating KEPI immunization schedule (5 years)
@@ -78,7 +95,7 @@ def auto_generate_immunization_schedule(sender, instance, created, **kwargs):
                 facility_id=getattr(instance, "facility_id", None),
                 organization_id=getattr(instance, "organization_id", None),
             )
-    except Exception as exc:
+    except _mch_signal_handled_exceptions() as exc:
         # Don't prevent patient creation if immunization scheduling fails
         logger.warning(
             "Failed to auto-generate immunization schedule for patient %s: %s",
@@ -158,7 +175,7 @@ def auto_create_anc_enrollment(sender, instance, created, **kwargs):
             organization_id=getattr(instance, "organization_id", None),
         )
 
-    except Exception as exc:
+    except _mch_signal_handled_exceptions() as exc:
         # Don't prevent MCH registration if ANC enrollment fails
         logger.error(
             "Failed to auto-create ANC enrollment for MCH %s: %s",
@@ -201,7 +218,7 @@ def auto_transition_mch_to_delivered(sender, instance, created, **kwargs):
             facility_id=getattr(instance, "facility_id", None),
             organization_id=getattr(instance, "organization_id", None),
         )
-    except Exception as exc:
+    except _mch_signal_handled_exceptions() as exc:
         logger.error(
             "Failed to auto-transition MCH registration for delivery %s: %s",
             instance.id,
@@ -301,7 +318,7 @@ def auto_create_anc_appointment(sender, instance, **kwargs):
             organization_id=getattr(instance, "organization_id", None),
         )
 
-    except Exception as exc:
+    except _mch_signal_handled_exceptions() as exc:
         # Don't prevent ANC visit save if appointment creation fails
         logger.warning(
             "Failed to auto-create ANC appointment for visit %s: %s",
@@ -379,7 +396,7 @@ def create_baby_patient_on_delivery(sender, instance, created, **kwargs):
             organization_id=getattr(instance, "organization_id", None),
         )
 
-    except Exception as exc:
+    except _mch_signal_handled_exceptions() as exc:
         logger.error("Failed to create baby patient for delivery %s: %s", instance.id, exc)
 
 
@@ -417,7 +434,7 @@ def broadcast_labour_partograph_observation(sender, instance, created, **kwargs)
                 "alerts": instance.get_alerts(),
             },
         )
-    except Exception as exc:
+    except _mch_signal_handled_exceptions() as exc:
         logger.warning(
             "Failed to broadcast partograph observation %s: %s",
             instance.id,
@@ -490,7 +507,7 @@ def auto_enroll_confirmed_positive_to_ccc(sender, instance, **kwargs):
             instance.hei_number,
         )
 
-    except Exception as exc:
+    except _mch_signal_handled_exceptions() as exc:
         # Don't prevent HEI save if CCC enrollment fails
         logger.error(
             "Failed to auto-enroll HEI %s infant to CCC: %s",
@@ -527,7 +544,7 @@ def auto_create_anc_visit_invoice(sender, instance, created, **kwargs):
                 invoice.invoice_number,
                 instance.id,
             )
-    except Exception as exc:
+    except _mch_signal_handled_exceptions() as exc:
         # Don't prevent visit creation if billing fails
         logger.warning(
             "Failed to auto-create invoice for ANC visit %s: %s",
@@ -559,7 +576,7 @@ def auto_create_pnc_visit_invoice(sender, instance, created, **kwargs):
                 invoice.invoice_number,
                 instance.id,
             )
-    except Exception as exc:
+    except _mch_signal_handled_exceptions() as exc:
         # Don't prevent visit creation if billing fails
         logger.warning(
             "Failed to auto-create invoice for PNC visit %s: %s",
@@ -605,7 +622,7 @@ def auto_create_delivery_invoice(sender, instance, created, **kwargs):
                 invoice.invoice_number,
                 instance.id,
             )
-    except Exception as exc:
+    except _mch_signal_handled_exceptions() as exc:
         # Don't prevent delivery save if billing fails
         logger.warning(
             "Failed to auto-create invoice for delivery %s: %s",
@@ -707,7 +724,7 @@ def auto_create_immunization_appointment(sender, instance, created, **kwargs):
             patient.id,
         )
 
-    except Exception as exc:
+    except _mch_signal_handled_exceptions() as exc:
         logger.warning(
             "Failed to auto-create immunization appointment for record %s: %s",
             instance.id,

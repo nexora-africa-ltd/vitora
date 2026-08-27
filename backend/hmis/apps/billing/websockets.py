@@ -49,7 +49,7 @@ async def broadcast_billing_event(
             },
         )
         logger.debug(f"Broadcasted {event_type} to {group_name}")
-    except Exception as e:
+    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
         logger.error(f"Failed to broadcast {event_type} to {group_name}: {e}")
 
 
@@ -80,7 +80,7 @@ def broadcast_billing_event_sync(
             },
         )
         logger.debug(f"Broadcasted {event_type} to {group_name}")
-    except Exception as e:
+    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
         logger.error(f"Failed to broadcast {event_type} to {group_name}: {e}")
 
 
@@ -114,7 +114,7 @@ async def broadcast_sha_event(
             },
         )
         logger.debug(f"Broadcasted {event_type} to {group_name}")
-    except Exception as e:
+    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
         logger.error(f"Failed to broadcast {event_type} to {group_name}: {e}")
 
 
@@ -145,7 +145,7 @@ def broadcast_sha_event_sync(
             },
         )
         logger.debug(f"Broadcasted {event_type} to {group_name}")
-    except Exception as e:
+    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
         logger.error(f"Failed to broadcast {event_type} to {group_name}: {e}")
 
 

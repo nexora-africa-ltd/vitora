@@ -435,3 +435,11 @@ class TestErrorMapping:
             svc.return_value.preview.side_effect = DHAUnauthorizedError("nope")
             response = sha_client.post(_claim_url(sample_sha_claim, "preview"), {}, format="json")
         assert response.status_code == status.HTTP_502_BAD_GATEWAY
+
+    def test_runtime_error_uses_operation_failed_mapping(self, sha_client, sample_sha_claim):
+        with patch("hmis.apps.billing.services.ilm_claim_service.IlmClaimService") as svc:
+            svc.return_value.preview.side_effect = RuntimeError("temporary ILM gateway fault")
+            response = sha_client.post(_claim_url(sample_sha_claim, "preview"), {}, format="json")
+
+        assert response.status_code == status.HTTP_502_BAD_GATEWAY
+        assert response.data["code"] == "operation_failed"

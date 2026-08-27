@@ -64,7 +64,7 @@ def _send(
             )
             logger.info("Email sent via Resend to %s: %s", to_email, subject)
             return True
-        except Exception:
+        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
             logger.exception("Failed to send email via Resend to %s", to_email)
             return False
     else:
@@ -81,7 +81,7 @@ def _send(
             )
             logger.info("Email sent via Django backend to %s: %s", to_email, subject)
             return True
-        except Exception:
+        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
             logger.exception("Failed to send email via Django backend to %s", to_email)
             return False
 

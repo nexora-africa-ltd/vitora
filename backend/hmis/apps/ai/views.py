@@ -21,6 +21,7 @@ from typing import Any
 
 from django.conf import settings
 from django.core.serializers.json import DjangoJSONEncoder
+from django.db import DatabaseError
 from django.http import StreamingHttpResponse
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema
@@ -120,6 +121,18 @@ from .serializers import (  # Advisory link serializers
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _ai_view_handled_exceptions() -> tuple[type[Exception], ...]:
+    return (
+        DatabaseError,
+        AttributeError,
+        LookupError,
+        TypeError,
+        ValueError,
+        RuntimeError,
+        ImportError,
+    )
 
 
 def _split_clinical_text(value: str | None) -> list[str]:
@@ -670,7 +683,9 @@ class AIStatusView(AISchemaMixin, APIView):
                 service_available = True
                 rag_initialized = bool(health.get("rag_initialized", False))
                 demo_mode = bool(health.get("demo_mode", False))
-            except (TibaBotError, Exception):
+            except TibaBotError:
+                service_available = False
+            except _ai_view_handled_exceptions():
                 service_available = False
 
         data = {
@@ -847,7 +862,7 @@ class ClinicalChatView(AIFeatureGatedMixin, APIView):
             content_str = str(assistant_content) if assistant_content else ""
             try:
                 inferred = client.generate_chat_title(data["message"], content_str)
-            except Exception:
+            except _ai_view_handled_exceptions():
                 inferred = None
             session.title = (
                 inferred if isinstance(inferred, str) and inferred else data["message"][:120]
@@ -1027,7 +1042,7 @@ class ClinicalChatView(AIFeatureGatedMixin, APIView):
             if is_first_message:
                 try:
                     inferred = _generate_title(data["message"], final_content)
-                except Exception:
+                except _ai_view_handled_exceptions():
                     inferred = None
                 session.title = (
                     inferred if isinstance(inferred, str) and inferred else data["message"][:120]
@@ -1842,7 +1857,7 @@ class ICUPredictView(AIFeatureGatedMixin, APIView):
                 for field in lab_fields:
                     if patient_data.get(field) is None and field in lab_values:
                         patient_data[field] = lab_values[field]
-            except Exception:
+            except _ai_view_handled_exceptions():
                 logger.warning("Failed to enrich ICU prediction with lab data", exc_info=True)
 
         # Sanitize free-text fields
@@ -1995,7 +2010,7 @@ class ICUPredictView(AIFeatureGatedMixin, APIView):
                 **_get_tenant_kwargs(request),
             )
             response_data["stored_id"] = str(stored.id)
-        except Exception:
+        except _ai_view_handled_exceptions():
             logger.exception("Failed to persist ICU risk result")
 
         response_serializer = ICUPredictResponseSerializer(data=response_data)
@@ -2358,7 +2373,7 @@ class EGFRCalculateView(AIFeatureGatedMixin, APIView):
                 **_get_tenant_kwargs(request),
             )
             result["stored_id"] = str(stored.id)
-        except Exception:
+        except _ai_view_handled_exceptions():
             logger.exception("Failed to persist eGFR result")
 
         response_serializer = EGFRCalculateResponseSerializer(data=result)
@@ -2462,7 +2477,7 @@ class LabInterpretView(AIFeatureGatedMixin, APIView):
                 **_get_tenant_kwargs(request),
             )
             result["stored_id"] = str(stored.id)
-        except Exception:
+        except _ai_view_handled_exceptions():
             logger.exception("Failed to persist lab interpretation result")
 
         response_serializer = LabInterpretResponseSerializer(data=result)
@@ -2577,7 +2592,7 @@ class DischargeAssessView(AIFeatureGatedMixin, APIView):
                 **_get_tenant_kwargs(request),
             )
             result["stored_id"] = str(stored.id)
-        except Exception:
+        except _ai_view_handled_exceptions():
             logger.exception("Failed to persist discharge assessment result")
 
         response_serializer = DischargeAssessResponseSerializer(data=result)
@@ -2702,7 +2717,7 @@ class CarePlanGenerateView(AIFeatureGatedMixin, APIView):
                 **_get_tenant_kwargs(request),
             )
             result["stored_id"] = str(stored.id)
-        except Exception:
+        except _ai_view_handled_exceptions():
             logger.exception("Failed to persist care plan result")
 
         response_serializer = CarePlanResponseSerializer(data=result)
@@ -3026,7 +3041,7 @@ class CDSEvaluateView(AIFeatureGatedMixin, APIView):
                 **_get_tenant_kwargs(request),
             )
             result["stored_id"] = str(stored.id)
-        except Exception:
+        except _ai_view_handled_exceptions():
             logger.exception("Failed to persist CDS result")
 
         response_serializer = CDSEvaluateResponseSerializer(data=result)
@@ -3121,7 +3136,7 @@ class InvestigationSuggestView(AIFeatureGatedMixin, APIView):
                 **_get_tenant_kwargs(request),
             )
             result["stored_id"] = str(stored.id)
-        except Exception:
+        except _ai_view_handled_exceptions():
             logger.exception("Failed to persist investigation suggestion result")
 
         return Response(result)
@@ -3364,7 +3379,7 @@ class SurgicalPreOpAssessView(AIFeatureGatedMixin, APIView):
                 **_get_tenant_kwargs(request),
             )
             result["stored_id"] = str(stored.id)
-        except Exception:
+        except _ai_view_handled_exceptions():
             logger.exception("Failed to persist surgical pre-op assessment result")
 
         response_serializer = SurgicalPreOpAssessResponseSerializer(data=result)
@@ -3440,7 +3455,7 @@ class SurgicalChecklistStartView(AIFeatureGatedMixin, APIView):
             )
             result["stored_id"] = str(stored.id)
             result["tibabot_session_id"] = tibabot_session_id
-        except Exception:
+        except _ai_view_handled_exceptions():
             logger.exception("Failed to persist surgical checklist session result")
 
         response_serializer = SurgicalChecklistSessionResponseSerializer(data=result)
@@ -3519,7 +3534,7 @@ class SurgicalChecklistAdvanceView(AIFeatureGatedMixin, APIView):
                     organization=latest.organization,
                 )
                 result["stored_id"] = str(stored.id)
-            except Exception:
+            except _ai_view_handled_exceptions():
                 logger.exception("Failed to persist surgical checklist advance result")
         result["tibabot_session_id"] = session_id
 
@@ -3620,7 +3635,7 @@ class SurgicalPostOpCarePlanView(AIFeatureGatedMixin, APIView):
                 **_get_tenant_kwargs(request),
             )
             result["stored_id"] = str(stored.id)
-        except Exception:
+        except _ai_view_handled_exceptions():
             logger.exception("Failed to persist surgical post-op care plan result")
 
         response_serializer = SurgicalPostOpCarePlanResponseSerializer(data=result)

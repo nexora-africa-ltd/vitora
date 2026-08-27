@@ -125,7 +125,7 @@ def route_to_sw_clinic_on_acceptance(sender, instance, created, **kwargs):
             f"(Clinic: {sw_clinic.name})"
         )
 
-    except Exception as e:
+    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
         logger.error(
             f"Failed to create clinic visit for SW referral {instance.referral_number}: {e}"
         )
@@ -175,7 +175,7 @@ def notify_urgent_referral(sender, instance, created, **kwargs):
 
         logger.info(f"Created notification for urgent SW referral {instance.referral_number}")
 
-    except Exception as e:
+    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
         logger.error(
             f"Failed to create notification for SW referral {instance.referral_number}: {e}"
         )
@@ -199,7 +199,7 @@ def mark_patient_sensitive_for_gbv(sender, instance, created, **kwargs):
             logger.info(
                 f"Marked patient {patient.mrn} as sensitive due to SW case {instance.case_number}"
             )
-    except Exception as e:
+    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
         logger.error(f"Failed to mark patient as sensitive for case {instance.case_number}: {e}")
 
 
@@ -232,5 +232,5 @@ def notify_case_review_due(sender, instance, **kwargs):
                         "notification_type": "reminder",
                     },
                 )
-        except Exception as e:
+        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
             logger.error(f"Failed to create review reminder for case {instance.case_number}: {e}")

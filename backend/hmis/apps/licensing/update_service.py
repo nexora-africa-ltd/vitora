@@ -329,7 +329,7 @@ def apply_tarball_update(tarball_path: Path, rollback: bool = True) -> bool:
         logger.info("Update applied successfully")
         return True
 
-    except Exception as exc:
+    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as exc:
         logger.error("Update failed: %s", exc)
 
         # Rollback on failure
@@ -363,7 +363,7 @@ def rollback_update() -> bool:
         shutil.move(str(previous_dir), str(install_dir))
         logger.info("Rollback to previous version complete.")
         return True
-    except Exception as exc:
+    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as exc:
         logger.error("Rollback failed: %s", exc)
         return False
 

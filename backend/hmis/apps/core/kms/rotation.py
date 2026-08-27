@@ -124,7 +124,7 @@ class KeyRotationService:
 
             return False
 
-        except Exception as e:
+        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
             logger.error(f"Error checking rotation status: {e}")
             return False
 
@@ -166,7 +166,7 @@ class KeyRotationService:
                 metadata=new_metadata,
             )
 
-        except Exception as e:
+        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
             logger.error(f"Key rotation failed: {e}")
             return RotationResult(
                 success=False,
@@ -227,7 +227,7 @@ class KeyRotationService:
                 count = self._reencrypt_model(model, batch_size)
                 total_reencrypted += count
                 logger.info(f"Re-encrypted {count} records in {model.__name__}")
-            except Exception as e:
+            except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
                 error_msg = f"Failed to re-encrypt {model.__name__}: {e}"
                 logger.error(error_msg)
                 errors.append(error_msg)
@@ -314,5 +314,5 @@ class KeyRotationService:
                     "timestamp": datetime.now(UTC).isoformat(),
                 },
             )
-        except Exception as e:
+        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
             logger.warning(f"Failed to create audit log for key rotation: {e}")

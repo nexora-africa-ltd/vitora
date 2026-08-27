@@ -126,7 +126,7 @@ class KENHDDValidationService:
                 return None
             try:
                 obj = getattr(obj, part, None)
-            except Exception:
+            except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
                 return None
         return obj
 

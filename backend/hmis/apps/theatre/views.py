@@ -330,7 +330,7 @@ class SurgeryCaseViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.Mode
             )
             case.encounter = encounter
             case.save(update_fields=["encounter"])
-        except Exception:
+        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
             logger.exception("Failed to auto-create encounter for case %s", case.case_number)
 
     def create(self, request, *args, **kwargs):

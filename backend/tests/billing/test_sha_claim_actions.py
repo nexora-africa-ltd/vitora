@@ -5,6 +5,7 @@ from decimal import Decimal
 from unittest.mock import patch
 
 import pytest  # type: ignore
+from django.db import DatabaseError
 from rest_framework import status
 
 
@@ -136,6 +137,41 @@ class TestClaimResubmit:
 
         assert response.status_code == status.HTTP_200_OK
         assert response.data["status"] == "pending_submission"
+
+    def test_resubmit_runtime_error_uses_mapped_response(self, authenticated_client, sha_claim):
+        """Runtime service failures should map to a structured error payload."""
+        from hmis.apps.billing.models import SHAClaim
+
+        sha_claim.status = SHAClaim.ClaimStatus.REJECTED
+        sha_claim.save(update_fields=["status"])
+
+        with patch(
+            "hmis.apps.billing.services.sha_claims.SHAClaimsService.submit_claim"
+        ) as mock_submit:
+            mock_submit.side_effect = RuntimeError("upstream submit unavailable")
+            response = authenticated_client.post(f"/api/billing/claims/{sha_claim.id}/resubmit/")
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.data["code"] == "operation_failed"
+
+
+class TestClaimSubmit:
+    """Tests for POST /api/billing/claims/{id}/submit/."""
+
+    def test_submit_database_error_uses_mapped_response(self, authenticated_client, sha_claim):
+        from hmis.apps.billing.models import SHAClaim
+
+        sha_claim.status = SHAClaim.ClaimStatus.PENDING_SUBMISSION
+        sha_claim.save(update_fields=["status"])
+
+        with patch(
+            "hmis.apps.billing.services.sha_claims.SHAClaimsService.submit_claim"
+        ) as mock_submit:
+            mock_submit.side_effect = DatabaseError("db unavailable")
+            response = authenticated_client.post(f"/api/billing/claims/{sha_claim.id}/submit/")
+
+        assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
+        assert response.data["code"] == "database_error"
 
 
 class TestClaimCancel:

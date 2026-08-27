@@ -132,7 +132,7 @@ def main():
                         decrypted_results.append(decrypted)
                         print(f"\n=== Record {i + 1} ===")
                         print(json.dumps(decrypted, indent=2))
-                    except Exception as e:
+                    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
                         print(f"\n=== Record {i + 1} - ERROR ===")
                         print(f"Failed to decrypt: {e}")
                 else:
@@ -153,7 +153,7 @@ def main():
         try:
             decrypted = decrypt_pii(input_data.strip(), private_key)
             print("Decrypted JSON Data:", json.dumps(decrypted, indent=2))
-        except Exception as e2:
+        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e2:
             print(f"Failed to parse input: {e}")
             print(f"Failed to decrypt as raw base64: {e2}")
 

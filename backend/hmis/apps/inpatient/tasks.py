@@ -126,6 +126,6 @@ This is an automated notification. Do not reply to this email.
             f"Sent critical violation email for admission {admission_id} to {len(supervisor_emails)} supervisors"
         )
         return {"status": "success", "emails_sent": len(supervisor_emails)}
-    except Exception as e:
+    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
         logger.exception(f"Failed to send critical violation email: {e}")
         raise  # Let Celery retry

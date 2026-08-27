@@ -10,10 +10,13 @@ resolved by ``TenantMiddleware`` from the ``X-Facility-Id`` header).
 When no facility context is available, stats are org-wide or global.
 """
 
+import logging
 from datetime import timedelta
 from decimal import Decimal
 
 from django.core.cache import cache
+from django.core.exceptions import FieldError
+from django.db import DatabaseError
 from django.db.models import Count, Sum
 from django.utils import timezone
 from drf_spectacular.types import OpenApiTypes
@@ -23,6 +26,24 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from hmis.apps.core.mixins import resolve_request_tenant
+
+logger = logging.getLogger(__name__)
+
+
+def _dashboard_section_exceptions() -> tuple[type[Exception], ...]:
+    return (
+        DatabaseError,
+        FieldError,
+        ArithmeticError,
+        AttributeError,
+        KeyError,
+        LookupError,
+        TimeoutError,
+        TypeError,
+        ValueError,
+        RuntimeError,
+    )
+
 
 # Cache configuration
 DASHBOARD_STATS_CACHE_KEY = "dashboard_stats"
@@ -133,6 +154,28 @@ def _build_scope_filter(facility, organization, facility_field="facility"):
     )
 
 
+def _stats_fallback(
+    section: str, fallback: dict, exc: Exception, *, missing_dependency: bool
+) -> dict:
+    """Return a safe fallback response and emit structured diagnostics.
+
+    This is an explicit resilience boundary for dashboard aggregation. Dashboard
+    responses should remain available even when optional modules are unavailable
+    or a section query fails.
+    """
+    if missing_dependency:
+        logger.info(
+            "Dashboard stats section unavailable due to missing dependency",
+            extra={"section": section, "error": str(exc)},
+        )
+    else:
+        logger.exception(
+            "Dashboard stats section failed; returning fallback",
+            extra={"section": section},
+        )
+    return fallback.copy()
+
+
 def _compute_dashboard_stats(*, facility=None, organization=None) -> dict:
     """Compute all dashboard statistics from the database."""
     now = timezone.now()
@@ -229,14 +272,30 @@ def _get_pharmacy_stats(today, facility=None, organization=None) -> dict:
             "low_stock_items": low_stock_items,
             "expiring_soon": expiring_soon,
         }
-    except Exception:
-        # Return zeros if pharmacy module not available
-        return {
-            "prescriptions_today": 0,
-            "pending_dispensing": 0,
-            "low_stock_items": 0,
-            "expiring_soon": 0,
-        }
+    except ImportError as exc:
+        return _stats_fallback(
+            section="pharmacy",
+            fallback={
+                "prescriptions_today": 0,
+                "pending_dispensing": 0,
+                "low_stock_items": 0,
+                "expiring_soon": 0,
+            },
+            exc=exc,
+            missing_dependency=True,
+        )
+    except _dashboard_section_exceptions() as exc:
+        return _stats_fallback(
+            section="pharmacy",
+            fallback={
+                "prescriptions_today": 0,
+                "pending_dispensing": 0,
+                "low_stock_items": 0,
+                "expiring_soon": 0,
+            },
+            exc=exc,
+            missing_dependency=False,
+        )
 
 
 def _get_laboratory_stats(today, facility=None, organization=None) -> dict:
@@ -264,12 +323,20 @@ def _get_laboratory_stats(today, facility=None, organization=None) -> dict:
             "completed_today": completed_today,
             "critical_results": critical_results,
         }
-    except Exception:
-        return {
-            "pending_tests": 0,
-            "completed_today": 0,
-            "critical_results": 0,
-        }
+    except ImportError as exc:
+        return _stats_fallback(
+            section="laboratory",
+            fallback={"pending_tests": 0, "completed_today": 0, "critical_results": 0},
+            exc=exc,
+            missing_dependency=True,
+        )
+    except _dashboard_section_exceptions() as exc:
+        return _stats_fallback(
+            section="laboratory",
+            fallback={"pending_tests": 0, "completed_today": 0, "critical_results": 0},
+            exc=exc,
+            missing_dependency=False,
+        )
 
 
 def _get_triage_stats(today, facility=None, organization=None) -> dict:
@@ -306,12 +373,20 @@ def _get_triage_stats(today, facility=None, organization=None) -> dict:
             "avg_wait_time_minutes": avg_wait_minutes,
             "emergency_count": emergency_count,
         }
-    except Exception:
-        return {
-            "waiting": 0,
-            "avg_wait_time_minutes": 0,
-            "emergency_count": 0,
-        }
+    except ImportError as exc:
+        return _stats_fallback(
+            section="triage",
+            fallback={"waiting": 0, "avg_wait_time_minutes": 0, "emergency_count": 0},
+            exc=exc,
+            missing_dependency=True,
+        )
+    except _dashboard_section_exceptions() as exc:
+        return _stats_fallback(
+            section="triage",
+            fallback={"waiting": 0, "avg_wait_time_minutes": 0, "emergency_count": 0},
+            exc=exc,
+            missing_dependency=False,
+        )
 
 
 def _get_billing_stats(today, facility=None, organization=None) -> dict:
@@ -346,12 +421,20 @@ def _get_billing_stats(today, facility=None, organization=None) -> dict:
             "pending_payments": float(pending_payments),
             "sha_claims_pending": sha_claims_pending,
         }
-    except Exception:
-        return {
-            "revenue_today": 0,
-            "pending_payments": 0,
-            "sha_claims_pending": 0,
-        }
+    except ImportError as exc:
+        return _stats_fallback(
+            section="billing",
+            fallback={"revenue_today": 0, "pending_payments": 0, "sha_claims_pending": 0},
+            exc=exc,
+            missing_dependency=True,
+        )
+    except _dashboard_section_exceptions() as exc:
+        return _stats_fallback(
+            section="billing",
+            fallback={"revenue_today": 0, "pending_payments": 0, "sha_claims_pending": 0},
+            exc=exc,
+            missing_dependency=False,
+        )
 
 
 def _get_alert_stats(facility=None, organization=None) -> dict:
@@ -368,13 +451,20 @@ def _get_alert_stats(facility=None, organization=None) -> dict:
             "medium": alerts.filter(severity="MEDIUM").count(),
             "total_unresolved": alerts.count(),
         }
-    except Exception:
-        return {
-            "critical": 0,
-            "high": 0,
-            "medium": 0,
-            "total_unresolved": 0,
-        }
+    except ImportError as exc:
+        return _stats_fallback(
+            section="alerts",
+            fallback={"critical": 0, "high": 0, "medium": 0, "total_unresolved": 0},
+            exc=exc,
+            missing_dependency=True,
+        )
+    except _dashboard_section_exceptions() as exc:
+        return _stats_fallback(
+            section="alerts",
+            fallback={"critical": 0, "high": 0, "medium": 0, "total_unresolved": 0},
+            exc=exc,
+            missing_dependency=False,
+        )
 
 
 def _get_checkin_stats(today, facility=None, organization=None) -> dict:
@@ -391,12 +481,20 @@ def _get_checkin_stats(today, facility=None, organization=None) -> dict:
             "waiting": today_checkins.filter(status__in=["WAITING", "IN_TRIAGE"]).count(),
             "completed_today": today_checkins.filter(status="COMPLETED").count(),
         }
-    except Exception:
-        return {
-            "checked_in_today": 0,
-            "waiting": 0,
-            "completed_today": 0,
-        }
+    except ImportError as exc:
+        return _stats_fallback(
+            section="checkin",
+            fallback={"checked_in_today": 0, "waiting": 0, "completed_today": 0},
+            exc=exc,
+            missing_dependency=True,
+        )
+    except _dashboard_section_exceptions() as exc:
+        return _stats_fallback(
+            section="checkin",
+            fallback={"checked_in_today": 0, "waiting": 0, "completed_today": 0},
+            exc=exc,
+            missing_dependency=False,
+        )
 
 
 def _get_inpatient_stats(today, facility=None, organization=None) -> dict:
@@ -424,13 +522,30 @@ def _get_inpatient_stats(today, facility=None, organization=None) -> dict:
             "discharged_today": discharged_today,
             "occupancy_rate": occupancy_rate,
         }
-    except Exception:
-        return {
-            "current_admissions": 0,
-            "available_beds": 0,
-            "discharged_today": 0,
-            "occupancy_rate": 0,
-        }
+    except ImportError as exc:
+        return _stats_fallback(
+            section="inpatient",
+            fallback={
+                "current_admissions": 0,
+                "available_beds": 0,
+                "discharged_today": 0,
+                "occupancy_rate": 0,
+            },
+            exc=exc,
+            missing_dependency=True,
+        )
+    except _dashboard_section_exceptions() as exc:
+        return _stats_fallback(
+            section="inpatient",
+            fallback={
+                "current_admissions": 0,
+                "available_beds": 0,
+                "discharged_today": 0,
+                "occupancy_rate": 0,
+            },
+            exc=exc,
+            missing_dependency=False,
+        )
 
 
 def _get_imaging_stats(today, facility=None, organization=None) -> dict:
@@ -459,12 +574,20 @@ def _get_imaging_stats(today, facility=None, organization=None) -> dict:
             "completed_today": completed_today,
             "urgent_orders": urgent_orders,
         }
-    except Exception:
-        return {
-            "pending_orders": 0,
-            "completed_today": 0,
-            "urgent_orders": 0,
-        }
+    except ImportError as exc:
+        return _stats_fallback(
+            section="imaging",
+            fallback={"pending_orders": 0, "completed_today": 0, "urgent_orders": 0},
+            exc=exc,
+            missing_dependency=True,
+        )
+    except _dashboard_section_exceptions() as exc:
+        return _stats_fallback(
+            section="imaging",
+            fallback={"pending_orders": 0, "completed_today": 0, "urgent_orders": 0},
+            exc=exc,
+            missing_dependency=False,
+        )
 
 
 def _get_emergency_stats(facility=None, organization=None) -> dict:
@@ -489,11 +612,20 @@ def _get_emergency_stats(facility=None, organization=None) -> dict:
             "active_overrides": active_overrides,
             "pending_review": pending_review,
         }
-    except Exception:
-        return {
-            "active_overrides": 0,
-            "pending_review": 0,
-        }
+    except ImportError as exc:
+        return _stats_fallback(
+            section="emergency",
+            fallback={"active_overrides": 0, "pending_review": 0},
+            exc=exc,
+            missing_dependency=True,
+        )
+    except _dashboard_section_exceptions() as exc:
+        return _stats_fallback(
+            section="emergency",
+            fallback={"active_overrides": 0, "pending_review": 0},
+            exc=exc,
+            missing_dependency=False,
+        )
 
 
 def _get_mch_stats(today, facility=None, organization=None) -> dict:
@@ -515,12 +647,20 @@ def _get_mch_stats(today, facility=None, organization=None) -> dict:
             "high_risk": high_risk,
             "deliveries_today": deliveries_today,
         }
-    except Exception:
-        return {
-            "active_registrations": 0,
-            "high_risk": 0,
-            "deliveries_today": 0,
-        }
+    except ImportError as exc:
+        return _stats_fallback(
+            section="mch",
+            fallback={"active_registrations": 0, "high_risk": 0, "deliveries_today": 0},
+            exc=exc,
+            missing_dependency=True,
+        )
+    except _dashboard_section_exceptions() as exc:
+        return _stats_fallback(
+            section="mch",
+            fallback={"active_registrations": 0, "high_risk": 0, "deliveries_today": 0},
+            exc=exc,
+            missing_dependency=False,
+        )
 
 
 def _get_theatre_stats(today, facility=None, organization=None) -> dict:
@@ -553,12 +693,20 @@ def _get_theatre_stats(today, facility=None, organization=None) -> dict:
             ).count(),
             "completed_today": today_cases.filter(status=SurgeryCase.CaseStatus.DISCHARGED).count(),
         }
-    except Exception:
-        return {
-            "scheduled_today": 0,
-            "in_progress": 0,
-            "completed_today": 0,
-        }
+    except ImportError as exc:
+        return _stats_fallback(
+            section="theatre",
+            fallback={"scheduled_today": 0, "in_progress": 0, "completed_today": 0},
+            exc=exc,
+            missing_dependency=True,
+        )
+    except _dashboard_section_exceptions() as exc:
+        return _stats_fallback(
+            section="theatre",
+            fallback={"scheduled_today": 0, "in_progress": 0, "completed_today": 0},
+            exc=exc,
+            missing_dependency=False,
+        )
 
 
 def _get_procedure_stats(today, facility=None, organization=None) -> dict:
@@ -581,13 +729,30 @@ def _get_procedure_stats(today, facility=None, organization=None) -> dict:
                 updated_at__date=today,
             ).count(),
         }
-    except Exception:
-        return {
-            "scheduled_today": 0,
-            "pending_consent": 0,
-            "in_progress": 0,
-            "completed_today": 0,
-        }
+    except ImportError as exc:
+        return _stats_fallback(
+            section="procedures",
+            fallback={
+                "scheduled_today": 0,
+                "pending_consent": 0,
+                "in_progress": 0,
+                "completed_today": 0,
+            },
+            exc=exc,
+            missing_dependency=True,
+        )
+    except _dashboard_section_exceptions() as exc:
+        return _stats_fallback(
+            section="procedures",
+            fallback={
+                "scheduled_today": 0,
+                "pending_consent": 0,
+                "in_progress": 0,
+                "completed_today": 0,
+            },
+            exc=exc,
+            missing_dependency=False,
+        )
 
 
 def _get_allied_health_stats(today, facility=None, organization=None) -> dict:
@@ -607,8 +772,20 @@ def _get_allied_health_stats(today, facility=None, organization=None) -> dict:
             sessions_today += PhysiotherapyOrder.objects.filter(
                 status="IN_PROGRESS", updated_at__date=today, **scope
             ).count()
-        except Exception:
-            pass
+        except ImportError as exc:
+            logger.info(
+                "Optional allied health stats dependency unavailable",
+                extra={"section": "allied_health", "module": "physiotherapy", "error": str(exc)},
+            )
+        except _dashboard_section_exceptions() as exc:
+            logger.exception(
+                "Optional allied health stats aggregation failed",
+                extra={
+                    "section": "allied_health",
+                    "module": "physiotherapy",
+                    "error_class": exc.__class__.__name__,
+                },
+            )
 
         try:
             from hmis.apps.nutrition.models import NutritionConsultation
@@ -619,34 +796,82 @@ def _get_allied_health_stats(today, facility=None, organization=None) -> dict:
             sessions_today += NutritionConsultation.objects.filter(
                 consultation_date__date=today, **scope
             ).count()
-        except Exception:
-            pass
+        except ImportError as exc:
+            logger.info(
+                "Optional allied health stats dependency unavailable",
+                extra={"section": "allied_health", "module": "nutrition", "error": str(exc)},
+            )
+        except _dashboard_section_exceptions() as exc:
+            logger.exception(
+                "Optional allied health stats aggregation failed",
+                extra={
+                    "section": "allied_health",
+                    "module": "nutrition",
+                    "error_class": exc.__class__.__name__,
+                },
+            )
 
         try:
             from hmis.apps.occupational_therapy.models import OTOrder
 
             pending_referrals += OTOrder.objects.filter(status="PENDING", **scope).count()
-        except Exception:
-            pass
+        except ImportError as exc:
+            logger.info(
+                "Optional allied health stats dependency unavailable",
+                extra={
+                    "section": "allied_health",
+                    "module": "occupational_therapy",
+                    "error": str(exc),
+                },
+            )
+        except _dashboard_section_exceptions() as exc:
+            logger.exception(
+                "Optional allied health stats aggregation failed",
+                extra={
+                    "section": "allied_health",
+                    "module": "occupational_therapy",
+                    "error_class": exc.__class__.__name__,
+                },
+            )
 
         try:
             from hmis.apps.social_work.models import SocialWorkCase
 
             open_cases = SocialWorkCase.objects.filter(status="OPEN", **scope).count()
-        except Exception:
-            pass
+        except ImportError as exc:
+            logger.info(
+                "Optional allied health stats dependency unavailable",
+                extra={"section": "allied_health", "module": "social_work", "error": str(exc)},
+            )
+        except _dashboard_section_exceptions() as exc:
+            logger.exception(
+                "Optional allied health stats aggregation failed",
+                extra={
+                    "section": "allied_health",
+                    "module": "social_work",
+                    "error_class": exc.__class__.__name__,
+                },
+            )
 
         return {
             "pending_referrals": pending_referrals,
             "sessions_today": sessions_today,
             "open_cases": open_cases,
         }
-    except Exception:
-        return {
-            "pending_referrals": 0,
-            "sessions_today": 0,
-            "open_cases": 0,
-        }
+    except ImportError as exc:
+        return _stats_fallback(
+            section="allied_health",
+            fallback={"pending_referrals": 0, "sessions_today": 0, "open_cases": 0},
+            exc=exc,
+            missing_dependency=True,
+        )
+    except _dashboard_section_exceptions() as exc:
+        return _stats_fallback(
+            section="allied_health",
+            fallback={"pending_referrals": 0, "sessions_today": 0, "open_cases": 0},
+            exc=exc,
+            missing_dependency=False,
+        )
 
 
 def _get_org_admin_stats(organization) -> dict:
@@ -666,12 +891,20 @@ def _get_org_admin_stats(organization) -> dict:
             "active_facilities": active_facilities,
             "total_staff": total_staff,
         }
-    except Exception:
-        return {
-            "total_facilities": 0,
-            "active_facilities": 0,
-            "total_staff": 0,
-        }
+    except ImportError as exc:
+        return _stats_fallback(
+            section="org_admin",
+            fallback={"total_facilities": 0, "active_facilities": 0, "total_staff": 0},
+            exc=exc,
+            missing_dependency=True,
+        )
+    except _dashboard_section_exceptions() as exc:
+        return _stats_fallback(
+            section="org_admin",
+            fallback={"total_facilities": 0, "active_facilities": 0, "total_staff": 0},
+            exc=exc,
+            missing_dependency=False,
+        )
 
 
 # =============================================================================

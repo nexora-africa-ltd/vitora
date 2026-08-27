@@ -102,7 +102,7 @@ def evaluate_rule(rule: Any, context: EvaluationContext) -> EvaluationResult:
 
     try:
         result = evaluator(rule, condition, context)
-    except Exception:
+    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
         logger.exception("Error evaluating rule %s", rule.code)
         return EvaluationResult(triggered=False, rule_id=rule.id, rule_code=rule.code)
 
@@ -413,7 +413,7 @@ def _check_hpt_allergy_match(
                     "substance_code": substance_code,
                     "match_type": "hpt_coded",
                 }
-    except Exception:
+    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
         logger.debug("HPT allergy matching failed, falling back to text", exc_info=True)
 
     return None

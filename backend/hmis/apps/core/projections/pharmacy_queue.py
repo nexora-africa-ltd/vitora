@@ -82,7 +82,7 @@ class PharmacyQueueProjection(Projection):
                     "low_stock_count": stats.low_stock_count,
                 },
             )
-        except Exception:
+        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
             logger.debug("Failed to broadcast pharmacy queue stats", exc_info=True)
 
     def reset(self, **filters) -> None:

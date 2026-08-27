@@ -101,7 +101,7 @@ def cloud_sha_submit(request: Request) -> Response:
             },
             status=status.HTTP_200_OK if result.success else status.HTTP_502_BAD_GATEWAY,
         )
-    except Exception as exc:
+    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as exc:
         logger.exception("Cloud SHA relay failed for hub %s", hub_id)
         return Response(
             {
@@ -145,7 +145,7 @@ def cloud_sha_preauth(request: Request) -> Response:
         service = IlmPreauthService()
         result = service.create(request.data)
         return Response(result, status=status.HTTP_200_OK)
-    except Exception as exc:
+    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as exc:
         logger.exception("Cloud SHA preauth relay failed for hub %s", hub_id)
         return Response(
             {"detail": "Failed to forward preauth to DHA.", "error": str(exc)},
@@ -173,7 +173,7 @@ def cloud_sha_eligibility(request: Request) -> Response:
         service = SHAEligibilityService()
         result = service.check_eligibility(request.data)
         return Response(result, status=status.HTTP_200_OK)
-    except Exception as exc:
+    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as exc:
         logger.exception("Cloud eligibility relay failed for hub %s", hub_id)
         return Response(
             {"detail": "Failed to check eligibility.", "error": str(exc)},

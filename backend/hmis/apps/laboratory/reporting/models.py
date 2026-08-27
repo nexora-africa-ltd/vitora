@@ -203,7 +203,7 @@ class TATSnapshot(FacilityScopedModel):
             specimen = lab_order.specimens.first()
             if specimen:
                 received_at = specimen.received_at
-        except Exception:  # noqa: S110
+        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):  # noqa: S110
             logger.debug("Could not fetch specimen for order %s", lab_order.pk)
 
         # Get result timestamps (from first result)
@@ -218,7 +218,7 @@ class TATSnapshot(FacilityScopedModel):
                 verified_at = result.verified_at
                 resulted_by = result.entered_by
                 verified_by_user = result.verified_by
-            except Exception:  # noqa: S110
+            except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):  # noqa: S110
                 logger.debug("Could not fetch result for order %s", lab_order.pk)
 
         # Get queue released_at

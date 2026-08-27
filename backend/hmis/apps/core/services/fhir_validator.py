@@ -190,7 +190,7 @@ class FHIRValidator:
         # Validate using fhir.resources
         try:
             fhir_class.model_validate(resource_dict)
-        except Exception as e:
+        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
             self._parse_validation_errors(e, result)
 
         return result
@@ -230,7 +230,7 @@ class FHIRValidator:
         # Validate bundle structure
         try:
             Bundle.model_validate(bundle_dict)
-        except Exception as e:
+        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
             self._parse_validation_errors(e, result)
             return result  # Don't validate entries if bundle structure is invalid
 

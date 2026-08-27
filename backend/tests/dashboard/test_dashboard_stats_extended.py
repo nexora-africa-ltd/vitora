@@ -7,10 +7,15 @@ Covers:
 - Actual data accuracy when records are created
 """
 
+import builtins
+import logging
+
 import pytest
 from django.core.cache import cache
 from django.utils import timezone
 from rest_framework import status
+
+from hmis.apps.core import dashboard_views
 
 DASHBOARD_STATS_URL = "/api/core/dashboard/stats/"
 
@@ -315,3 +320,61 @@ class TestDashboardStatsExtendedCrossCuts:
                     f"{section}.{key} should be numeric, got {type(value)}"
                 )
                 assert value >= 0, f"{section}.{key} should be >= 0, got {value}"
+
+
+@pytest.mark.django_db
+class TestDashboardStatsFailurePaths:
+    """Failure-path behavior for dashboard fallback resilience boundaries."""
+
+    def test_billing_stats_query_failure_logs_and_falls_back(
+        self, monkeypatch, caplog, sample_facility, sample_organization
+    ):
+        from hmis.apps.billing.models import Payment
+
+        def _raise_timeout(*_args, **_kwargs):
+            raise TimeoutError("payment query timed out")
+
+        monkeypatch.setattr(Payment.objects, "filter", _raise_timeout)
+        caplog.set_level(logging.ERROR)
+
+        result = dashboard_views._get_billing_stats(
+            today=timezone.localdate(),
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+
+        assert result == {"revenue_today": 0, "pending_payments": 0, "sha_claims_pending": 0}
+        assert any(
+            getattr(record, "section", "") == "billing" and "returning fallback" in record.message
+            for record in caplog.records
+        )
+
+    def test_pharmacy_missing_dependency_logs_and_falls_back(
+        self, monkeypatch, caplog, sample_facility, sample_organization
+    ):
+        original_import = builtins.__import__
+
+        def _raise_for_pharmacy(name, globals=None, locals=None, fromlist=(), level=0):
+            if name == "hmis.apps.pharmacy.models":
+                raise ImportError("pharmacy disabled")
+            return original_import(name, globals, locals, fromlist, level)
+
+        monkeypatch.setattr(builtins, "__import__", _raise_for_pharmacy)
+        caplog.set_level(logging.INFO)
+
+        result = dashboard_views._get_pharmacy_stats(
+            today=timezone.localdate(),
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+
+        assert result == {
+            "prescriptions_today": 0,
+            "pending_dispensing": 0,
+            "low_stock_items": 0,
+            "expiring_soon": 0,
+        }
+        assert any(
+            getattr(record, "section", "") == "pharmacy" and "missing dependency" in record.message
+            for record in caplog.records
+        )

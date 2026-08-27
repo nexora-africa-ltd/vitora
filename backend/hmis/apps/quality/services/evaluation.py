@@ -810,7 +810,7 @@ def evaluate_measure(
 
     try:
         return evaluator(clinic_id, start_date, end_date, params)
-    except Exception:
+    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
         logger.exception(
             "Error evaluating measure %s for clinic %d (period %d/%d/%s)",
             measure.code,

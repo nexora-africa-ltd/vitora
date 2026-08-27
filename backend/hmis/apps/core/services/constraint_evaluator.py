@@ -407,7 +407,7 @@ class ConstraintEvaluator:
                         expected_value=f"FHIRPath: {expression}",
                     )
 
-        except Exception as e:
+        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
             logger.warning(f"FHIRPath evaluation failed for {constraint.id}: {e}")
             # Don't fail validation on FHIRPath errors
             return None

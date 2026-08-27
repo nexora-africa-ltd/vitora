@@ -679,7 +679,13 @@ class SHAConsentService:
                     # supplied to /api/v1/claims/visit.
                     try:
                         ilm_service.add_intervention(claim, code, user=None)
-                    except Exception as add_exc:
+                    except (
+                        AttributeError,
+                        TypeError,
+                        RuntimeError,
+                        OSError,
+                        AssertionError,
+                    ) as add_exc:
                         msg = str(add_exc).lower()
                         if "already" in msg or "exists" in msg or "duplicate" in msg:
                             logger.info(
@@ -1126,7 +1132,7 @@ class SHAConsentService:
                 )
             except SHAConsentError:
                 raise
-            except Exception as e:
+            except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
                 raise SHAConsentError(
                     f"Unexpected error calling DHA API: {e}",
                     code="unexpected_error",

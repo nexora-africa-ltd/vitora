@@ -285,7 +285,7 @@ class EligibilityPreCheckView(SHAAutomationSchemaMixin, APIView):
             return Response(
                 {"status": "queued", "message": "Eligibility check queued for processing"}
             )
-        except Exception:
+        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
             # Celery not available — run synchronously
             from hmis.apps.billing.sha_automation import SHAClaimAutomationService
 

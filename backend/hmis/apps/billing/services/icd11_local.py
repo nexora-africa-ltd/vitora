@@ -99,7 +99,7 @@ class ICD11LocalService:
                 if match:
                     self._mms_release = match.group(1)
                     return self._mms_release
-        except Exception as exc:
+        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as exc:
             logger.debug(f"Failed to detect MMS release version: {exc}")
         return None
 
@@ -178,7 +178,7 @@ class ICD11LocalService:
         except requests.exceptions.RequestException as e:
             logger.error(f"ICD-11 local API request failed: {e}")
             return []
-        except Exception as e:
+        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
             logger.error(f"ICD-11 local search error: {e}")
             return []
 
@@ -220,7 +220,7 @@ class ICD11LocalService:
         except requests.exceptions.RequestException as e:
             logger.error(f"ICD-11 local API request failed for code {code}: {e}")
             return None
-        except Exception as e:
+        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
             logger.error(f"ICD-11 local get_by_code error: {e}")
             return None
 
@@ -233,5 +233,5 @@ class ICD11LocalService:
                 timeout=5,
             )
             return response.status_code == 200
-        except Exception:
+        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
             return False

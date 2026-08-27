@@ -66,5 +66,5 @@ def check_diagnosis_for_surveillance(sender, instance, created, **kwargs):
                 },
                 facility_id=getattr(instance.encounter, "facility_id", None),
             )
-        except Exception as e:
+        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
             logger.error(f"Failed to create notifiable case for diagnosis {instance.id}: {e}")

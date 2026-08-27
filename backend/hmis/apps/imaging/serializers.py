@@ -306,7 +306,7 @@ class ImagingOrderCreateSerializer(serializers.ModelSerializer):
                             ),
                         }
                     )
-        except Exception:
+        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
             logging.getLogger(__name__).debug("eGFR check failed for contrast guard", exc_info=True)
         return warnings
 

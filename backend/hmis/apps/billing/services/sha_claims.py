@@ -413,7 +413,13 @@ class SHAClaimsService:
             )
             claim.sha_member.refresh_from_db()
             return claim.validate_for_submission()
-        except Exception as exc:  # pragma: no cover - defensive fallback
+        except (
+            AttributeError,
+            TypeError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+        ) as exc:  # pragma: no cover - defensive fallback
             logger.warning(
                 "Eligibility refresh failed during claim validation for claim %s: %s",
                 claim.id,
@@ -1622,7 +1628,7 @@ class SHAClaimsService:
                     }
                 )
 
-            except Exception as e:
+            except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
                 entry.retry_count += 1
                 entry.error_message = str(e)
 
@@ -1699,7 +1705,7 @@ class SHAClaimsService:
 
             try:
                 exists = file_field.storage.exists(file_field.name)
-            except Exception:  # noqa: BLE001
+            except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):  # noqa: BLE001
                 exists = False
 
             if not exists:

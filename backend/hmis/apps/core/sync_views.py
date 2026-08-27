@@ -19,7 +19,7 @@ from django.apps import apps
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import identify_hasher
-from django.db import models, transaction
+from django.db import DatabaseError, models, transaction
 from django.utils import timezone
 from django.utils.dateparse import parse_date
 from drf_spectacular.utils import extend_schema, inline_serializer
@@ -885,7 +885,7 @@ def _build_downward_snapshot_changes(
             ]
             if fk_fields:
                 qs = qs.select_related(*fk_fields)
-        except Exception:
+        except (DatabaseError, LookupError, TypeError, ValueError):
             logger.exception("Failed to build queryset for %s; skipping model.", model_label)
             continue
 
@@ -895,7 +895,7 @@ def _build_downward_snapshot_changes(
         # would refetch and deserialize 10000 rows just to discard them.
         try:
             table_count = qs.count()
-        except Exception:
+        except DatabaseError:
             logger.exception(
                 "Failed to count %s for downward snapshot; skipping model.",
                 model_label,
@@ -930,7 +930,7 @@ def _build_downward_snapshot_changes(
                 instance = next(iterator)
             except StopIteration:
                 break
-            except Exception:
+            except DatabaseError:
                 logger.exception(
                     "Failed to fetch next %s row for downward snapshot; aborting model.",
                     model_label,
@@ -940,7 +940,7 @@ def _build_downward_snapshot_changes(
             try:
                 data = serialize_instance_for_sync(instance, exclude_fields=entry.exclude_fields)
                 data = add_sync_meta(data, direction=entry.direction, priority=entry.priority)
-            except Exception:
+            except (TypeError, ValueError, AttributeError):
                 logger.exception(
                     "Failed to serialize %s pk=%s for downward snapshot; skipping.",
                     model_label,
@@ -1010,7 +1010,7 @@ def _broadcast_sync_changes(facility_id: int, changes: list, client_id: str):
         }
 
         async_to_sync(channel_layer.group_send)(group_name, broadcast_payload)
-    except Exception:
+    except (RuntimeError, TypeError, ValueError):
         logger.exception("Failed to broadcast sync changes to facility %s", facility_id)
 
 

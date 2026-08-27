@@ -56,7 +56,7 @@ def _fire_cr_sync(patient_id: int) -> None:
         from hmis.apps.patients.tasks import lookup_and_register_patient_in_cr
 
         lookup_and_register_patient_in_cr.delay(patient_id)
-    except Exception:
+    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
         # Don't break patient creation if Celery/Redis unavailable
         import logging
 
@@ -69,7 +69,7 @@ def _fire_sha_auto_verify(patient_id: int, facility_id: int | None = None) -> No
         from hmis.apps.billing.signals import trigger_sha_eligibility_verification
 
         trigger_sha_eligibility_verification(patient_id, facility_id)
-    except Exception:
+    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
         import logging
 
         logging.getLogger(__name__).warning(

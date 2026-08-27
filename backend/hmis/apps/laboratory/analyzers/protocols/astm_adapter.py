@@ -283,7 +283,7 @@ class ASTMAdapter(ProtocolAdapter):
                 return False
 
             return all(not (record and record[0] not in "HPORQLCMS") for record in records)
-        except Exception:
+        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
             return False
 
     def _split_records(self, data: str) -> list[str]:

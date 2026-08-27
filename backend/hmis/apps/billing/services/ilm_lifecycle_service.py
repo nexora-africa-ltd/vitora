@@ -125,7 +125,7 @@ def _publish_safe(event_type: str, payload: dict) -> None:
 
         aggregate_id = payload.get("claim_id") or payload.get("patient_id") or ""
         publish_event(event_type, "SHAClaim", aggregate_id, payload)
-    except Exception:  # pragma: no cover
+    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):  # pragma: no cover
         logger.exception("Failed to publish DHA HIE lifecycle event %s", event_type)
 
 
@@ -823,7 +823,13 @@ class IlmLifecycleService:
                     upload.response_payload = result.payload
                     upload.save(update_fields=["dha_download_url", "response_payload"])
                     result.record_id = upload.pk
-        except Exception:  # pragma: no cover
+        except (
+            AttributeError,
+            TypeError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+        ):  # pragma: no cover
             logger.exception("Failed to update SHAUpload URL for file_id=%s", file_id)
 
         from hmis.apps.core.events import BillingEvents
@@ -876,7 +882,13 @@ class IlmLifecycleService:
                 facility=facility,
             )
             return row
-        except Exception:  # pragma: no cover
+        except (
+            AttributeError,
+            TypeError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+        ):  # pragma: no cover
             logger.exception("Failed to record SHAOtpRequest")
             return None
 
@@ -910,7 +922,13 @@ class IlmLifecycleService:
                 facility=facility,
             )
             return row
-        except Exception:  # pragma: no cover
+        except (
+            AttributeError,
+            TypeError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+        ):  # pragma: no cover
             logger.exception("Failed to record SHAOtpWhitelistRequest")
             return None
 
@@ -952,6 +970,12 @@ class IlmLifecycleService:
                 facility=facility,
             )
             return row
-        except Exception:  # pragma: no cover
+        except (
+            AttributeError,
+            TypeError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+        ):  # pragma: no cover
             logger.exception("Failed to record SHAUpload")
             return None

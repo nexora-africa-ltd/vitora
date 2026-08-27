@@ -399,7 +399,7 @@ class TestSyncPushBroadcast:
 
         with patch(
             "hmis.apps.core.sync_views.get_channel_layer",
-            side_effect=Exception("Channel layer unavailable"),
+            side_effect=RuntimeError("Channel layer unavailable"),
         ):
             response = authenticated_client.post(self.URL, payload, format="json")
 

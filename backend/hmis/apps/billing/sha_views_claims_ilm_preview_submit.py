@@ -10,11 +10,12 @@ import logging
 from datetime import date
 from decimal import Decimal, InvalidOperation
 
-from django.db import models
+from django.db import DatabaseError, models
 from rest_framework.decorators import action as drf_action
 from rest_framework.response import Response
 
 from hmis.apps.billing.models import SHAClaimItem, SHATariff
+from hmis.apps.billing.services.dha_errors import DHAError
 from hmis.apps.billing.sha_views_claims_helpers import (
     _collect_unresolved_claim_lines,
     _extract_dha_invoice_number,
@@ -27,6 +28,19 @@ from hmis.apps.core.models import AuditLog
 logger = logging.getLogger(__name__)
 
 
+def _ilm_preview_submit_exceptions() -> tuple[type[Exception], ...]:
+    return (
+        DatabaseError,
+        DHAError,
+        AttributeError,
+        LookupError,
+        TypeError,
+        ValueError,
+        RuntimeError,
+        ImportError,
+    )
+
+
 class SHAClaimILMPreviewSubmitMixin:
     """ILM preview/materialization/submission/close actions for SHA claims."""
 
@@ -36,7 +50,7 @@ class SHAClaimILMPreviewSubmitMixin:
         ilm_service = self._ilm_service(facility=claim.facility)
         try:
             result = ilm_service.preview(claim, user=request.user)
-        except Exception as exc:
+        except _ilm_preview_submit_exceptions() as exc:
             return self._ilm_handle_error(exc)
 
         if result.status_code < 400 and not self._preview_payload_has_diagnoses(result.payload):
@@ -46,7 +60,7 @@ class SHAClaimILMPreviewSubmitMixin:
                     refreshed_result = ilm_service.preview(claim, user=request.user)
                     if refreshed_result.status_code < 400:
                         result = refreshed_result
-                except Exception as exc:  # noqa: BLE001 - keep first preview result
+                except _ilm_preview_submit_exceptions() as exc:
                     logger.warning(
                         "Failed to re-preview claim %s after diagnosis sync: %s",
                         claim.id,
@@ -61,7 +75,7 @@ class SHAClaimILMPreviewSubmitMixin:
                     user=request.user,
                 )
                 result.reconciliation_summary = reconciliation_summary
-            except Exception as exc:  # noqa: BLE001 - fail-open, preview should still return
+            except _ilm_preview_submit_exceptions() as exc:
                 logger.warning(
                     "Failed to reconcile claim interventions from preview for claim %s: %s",
                     claim.id,
@@ -96,7 +110,7 @@ class SHAClaimILMPreviewSubmitMixin:
             result = self._ilm_service(facility=claim.facility).preview_payer_claim(
                 claim, user=request.user
             )
-        except Exception as exc:
+        except _ilm_preview_submit_exceptions() as exc:
             return self._ilm_handle_error(exc)
         return self._ilm_response(result)
 
@@ -539,7 +553,7 @@ class SHAClaimILMPreviewSubmitMixin:
                     claim.save(update_fields=["previewed_at", "updated_at"])
                 else:
                     preview_error = str(preview_result.payload) if preview_result.payload else None
-            except Exception as exc:
+            except _ilm_preview_submit_exceptions() as exc:
                 preview_error = _stringify_error(exc)
 
         # Local pre-flight validation (DHA UAT: catch errors before DHA round-trip)
@@ -582,7 +596,7 @@ class SHAClaimILMPreviewSubmitMixin:
                     claim.id,
                     sync_summary,
                 )
-        except Exception as exc:  # noqa: BLE001 - fail open before submit
+        except _ilm_preview_submit_exceptions() as exc:
             logger.warning(
                 "Intervention sync before submit failed for claim %s: %s",
                 claim.id,
@@ -604,7 +618,7 @@ class SHAClaimILMPreviewSubmitMixin:
                 practitioner_regulation_body=str(d.get("practitioner_regulation_body", "KMPDC")),
                 user=request.user,
             )
-        except Exception as exc:
+        except _ilm_preview_submit_exceptions() as exc:
             return self._ilm_handle_error(exc)
         return self._ilm_response(result)
 
@@ -624,6 +638,6 @@ class SHAClaimILMPreviewSubmitMixin:
             result = self._ilm_service(facility=claim.facility).close(
                 claim, params, user=request.user
             )
-        except Exception as exc:
+        except _ilm_preview_submit_exceptions() as exc:
             return self._ilm_handle_error(exc)
         return self._ilm_response(result)

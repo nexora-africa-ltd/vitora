@@ -496,6 +496,51 @@ class TestDHIS2ConfigTestConnection:
         response = admin_client.post(f"/api/dhis2-configs/{config.pk}/test-connection/")
         assert response.status_code == status.HTTP_504_GATEWAY_TIMEOUT
 
+    def test_connection_invalid_json_payload(self, admin_client, sample_organization, mocker):
+        from hmis.apps.core.models import DHIS2Config
+
+        config = DHIS2Config(
+            organization=sample_organization,
+            name="Invalid JSON Test",
+            base_url="https://dhis2.example.org",
+            username="admin",
+        )
+        config.set_password("pass")
+        config.save()
+
+        mock_resp = mocker.MagicMock()
+        mock_resp.ok = True
+        mock_resp.json.side_effect = ValueError("invalid json")
+        mocker.patch("requests.get", return_value=mock_resp)
+
+        response = admin_client.post(f"/api/dhis2-configs/{config.pk}/test-connection/")
+
+        assert response.status_code == status.HTTP_502_BAD_GATEWAY
+        assert response.data["status"] == "error"
+        assert "invalid response payload" in response.data["detail"].lower()
+
+    def test_connection_unexpected_transport_error(self, admin_client, sample_organization, mocker):
+        import requests as http_requests
+
+        from hmis.apps.core.models import DHIS2Config
+
+        config = DHIS2Config(
+            organization=sample_organization,
+            name="Transport Error Test",
+            base_url="https://dhis2.example.org",
+            username="admin",
+        )
+        config.set_password("pass")
+        config.save()
+
+        mocker.patch("requests.get", side_effect=http_requests.RequestException("transport fail"))
+
+        response = admin_client.post(f"/api/dhis2-configs/{config.pk}/test-connection/")
+
+        assert response.status_code == status.HTTP_502_BAD_GATEWAY
+        assert response.data["status"] == "error"
+        assert "unexpected transport error" in response.data["detail"].lower()
+
 
 # =============================================================================
 # Facility API - dhis2_org_unit field presence

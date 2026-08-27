@@ -12,6 +12,8 @@ This module contains Django signals for pharmacy-billing integration:
 import logging
 from decimal import Decimal
 
+from django.core.exceptions import ObjectDoesNotExist, ValidationError
+from django.db import DatabaseError, IntegrityError
 from django.db.models import Q
 from django.db.models.signals import post_save
 from django.dispatch import receiver
@@ -24,6 +26,21 @@ from hmis.apps.core.sync_context import is_sync_materialization_active
 from .models import Dispensing, Prescription, PrescriptionItem, StockAlert, StockBatch
 
 logger = logging.getLogger(__name__)
+
+
+def _pharmacy_signal_handled_exceptions() -> tuple[type[Exception], ...]:
+    """Exceptions pharmacy signals may log and continue on."""
+    return (
+        ValidationError,
+        ObjectDoesNotExist,
+        DatabaseError,
+        IntegrityError,
+        ImportError,
+        AttributeError,
+        TypeError,
+        ValueError,
+        RuntimeError,
+    )
 
 
 def _ensure_invoice_tenant(invoice: Invoice, *, facility_id=None, organization_id=None) -> None:
@@ -238,7 +255,7 @@ def create_invoice_item_for_prescription(sender, instance, created, **kwargs):
             facility_id=getattr(prescription, "facility_id", None),
             organization_id=getattr(prescription, "organization_id", None),
         )
-    except Exception as e:
+    except _pharmacy_signal_handled_exceptions() as e:
         logger.error(f"Failed to create invoice item for prescription item {instance.id}: {e}")
 
 
@@ -271,7 +288,7 @@ def broadcast_prescription_on_create(sender, instance, created, **kwargs):
         from hmis.apps.pharmacy.websockets import broadcast_prescription_created
 
         broadcast_prescription_created(instance)
-    except Exception as e:
+    except _pharmacy_signal_handled_exceptions() as e:
         logger.error(f"Failed to broadcast prescription created for {instance.id}: {e}")
 
 
@@ -389,7 +406,7 @@ def handle_dispensing_billing(sender, instance, created, **kwargs):
             drug.generic_name,
             instance.quantity_dispensed,
         )
-    except Exception as e:
+    except _pharmacy_signal_handled_exceptions() as e:
         logger.error(f"Failed to create invoice item for dispensing {instance.id}: {e}")
 
 
@@ -419,7 +436,7 @@ def broadcast_dispensing_on_create(sender, instance, created, **kwargs):
         from hmis.apps.pharmacy.websockets import broadcast_dispensing_completed
 
         broadcast_dispensing_completed(instance)
-    except Exception as e:
+    except _pharmacy_signal_handled_exceptions() as e:
         logger.error(f"Failed to broadcast dispensing completed for {instance.id}: {e}")
 
 
@@ -437,7 +454,7 @@ def broadcast_stock_level_change(sender, instance, **kwargs):
 
     try:
         _sync_stock_alert_records(instance)
-    except Exception as e:
+    except _pharmacy_signal_handled_exceptions() as e:
         logger.warning(
             "Failed to sync stock alerts for batch %s: %s",
             getattr(instance, "id", None),
@@ -483,7 +500,7 @@ def broadcast_stock_level_change(sender, instance, **kwargs):
             )
             broadcast_stock_low_warning(instance, facility_id)
             _notify_stock_alert(instance, critical=False)
-    except Exception as e:
+    except _pharmacy_signal_handled_exceptions() as e:
         logger.error(f"Failed to broadcast stock level change for batch {instance.id}: {e}")
 
 
@@ -529,7 +546,7 @@ def _notify_prescription_created(instance):
             related_id=instance.id,
             action_url=f"/pharmacy/prescriptions/{instance.id}",
         )
-    except Exception:
+    except _pharmacy_signal_handled_exceptions():
         logger.exception("Failed to notify pharmacists for prescription %s", instance.id)
 
 
@@ -582,7 +599,7 @@ def _notify_stock_alert(instance, critical: bool):
             related_id=instance.id,
             action_url="/pharmacy/inventory",
         )
-    except Exception:
+    except _pharmacy_signal_handled_exceptions():
         logger.exception("Failed to notify about stock alert for batch %s", instance.id)
 
 
@@ -655,5 +672,5 @@ def sync_ward_stock_on_batch_receive(sender, instance, created, **kwargs):
             store_location.code,
             instance.quantity_received,
         )
-    except Exception:
+    except _pharmacy_signal_handled_exceptions():
         logger.exception("Failed to sync batch %s to ward stock", instance.batch_number)

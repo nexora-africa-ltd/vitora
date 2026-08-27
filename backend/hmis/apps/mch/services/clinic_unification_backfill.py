@@ -292,7 +292,13 @@ def backfill_mch_clinic_visits(
                 clinic_id=clinic.id,
                 visit_date=mch_visit.visit_date.isoformat(),
             )
-        except Exception as exc:  # pragma: no cover - defensive logging path
+        except (
+            AttributeError,
+            TypeError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+        ) as exc:  # pragma: no cover - defensive logging path
             summary.errors += 1
             summary.add_record(
                 mch_visit_id=mch_visit.id,

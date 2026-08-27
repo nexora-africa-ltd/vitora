@@ -148,7 +148,7 @@ class SladeAuthService:
         except InsuranceValidationError:
             HEALTHCLOUD_TOKEN_REQUESTS_TOTAL.labels(result="failed").inc()
             raise
-        except Exception:
+        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
             HEALTHCLOUD_TOKEN_REQUESTS_TOTAL.labels(result="failed").inc()
             raise
         body = response.json or {}

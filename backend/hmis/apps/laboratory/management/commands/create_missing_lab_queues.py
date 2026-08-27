@@ -61,7 +61,7 @@ class Command(BaseCommand):
                     )
                     created += 1
                     self.stdout.write(f"  Created queue for: {order.order_number}")
-                except Exception as e:
+                except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
                     errors += 1
                     self.stderr.write(
                         self.style.ERROR(f"  Failed to create queue for {order.order_number}: {e}")

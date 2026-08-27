@@ -141,7 +141,7 @@ class EventBus:
                 organization_id=event.organization_id,
                 correlation_id=event.correlation_id,
             )
-        except Exception as e:
+        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
             logger.error(f"Failed to persist event {event.event_type}: {e}")
 
     @staticmethod
@@ -149,7 +149,7 @@ class EventBus:
         """Call handler, logging any exception without re-raising."""
         try:
             handler(event)
-        except Exception:
+        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
             logger.exception(
                 f"Handler {handler.__name__} failed for event "
                 f"{event.event_type} (aggregate={event.aggregate_type}:{event.aggregate_id})"

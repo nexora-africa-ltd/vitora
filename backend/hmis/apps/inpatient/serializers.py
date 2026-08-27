@@ -408,7 +408,7 @@ class AdmissionSerializer(serializers.ModelSerializer):
         try:
             allergies_qs = obj.patient.patient_allergies.filter(status="active")
             result["allergies_structured"] = [a.substance for a in allergies_qs]
-        except Exception:
+        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
             pass
 
         # --- Recent verified lab results for this admission ---
@@ -432,7 +432,7 @@ class AdmissionSerializer(serializers.ModelSerializer):
                 }
                 for lr in lab_results
             ]
-        except Exception:
+        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
             pass
 
         return result
@@ -1891,7 +1891,7 @@ class KardexFieldChangeSerializer(serializers.ModelSerializer):
     def get_field_label(self, obj) -> str:
         try:
             return str(NursingKardex._meta.get_field(obj.field_name).verbose_name).replace("_", " ")
-        except Exception:
+        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
             return obj.field_name.replace("_", " ")
 
 

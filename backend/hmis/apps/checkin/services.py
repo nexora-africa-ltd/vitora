@@ -209,7 +209,7 @@ def get_clinical_snapshot(patient) -> ClinicalSnapshot:
                     f"🟡 Renal impairment: CKD {latest_egfr['ckd_stage']} "
                     f"(eGFR {latest_egfr['egfr_ckd_epi']:.0f} mL/min) — dose adjust"
                 )
-    except Exception:
+    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
         logging.getLogger(__name__).debug("eGFR lookup failed for clinical snapshot", exc_info=True)
 
     return ClinicalSnapshot(
@@ -653,7 +653,7 @@ def _trigger_sha_check(patient, facility=None):
 
         facility_id = getattr(facility, "id", None) if facility else None
         trigger_sha_eligibility_verification(patient.id, facility_id)
-    except Exception:
+    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
         import logging
 
         logging.getLogger(__name__).debug(

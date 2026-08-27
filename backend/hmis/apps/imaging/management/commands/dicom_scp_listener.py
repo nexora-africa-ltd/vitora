@@ -124,7 +124,7 @@ class Command(BaseCommand):
 
             try:
                 return _persist_cstore_instance(event, calling_aet)
-            except Exception:
+            except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
                 logger.exception("C-STORE handler failed for instance from %s", calling_aet)
                 return 0xC000  # Cannot understand
 
@@ -205,7 +205,7 @@ def _persist_cstore_instance(event, calling_aet: str) -> int:
                 },
                 facility_id=getattr(study, "facility_id", None),
             )
-        except Exception:
+        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
             logger.exception("Failed to publish INSTANCE_RECEIVED event")
 
         return 0x0000  # Success

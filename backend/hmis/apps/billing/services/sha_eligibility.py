@@ -986,7 +986,7 @@ class SHAEligibilityService:
 
                         if not dependents_covered:
                             dependents_covered = len(dependents)
-                except Exception as e:
+                except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
                     logger.warning(f"Could not fetch dependents: {e}")
 
             return {

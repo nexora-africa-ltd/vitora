@@ -18,7 +18,7 @@ def authenticate_hub_license(request: Request, token: str) -> bool:
     """Validate a hub license JWT and attach installation context to the request."""
     try:
         payload = verify_license_token(token)
-    except Exception:
+    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
         return False
 
     installation_id = payload.get("installation_id")

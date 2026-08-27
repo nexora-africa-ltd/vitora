@@ -256,7 +256,7 @@ class ConsentSendOTPView(APIView):
                 response_data["sandbox_otp"] = sandbox_otp
 
             return Response(response_data, status=status.HTTP_201_CREATED)
-        except Exception as e:
+        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
             logger.warning("Failed to send OTP: %s", str(e))
             return Response(
                 {"error": str(e), "code": "ilm_error", "details": {}},

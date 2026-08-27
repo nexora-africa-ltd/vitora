@@ -41,7 +41,7 @@ def _publish_safe(event_type: str, payload: dict) -> None:
         from hmis.apps.core.events import publish_event
 
         publish_event(event_type, payload)
-    except Exception:  # pragma: no cover
+    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):  # pragma: no cover
         logger.exception("Failed to publish DHA HIE prescription event %s", event_type)
 
 
@@ -396,7 +396,13 @@ class IlmPrescriptionService:
                 correlation_id=str(response.headers.get("X-Correlation-Id") or ""),
                 created_by=user if user and getattr(user, "pk", None) else None,
             )
-        except Exception:  # pragma: no cover - audit best-effort
+        except (
+            AttributeError,
+            TypeError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+        ):  # pragma: no cover - audit best-effort
             logger.exception("Failed to record SHADhaPrescription")
             return None
 
@@ -425,6 +431,12 @@ class IlmPrescriptionService:
             obj.dispensed_at = timezone.now()
             obj.save(update_fields=["status", "dispense_payload", "dispensed_at"])
             return obj
-        except Exception:  # pragma: no cover
+        except (
+            AttributeError,
+            TypeError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+        ):  # pragma: no cover
             logger.exception("Failed to mark SHADhaPrescription dispensed")
             return None

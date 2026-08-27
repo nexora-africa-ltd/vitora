@@ -12,6 +12,8 @@ Handles:
 
 import logging
 
+from django.core.exceptions import ObjectDoesNotExist, ValidationError
+from django.db import DatabaseError, IntegrityError
 from django.db.models.signals import post_init, post_save
 from django.dispatch import receiver
 
@@ -19,6 +21,21 @@ from hmis.apps.core.events import ReferralEvents, publish_event
 from hmis.apps.referrals.models import ClinicalReferral
 
 logger = logging.getLogger(__name__)
+
+
+def _referral_signal_handled_exceptions() -> tuple[type[Exception], ...]:
+    """Exceptions referral signals may safely swallow after logging."""
+    return (
+        ValidationError,
+        ObjectDoesNotExist,
+        DatabaseError,
+        IntegrityError,
+        ImportError,
+        AttributeError,
+        TypeError,
+        ValueError,
+        RuntimeError,
+    )
 
 
 @receiver(post_init, sender=ClinicalReferral)
@@ -70,7 +87,7 @@ def mark_source_encounter_referred(sender, instance, created, **kwargs):
             facility_id=instance.facility_id,
             organization_id=instance.organization_id,
         )
-    except Exception:
+    except _referral_signal_handled_exceptions():
         logger.exception("Failed to publish referral.created event for %s", instance.pk)
 
     encounter = instance.encounter
@@ -136,7 +153,7 @@ def _publish_status_change_event(sender, instance, created, **kwargs):
                 facility_id=instance.facility_id,
                 organization_id=instance.organization_id,
             )
-        except Exception:
+        except _referral_signal_handled_exceptions():
             logger.exception(
                 "Failed to publish referral status event for %s (%s)",
                 instance.pk,
@@ -249,7 +266,7 @@ def _create_allied_health_order(referral):
             logger.warning(f"Unknown allied health service: {service}")
     except ImportError:
         logger.warning(f"Module for {service} not available. Skipping order creation.")
-    except Exception as e:
+    except _referral_signal_handled_exceptions() as e:
         logger.error(
             f"Error creating allied health order for referral {referral.referral_number}: {e}"
         )
@@ -410,7 +427,7 @@ def _create_admission_recommendation(referral):
 
     except ImportError:
         logger.warning("Inpatient module not available. Skipping admission recommendation.")
-    except Exception as e:
+    except _referral_signal_handled_exceptions() as e:
         logger.error(f"Error creating admission recommendation: {e}")
 
 
@@ -502,7 +519,7 @@ def _create_clinic_visit(referral):
 
     except ImportError:
         logger.warning("Clinics module not available. Skipping queue routing.")
-    except Exception as e:
+    except _referral_signal_handled_exceptions() as e:
         logger.error(f"Error creating clinic visit for referral: {e}")
 
 
@@ -597,7 +614,7 @@ def _notify_referral_created(instance):
             related_id=instance.id,
             action_url=f"/referrals/{instance.id}",
         )
-    except Exception:
+    except _referral_signal_handled_exceptions():
         logger.exception("Failed to notify referral created for %s", instance.id)
 
 
@@ -624,5 +641,5 @@ def _notify_referral_accepted(instance):
             related_id=instance.id,
             action_url=f"/referrals/{instance.id}",
         )
-    except Exception:
+    except _referral_signal_handled_exceptions():
         logger.exception("Failed to notify referral accepted for %s", instance.id)

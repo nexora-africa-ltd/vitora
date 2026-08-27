@@ -10,15 +10,30 @@ import logging
 from collections.abc import Mapping
 from typing import cast
 
+from django.db import DatabaseError
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.decorators import action as drf_action
 from rest_framework.response import Response
 
 from hmis.apps.billing.models import ConsentToken, SHAClaim
+from hmis.apps.billing.services.dha_errors import DHAError
 from hmis.apps.billing.sha_views_claims_helpers import _stringify_error
 
 logger = logging.getLogger(__name__)
+
+
+def _ilm_intervention_exceptions() -> tuple[type[Exception], ...]:
+    return (
+        DatabaseError,
+        DHAError,
+        AttributeError,
+        LookupError,
+        TypeError,
+        ValueError,
+        RuntimeError,
+        ImportError,
+    )
 
 
 class SHAClaimILMInterventionsMixin:
@@ -62,7 +77,7 @@ class SHAClaimILMInterventionsMixin:
             )
             for code in consent_obj.intervention_codes if consent_obj else []:
                 _append_code(code)
-        except Exception as exc:  # noqa: S110 - best-effort fallback
+        except _ilm_intervention_exceptions() as exc:
             logger.debug(
                 "Consent-token intervention fallback failed for claim %s: %s",
                 claim.id,
@@ -192,7 +207,7 @@ class SHAClaimILMInterventionsMixin:
                 cast(list[dict[str, str]], summary["failed"]).append(
                     {"code": code, "error": message}
                 )
-            except Exception as exc:  # noqa: BLE001 - continue syncing other interventions
+            except _ilm_intervention_exceptions() as exc:
                 cast(list[dict[str, str]], summary["failed"]).append(
                     {"code": code, "error": _stringify_error(exc)}
                 )
@@ -232,13 +247,13 @@ class SHAClaimILMInterventionsMixin:
                 practitioner_identification_type=str(d.get("practitioner_identification_type", "")),
                 practitioner_regulation_body=str(d.get("practitioner_regulation_body", "KMPDC")),
             )
-        except Exception as e:
+        except _ilm_intervention_exceptions() as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         try:
             result = self._ilm_service(facility=claim.facility).start_visit(
                 claim, params, user=request.user
             )
-        except Exception as exc:
+        except _ilm_intervention_exceptions() as exc:
             return self._ilm_handle_error(exc)
         return self._ilm_response(result)
 
@@ -254,7 +269,7 @@ class SHAClaimILMInterventionsMixin:
             result = self._ilm_service(facility=claim.facility).add_intervention(
                 claim, code, user=request.user
             )
-        except Exception as exc:
+        except _ilm_intervention_exceptions() as exc:
             return self._ilm_handle_error(exc)
         return self._ilm_response(result)
 
@@ -268,7 +283,7 @@ class SHAClaimILMInterventionsMixin:
                 user=request.user,
                 strict_preview=True,
             )
-        except Exception as exc:
+        except _ilm_intervention_exceptions() as exc:
             return self._ilm_handle_error(exc)
         return Response(summary, status=status.HTTP_200_OK)
 
@@ -290,7 +305,7 @@ class SHAClaimILMInterventionsMixin:
             )
         except KeyError as e:
             return Response({"error": f"missing field: {e}"}, status=400)
-        except Exception as exc:
+        except _ilm_intervention_exceptions() as exc:
             return self._ilm_handle_error(exc)
         return self._ilm_response(result)
 
@@ -304,7 +319,7 @@ class SHAClaimILMInterventionsMixin:
             result = self._ilm_service(facility=claim.facility).restore_intervention(
                 claim, code, user=request.user
             )
-        except Exception as exc:
+        except _ilm_intervention_exceptions() as exc:
             return self._ilm_handle_error(exc)
         return self._ilm_response(result)
 
@@ -318,7 +333,7 @@ class SHAClaimILMInterventionsMixin:
             result = self._ilm_service(facility=claim.facility).retire_intervention(
                 claim, code, user=request.user
             )
-        except Exception as exc:
+        except _ilm_intervention_exceptions() as exc:
             return self._ilm_handle_error(exc)
         return self._ilm_response(result)
 
@@ -434,6 +449,6 @@ class SHAClaimILMInterventionsMixin:
                 extra=extra,
                 user=request.user,
             )
-        except Exception as exc:
+        except _ilm_intervention_exceptions() as exc:
             return self._ilm_handle_error(exc)
         return self._ilm_response(result)

@@ -138,7 +138,7 @@ def auto_create_theatre_resource(sender, instance, created, **kwargs):
     try:
         _sync_theatre_resource(instance)
         _sync_theatre_schedules(instance)
-    except Exception:
+    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
         logger.exception("Failed to sync scheduling bridge for OperatingTheatre %s", instance.pk)
 
 
@@ -175,7 +175,7 @@ def publish_surgery_case_event(sender, instance, created, **kwargs):
             from hmis.apps.billing.agent import BillingAgentService
 
             BillingAgentService.sync_theatre_case_billing(instance)
-        except Exception:
+        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
             logger.exception("Failed to sync billing for discharged surgery case %s", instance.pk)
 
 
@@ -187,7 +187,7 @@ def sync_theatre_consumable_billing(sender, instance, created, **kwargs):
         from hmis.apps.billing.agent import BillingAgentService
 
         BillingAgentService.sync_theatre_case_billing(instance.surgery_case)
-    except Exception:
+    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
         logger.exception("Failed to sync billing for theatre consumable %s", instance.pk)
 
 

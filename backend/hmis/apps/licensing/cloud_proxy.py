@@ -138,7 +138,7 @@ class CloudProxyClient:
                 data={},
                 error="Cannot reach Vitora cloud. Check internet connectivity.",
             )
-        except Exception as exc:
+        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as exc:
             logger.exception("Cloud proxy unexpected error: POST %s", path)
             return CloudProxyResponse(
                 success=False,

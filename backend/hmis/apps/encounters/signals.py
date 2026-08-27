@@ -7,6 +7,8 @@ Auto-releases ER beds when an encounter is closed or cancelled.
 
 import logging
 
+from django.core.exceptions import ObjectDoesNotExist, ValidationError
+from django.db import DatabaseError, IntegrityError
 from django.db.models import Q
 from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
@@ -16,6 +18,21 @@ from hmis.apps.core.events import ClinicalEvents, publish_event
 from .services import VitalFlagSuggestionService
 
 logger = logging.getLogger(__name__)
+
+
+def _encounter_signal_handled_exceptions() -> tuple[type[Exception], ...]:
+    """Exceptions encounter signal handlers may log and continue on."""
+    return (
+        ValidationError,
+        ObjectDoesNotExist,
+        DatabaseError,
+        IntegrityError,
+        ImportError,
+        AttributeError,
+        TypeError,
+        ValueError,
+        RuntimeError,
+    )
 
 
 @receiver(pre_save, sender="encounters.Encounter")
@@ -137,7 +154,7 @@ def _broadcast_bed_auto_release(bed, encounter) -> None:
                 new_loop.run_until_complete(channel_layer.group_send("emergency_queue", message))
             finally:
                 new_loop.close()
-    except Exception:
+    except _encounter_signal_handled_exceptions():
         logger.exception("Failed to broadcast bed auto-release")
 
 
@@ -218,7 +235,7 @@ def _sync_claim_diagnosis_on_close(encounter):
                 claim.claim_number,
                 code,
             )
-    except Exception:
+    except _encounter_signal_handled_exceptions():
         logger.exception("Failed to sync SHA claim diagnosis on encounter %s close", encounter.id)
 
 
@@ -272,7 +289,7 @@ def _notify_critical_vitals(instance):
             related_id=instance.id,
             action_url=f"/encounters/{instance.id}",
         )
-    except Exception:
+    except _encounter_signal_handled_exceptions():
         logger.exception("Failed to notify critical vitals for encounter %s", instance.id)
 
 
@@ -343,9 +360,9 @@ def sync_sha_claim_diagnosis(sender, instance, **kwargs):
                 from hmis.apps.billing.tasks import auto_populate_interventions
 
                 auto_populate_interventions.apply_async(args=[encounter.id, claim.id], countdown=5)
-            except Exception:
+            except _encounter_signal_handled_exceptions():
                 logger.debug("SHA intervention suggestion not triggered (Celery unavailable)")
-    except Exception:
+    except _encounter_signal_handled_exceptions():
         logger.exception("Failed to sync SHA claim diagnosis for diagnosis %s", instance.pk)
 
 

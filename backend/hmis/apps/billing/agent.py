@@ -831,7 +831,7 @@ class BillingAgentService:
                 getattr(claim, "claim_flow", "unknown"),
             )
             return claim
-        except Exception:
+        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
             logger.exception(
                 "Billing agent: SHA claim creation failed for invoice %s",
                 invoice.invoice_number,
@@ -883,7 +883,7 @@ class BillingAgentService:
                 "Billing agent: updated SHA claim %s on discharge",
                 claim.claim_number,
             )
-        except Exception:
+        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
             logger.exception(
                 "Billing agent: SHA claim update failed on discharge for claim %s",
                 claim.claim_number,
@@ -915,7 +915,7 @@ class BillingAgentService:
                 )
                 cls._add_bed_charge(invoice, admission, nights=1, coalesce_existing=True)
                 charged += 1
-            except Exception:
+            except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
                 logger.exception(
                     "Billing agent: bed charge failed for admission %s",
                     admission.id,
@@ -974,7 +974,7 @@ class BillingAgentService:
 
                 service.submit_claim(claim, _get_system_user())
                 submitted += 1
-            except Exception:
+            except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
                 logger.exception(
                     "Billing agent: claim submission failed for %s",
                     claim.claim_number,
@@ -1032,7 +1032,7 @@ class BillingAgentService:
                         old_status,
                         new_status,
                     )
-            except Exception:
+            except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
                 result["errors"] += 1
                 logger.exception(
                     "Billing agent: status poll failed for claim %s",

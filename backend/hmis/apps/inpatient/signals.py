@@ -10,6 +10,8 @@ Provides real-time notifications via WebSocket and email for:
 import logging
 from datetime import datetime
 
+from django.core.exceptions import ObjectDoesNotExist, ValidationError
+from django.db import DatabaseError, IntegrityError
 from django.db.models import Q
 from django.db.models.signals import post_save
 from django.dispatch import receiver
@@ -24,6 +26,21 @@ from hmis.apps.inpatient.websockets import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _inpatient_signal_handled_exceptions() -> tuple[type[Exception], ...]:
+    """Exceptions inpatient signal handlers may safely log and continue on."""
+    return (
+        ValidationError,
+        ObjectDoesNotExist,
+        DatabaseError,
+        IntegrityError,
+        ImportError,
+        AttributeError,
+        TypeError,
+        ValueError,
+        RuntimeError,
+    )
 
 
 @receiver(post_save, sender=Admission)
@@ -46,7 +63,7 @@ def close_source_opd_encounter_on_admission(sender, instance, created, **kwargs)
         encounter.disposition = "ADMITTED"
         encounter.save(update_fields=["disposition", "updated_at"])
         encounter.finalize(instance.admitting_officer)
-    except Exception as exc:
+    except _inpatient_signal_handled_exceptions() as exc:
         logger.exception(
             "Failed to auto-close OPD encounter %s after admission %s: %s",
             encounter.id,
@@ -105,7 +122,7 @@ def notify_ward_constraints_updated(sender, instance, created, **kwargs):
             },
         )
         logger.info(f"Broadcasted constraint update for ward {instance.id}")
-    except Exception as e:
+    except _inpatient_signal_handled_exceptions() as e:
         # Don't fail the save operation if broadcast fails
         logger.exception(f"Failed to broadcast ward constraint update: {e}")
 
@@ -192,7 +209,7 @@ def notify_compatibility_violation(sender, instance, created, **kwargs):
             notify_supervisors_critical_violation.delay(instance.id)
             logger.info(f"Queued supervisor email notification for admission {instance.id}")
 
-    except Exception as e:
+    except _inpatient_signal_handled_exceptions() as e:
         # Don't fail admission creation if notifications fail
         logger.exception(f"Failed to send violation notifications: {e}")
 
@@ -267,7 +284,7 @@ def _notify_admission_created(instance):
             related_id=instance.id,
             action_url=f"/inpatient/admissions/{instance.id}",
         )
-    except Exception:
+    except _inpatient_signal_handled_exceptions():
         logger.exception("Failed to notify admission for %s", instance.id)
 
 
@@ -315,5 +332,5 @@ def _notify_admission_created(instance):
             related_id=instance.id,
             action_url=f"/inpatient/admissions/{instance.id}",
         )
-    except Exception:
+    except _inpatient_signal_handled_exceptions():
         logger.exception("Failed to notify admission for %s", instance.id)

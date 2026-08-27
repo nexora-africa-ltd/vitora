@@ -282,7 +282,13 @@ def backfill_maternity_postpartum_continuity(
                     else "Backfilled discharge continuity and related maternity workflow records."
                 ),
             )
-        except Exception as exc:  # pragma: no cover - defensive path
+        except (
+            AttributeError,
+            TypeError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+        ) as exc:  # pragma: no cover - defensive path
             summary.errors += 1
             summary.add_record(
                 discharge_id=discharge.id,

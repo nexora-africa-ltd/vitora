@@ -512,7 +512,13 @@ class Slade360Adapter(InsuranceApiAdapter):
             )
             if authorization and authorization.auth_token:
                 member_number = authorization.auth_token
-        except Exception:  # pragma: no cover - best effort fallback
+        except (
+            AttributeError,
+            TypeError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+        ):  # pragma: no cover - best effort fallback
             logger.exception("Failed resolving HealthCloud auth token for claim payload")
 
         visit_start_dt = datetime.combine(claim.service_date, time.min, tzinfo=UTC)

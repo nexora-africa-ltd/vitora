@@ -494,7 +494,7 @@ def _publish_safe(event_type: str, payload: dict) -> None:
         from hmis.apps.core.events import publish_event
 
         publish_event(event_type, payload)
-    except Exception:  # pragma: no cover
+    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):  # pragma: no cover
         logger.exception("Failed to publish DHA HIE preauth event %s", event_type)
 
 
@@ -957,7 +957,13 @@ class IlmPreauthService:
             try:
                 preauth.doctor_consent_state = "REQUESTED"
                 preauth.save(update_fields=["doctor_consent_state", "updated_at"])
-            except Exception:  # pragma: no cover - persistence best-effort
+            except (
+                AttributeError,
+                TypeError,
+                RuntimeError,
+                OSError,
+                AssertionError,
+            ):  # pragma: no cover - persistence best-effort
                 logger.exception("Failed to update preauth.doctor_consent_state")
         from hmis.apps.core.events import BillingEvents
 
@@ -1232,7 +1238,13 @@ class IlmPreauthService:
                     obj.submitted_at = obj.submitted_at or timezone.now()
                 obj.save()
             return obj
-        except Exception:  # pragma: no cover
+        except (
+            AttributeError,
+            TypeError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+        ):  # pragma: no cover
             logger.exception("Failed to upsert SHAPreauth")
             return None
 
@@ -1253,7 +1265,13 @@ class IlmPreauthService:
                     "updated_at",
                 ]
             )
-        except Exception:  # pragma: no cover
+        except (
+            AttributeError,
+            TypeError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+        ):  # pragma: no cover
             logger.exception("Failed to stamp preauth response")
 
     def _mark_cancelled(
@@ -1287,7 +1305,13 @@ class IlmPreauthService:
             preauth.response_payload = result.payload or {}
             preauth.correlation_id = result.correlation_id or preauth.correlation_id
             preauth.save()
-        except Exception:  # pragma: no cover
+        except (
+            AttributeError,
+            TypeError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+        ):  # pragma: no cover
             logger.exception("Failed to mark preauth cancelled")
         return preauth
 
@@ -1328,6 +1352,12 @@ class IlmPreauthService:
                 status="submitted" if result.status_code < 400 else "open",
                 opened_by=user if getattr(user, "is_authenticated", False) else None,
             )
-        except Exception:  # pragma: no cover
+        except (
+            AttributeError,
+            TypeError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+        ):  # pragma: no cover
             logger.exception("Failed to persist SHAEmergencyClaim")
             return None

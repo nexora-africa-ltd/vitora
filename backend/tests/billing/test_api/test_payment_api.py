@@ -386,6 +386,58 @@ class TestMpesaAPIEndpoints:
         assert response.status_code == status.HTTP_200_OK
         assert "checkout_request_id" in response.data
 
+    @patch("hmis.apps.billing.services.MpesaService")
+    def test_initiate_runtime_error_returns_502(
+        self,
+        MockService,
+        authenticated_client,
+        sample_invoice,
+        sample_invoice_item,
+        sample_payment_point,
+    ):
+        """Runtime transport errors should return structured 502 responses."""
+        sample_invoice.calculate_totals()
+        sample_invoice.status = Invoice.Status.PENDING
+        sample_invoice.save()
+
+        mock_instance = MockService.return_value
+        mock_instance.format_phone.return_value = "254712345678"
+        mock_instance.initiate_stk_push.side_effect = RuntimeError("upstream timeout")
+
+        response = authenticated_client.post(
+            "/api/billing/mpesa/initiate/",
+            {
+                "invoice_id": sample_invoice.id,
+                "phone_number": "254712345678",
+                "amount": str(sample_invoice.balance_due),
+                "payment_point": sample_payment_point.id,
+            },
+        )
+
+        assert response.status_code == status.HTTP_502_BAD_GATEWAY
+        assert response.data["code"] == "mpesa_transport_error"
+
+    @patch("hmis.apps.billing.services.MpesaService")
+    def test_query_runtime_error_returns_502(self, MockService, authenticated_client):
+        mock_instance = MockService.return_value
+        mock_instance.query_transaction_status.side_effect = RuntimeError("gateway unavailable")
+
+        response = authenticated_client.get("/api/billing/mpesa/query/test-checkout-err/")
+
+        assert response.status_code == status.HTTP_502_BAD_GATEWAY
+        assert response.data["code"] == "mpesa_transport_error"
+
+    @patch("hmis.apps.billing.services.MpesaService")
+    def test_callback_runtime_error_returns_acknowledged_failure(self, MockService, api_client):
+        mock_instance = MockService.return_value
+        mock_instance.process_callback.side_effect = RuntimeError("callback parse failure")
+
+        response = api_client.post("/api/billing/mpesa/callback/", {"Body": {}}, format="json")
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["ResultCode"] == 1
+        assert "Temporary M-Pesa upstream error." in response.data["ResultDesc"]
+
 
 class TestCreditNoteAPIEndpoints:
     """Test CreditNote API operations."""

@@ -19,6 +19,8 @@ import logging
 from datetime import date, timedelta
 from decimal import Decimal
 
+from django.core.exceptions import FieldError
+from django.db import DatabaseError
 from django.db.models import Q, Sum
 from django.utils import timezone
 
@@ -26,6 +28,21 @@ from hmis.apps.billing.facility_identifiers import resolve_fr_code
 from hmis.apps.billing.services.document_context import append_standard_header
 
 logger = logging.getLogger(__name__)
+
+
+def _sha_automation_handled_exceptions() -> tuple[type[Exception], ...]:
+    return (
+        DatabaseError,
+        FieldError,
+        AttributeError,
+        LookupError,
+        TypeError,
+        ValueError,
+        RuntimeError,
+        ImportError,
+        OSError,
+        ConnectionError,
+    )
 
 
 def _resolve_fr_code(facility):
@@ -131,7 +148,7 @@ class SHAClaimAutomationService:
 
             return {"status": "sent", "result": result}
 
-        except Exception as e:
+        except _sha_automation_handled_exceptions() as e:
             logger.warning(
                 "Auto-consent trigger failed for patient %s: %s",
                 patient_id,
@@ -254,7 +271,7 @@ class SHAClaimAutomationService:
 
             return {"status": "error", "reason": "DHA visit start returned failure"}
 
-        except Exception as e:
+        except _sha_automation_handled_exceptions() as e:
             logger.exception("Auto-start visit failed for encounter %s", encounter_id)
             return {"status": "error", "reason": str(e)}
 
@@ -360,7 +377,7 @@ class SHAClaimAutomationService:
 
             return suggestions
 
-        except Exception as e:
+        except _sha_automation_handled_exceptions() as e:
             logger.warning("Intervention suggestion failed for encounter %s: %s", encounter_id, e)
             return []
 
@@ -479,7 +496,7 @@ class SHAClaimAutomationService:
 
             return {"attached": attached, "skipped": skipped}
 
-        except Exception as e:
+        except _sha_automation_handled_exceptions() as e:
             logger.exception("Auto-attach interventions failed for claim %s", claim_id)
             return {"attached": 0, "skipped": 0, "error": str(e)}
 
@@ -653,7 +670,7 @@ class SHAClaimAutomationService:
 
             return {"attached": attached, "already_attached": already_attached}
 
-        except Exception as e:
+        except _sha_automation_handled_exceptions() as e:
             logger.exception("Auto-attach documents failed for claim %s", claim_id)
             return {"attached": 0, "error": str(e)}
 
@@ -844,7 +861,7 @@ class SHAClaimAutomationService:
                 )
 
                 inpatient_summary = compose_inpatient_clinical_summary_text(encounter)
-            except Exception:  # noqa: S110 - best effort summary enrichment
+            except _sha_automation_handled_exceptions():
                 inpatient_summary = ""
 
             discharge = getattr(getattr(encounter, "admission", None), "discharge", None)
@@ -1143,7 +1160,7 @@ class SHAClaimAutomationService:
                     status="VERIFIED",
                 )
             )
-        except Exception:
+        except _sha_automation_handled_exceptions():
             return []
 
     @classmethod
@@ -1153,7 +1170,7 @@ class SHAClaimAutomationService:
             from hmis.apps.pharmacy.models import Prescription
 
             return list(Prescription.objects.filter(encounter=encounter))
-        except Exception:
+        except _sha_automation_handled_exceptions():
             return []
 
     # -------------------------------------------------------------------------
@@ -1199,7 +1216,7 @@ class SHAClaimAutomationService:
                     for remittance in remittances:
                         result["claims_reconciled"] += getattr(remittance, "reconciled_count", 0)
 
-                except Exception as e:
+                except _sha_automation_handled_exceptions() as e:
                     logger.warning(
                         "Remittance fetch failed for facility %s: %s",
                         facility.mfl_code,
@@ -1208,7 +1225,7 @@ class SHAClaimAutomationService:
 
             return result
 
-        except Exception as e:
+        except _sha_automation_handled_exceptions() as e:
             logger.exception("Remittance fetch and reconcile failed")
             return {**result, "error": str(e)}
 
@@ -1274,7 +1291,7 @@ class SHAClaimAutomationService:
                 "hours_remaining": round(hours_remaining, 1),
             }
 
-        except Exception as e:
+        except _sha_automation_handled_exceptions() as e:
             logger.exception("Handle claim query failed for claim %s", claim_id)
             return {"status": "error", "reason": str(e)}
 
@@ -1441,7 +1458,7 @@ class SHAClaimAutomationService:
                         "status": result.get("status", "submitted"),
                     }
                 )
-            except Exception as e:
+            except _sha_automation_handled_exceptions() as e:
                 failed.append(
                     {
                         "id": claim.pk,
@@ -1513,7 +1530,7 @@ class SHAClaimAutomationService:
                 "valid_until": (timezone.now() + timedelta(hours=24)).isoformat(),
             }
 
-        except Exception as e:
+        except _sha_automation_handled_exceptions() as e:
             logger.warning("Eligibility pre-check failed for patient %s: %s", patient_id, e)
             return {"status": "error", "reason": str(e)}
 
@@ -1597,7 +1614,7 @@ class SHAClaimAutomationService:
                 "preauth_id": result.pk if hasattr(result, "pk") else None,
             }
 
-        except Exception as e:
+        except _sha_automation_handled_exceptions() as e:
             logger.warning("Auto-preauth failed for encounter %s: %s", encounter_id, e)
             return {"status": "error", "reason": str(e)}
 

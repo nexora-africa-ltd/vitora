@@ -62,7 +62,7 @@ def _get_sms_client():
     except ValueError as e:
         logger.warning("SMS backend configuration error: %s", e)
         return None
-    except Exception as e:
+    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
         logger.error(f"Failed to initialize SMS backend: {e}")
         return None
 
@@ -112,7 +112,7 @@ def send_sms(phone: str, message: str, sender_id: str | None = None) -> bool:
                 return False
         logger.info(f"SMS submitted to {phone}")
         return True
-    except Exception as e:
+    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
         logger.error(f"Failed to send SMS to {phone}: {e}")
         return False
 
@@ -169,7 +169,7 @@ def send_bulk_sms(phones: list[str], message: str, sender_id: str | None = None)
         logger.info(f"Bulk SMS: {success_count}/{len(phones)} sent successfully")
         return results
 
-    except Exception as e:
+    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
         logger.error(f"Failed to send bulk SMS: {e}")
         return dict.fromkeys(phones, False)
 

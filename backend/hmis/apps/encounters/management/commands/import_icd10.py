@@ -108,7 +108,7 @@ class Command(BaseCommand):
                 except ValueError as e:
                     self.stderr.write(self.style.ERROR(f"Row {row_num}: Invalid data - {e}"))
                     error_count += 1
-                except Exception as e:
+                except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
                     self.stderr.write(
                         self.style.ERROR(
                             f"Row {row_num}: Error importing {row.get('code', 'unknown')} - {e}"

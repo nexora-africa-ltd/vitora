@@ -286,7 +286,7 @@ Examples:
                 print("  - Algorithm: RSA-OAEP (SHA-1)")
                 print("  - Random source: secrets.randbelow() (CSPRNG)" if generated else "")
 
-    except Exception as e:
+    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
 

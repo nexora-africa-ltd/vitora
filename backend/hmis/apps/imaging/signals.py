@@ -105,7 +105,7 @@ def create_invoice_item_for_imaging(sender, instance, created, **kwargs):
             },
             facility_id=getattr(imaging_order, "facility_id", None),
         )
-    except Exception as e:
+    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
         logger.error(f"Failed to create invoice item for imaging order item {instance.id}: {e}")
 
 
@@ -144,7 +144,7 @@ def notify_imaging_results_ready(sender, instance, created, **kwargs):
             action_url=f"/imaging/orders/{instance.id}",
             deduplicate=True,
         )
-    except Exception:
+    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
         logger.exception("Failed to notify imaging results for order %s", instance.id)
 
 
@@ -175,7 +175,7 @@ def publish_study_received_event(sender, instance, created, **kwargs):
             },
             facility_id=getattr(instance, "facility_id", None),
         )
-    except Exception:
+    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
         logger.exception("Failed to publish STUDY_RECEIVED for %s", instance.pk)
 
 
@@ -201,5 +201,5 @@ def publish_equipment_registered_event(sender, instance, created, **kwargs):
             },
             facility_id=getattr(instance, "facility_id", None),
         )
-    except Exception:
+    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
         logger.exception("Failed to publish equipment.registered for %s", instance.pk)

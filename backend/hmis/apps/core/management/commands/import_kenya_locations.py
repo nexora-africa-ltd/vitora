@@ -116,5 +116,5 @@ class Command(BaseCommand):
                     f"Expected columns: code, county, sub_county, ward"
                 )
             )
-        except Exception as e:
+        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
             self.stdout.write(self.style.ERROR(f"Error importing data: {e}"))

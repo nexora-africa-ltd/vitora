@@ -50,7 +50,7 @@ def publish_investigation_suggest_event(sender, instance, created, **kwargs):
                 "created_by_id": instance.created_by_id,
             },
         )
-    except Exception:
+    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
         logger.exception("Failed to publish investigation suggest event")
 
 
@@ -158,7 +158,7 @@ def _attempt_auto_match_lab_item(instance):
                     link.pk,
                 )
                 break  # One match per item
-    except Exception:
+    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
         logger.exception("Auto-match failed for LabOrderItem %s", instance.pk)
 
 
@@ -193,7 +193,7 @@ def _attempt_auto_match_imaging_item(instance):
                     link.pk,
                 )
                 break
-    except Exception:
+    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
         logger.exception("Auto-match failed for ImagingOrderItem %s", instance.pk)
 
 
@@ -228,7 +228,7 @@ def _attempt_auto_match_prescription_item(instance):
                     link.pk,
                 )
                 break
-    except Exception:
+    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
         logger.exception("Auto-match failed for PrescriptionItem %s", instance.pk)
 
 

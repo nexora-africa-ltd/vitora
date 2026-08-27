@@ -250,7 +250,7 @@ class DocumentSigningService:
                     padding.PKCS1v15(),
                     hashes.SHA256(),
                 )
-            except Exception:
+            except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
                 # If content has changed, try verifying against original hash
                 # (signature was over original content, so it won't match new content)
                 if not content_matches:
@@ -261,7 +261,7 @@ class DocumentSigningService:
                     signature_valid = False
                     errors.append("Cryptographic signature verification failed")
 
-        except Exception as e:
+        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
             errors.append(f"Verification error: {e}")
             content_matches = False
             signature_valid = False
@@ -508,7 +508,7 @@ class DocumentSigningService:
                     for chunk in iter(lambda: f.read(8192), b""):
                         hasher.update(chunk)
                 file_sha256 = hasher.hexdigest()
-            except Exception:
+            except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
                 file_sha256 = ""
 
         return {

@@ -226,7 +226,7 @@ def _notify_urgent_triage(instance, encounter):
             related_id=encounter.id,
             action_url=f"/encounters/{encounter.id}",
         )
-    except Exception:
+    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
         import logging
 
         logging.getLogger(__name__).exception(

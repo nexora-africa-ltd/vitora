@@ -133,7 +133,7 @@ class Command(BaseCommand):
                     file_obj.close()
                 if content:
                     return hashlib.sha256(content).hexdigest()
-            except Exception:
+            except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
                 pass
 
         filename = str(getattr(attachment, "original_filename", "") or "").strip().lower()

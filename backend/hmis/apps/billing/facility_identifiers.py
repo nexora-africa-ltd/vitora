@@ -6,10 +6,13 @@ the same precedence chain and can report where the value came from.
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from typing import Any
 
 from django.conf import settings
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -44,7 +47,11 @@ def resolve_fr_code(
             billing_fr = str(
                 getattr(billing_config, "sha_facility_fr_code", "") if billing_config else ""
             ).strip()
-        except Exception:
+        except (AttributeError, TypeError, ValueError) as exc:
+            logger.warning(
+                "Unable to read billing-config FR code; continuing with fallback chain",
+                extra={"error": str(exc)},
+            )
             billing_fr = ""
         if billing_fr:
             return FRCodeResolution(value=billing_fr, source="billing_config")

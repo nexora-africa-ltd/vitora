@@ -95,7 +95,7 @@ class FacilityWebSocketMiddleware:
         """Check if user has access to the given facility."""
         try:
             profile = user.staff_profile
-        except Exception:
+        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
             # No StaffProfile → no facility access
             # (superusers still pass for admin convenience)
             return getattr(user, "is_superuser", False)

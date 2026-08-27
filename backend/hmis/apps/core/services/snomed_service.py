@@ -75,7 +75,7 @@ class SNOMEDService:
             if results:
                 self._cache_results(results)
                 return results
-        except Exception:
+        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
             logger.warning("Snowstorm API unavailable, falling back to local cache")
 
         # Fallback to local cache
@@ -105,7 +105,7 @@ class SNOMEDService:
         # Try remote
         try:
             return self._lookup_snowstorm(concept_id)
-        except Exception:
+        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
             logger.warning("Snowstorm API unavailable for concept lookup %s", concept_id)
             return None
 

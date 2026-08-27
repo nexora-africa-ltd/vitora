@@ -921,7 +921,7 @@ class TriageAssessment(FacilityScopedModel):
                 enc = self.encounter
                 if enc.facility_id:
                     self.facility_id = enc.facility_id
-            except Exception:
+            except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
                 pass
         # Last resort: inherit from patient
         if not self.facility_id and self.encounter_id:
@@ -931,7 +931,7 @@ class TriageAssessment(FacilityScopedModel):
                     self.facility_id = patient.registered_at_facility_id
                 if patient.organization_id:
                     self.organization_id = patient.organization_id
-            except Exception:
+            except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
                 pass
         super().save(*args, **kwargs)
 

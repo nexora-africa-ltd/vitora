@@ -377,7 +377,7 @@ def serialize_instance_for_sync(instance, *, exclude_fields: tuple[str, ...]) ->
                 data[m2m_field.name] = list(
                     getattr(instance, m2m_field.name).values_list("pk", flat=True)
                 )
-            except Exception:  # noqa: BLE001 — unsaved instances, etc.
+            except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):  # noqa: BLE001 — unsaved instances, etc.
                 data[m2m_field.name] = []
         data["id"] = instance.pk
         data = _with_relation_hints(data, instance)

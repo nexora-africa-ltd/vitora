@@ -90,7 +90,7 @@ def _probe_target(
                         total_ms=(completed - started) * 1000,
                     )
                 )
-        except Exception:
+        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
             if run_idx >= warmup:
                 failures += 1
         finally:

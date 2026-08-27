@@ -126,7 +126,7 @@ def apply_entry(
                 apply_materialized_m2m(model, instance, data)
                 if created_instance and model._meta.label == "patients.Patient":
                     _log_patient_create_from_sync_materializer(instance)
-    except Exception as exc:  # noqa: BLE001
+    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as exc:  # noqa: BLE001
         return {"success": False, "error": str(exc)}
 
     return {"success": True}

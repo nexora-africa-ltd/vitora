@@ -9,13 +9,28 @@ Supported inputs/args: helper methods and DRF actions for diagnosis add/remove/s
 import logging
 from collections.abc import Mapping
 
+from django.db import DatabaseError
 from rest_framework.decorators import action as drf_action
 from rest_framework.response import Response
 
 from hmis.apps.billing.models import SHAClaim
+from hmis.apps.billing.services.dha_errors import DHAError
 from hmis.apps.billing.sha_views_claims_helpers import _stringify_error
 
 logger = logging.getLogger(__name__)
+
+
+def _ilm_diagnosis_line_exceptions() -> tuple[type[Exception], ...]:
+    return (
+        DatabaseError,
+        DHAError,
+        AttributeError,
+        LookupError,
+        TypeError,
+        ValueError,
+        RuntimeError,
+        ImportError,
+    )
 
 
 class SHAClaimILMDiagnosesLinesMixin:
@@ -40,7 +55,7 @@ class SHAClaimILMDiagnosesLinesMixin:
                     candidate = str(encounter_code or "").strip().upper()
                     if candidate and candidate not in codes:
                         codes.append(candidate)
-            except Exception as exc:
+            except _ilm_diagnosis_line_exceptions() as exc:
                 logger.debug(
                     "Unable to collect encounter ICD-11 diagnoses for claim %s: %s",
                     claim.id,
@@ -82,7 +97,7 @@ class SHAClaimILMDiagnosesLinesMixin:
                 ).values_list("code", flat=True)
             )
             return [code for code in normalized if code in known_codes]
-        except Exception:
+        except _ilm_diagnosis_line_exceptions():
             return normalized
 
     def _lookup_icd11_display(self, code: str) -> str:
@@ -93,7 +108,7 @@ class SHAClaimILMDiagnosesLinesMixin:
             from hmis.apps.billing.models import ICD11CodeReference
 
             ref = ICD11CodeReference.objects.filter(code=normalized, is_active=True).first()
-        except Exception:
+        except _ilm_diagnosis_line_exceptions():
             ref = None
         return str(getattr(ref, "title", "") or "").strip()
 
@@ -156,7 +171,7 @@ class SHAClaimILMDiagnosesLinesMixin:
                         "updated_at",
                     ]
                 )
-        except Exception as exc:
+        except _ilm_diagnosis_line_exceptions() as exc:
             logger.warning(
                 "Failed to sync encounter diagnosis after ILM add_diagnosis for claim %s: %s",
                 claim.id,
@@ -196,7 +211,7 @@ class SHAClaimILMDiagnosesLinesMixin:
                         ).strip()
                         or str(getattr(remaining, "free_text_diagnosis", "") or "").strip()
                     )
-            except Exception as exc:
+            except _ilm_diagnosis_line_exceptions() as exc:
                 logger.warning(
                     "Failed to sync encounter diagnosis after ILM remove_diagnosis for claim %s: %s",
                     claim.id,
@@ -242,7 +257,7 @@ class SHAClaimILMDiagnosesLinesMixin:
             )
 
             ClaimFormAttachmentService.ensure_for_claim(claim=claim, user=user)
-        except Exception as exc:
+        except _ilm_diagnosis_line_exceptions() as exc:
             logger.warning(
                 "Failed to refresh claim form attachment after diagnosis update for claim %s: %s",
                 claim.id,
@@ -276,7 +291,7 @@ class SHAClaimILMDiagnosesLinesMixin:
                     intervention_code=intervention_code,
                     user=user,
                 )
-            except Exception as exc:  # noqa: BLE001 - best effort before preview
+            except _ilm_diagnosis_line_exceptions() as exc:
                 logger.warning(
                     "Failed to sync diagnosis %s to DHA for claim %s: %s",
                     diagnosis_code,
@@ -317,7 +332,7 @@ class SHAClaimILMDiagnosesLinesMixin:
                 practitioner_regulation_body=str(d.get("practitioner_regulation_body", "KMPDC")),
                 user=request.user,
             )
-        except Exception as exc:
+        except _ilm_diagnosis_line_exceptions() as exc:
             return self._ilm_handle_error(exc)
         if int(getattr(result, "status_code", 500) or 500) < 400:
             self._sync_local_diagnosis_add(claim, icd_code=d["icd_code"], user=request.user)
@@ -347,7 +362,7 @@ class SHAClaimILMDiagnosesLinesMixin:
                 intervention_code=intervention_code,
                 user=request.user,
             )
-        except Exception as exc:
+        except _ilm_diagnosis_line_exceptions() as exc:
             return self._ilm_handle_error(exc)
         if int(getattr(result, "status_code", 500) or 500) < 400:
             self._sync_local_diagnosis_remove(claim, icd_code=str(code))
@@ -391,7 +406,7 @@ class SHAClaimILMDiagnosesLinesMixin:
                 practitioner_regulation_body=str(d.get("practitioner_regulation_body", "KMPDC")),
                 user=request.user,
             )
-        except Exception as exc:
+        except _ilm_diagnosis_line_exceptions() as exc:
             return self._ilm_handle_error(exc)
         return self._ilm_response(result)
 
@@ -410,7 +425,7 @@ class SHAClaimILMDiagnosesLinesMixin:
                 scheme_code=d.get("scheme_code"),
                 user=request.user,
             )
-        except Exception as exc:
+        except _ilm_diagnosis_line_exceptions() as exc:
             return self._ilm_handle_error(exc)
         return self._ilm_response(result)
 
@@ -424,6 +439,6 @@ class SHAClaimILMDiagnosesLinesMixin:
             result = self._ilm_service(facility=claim.facility).remove_line(
                 claim, claim_line_id=str(line_id), user=request.user
             )
-        except Exception as exc:
+        except _ilm_diagnosis_line_exceptions() as exc:
             return self._ilm_handle_error(exc)
         return self._ilm_response(result)

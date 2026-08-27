@@ -14,7 +14,9 @@ This module contains Django signals for billing integration:
 import logging
 from datetime import date, timedelta
 
+from celery.exceptions import Retry
 from django.conf import settings
+from django.db import DatabaseError, IntegrityError
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
@@ -26,6 +28,31 @@ from hmis.apps.core.sync_context import is_sync_materialization_active
 from hmis.apps.encounters.models import Encounter
 
 logger = logging.getLogger(__name__)
+
+
+def _billing_signal_handled_exceptions() -> tuple[type[Exception], ...]:
+    return (
+        DatabaseError,
+        IntegrityError,
+        AttributeError,
+        LookupError,
+        TypeError,
+        ValueError,
+        RuntimeError,
+    )
+
+
+def _billing_async_queue_exceptions() -> tuple[type[Exception], ...]:
+    return (
+        ImportError,
+        AttributeError,
+        TypeError,
+        ValueError,
+        RuntimeError,
+        OSError,
+        ConnectionError,
+        Retry,
+    )
 
 
 @receiver(post_save, sender=Encounter)
@@ -94,7 +121,7 @@ def create_invoice_for_encounter(sender, instance, created, **kwargs):
         from hmis.apps.billing.services.automation_rules import BillingAutomationRuleService
 
         BillingAutomationRuleService.apply_encounter_created(instance, invoice=invoice)
-    except Exception:
+    except _billing_signal_handled_exceptions():
         logger.exception(
             "Billing automation rules failed for encounter %s",
             getattr(instance, "id", None),
@@ -150,7 +177,7 @@ def _maybe_create_phc_claim(encounter):
             patient=encounter.patient,
             status=SHAMember.MembershipStatus.ACTIVE,
         ).first()
-    except Exception:
+    except _billing_signal_handled_exceptions():
         return
 
     if not sha_member:
@@ -218,7 +245,7 @@ def _maybe_create_phc_claim(encounter):
             facility_id=getattr(encounter, "facility_id", None),
             organization_id=getattr(encounter, "organization_id", None),
         )
-    except Exception:
+    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
         logger.exception(
             "Auto claim creation failed for encounter %s — queuing retry",
             encounter.id,
@@ -228,7 +255,7 @@ def _maybe_create_phc_claim(encounter):
             from hmis.apps.billing.tasks import retry_phc_claim_creation
 
             retry_phc_claim_creation.apply_async(args=[encounter.id], countdown=10)
-        except Exception:
+        except _billing_async_queue_exceptions():
             logger.debug("retry_phc_claim_creation task not queued (Celery may be unavailable)")
 
 
@@ -252,7 +279,7 @@ def handle_discharge_billing(sender, instance, created, **kwargs):
             payload={"admission_id": getattr(instance, "admission_id", None)},
             facility_id=getattr(instance, "facility_id", None),
         )
-    except Exception:
+    except _billing_signal_handled_exceptions():
         logger.exception("Billing agent: discharge billing failed for discharge %s", instance.id)
 
 
@@ -277,7 +304,7 @@ def handle_admission_billing(sender, instance, created, **kwargs):
                     instance.patient_id,
                     getattr(instance, "facility_id", None),
                 )
-            except Exception:
+            except _billing_signal_handled_exceptions():
                 logger.exception(
                     "Synchronous SHA eligibility refresh failed for admission %s; "
                     "falling back to async verification",
@@ -296,7 +323,7 @@ def handle_admission_billing(sender, instance, created, **kwargs):
             from hmis.apps.billing.services.automation_rules import BillingAutomationRuleService
 
             BillingAutomationRuleService.apply_admission_created(instance)
-        except Exception:
+        except _billing_signal_handled_exceptions():
             logger.exception(
                 "Billing automation rules failed for admission %s",
                 getattr(instance, "id", None),
@@ -320,7 +347,7 @@ def handle_admission_billing(sender, instance, created, **kwargs):
             },
             facility_id=getattr(instance, "facility_id", None),
         )
-    except Exception:
+    except _billing_signal_handled_exceptions():
         logger.exception("Billing agent: admission billing failed for admission %s", instance.id)
 
 
@@ -338,7 +365,7 @@ def handle_inpatient_consumable_usage_billing(sender, instance, created, **kwarg
 
         if instance.is_reversed:
             BillingAgentService.handle_inpatient_consumable_usage_reversed(instance)
-    except Exception:
+    except _billing_signal_handled_exceptions():
         logger.exception(
             "Billing agent: inpatient consumable usage billing failed for usage %s",
             instance.id,
@@ -366,7 +393,7 @@ def handle_immunization_billing(sender, instance, created, **kwargs):
             payload={"patient_id": getattr(instance, "patient_id", None)},
             facility_id=getattr(instance, "facility_id", None),
         )
-    except Exception:
+    except _billing_signal_handled_exceptions():
         logger.exception("Billing agent: immunization billing failed for record %s", instance.id)
 
 
@@ -405,8 +432,8 @@ def broadcast_invoice_change(sender, instance, created, **kwargs):
             broadcast_invoice_created(instance)
         else:
             broadcast_invoice_updated(instance)
-    except Exception as e:
-        logger.error(f"Failed to broadcast invoice change for {instance.id}: {e}")
+    except _billing_signal_handled_exceptions() as exc:
+        logger.error("Failed to broadcast invoice change for %s: %s", instance.id, exc)
 
 
 @receiver(post_save, sender=Payment)
@@ -437,8 +464,8 @@ def broadcast_payment_change(sender, instance, created, **kwargs):
         from hmis.apps.billing.websockets import broadcast_payment_received
 
         broadcast_payment_received(instance)
-    except Exception as e:
-        logger.error(f"Failed to broadcast payment received for {instance.id}: {e}")
+    except _billing_signal_handled_exceptions() as exc:
+        logger.error("Failed to broadcast payment received for %s: %s", instance.id, exc)
 
 
 @receiver(post_save, sender=SHAClaim)
@@ -591,7 +618,7 @@ def _notify_payment_received(instance):
             action_url=f"/billing/invoices/{invoice.id}",
             deduplicate=True,
         )
-    except Exception:
+    except _billing_signal_handled_exceptions():
         logger.exception("Failed to notify payment for %s", instance.id)
 
 
@@ -622,7 +649,7 @@ def _notify_preauth_decision(instance):
             related_id=instance.id,
             action_url="/billing/sha-claims",
         )
-    except Exception:
+    except _billing_signal_handled_exceptions():
         logger.exception("Failed to notify preauth decision for %s", instance.id)
 
 
@@ -707,7 +734,7 @@ def trigger_sha_automation_on_encounter(sender, instance, created, **kwargs):
 
         # Delay by 30 seconds to allow consent validation to complete
         auto_start_visit.apply_async(args=[instance.pk], countdown=30)
-    except Exception:
+    except _billing_async_queue_exceptions():
         logger.debug("SHA auto-start visit task not queued (Celery may be unavailable)")
 
 
@@ -740,7 +767,7 @@ def trigger_phc_claim_on_queue(patient_id: int, facility_id: int):
 
         for enc in encounters:
             _maybe_create_phc_claim(enc)
-    except Exception:
+    except _billing_signal_handled_exceptions():
         logger.debug("trigger_phc_claim_on_queue failed for patient %s", patient_id)
 
 
@@ -755,7 +782,7 @@ def trigger_sha_consent_on_queue(patient_id: int, facility_id: int):
         from hmis.apps.billing.tasks import auto_trigger_consent
 
         auto_trigger_consent.delay(patient_id, facility_id)
-    except Exception:
+    except _billing_async_queue_exceptions():
         logger.debug("SHA auto-consent task not queued (Celery may be unavailable)")
 
 
@@ -769,7 +796,7 @@ def trigger_sha_document_attachment(claim_id: int):
         from hmis.apps.billing.tasks import auto_attach_documents
 
         auto_attach_documents.apply_async(args=[claim_id], countdown=5)
-    except Exception:
+    except _billing_async_queue_exceptions():
         logger.debug("SHA auto-attach docs task not queued (Celery may be unavailable)")
 
 
@@ -789,7 +816,7 @@ def trigger_sha_eligibility_verification(patient_id: int, facility_id: int | Non
         from hmis.apps.billing.tasks import verify_patient_sha_eligibility
 
         verify_patient_sha_eligibility.delay(patient_id, facility_id)
-    except Exception:
+    except _billing_async_queue_exceptions():
         logger.debug("SHA eligibility verification task not queued (Celery may be unavailable)")
 
 

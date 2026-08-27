@@ -81,7 +81,7 @@ class Command(BaseCommand):
             except json.JSONDecodeError as e:
                 error_count += 1
                 self.stderr.write(self.style.ERROR(f"Invalid JSON in {json_file.name}: {e}"))
-            except Exception as e:
+            except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
                 error_count += 1
                 self.stderr.write(self.style.ERROR(f"Error loading {json_file.name}: {e}"))
 

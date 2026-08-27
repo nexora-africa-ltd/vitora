@@ -20,6 +20,8 @@ from typing import Any, ClassVar
 import requests
 from django.conf import settings
 from django.contrib.auth.models import AbstractBaseUser
+from django.core.exceptions import ObjectDoesNotExist
+from django.db import DatabaseError
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
@@ -27,6 +29,17 @@ from .sanitizer import sanitize_clinical_text
 from .tokens import mint_tibabot_jwt
 
 logger = logging.getLogger(__name__)
+
+
+def _facility_key_resolution_exceptions() -> tuple[type[Exception], ...]:
+    """Exceptions tolerated while resolving optional per-facility API keys."""
+    return (ObjectDoesNotExist, DatabaseError, AttributeError, TypeError, ValueError, RuntimeError)
+
+
+def _response_body_extract_exceptions() -> tuple[type[Exception], ...]:
+    """Exceptions tolerated while best-effort reading HTTP response text."""
+    return (AttributeError, TypeError, ValueError, RuntimeError)
+
 
 # Thread-local storage for per-request user identity
 _thread_local = threading.local()
@@ -120,7 +133,7 @@ def _resolve_facility_api_key(user: AbstractBaseUser) -> str | None:
             source,
         )
         return fk.api_key
-    except Exception:
+    except _facility_key_resolution_exceptions():
         logger.warning("Could not resolve per-facility TibaBot key", exc_info=True)
     return None
 
@@ -280,7 +293,7 @@ class TibaBotClient:
             if e.response is not None:
                 try:
                     response_body = e.response.text[:500]
-                except Exception:
+                except _response_body_extract_exceptions():
                     pass
             if status and status >= 500:
                 logger.warning(
@@ -390,7 +403,7 @@ class TibaBotClient:
             if e.response is not None:
                 try:
                     response_body = e.response.text[:500]
-                except Exception:
+                except _response_body_extract_exceptions():
                     pass
             if status and status >= 500:
                 logger.warning(
@@ -1317,7 +1330,7 @@ class TibaBotClient:
             if e.response is not None:
                 try:
                     response_body = e.response.text[:500]
-                except Exception:
+                except _response_body_extract_exceptions():
                     pass
             if status_code and status_code >= 500:
                 logger.warning(
@@ -1467,7 +1480,7 @@ class TibaBotClient:
             if e.response is not None:
                 try:
                     response_body = e.response.text[:500]
-                except Exception:
+                except _response_body_extract_exceptions():
                     pass
             if status_code and status_code >= 500:
                 raise TibaBotUnavailableError(

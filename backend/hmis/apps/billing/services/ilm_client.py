@@ -405,7 +405,13 @@ class IlmClient:
                 error_code=(fields.get("error_code") or "")[:64],
             )
             return call.pk
-        except Exception:  # pragma: no cover - never break on audit failure
+        except (
+            AttributeError,
+            TypeError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+        ):  # pragma: no cover - never break on audit failure
             logger.exception("Failed to record DHA outbound audit row")
             return None
 

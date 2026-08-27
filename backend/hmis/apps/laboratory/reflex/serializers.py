@@ -111,7 +111,7 @@ class ReflexExecutionSerializer(serializers.ModelSerializer):
         try:
             patient = obj.trigger_result.order_item.lab_order.patient
             return f"{patient.first_name} {patient.last_name}"
-        except Exception:
+        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
             return ""
 
 

@@ -7,7 +7,7 @@ Following TDD - implemented to pass API tests.
 
 import logging
 from datetime import date, timedelta
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 
 from django.core.exceptions import ValidationError
 from django.db.models import Q
@@ -537,7 +537,7 @@ class InvoiceViewSet(
         else:
             try:
                 amount = Decimal(str(amount_raw))
-            except Exception:
+            except (InvalidOperation, ValueError, TypeError):
                 return Response(
                     {"error": "amount must be a valid decimal."},
                     status=status.HTTP_400_BAD_REQUEST,
@@ -878,7 +878,7 @@ class InvoiceViewSet(
         else:
             try:
                 discount_amount = Decimal(str(request.data.get("discount_amount") or "0"))
-            except Exception:
+            except (InvalidOperation, ValueError, TypeError):
                 return Response(
                     {"error": "discount_amount must be a valid number."},
                     status=status.HTTP_400_BAD_REQUEST,
@@ -1180,6 +1180,75 @@ class MpesaViewSet(viewsets.ViewSet):
     permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     serializer_class = None  # No model serializer - all actions use inline serializers
 
+    @staticmethod
+    def _mpesa_error_map() -> tuple[tuple[type[Exception], int, str, str], ...]:
+        return (
+            (
+                ValidationError,
+                status.HTTP_400_BAD_REQUEST,
+                "validation_error",
+                "Request validation failed.",
+            ),
+            (
+                ValueError,
+                status.HTTP_400_BAD_REQUEST,
+                "invalid_request",
+                "Invalid input for M-Pesa request.",
+            ),
+            (
+                RuntimeError,
+                status.HTTP_502_BAD_GATEWAY,
+                "mpesa_transport_error",
+                "Temporary M-Pesa upstream error.",
+            ),
+            (
+                TypeError,
+                status.HTTP_502_BAD_GATEWAY,
+                "mpesa_transport_error",
+                "Temporary M-Pesa upstream error.",
+            ),
+        )
+
+    def _handle_mpesa_error(
+        self,
+        *,
+        action: str,
+        exc: Exception,
+        callback_mode: bool = False,
+    ) -> Response:
+        for error_cls, http_status, code, message in self._mpesa_error_map():
+            if isinstance(exc, error_cls):
+                logger.warning(
+                    "M-Pesa action failed",
+                    extra={
+                        "action": action,
+                        "error_class": exc.__class__.__name__,
+                        "error": str(exc),
+                    },
+                )
+                if callback_mode:
+                    return Response(
+                        {
+                            "ResultCode": 1,
+                            "ResultDesc": str(exc) if code == "validation_error" else message,
+                        },
+                        status=status.HTTP_200_OK,
+                    )
+                if code == "validation_error":
+                    return Response({"error": str(exc), "code": code}, status=http_status)
+                return Response({"error": message, "code": code}, status=http_status)
+
+        logger.exception("Unhandled M-Pesa action error", extra={"action": action})
+        if callback_mode:
+            return Response(
+                {"ResultCode": 1, "ResultDesc": "Callback processing failed"},
+                status=status.HTTP_200_OK,
+            )
+        return Response(
+            {"error": "Unexpected M-Pesa processing error.", "code": "internal_error"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
     @extend_schema(
         request=inline_serializer(
             name="MpesaInitiateRequest",
@@ -1294,22 +1363,8 @@ class MpesaViewSet(viewsets.ViewSet):
                 status=status.HTTP_201_CREATED,
             )
 
-        except ValidationError as e:
-            # Django ValidationError wraps messages in a list; extract a
-            # clean string so the frontend doesn't see ['...'] brackets.
-            if hasattr(e, "message"):
-                msg = e.message
-            elif hasattr(e, "messages"):
-                msg = "; ".join(e.messages)
-            else:
-                msg = str(e)
-            return Response({"error": msg}, status=status.HTTP_400_BAD_REQUEST)
-        except Exception:
-            logger.exception("Failed to initiate M-Pesa payment")
-            return Response(
-                {"error": "Failed to initiate M-Pesa payment. Please try again."},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
+        except (ValidationError, ValueError, TypeError, RuntimeError) as exc:
+            return self._handle_mpesa_error(action="initiate", exc=exc)
 
     @extend_schema(
         request=OpenApiTypes.OBJECT,
@@ -1418,14 +1473,8 @@ class MpesaViewSet(viewsets.ViewSet):
 
             return Response({"ResultCode": 0, "ResultDesc": "Success"}, status=status.HTTP_200_OK)
 
-        except ValidationError as e:
-            return Response({"ResultCode": 1, "ResultDesc": str(e)}, status=status.HTTP_200_OK)
-        except Exception:
-            logger.exception("M-Pesa callback processing failed")
-            return Response(
-                {"ResultCode": 1, "ResultDesc": "Callback processing failed"},
-                status=status.HTTP_200_OK,
-            )
+        except (ValidationError, ValueError, TypeError, RuntimeError) as exc:
+            return self._handle_mpesa_error(action="callback", exc=exc, callback_mode=True)
 
     @extend_schema(
         parameters=[
@@ -1546,21 +1595,8 @@ class MpesaViewSet(viewsets.ViewSet):
                 status=status.HTTP_200_OK,
             )
 
-        except ValidationError as e:
-            msg = (
-                e.message
-                if hasattr(e, "message")
-                else "; ".join(e.messages)
-                if hasattr(e, "messages")
-                else str(e)
-            )
-            return Response({"error": msg}, status=status.HTTP_400_BAD_REQUEST)
-        except Exception:
-            logger.exception("Failed to query M-Pesa transaction status")
-            return Response(
-                {"error": "Failed to query transaction status. Please try again."},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
+        except (ValidationError, ValueError, TypeError, RuntimeError) as exc:
+            return self._handle_mpesa_error(action="query", exc=exc)
 
     @extend_schema(
         request=inline_serializer(
@@ -1635,21 +1671,8 @@ class MpesaViewSet(viewsets.ViewSet):
             result = mpesa_service.verify_transaction(transaction_id)
             return Response(result, status=status.HTTP_200_OK)
 
-        except DjangoValidationError as e:
-            msg = (
-                e.message
-                if hasattr(e, "message")
-                else "; ".join(e.messages)
-                if hasattr(e, "messages")
-                else str(e)
-            )
-            return Response({"error": msg}, status=status.HTTP_400_BAD_REQUEST)
-        except Exception:
-            logger.exception("M-Pesa verification failed")
-            return Response(
-                {"error": "Verification failed. Please try again."},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
+        except (DjangoValidationError, ValueError, TypeError, RuntimeError) as exc:
+            return self._handle_mpesa_error(action="verify", exc=exc)
 
 
 @extend_schema_view()

@@ -106,7 +106,7 @@ class WorksheetItemSerializer(serializers.ModelSerializer):
         try:
             patient = obj.order_item.lab_order.patient
             return f"{patient.first_name} {patient.last_name}"
-        except Exception:
+        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
             return ""
 
 

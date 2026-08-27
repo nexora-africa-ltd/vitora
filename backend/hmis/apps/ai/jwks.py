@@ -60,7 +60,7 @@ def _load_private_key() -> rsa.RSAPrivateKey | None:
             logger.error("TIBABOT_JWT_PRIVATE_KEY is not an RSA key")
             return None
         return key
-    except Exception:
+    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
         logger.error("Failed to load TIBABOT_JWT_PRIVATE_KEY", exc_info=True)
         return None
 

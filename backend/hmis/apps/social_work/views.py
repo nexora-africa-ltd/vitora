@@ -208,7 +208,7 @@ class SocialWorkReferralViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
                 referral.save(update_fields=["external_agency", "external_contact"])
 
             referral.update_status(new_status, user=request.user)
-        except Exception as e:
+        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
         AuditLog.log(
@@ -243,7 +243,7 @@ class SocialWorkReferralViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
 
         try:
             referral.update_status("ACCEPTED", user=request.user)
-        except Exception as e:
+        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
         AuditLog.log(
@@ -552,7 +552,7 @@ class SocialWorkCaseViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
 
         try:
             case.update_status(new_status, user=request.user)
-        except Exception as e:
+        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
         AuditLog.log(

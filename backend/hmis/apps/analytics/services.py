@@ -12,9 +12,17 @@ import logging
 from datetime import date, timedelta
 from decimal import Decimal
 
+from django.core.exceptions import FieldError
+from django.db import DatabaseError
 from django.db.models import Avg, Count, Sum
 
 logger = logging.getLogger(__name__)
+
+
+def _analytics_aggregation_exceptions() -> tuple[type[Exception], ...]:
+    """Exceptions tolerated by optional cross-module analytics aggregations."""
+    return (DatabaseError, FieldError, ImportError, AttributeError, TypeError, ValueError)
+
 
 # ---------------------------------------------------------------------------
 # Age-band helpers
@@ -169,7 +177,7 @@ def _get_lab_stats(facility, target_date: date) -> dict:
             "lab_orders_completed": completed,
             "lab_critical_results": critical,
         }
-    except Exception:
+    except _analytics_aggregation_exceptions():
         return {"lab_orders_placed": 0, "lab_orders_completed": 0, "lab_critical_results": 0}
 
 
@@ -184,7 +192,7 @@ def _get_pharmacy_stats(facility, target_date: date) -> dict:
             resolved=False, alert_type="LOW_STOCK", facility=facility
         ).count()
         return {"prescriptions_dispensed": dispensed, "low_stock_alerts": low_stock}
-    except Exception:
+    except _analytics_aggregation_exceptions():
         return {"prescriptions_dispensed": 0, "low_stock_alerts": 0}
 
 
@@ -212,7 +220,7 @@ def _get_triage_stats(facility, target_date: date) -> dict:
             "triage_emergency_count": emergency,
             "avg_wait_time_minutes": avg_wait,
         }
-    except Exception:
+    except _analytics_aggregation_exceptions():
         return {
             "triage_assessments": 0,
             "triage_emergency_count": 0,
@@ -248,7 +256,7 @@ def _get_inpatient_stats(facility, target_date: date) -> dict:
             "discharges": discharged,
             "bed_occupancy_rate": occupancy,
         }
-    except Exception:
+    except _analytics_aggregation_exceptions():
         return {
             "current_admissions": 0,
             "new_admissions": 0,
@@ -301,7 +309,7 @@ def _compute_service_department(
             )
             visit_count = rx_qs.count()
             unique_patients = rx_qs.values("patient").distinct().count()
-        except Exception:
+        except _analytics_aggregation_exceptions():
             logger.debug("Pharmacy stats failed for facility %s", facility.pk)
 
     elif dept_code == "LABORATORY":
@@ -315,7 +323,7 @@ def _compute_service_department(
             )
             visit_count = lab_qs.count()
             unique_patients = lab_qs.values("patient").distinct().count()
-        except Exception:
+        except _analytics_aggregation_exceptions():
             logger.debug("Lab stats failed for facility %s", facility.pk)
 
     elif dept_code == "IMAGING":
@@ -329,7 +337,7 @@ def _compute_service_department(
             )
             visit_count = img_qs.count()
             unique_patients = img_qs.values("patient").distinct().count()
-        except Exception:
+        except _analytics_aggregation_exceptions():
             logger.debug("Imaging stats failed for facility %s", facility.pk)
 
     if visit_count == 0:
@@ -352,7 +360,7 @@ def _compute_service_department(
             item_type=_dept_to_item_type.get(dept_code, ""),
         ).aggregate(t=Sum("total_price"))["t"] or Decimal("0")
         revenue = dept_revenue
-    except Exception:
+    except _analytics_aggregation_exceptions():
         logger.debug("Revenue aggregation failed for service dept %s", dept_code)
 
     return {
@@ -423,7 +431,7 @@ def compute_department_monthly(facility, year: int, month: int) -> list[dict]:
                 status__in=["paid", "partial"],
                 facility=facility,
             ).aggregate(t=Sum("total_amount"))["t"] or Decimal("0")
-        except Exception:
+        except _analytics_aggregation_exceptions():
             logger.debug("Revenue aggregation failed for dept %s", dept_code)
         top_dx = list(
             Diagnosis.objects.filter(encounter__in=dept_enc, icd10_code__isnull=False)
@@ -462,7 +470,7 @@ def compute_department_monthly(facility, year: int, month: int) -> list[dict]:
                 )
                 if avg_los_val.get("avg_los") is not None:
                     avg_los = round(float(avg_los_val["avg_los"]), 1)
-            except Exception:
+            except _analytics_aggregation_exceptions():
                 logger.debug("LOS calculation failed for facility %s", facility.pk)
 
         results.append(

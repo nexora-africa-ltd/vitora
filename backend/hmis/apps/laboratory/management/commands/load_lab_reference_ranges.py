@@ -914,7 +914,7 @@ class Command(BaseCommand):
                     # Rollback transaction in dry-run mode
                     transaction.set_rollback(True)
 
-        except Exception as e:
+        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
             if not dry_run:
                 logger.exception("Error loading reference ranges")
                 raise CommandError(f"Failed to load reference ranges: {e}") from e

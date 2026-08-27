@@ -193,7 +193,7 @@ class HL7QueueService:
             )
             return msg.status in (HL7MessageStatus.SENT, HL7MessageStatus.ACKNOWLEDGED)
 
-        except Exception as exc:
+        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as exc:
             msg.status = HL7MessageStatus.FAILED
             msg.retry_count += 1
             msg.last_error = str(exc)[:500]

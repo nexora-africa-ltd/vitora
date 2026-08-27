@@ -44,7 +44,7 @@ def broadcast_lab_event_sync(
             },
         )
         logger.debug(f"Broadcasted lab.{event_type} to {group_name}")
-    except Exception as e:
+    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
         logger.error(f"Failed to broadcast lab.{event_type} to {group_name}: {e}")
 
 

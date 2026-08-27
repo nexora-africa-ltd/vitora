@@ -569,7 +569,13 @@ class ClientRegistryService:
                 identification_number=id_number,
                 identification_type=id_type or "National ID",
             )
-        except Exception as exc:  # DHAError, etc.
+        except (
+            AttributeError,
+            TypeError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+        ) as exc:  # DHAError, etc.
             status_code = getattr(exc, "status_code", 0) or 0
             exc_msg = str(exc).lower()
             # 404 or 400 "zero results" means not found in CR — return None.
@@ -588,7 +594,13 @@ class ClientRegistryService:
 
         try:
             return ClientRegistryClient.from_api_response(payload)
-        except Exception:  # pragma: no cover — defensive
+        except (
+            AttributeError,
+            TypeError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+        ):  # pragma: no cover — defensive
             logger.exception("Failed to map ILM patient payload to ClientRegistryClient")
             return None
 
@@ -740,7 +752,7 @@ class ClientRegistryService:
             try:
                 response_text = response.text[:1000] if response.text else "(empty)"
                 logger.debug(f"CR registration response body: {response_text}")
-            except Exception as exc:
+            except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as exc:
                 logger.debug(f"Unable to read CR registration response body: {exc}")
 
             if response.status_code == 409:

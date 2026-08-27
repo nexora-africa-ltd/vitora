@@ -254,7 +254,7 @@ class SurveillanceService:
             alert.sent_via_websocket = True
             alert.save(update_fields=["sent_via_websocket"])
             logger.info(f"Broadcast surveillance alert {alert.id} via WebSocket")
-        except Exception as e:
+        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
             logger.error(f"Failed to broadcast surveillance alert: {e}")
 
     @classmethod
@@ -296,7 +296,7 @@ class SurveillanceService:
                 logger.info(f"Sent SMS alert {alert.id} to {recipient}")
             return success
 
-        except Exception as e:
+        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
             logger.error(f"Failed to send SMS alert: {e}")
             return False
 
@@ -357,7 +357,7 @@ Please log in to Vitora HMIS to review and process this case.
             logger.info(f"Sent email alert {alert.id} to {recipient}")
             return True
 
-        except Exception as e:
+        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
             logger.error(f"Failed to send email alert: {e}")
             return False
 

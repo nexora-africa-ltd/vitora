@@ -130,7 +130,7 @@ class ThrottledBroadcaster:
                 group,
                 {"type": event_type, "data": data},
             )
-        except Exception:
+        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
             logger.debug(
                 "Throttled broadcast failed for group=%s type=%s",
                 group,

@@ -48,7 +48,7 @@ def check_all_channel_health() -> dict:
                 results["idle"] += 1
             elif health["connection_status"] == InstrumentChannel.ConnectionStatus.ERROR:
                 results["errors"] += 1
-        except Exception as e:
+        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
             logger.error(f"Error checking channel {channel.id} health: {e}")
             results["errors"] += 1
 

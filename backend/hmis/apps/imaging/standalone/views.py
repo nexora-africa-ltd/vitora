@@ -159,7 +159,7 @@ class ExternalImagingOrderRequestViewSet(TenantScopedViewMixin, viewsets.ModelVi
                 },
                 status=status.HTTP_201_CREATED,
             )
-        except Exception as e:
+        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
             logger.exception("Error processing external imaging order %s", ext_req.id)
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 

@@ -14,6 +14,8 @@ only handles the ClinicSchedule → scheduling.Schedule sync.
 
 import logging
 
+from django.core.exceptions import ObjectDoesNotExist, ValidationError
+from django.db import DatabaseError, IntegrityError
 from django.db.models.signals import post_delete, post_save, pre_save
 from django.dispatch import receiver
 
@@ -30,6 +32,21 @@ from .websockets import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _clinic_signal_handled_exceptions() -> tuple[type[Exception], ...]:
+    """Exceptions clinic signal handlers may log and continue on."""
+    return (
+        ValidationError,
+        ObjectDoesNotExist,
+        DatabaseError,
+        IntegrityError,
+        ImportError,
+        AttributeError,
+        TypeError,
+        ValueError,
+        RuntimeError,
+    )
 
 
 @receiver(post_save, sender=ClinicVisit)
@@ -70,9 +87,9 @@ def clinic_visit_post_save(sender, instance, created, **kwargs):
 
                     trigger_sha_consent_on_queue(patient_id, facility_id)
                     trigger_phc_claim_on_queue(patient_id, facility_id)
-                except Exception:
+                except _clinic_signal_handled_exceptions():
                     logger.debug("SHA consent/claim trigger skipped (billing module unavailable)")
-    except Exception as e:
+    except _clinic_signal_handled_exceptions() as e:
         # Don't let WebSocket errors break the save operation
         logger.error(f"Error broadcasting clinic visit event: {e}")
 
@@ -145,7 +162,7 @@ def clinic_visit_status_change(sender, instance, created, **kwargs):
             facility_id=getattr(instance, "facility_id", None),
         )
 
-    except Exception as e:
+    except _clinic_signal_handled_exceptions() as e:
         # Don't let WebSocket errors break the save operation
         logger.error(f"Error broadcasting clinic visit status change: {e}")
 
@@ -203,7 +220,7 @@ def clinic_session_publish_event(sender, instance, created, **kwargs):
                 },
                 facility_id=getattr(instance, "facility_id", None),
             )
-    except Exception as e:
+    except _clinic_signal_handled_exceptions() as e:
         logger.error(f"Error publishing clinic session event: {e}")
 
 
@@ -303,7 +320,7 @@ def sync_clinic_schedule_on_save(sender, instance, **kwargs):
         return
     try:
         _sync_clinic_schedule_to_scheduling(instance)
-    except Exception as e:
+    except _clinic_signal_handled_exceptions() as e:
         logger.error(f"Error syncing ClinicSchedule {instance.pk}: {e}")
 
 

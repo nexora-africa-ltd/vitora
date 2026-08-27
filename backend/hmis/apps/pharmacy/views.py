@@ -717,7 +717,7 @@ class DispensingViewSet(PublicIdLookupMixin, TenantScopedViewMixin, viewsets.Mod
             if hasattr(e, "message_dict"):
                 return Response(e.message_dict, status=status.HTTP_400_BAD_REQUEST)
             return Response({"error": e.messages}, status=status.HTTP_400_BAD_REQUEST)
-        except Exception:
+        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
             logger.exception("Dispensing failed")
             return Response(
                 {"error": "Dispensing failed. Please try again."},

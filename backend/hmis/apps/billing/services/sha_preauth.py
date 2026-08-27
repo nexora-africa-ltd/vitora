@@ -301,7 +301,7 @@ class SHAPreauthService:
                 raise SHAPreauthError("Cannot connect to DHA API", code="connection_error")
             except SHAPreauthError:
                 raise
-            except Exception as e:
+            except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
                 raise SHAPreauthError(
                     f"Unexpected error calling DHA API: {e}",
                     code="unexpected_error",

@@ -487,7 +487,7 @@ class HealthCloudWorkflowService:
                 time.monotonic() - started
             )
             return response
-        except Exception as exc:
+        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as exc:
             sync.mark_failure(error=str(exc))
             HEALTHCLOUD_WORKFLOW_TOTAL.labels(operation=operation, result="failed").inc()
             HEALTHCLOUD_WORKFLOW_LATENCY_SECONDS.labels(operation=operation).observe(
@@ -637,7 +637,7 @@ class HealthCloudWorkflowService:
         if hasattr(value, "isoformat"):
             try:
                 return str(value.isoformat())
-            except Exception:
+            except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
                 return str(value)
         return str(value)
 

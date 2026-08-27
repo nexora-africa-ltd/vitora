@@ -18,6 +18,11 @@ from django.conf import settings
 logger = logging.getLogger(__name__)
 
 
+def _licensing_optional_step_exceptions() -> tuple[type[Exception], ...]:
+    """Exceptions tolerated by best-effort licensing telemetry steps."""
+    return (ImportError, AttributeError, TypeError, ValueError, RuntimeError, OSError)
+
+
 @shared_task(
     name="hmis.apps.licensing.tasks.license_check_in",
     bind=True,
@@ -66,7 +71,7 @@ def license_check_in(self) -> dict:
     try:
         payload = pyjwt.decode(token, options={"verify_signature": False})
         installation_id = payload.get("installation_id", "")
-    except Exception:
+    except (pyjwt.PyJWTError, AttributeError, TypeError, ValueError):
         return {"error": "Cannot decode license token"}
 
     if not installation_id:
@@ -102,7 +107,7 @@ def license_check_in(self) -> dict:
         build_id = get_build_id()
         if build_id:
             check_in_data["build_id"] = build_id
-    except Exception:  # noqa: S110 — optional; must not crash check-in
+    except _licensing_optional_step_exceptions():
         pass
 
     # Phase 5D: Include canary token
@@ -112,7 +117,7 @@ def license_check_in(self) -> dict:
         canary = get_local_canary()
         if canary:
             check_in_data["canary_token"] = canary
-    except Exception:  # noqa: S110
+    except _licensing_optional_step_exceptions():
         pass
 
     # Phase 5B: Include TPM quote if TPM is available
@@ -124,7 +129,7 @@ def license_check_in(self) -> dict:
             quote_data = generate_pcr_quote(nonce)
             if quote_data:
                 check_in_data["tpm_quote"] = quote_data
-    except Exception:  # noqa: S110
+    except _licensing_optional_step_exceptions():
         pass
 
     # Send check-in
@@ -155,7 +160,7 @@ def license_check_in(self) -> dict:
                 from hmis.apps.licensing.sqlcipher_backend import store_cloud_key_part
 
                 store_cloud_key_part(cloud_key)
-            except Exception as exc:
+            except _licensing_optional_step_exceptions() as exc:
                 logger.warning("Failed to store cloud key part: %s", exc)
 
         return {
@@ -227,11 +232,11 @@ def _get_usage_counts_24h() -> tuple[int, int]:
             from hmis.apps.encounters.models import Encounter
 
             encounter_count = Encounter.objects.filter(created_at__gte=since).count()
-        except (ImportError, Exception):
+        except _licensing_optional_step_exceptions():
             encounter_count = 0
 
         return user_count, encounter_count
-    except Exception:
+    except _licensing_optional_step_exceptions():
         return 0, 0
 
 

@@ -6330,7 +6330,7 @@ class Command(BaseCommand):
                     notes="ICU admission reviewed. Critical care plan approved. Continue current management.",
                 )
                 count += 1
-            except Exception:
+            except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
                 pass  # Skip if already acknowledged
         return count
 

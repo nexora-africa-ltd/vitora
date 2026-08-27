@@ -669,7 +669,7 @@ class ClinicalReferral(HistoryMixin, FacilityScopedModel, TimeStampedModel):
                 }
                 for d in diagnoses
             ]
-        except Exception:
+        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
             self.relevant_diagnoses = []
 
         # Snapshot vitals

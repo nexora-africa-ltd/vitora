@@ -192,7 +192,7 @@ class BillingAutomationRuleService:
                     description=description,
                     item_type=rule.item_type,
                 )
-            except Exception:
+            except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
                 execution.delete()
                 logger.exception(
                     "Billing automation rule %s failed while creating invoice item",

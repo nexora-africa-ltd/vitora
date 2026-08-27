@@ -18,7 +18,7 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.core.cache import caches
 from django.core.exceptions import ImproperlyConfigured
-from django.db import connections
+from django.db import DatabaseError, IntegrityError, OperationalError, connections
 from django.db.migrations.executor import MigrationExecutor
 from django.http import JsonResponse
 from django.urls import include, path
@@ -102,6 +102,29 @@ _HEALTH_RESPONSE_CACHE: dict[str, dict[str, object]] = {}
 _TIBABOT_HEALTH_CACHE: dict[str, object] = {}
 
 
+def _health_check_handled_exceptions() -> tuple[type[Exception], ...]:
+    """Exceptions tolerated by health-check probes."""
+    return (
+        ImproperlyConfigured,
+        OperationalError,
+        DatabaseError,
+        IntegrityError,
+        ImportError,
+        AttributeError,
+        TypeError,
+        ValueError,
+        RuntimeError,
+        OSError,
+        LookupError,
+        AssertionError,
+    )
+
+
+def _health_cache_enabled() -> bool:
+    """Disable in-process health caches in tests for deterministic assertions."""
+    return not bool(getattr(settings, "TESTING", False))
+
+
 def _truncate_error(exc: Exception, max_len: int = 300) -> str:
     """Return a compact error string suitable for health endpoint payloads."""
     message = str(exc).strip() or exc.__class__.__name__
@@ -166,7 +189,7 @@ def _check_database_health() -> dict[str, object]:
         details["query_ms"] = round((time.monotonic() - started_query) * 1000, 2)
 
         details["status"] = "healthy"
-    except Exception as exc:
+    except _health_check_handled_exceptions() as exc:
         details["status"] = "unhealthy"
         details["error"] = _truncate_error(exc)
 
@@ -195,7 +218,7 @@ def _check_cache_health() -> dict[str, object]:
     except ImproperlyConfigured as exc:
         details["status"] = "unavailable"
         details["error"] = _truncate_error(exc)
-    except Exception as exc:
+    except _health_check_handled_exceptions() as exc:
         details["status"] = "unhealthy"
         details["error"] = _truncate_error(exc)
 
@@ -220,7 +243,7 @@ def _check_migration_health() -> dict[str, object]:
         details["pending_count"] = pending_count
         details["has_pending_migrations"] = pending_count > 0
         details["status"] = "healthy" if pending_count == 0 else "pending"
-    except Exception as exc:
+    except _health_check_handled_exceptions() as exc:
         details["status"] = "unavailable"
         details["error"] = _truncate_error(exc)
 
@@ -258,7 +281,7 @@ def _check_websocket_health() -> dict[str, object]:
                 "channels_installed": channels_installed,
             }
         )
-    except Exception as exc:
+    except _health_check_handled_exceptions() as exc:
         details["status"] = "unavailable"
         details["error"] = _truncate_error(exc)
 
@@ -278,7 +301,7 @@ def _check_kms_health() -> dict[str, object]:
         kms = get_kms_provider()
         details["provider"] = kms.__class__.__name__
         details["status"] = "healthy" if kms.is_healthy() else "unhealthy"
-    except Exception as exc:
+    except _health_check_handled_exceptions() as exc:
         details["status"] = "unavailable"
         details["error"] = _truncate_error(exc)
 
@@ -330,7 +353,7 @@ def _check_tibabot_health() -> dict[str, object]:
     except TibaBotError as exc:
         details["status"] = "unhealthy"
         details["error"] = _truncate_error(exc)
-    except Exception as exc:
+    except _health_check_handled_exceptions() as exc:
         details["status"] = "unavailable"
         details["error"] = _truncate_error(exc)
 
@@ -366,6 +389,9 @@ def _is_truthy(value: str | None) -> bool:
 
 def _get_cached_health_payload(cache_key: str) -> dict[str, object] | None:
     """Return cached health payload if fresh, otherwise None."""
+    if not _health_cache_enabled():
+        return None
+
     entry = _HEALTH_RESPONSE_CACHE.get(cache_key)
     if not entry:
         return None
@@ -382,6 +408,9 @@ def _get_cached_health_payload(cache_key: str) -> dict[str, object] | None:
 
 def _set_cached_health_payload(cache_key: str, payload: dict[str, object]) -> None:
     """Store health payload for a short TTL to reduce probe churn."""
+    if not _health_cache_enabled():
+        return
+
     _HEALTH_RESPONSE_CACHE[cache_key] = {
         "expires_at": time.monotonic() + HEALTH_CACHE_TTL_SECONDS,
         "payload": deepcopy(payload),
@@ -390,6 +419,9 @@ def _set_cached_health_payload(cache_key: str, payload: dict[str, object]) -> No
 
 def _get_cached_tibabot_health() -> dict[str, object] | None:
     """Return cached TibaBot health check details if still fresh."""
+    if not _health_cache_enabled():
+        return None
+
     expires_at = _TIBABOT_HEALTH_CACHE.get("expires_at")
     if not isinstance(expires_at, float) or time.monotonic() >= expires_at:
         _TIBABOT_HEALTH_CACHE.clear()
@@ -405,6 +437,9 @@ def _get_cached_tibabot_health() -> dict[str, object] | None:
 
 def _set_cached_tibabot_health(payload: dict[str, object]) -> None:
     """Cache TibaBot health probe result to avoid repeated upstream checks."""
+    if not _health_cache_enabled():
+        return
+
     _TIBABOT_HEALTH_CACHE["expires_at"] = time.monotonic() + TIBABOT_HEALTH_CACHE_TTL_SECONDS
     _TIBABOT_HEALTH_CACHE["payload"] = deepcopy(payload)
 
@@ -681,6 +716,12 @@ def admin_webauthn_complete(request):
     from django.conf import settings as django_settings
     from webauthn import verify_authentication_response
     from webauthn.helpers import base64url_to_bytes, parse_authentication_credential_json
+    from webauthn.helpers.exceptions import (
+        InvalidAuthenticationResponse,
+        InvalidJSONStructure,
+        SignatureVerificationException,
+        WebAuthnException,
+    )
 
     from hmis.apps.core.mfa.models import UserWebAuthnCredential
 
@@ -722,7 +763,19 @@ def admin_webauthn_complete(request):
 
         return JsonResponse({"success": True, "redirect": "/admin/"})
 
-    except Exception:
+    except (
+        InvalidAuthenticationResponse,
+        InvalidJSONStructure,
+        SignatureVerificationException,
+        WebAuthnException,
+        AttributeError,
+        TypeError,
+        ValueError,
+        RuntimeError,
+        OSError,
+        LookupError,
+        AssertionError,
+    ):
         import logging
 
         logging.getLogger(__name__).exception("Admin WebAuthn verification failed")

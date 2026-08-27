@@ -22,5 +22,5 @@ def create_tat_snapshot_on_completion(sender, instance, **kwargs):
     if instance.status == "COMPLETED" and instance.completed_at:
         try:
             TATSnapshot.create_from_order(instance)
-        except Exception:
+        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
             logger.exception("Failed to create TAT snapshot for order %s", instance.order_number)

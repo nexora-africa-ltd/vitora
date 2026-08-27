@@ -45,6 +45,24 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+def _azure_kms_handled_exceptions() -> tuple[type[Exception], ...]:
+    """Exceptions expected from Azure SDK/KMS operations."""
+    base: tuple[type[Exception], ...] = (
+        ImportError,
+        AttributeError,
+        TypeError,
+        ValueError,
+        RuntimeError,
+        OSError,
+    )
+    try:
+        from azure.core.exceptions import AzureError
+
+        return (AzureError, *base)
+    except ImportError:
+        return base
+
+
 def _get_azure_imports():
     """
     Lazy import Azure SDK to avoid ImportError when Azure is not configured.
@@ -185,7 +203,7 @@ class AzureKeyVaultProvider(KMSProvider):
 
             return result
 
-        except Exception as e:
+        except _azure_kms_handled_exceptions() as e:
             logger.error(f"Azure encryption failed: {e}")
             raise EncryptionError(f"Azure Key Vault encryption failed: {e}") from e
 
@@ -249,7 +267,7 @@ class AzureKeyVaultProvider(KMSProvider):
 
         except DecryptionError:
             raise
-        except Exception as e:
+        except _azure_kms_handled_exceptions() as e:
             logger.error(f"Azure decryption failed: {e}")
             raise DecryptionError(f"Azure Key Vault decryption failed: {e}") from e
 
@@ -306,7 +324,7 @@ class AzureKeyVaultProvider(KMSProvider):
 
             return self._key_to_metadata(new_key)
 
-        except Exception as e:
+        except _azure_kms_handled_exceptions() as e:
             logger.error(f"Azure key rotation failed: {e}")
             raise KeyRotationError(f"Failed to rotate Azure key: {e}") from e
 
@@ -320,7 +338,7 @@ class AzureKeyVaultProvider(KMSProvider):
         try:
             key = self._key_client.get_key(self._key_name, self._key_version)
             return self._key_to_metadata(key)
-        except Exception as e:
+        except _azure_kms_handled_exceptions() as e:
             logger.error(f"Failed to get key metadata: {e}")
             raise KeyNotFoundError(f"Key not found: {self._key_name}") from e
 
@@ -356,7 +374,7 @@ class AzureKeyVaultProvider(KMSProvider):
         try:
             key = self._key_client.get_key(self._key_name)
             return key.properties.enabled
-        except Exception as e:
+        except _azure_kms_handled_exceptions() as e:
             logger.error(f"Azure health check failed: {e}")
             return False
 
@@ -401,6 +419,6 @@ class AzureKeyVaultProvider(KMSProvider):
                 f"rotate every {rotate_after_days} days"
             )
 
-        except Exception as e:
+        except _azure_kms_handled_exceptions() as e:
             logger.error(f"Failed to configure rotation policy: {e}")
             raise KeyRotationError(f"Failed to configure rotation policy: {e}") from e

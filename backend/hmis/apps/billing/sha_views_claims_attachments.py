@@ -103,7 +103,7 @@ class SHAClaimAttachmentsMixin:
 
         try:
             item.save()
-        except Exception as exc:
+        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as exc:
             return Response({"error": _stringify_error(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
         AuditLog.log(

@@ -2717,7 +2717,7 @@ class Command(BaseCommand):
                     src_visit.refer_to_clinic(
                         target_clinic, "Referred for clinician review", clinical_officer
                     )
-        except Exception as e:
+        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
             # Do not fail demo seeding because referral creation is best-effort
             self.stdout.write(self.style.WARNING(f"    Referral creation skipped: {e}"))
 
@@ -2747,7 +2747,7 @@ class Command(BaseCommand):
             call_command("seed_imaging_catalog", verbosity=0)
             procedure_count = ImagingProcedure.objects.filter(is_active=True).count()
             self.stdout.write(f"    Imaging catalog ready: {procedure_count} procedures")
-        except Exception as e:
+        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
             self.stdout.write(self.style.WARNING(f"    Could not seed imaging catalog: {e}"))
 
         # =================================================================
@@ -3764,7 +3764,7 @@ class Command(BaseCommand):
 
                     generate_immunization_schedule(brian)
                     self.stdout.write("    Generated KEPI immunization schedule")
-                except Exception as exc:
+                except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as exc:
                     self.stdout.write(self.style.WARNING(f"    Could not generate schedule: {exc}"))
 
             # Mark older immunization records as ADMINISTERED
@@ -4130,7 +4130,13 @@ class Command(BaseCommand):
 
                         generate_immunization_schedule(baby_for_hei)
                         self.stdout.write("    Generated KEPI immunization schedule for baby")
-                    except Exception as exc:
+                    except (
+                        AttributeError,
+                        TypeError,
+                        RuntimeError,
+                        OSError,
+                        AssertionError,
+                    ) as exc:
                         self.stdout.write(
                             self.style.WARNING(f"    Could not generate schedule: {exc}")
                         )

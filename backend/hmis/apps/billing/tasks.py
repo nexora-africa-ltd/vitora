@@ -13,6 +13,24 @@ Tasks:
 import logging
 
 from celery import shared_task
+from django.core.exceptions import ObjectDoesNotExist, ValidationError
+from django.db import DatabaseError, IntegrityError
+
+
+def _billing_task_handled_exceptions() -> tuple[type[Exception], ...]:
+    """Exceptions billing automation tasks may log and continue on."""
+    return (
+        ValidationError,
+        ObjectDoesNotExist,
+        DatabaseError,
+        IntegrityError,
+        ImportError,
+        AttributeError,
+        TypeError,
+        ValueError,
+        RuntimeError,
+        OSError,
+    )
 
 
 @shared_task(name="hmis.apps.billing.tasks.apply_daily_bed_charges")
@@ -27,7 +45,7 @@ def apply_daily_bed_charges():
 
     try:
         BillingAutomationRuleService.apply_daily()
-    except Exception:
+    except _billing_task_handled_exceptions():
         logger.exception("Billing automation DAILY rules failed")
 
     return charged
@@ -75,7 +93,7 @@ def poll_preauth_statuses():
             service = SHAPreauthService()
             service.poll_status(preauth)
             polled += 1
-        except Exception:
+        except _billing_task_handled_exceptions():
             errors += 1
             logger.exception("Failed to poll preauth %s", preauth.preauth_reference)
 
@@ -141,7 +159,7 @@ def poll_ilm_preauth_statuses():
         except DHAError:
             errors += 1
             logger.warning("DHA error polling ILM preauth %s", preauth.pk)
-        except Exception:
+        except _billing_task_handled_exceptions():
             errors += 1
             logger.exception("Failed to poll ILM preauth %s", preauth.pk)
 
@@ -302,7 +320,7 @@ def refresh_otp_whitelist_statuses():
                         "facility_id": request.facility_id,
                     },
                 )
-        except Exception:
+        except _billing_task_handled_exceptions():
             errors += 1
             logger.exception("Failed to poll whitelist status for %s", request.beneficiary_cr_id)
 
@@ -346,7 +364,7 @@ def retry_phc_claim_creation(self, encounter_id: int):
     try:
         _maybe_create_phc_claim(encounter)
         return {"status": "ok", "encounter_id": encounter_id}
-    except Exception as exc:
+    except _billing_task_handled_exceptions() as exc:
         logger.warning(
             "retry_phc_claim_creation failed for encounter %s (attempt %d/%d): %s",
             encounter_id,
@@ -663,7 +681,7 @@ def generate_daily_claims_digest():
                 payload=digest,
                 facility_id=facility.pk,
             )
-        except Exception:
+        except _billing_task_handled_exceptions():
             logger.exception("Daily digest failed for facility %s", facility.pk)
 
     return f"Generated digests for {facilities.count()} facilities"

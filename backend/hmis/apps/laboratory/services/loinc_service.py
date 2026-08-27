@@ -120,7 +120,7 @@ class LOINCTerminologyService:
                 "display": getattr(loinc, "long_common_name", "")
                 or getattr(loinc, "component", ""),
             }
-        except Exception:
+        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
             return None
 
     def _search_local(self, term: str, limit: int) -> list[dict[str, Any]]:

@@ -49,7 +49,7 @@ def _post(payload: dict[str, Any]) -> bool:
     except requests.RequestException:
         logger.exception("Slack webhook call failed")
         return False
-    except Exception:
+    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
         logger.exception("Unexpected error posting to Slack webhook")
         return False
 

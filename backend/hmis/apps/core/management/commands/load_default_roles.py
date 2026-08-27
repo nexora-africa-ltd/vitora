@@ -128,7 +128,7 @@ class Command(BaseCommand):
                             if verbose:
                                 self.stdout.write(f"  Created role: {code} - {role.name}")
 
-            except Exception as e:
+            except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
                 self.stdout.write(self.style.ERROR(f"Error processing role {code}: {str(e)}"))
 
         # Summary

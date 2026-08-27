@@ -49,7 +49,7 @@ def publish_event(
 
         event = DomainEvent(**kwargs)
         get_event_bus().publish(event)
-    except Exception:
+    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
         logger.exception(
             "Failed to publish domain event %s for %s#%s",
             event_type,

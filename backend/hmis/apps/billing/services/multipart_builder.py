@@ -76,5 +76,11 @@ def _size_of(content: Any) -> int | None:
         end = content.tell()
         content.seek(cur)
         return end
-    except Exception:  # pragma: no cover - best effort
+    except (
+        AttributeError,
+        TypeError,
+        RuntimeError,
+        OSError,
+        AssertionError,
+    ):  # pragma: no cover - best effort
         return None

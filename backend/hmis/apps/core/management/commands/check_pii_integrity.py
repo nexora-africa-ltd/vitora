@@ -111,7 +111,7 @@ class Command(BaseCommand):
                     checked += 1
                     try:
                         _ = getattr(obj, field_name)
-                    except Exception as e:
+                    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
                         failures += 1
                         results.append(
                             {
