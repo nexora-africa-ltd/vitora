@@ -22,14 +22,20 @@ This plan targets concrete risk signals found in the codebase: oversized files, 
 - Web TypeScript escape hatch count (`: any` / `as any`):
   - Command: `cd web-app && rg -n "(:\s*any\b|\bas\s+any\b|<any>)" . --glob "*.ts" --glob "*.tsx" | wc -l`
 - Large Python file count (>1500 lines):
-  - Command: `cd backend && python - <<'PY'
+  - Command: `python3 - <<'PY'
 import pathlib
-files=[p for p in pathlib.Path('hmis/apps').rglob('*.py')]
-big=[(p,sum(1 for _ in p.open())) for p in files]
-big=[x for x in big if x[1]>1500]
+
+files = [
+    p for p in pathlib.Path('hmis/apps').rglob('*.py')
+    if 'management' not in p.parts
+]
+
+big = [(p, sum(1 for _ in p.open())) for p in files]
+big = [x for x in big if x[1] > 1500]
+
 print(len(big))
-for p,n in sorted(big,key=lambda x:x[1], reverse=True)[:20]:
-    print(n,p)
+for p, n in sorted(big, key=lambda x: x[1], reverse=True)[:20]:
+    print(n, p)
 PY`
 - Web API raw return count (`return response.data`):
   - Command: `cd web-app && rg -n "return response\.data" lib/api | wc -l`
