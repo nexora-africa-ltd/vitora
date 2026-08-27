@@ -4,6 +4,7 @@
  */
 
 import { apiClient } from './client';
+import { z } from 'zod';
 import { parseResponse } from '@/lib/schemas/validation';
 import {
   PhysiotherapyOrderSchema,
@@ -32,6 +33,11 @@ import type {
 import type { PaginatedResponse } from '@/lib/types/allied-health';
 
 const BASE_URL = '/api/physiotherapy';
+
+const GenerateSessionsResponseSchema = z.object({
+  sessions_created: z.number(),
+  sessions: z.array(PhysiotherapySessionListItemSchema),
+});
 
 export const physiotherapyApi = {
   // ============ Treatment Types ============
@@ -137,7 +143,9 @@ export const physiotherapyApi = {
     const response = await apiClient.post(`${BASE_URL}/orders/${id}/generate_sessions/`, {
       count,
     });
-    return response.data;
+    return parseResponse(GenerateSessionsResponseSchema, response.data, {
+      context: 'physiotherapyApi.generateSessions',
+    });
   },
 
   startOrder: async (id: number): Promise<PhysiotherapyOrder> => {

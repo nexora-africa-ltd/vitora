@@ -5,6 +5,7 @@
  */
 import { apiClient } from '@/lib/api/client';
 import { parseResponse } from '@/lib/schemas/validation';
+import { z } from 'zod';
 import {
   InsuranceClaimSchema,
   InsurancePlanSchema,
@@ -80,6 +81,13 @@ import type {
 } from '@/lib/types/insurance';
 
 const BASE = '/api/insurance';
+
+const GenericObjectResponseSchema = z.record(z.unknown());
+const UploadClaimAttachmentFileResultSchema = z.object({
+  attachment_ref: z.string(),
+  upload: z.record(z.unknown()),
+  attachment: z.record(z.unknown()),
+});
 
 // ---------------------------------------------------------------------------
 // Providers
@@ -429,7 +437,9 @@ async function validateVisitAuthorization(
   data: ValidateAuthorizationInput
 ): Promise<Record<string, unknown>> {
   const response = await apiClient.post(`${BASE}/authorizations/${id}/validate-token/`, data);
-  return response.data as Record<string, unknown>;
+  return parseResponse(GenericObjectResponseSchema, response.data, {
+    context: 'insuranceApi.validateVisitAuthorization',
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -531,12 +541,16 @@ async function reserveClaimBalance(
 
 async function submitClaimToHealthcloud(id: number): Promise<Record<string, unknown>> {
   const response = await apiClient.post(`${BASE}/claims/${id}/submit-to-healthcloud/`);
-  return response.data as Record<string, unknown>;
+  return parseResponse(GenericObjectResponseSchema, response.data, {
+    context: 'insuranceApi.submitClaimToHealthcloud',
+  });
 }
 
 async function refreshClaimExternalStatus(id: number): Promise<Record<string, unknown>> {
   const response = await apiClient.post(`${BASE}/claims/${id}/refresh-external-status/`);
-  return response.data as Record<string, unknown>;
+  return parseResponse(GenericObjectResponseSchema, response.data, {
+    context: 'insuranceApi.refreshClaimExternalStatus',
+  });
 }
 
 async function submitClaimInvoice(
@@ -544,7 +558,9 @@ async function submitClaimInvoice(
   data: SubmitInvoiceInput
 ): Promise<Record<string, unknown>> {
   const response = await apiClient.post(`${BASE}/claims/${id}/submit-invoice/`, data);
-  return response.data as Record<string, unknown>;
+  return parseResponse(GenericObjectResponseSchema, response.data, {
+    context: 'insuranceApi.submitClaimInvoice',
+  });
 }
 
 async function submitClaimCreditNote(
@@ -552,7 +568,9 @@ async function submitClaimCreditNote(
   data: SubmitCreditNoteInput
 ): Promise<Record<string, unknown>> {
   const response = await apiClient.post(`${BASE}/claims/${id}/submit-credit-note/`, data);
-  return response.data as Record<string, unknown>;
+  return parseResponse(GenericObjectResponseSchema, response.data, {
+    context: 'insuranceApi.submitClaimCreditNote',
+  });
 }
 
 async function uploadClaimAttachment(
@@ -560,7 +578,9 @@ async function uploadClaimAttachment(
   data: UploadClaimAttachmentInput
 ): Promise<Record<string, unknown>> {
   const response = await apiClient.post(`${BASE}/claims/${id}/upload-attachment/`, data);
-  return response.data as Record<string, unknown>;
+  return parseResponse(GenericObjectResponseSchema, response.data, {
+    context: 'insuranceApi.uploadClaimAttachment',
+  });
 }
 
 async function uploadClaimAttachmentFile(
@@ -576,13 +596,17 @@ async function uploadClaimAttachmentFile(
   const response = await apiClient.post(`${BASE}/claims/${id}/upload-attachment-file/`, formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   });
-  return response.data as UploadClaimAttachmentFileResult;
+  return parseResponse(UploadClaimAttachmentFileResultSchema, response.data, {
+    context: 'insuranceApi.uploadClaimAttachmentFile',
+  });
 }
 
 
 async function checkClaimRemittance(id: number): Promise<Record<string, unknown>> {
   const response = await apiClient.post(`${BASE}/claims/${id}/check-remittance/`);
-  return response.data as Record<string, unknown>;
+  return parseResponse(GenericObjectResponseSchema, response.data, {
+    context: 'insuranceApi.checkClaimRemittance',
+  });
 }
 
 // ---------------------------------------------------------------------------

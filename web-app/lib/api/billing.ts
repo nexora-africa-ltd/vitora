@@ -125,6 +125,33 @@ import type {
 
 type IdParam = string | number;
 
+const VerifyMpesaTransactionResponseSchema = z.object({
+  verified: z.boolean(),
+  receipt_number: z.string(),
+  error: z.string().nullable(),
+});
+
+const SHATariffItemSchema = z.object({
+  id: z.number(),
+  code: z.string(),
+  name: z.string(),
+  description: z.string(),
+  category: z.string(),
+  sha_amount: z.union([z.string(), z.number().transform(String)]),
+  facility_level: z.string(),
+  effective_date: z.string(),
+  expiry_date: z.string().nullable(),
+  is_active: z.boolean(),
+  is_valid: z.boolean(),
+  max_quantity_per_claim: z.number(),
+  requires_preauthorization: z.boolean(),
+});
+
+const PaginatedSHATariffSchema = z.object({
+  count: z.number(),
+  results: z.array(SHATariffItemSchema),
+});
+
 // ============================================================================
 // Enum mapping helpers (Web UI <-> Backend)
 // ============================================================================
@@ -551,7 +578,9 @@ async function verifyMpesaTransaction(
   const response = await apiClient.post('/api/billing/mpesa/verify/', {
     transaction_id: transactionId,
   });
-  return response.data;
+  return parseResponse(VerifyMpesaTransactionResponseSchema, response.data, {
+    context: 'billingApi.verifyMpesaTransaction',
+  });
 }
 
 // ============================================================================
@@ -883,7 +912,9 @@ export const billingApi = {
       searchParams.set('page_size', String(params?.page_size ?? 30));
       const qs = searchParams.toString();
       const response = await apiClient.get(`/api/billing/sha-tariffs/?${qs}`);
-      return response.data;
+      return parseResponse(PaginatedSHATariffSchema, response.data, {
+        context: 'billingApi.shaTariffs.search',
+      });
     },
   },
 };

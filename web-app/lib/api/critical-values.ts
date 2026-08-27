@@ -4,6 +4,7 @@
  */
 
 import { apiClient } from './client';
+import { z } from 'zod';
 import type {
   CriticalValueRange,
   CriticalValueRangeCreateData,
@@ -23,6 +24,11 @@ import {
 } from '@/lib/schemas/critical-values.schema';
 
 const BASE = '/api/lab/critical-values';
+
+const SeedCriticalValueDefaultsResponseSchema = z.object({
+  created: z.number(),
+  message: z.string(),
+});
 
 export const criticalValuesApi = {
   // ===========================================================================
@@ -63,7 +69,9 @@ export const criticalValuesApi = {
 
   async seedDefaults(): Promise<{ created: number; message: string }> {
     const response = await apiClient.post(`${BASE}/ranges/seed_defaults/`);
-    return response.data;
+    return parseResponse(SeedCriticalValueDefaultsResponseSchema, response.data, {
+      context: 'criticalValuesApi.seedDefaults',
+    });
   },
 
   // ===========================================================================

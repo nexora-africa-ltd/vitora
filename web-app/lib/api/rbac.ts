@@ -130,7 +130,15 @@ export const rolesApi = {
     const response = await apiClient.post<{ message: string; roles_updated: number; permissions_synced: number }>(
       '/api/roles/sync-defaults/'
     );
-    return response.data;
+    return parseResponse(
+      z.object({
+        message: z.string(),
+        roles_updated: z.number(),
+        permissions_synced: z.number(),
+      }),
+      response.data,
+      { context: 'rolesApi.syncDefaults' }
+    );
   },
 };
 
@@ -228,7 +236,29 @@ export const staffApi = {
    */
   licenseSummary: async (): Promise<LicenseSummary> => {
     const response = await apiClient.get<LicenseSummary>('/api/staff/license_summary/');
-    return response.data;
+    return parseResponse(
+      z.object({
+        total: z.number(),
+        valid: z.number(),
+        expired: z.number(),
+        expiring_soon: z.number(),
+        unverified: z.number(),
+        no_expiry_set: z.number(),
+        is_admin_view: z.boolean(),
+        my_license: z
+          .object({
+            license_number: z.string(),
+            license_expiry: z.string().nullable(),
+            license_verified: z.boolean(),
+            licensing_body: z.string(),
+            hwr_last_verified_at: z.string().nullable(),
+            status: z.enum(['valid', 'expired', 'expiring_soon', 'unknown']),
+          })
+          .nullable(),
+      }),
+      response.data,
+      { context: 'staffApi.licenseSummary' }
+    );
   },
 };
 

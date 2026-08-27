@@ -1,4 +1,5 @@
 import { apiClient } from './client';
+import { z } from 'zod';
 import { parseResponse } from '@/lib/schemas/validation';
 import {
   ActivationResponseSchema,
@@ -27,6 +28,51 @@ import type {
 
 const LICENSE_TOKEN_KEY = 'vitora_license_token';
 const INSTALLATION_ID_KEY = 'vitora_installation_id';
+
+const InstallationListItemSchema = z.object({
+  id: z.number(),
+  installation_id: z.string(),
+  name: z.string(),
+  org_name: z.string(),
+  status: z.enum(['PENDING', 'ACTIVE', 'SUSPENDED', 'REVOKED']),
+  activated_at: z.string().nullable(),
+  last_check_in: z.string().nullable(),
+  app_version: z.string(),
+  os_info: z.string(),
+  created_at: z.string(),
+});
+
+const InstallationDetailSchema = InstallationListItemSchema.extend({
+  organization: z.number(),
+  facility: z.number().nullable(),
+  facility_name: z.string(),
+  activation_code: z.string(),
+  activated_by: z.number().nullable(),
+  check_in_ip: z.string(),
+  revoked_at: z.string().nullable(),
+  revoked_reason: z.string(),
+  updated_at: z.string(),
+});
+
+const PaginatedInstallationsSchema = z.object({
+  count: z.number(),
+  next: z.string().nullable(),
+  previous: z.string().nullable(),
+  results: z.array(InstallationListItemSchema),
+});
+
+const GenerateCodeResponseSchema = z.object({
+  id: z.number(),
+  activation_code: z.string(),
+  organization: z.string(),
+  facility: z.string().nullable(),
+  status: z.enum(['PENDING', 'ACTIVE', 'SUSPENDED', 'REVOKED']),
+});
+
+const SendCodeResponseSchema = z.object({
+  sent_to: z.string(),
+  organization: z.string(),
+});
 
 export const licensingApi = {
   /**
@@ -168,13 +214,17 @@ export const licensingAdminApi = {
   /** List all installations (paginated). */
   async list(params?: { page?: number; search?: string }): Promise<PaginatedInstallations> {
     const response = await apiClient.get('/api/licensing/installations/', { params });
-    return response.data as PaginatedInstallations;
+    return parseResponse(PaginatedInstallationsSchema, response.data, {
+      context: 'licensingAdminApi.list',
+    });
   },
 
   /** Get installation detail. */
   async get(id: number): Promise<InstallationDetail> {
     const response = await apiClient.get(`/api/licensing/installations/${id}/`);
-    return response.data as InstallationDetail;
+    return parseResponse(InstallationDetailSchema, response.data, {
+      context: 'licensingAdminApi.get',
+    });
   },
 
   /** Revoke an installation. */
@@ -195,7 +245,9 @@ export const licensingAdminApi = {
   /** Generate a new activation code. */
   async generateCode(data: GenerateCodeRequest): Promise<GenerateCodeResponse> {
     const response = await apiClient.post('/api/licensing/generate-code/', data);
-    return response.data as GenerateCodeResponse;
+    return parseResponse(GenerateCodeResponseSchema, response.data, {
+      context: 'licensingAdminApi.generateCode',
+    });
   },
 
   /** Email the activation code to the organization's contact email. */
@@ -204,12 +256,16 @@ export const licensingAdminApi = {
     payload?: { to_email: string; subject?: string; body?: string },
   ): Promise<{ sent_to: string; organization: string }> {
     const response = await apiClient.post(`/api/licensing/installations/${id}/send-code/`, payload || {});
-    return response.data;
+    return parseResponse(SendCodeResponseSchema, response.data, {
+      context: 'licensingAdminApi.sendCode',
+    });
   },
 
   /** Update installation fields (e.g., link a facility). */
   async patch(id: number, data: { facility?: number | null; name?: string }): Promise<InstallationDetail> {
     const response = await apiClient.patch(`/api/licensing/installations/${id}/`, data);
-    return response.data as InstallationDetail;
+    return parseResponse(InstallationDetailSchema, response.data, {
+      context: 'licensingAdminApi.patch',
+    });
   },
 };

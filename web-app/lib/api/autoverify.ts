@@ -4,6 +4,7 @@
  */
 
 import { apiClient } from './client';
+import { z } from 'zod';
 import type {
   DeltaCheckRule,
   DeltaCheckRuleCreateData,
@@ -29,6 +30,21 @@ import {
 } from '@/lib/schemas/autoverify.schema';
 
 const BASE = '/api/lab/autoverify';
+
+const SeedDeltaDefaultsResponseSchema = z.object({
+  created: z.number(),
+  message: z.string(),
+});
+
+const SeedRuleDefaultsResponseSchema = z.object({
+  created: z.number(),
+  test: z.string(),
+});
+
+const EvaluateDeltaResponseSchema = z.union([
+  DeltaCheckResultSchema,
+  z.object({ message: z.string() }),
+]);
 
 export const autoverifyApi = {
   // ===========================================================================
@@ -69,7 +85,9 @@ export const autoverifyApi = {
 
   async seedDeltaDefaults(): Promise<{ created: number; message: string }> {
     const response = await apiClient.post(`${BASE}/delta-rules/seed_defaults/`);
-    return response.data;
+    return parseResponse(SeedDeltaDefaultsResponseSchema, response.data, {
+      context: 'autoverifyApi.seedDeltaDefaults',
+    });
   },
 
   // ===========================================================================
@@ -87,9 +105,7 @@ export const autoverifyApi = {
     const response = await apiClient.post(`${BASE}/delta-results/evaluate/`, {
       result_id: resultId,
     });
-    // May return a DeltaCheckResult or a message if no rule
-    if (response.data.message) return response.data;
-    return parseResponse(DeltaCheckResultSchema, response.data, {
+    return parseResponse(EvaluateDeltaResponseSchema, response.data, {
       context: 'autoverifyApi.evaluateDelta',
     });
   },
@@ -132,7 +148,9 @@ export const autoverifyApi = {
 
   async seedRuleDefaults(testId: number): Promise<{ created: number; test: string }> {
     const response = await apiClient.post(`${BASE}/rules/seed_defaults/`, { test_id: testId });
-    return response.data;
+    return parseResponse(SeedRuleDefaultsResponseSchema, response.data, {
+      context: 'autoverifyApi.seedRuleDefaults',
+    });
   },
 
   // ===========================================================================

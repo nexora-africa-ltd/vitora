@@ -67,6 +67,7 @@ import {
   FacilityKBDocumentDeleteResponseSchema,
 } from '@/lib/schemas/ai.schema';
 import { parseResponse } from '@/lib/schemas/validation';
+import { z } from 'zod';
 import type {
   AIICD10SuggestResponse,
   AIStatus,
@@ -507,7 +508,9 @@ export const aiApi = {
     const response = await apiClient.get('/api/ai/predict/icu/labs/', {
       params: { admission_id: admissionId },
     });
-    return response.data as Record<string, number>;
+    return parseResponse(z.record(z.number()), response.data, {
+      context: 'aiApi.getICULabs',
+    });
   },
 
   // ===========================================================================
@@ -689,7 +692,9 @@ export const aiApi = {
    */
   generateCarePlanFHIR: async (data: AICarePlanGenerateRequest): Promise<Record<string, unknown>> => {
     const response = await apiClient.post('/api/ai/care-plan/generate/fhir/', data);
-    return response.data as Record<string, unknown>;
+    return parseResponse(z.record(z.unknown()), response.data, {
+      context: 'aiApi.generateCarePlanFHIR',
+    });
   },
 
   /**
@@ -1055,19 +1060,25 @@ export const aiApi = {
   /** Delete a webhook subscription. */
   deleteWebhook: async (webhookId: string): Promise<Record<string, unknown>> => {
     const response = await apiClient.delete(`/api/ai/webhooks/${webhookId}/`);
-    return response.data;
+    return parseResponse(z.record(z.unknown()), response.data, {
+      context: 'aiApi.deleteWebhook',
+    });
   },
 
   /** Pause webhook delivery. */
   pauseWebhook: async (webhookId: string): Promise<Record<string, unknown>> => {
     const response = await apiClient.post(`/api/ai/webhooks/${webhookId}/pause/`);
-    return response.data;
+    return parseResponse(z.record(z.unknown()), response.data, {
+      context: 'aiApi.pauseWebhook',
+    });
   },
 
   /** Resume webhook delivery. */
   activateWebhook: async (webhookId: string): Promise<Record<string, unknown>> => {
     const response = await apiClient.post(`/api/ai/webhooks/${webhookId}/activate/`);
-    return response.data;
+    return parseResponse(z.record(z.unknown()), response.data, {
+      context: 'aiApi.activateWebhook',
+    });
   },
 
   /** List webhook delivery history. */

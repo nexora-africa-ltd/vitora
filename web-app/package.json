@@ -12,6 +12,7 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "type-check": "tsc --noEmit",
+    "check:api-raw-returns": "node scripts/check-api-raw-returns.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "jest",

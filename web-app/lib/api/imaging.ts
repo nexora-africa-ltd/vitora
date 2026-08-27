@@ -163,7 +163,11 @@ export const imagingApi = {
     const response = await apiClient.post<{ detail: string; created: number; existing: number }>(
       '/api/imaging/procedures/seed_defaults/'
     );
-    return response.data;
+    return parseResponse(
+      z.object({ detail: z.string(), created: z.number(), existing: z.number() }),
+      response.data,
+      { context: 'imagingApi.seedDefaultProcedures' }
+    );
   },
 
   // ============ Imaging Orders ============
@@ -725,7 +729,7 @@ export const imagingApi = {
       `/api/imaging/studies/${studyInstanceUid}/download/`,
       { responseType: 'blob' }
     );
-    return response.data;
+    return response.data as Blob;
   },
 
   /**

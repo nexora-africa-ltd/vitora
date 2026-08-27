@@ -13,6 +13,7 @@
 
 import { apiClient } from './client';
 import { parseResponse } from '@/lib/schemas/validation';
+import { z } from 'zod';
 import {
   QuarterlyReportSchema,
   AnnualReportSchema,
@@ -49,6 +50,67 @@ import type {
 import type { PaginatedResponse } from '@/lib/types';
 
 const BASE = '/api/quality';
+
+const QualityRulePreviewResponseSchema = z.object({
+  evaluation_rule: z.object({
+    type: z.enum([
+      'bp_control',
+      'lab_threshold',
+      'wait_time',
+      'visit_count',
+      'enrollment_active',
+      'stock_availability',
+      'skilled_birth_attendance',
+      'tb_treatment_success',
+      'immunization_completeness',
+      'maternal_mortality_ratio',
+      'idsr_timeliness',
+    ]),
+    params: z.record(z.unknown()),
+  }),
+  clinic_id: z.number(),
+  year: z.number(),
+  period: z.number(),
+  period_type: z.enum(['MONTHLY', 'QUARTERLY', 'ANNUAL']),
+  numerator: z.number(),
+  denominator: z.number(),
+  percentage: z.string(),
+  notes: z.string(),
+});
+
+const QualitySeedDefaultsResponseSchema = z.object({
+  created: z.number(),
+  skipped: z.number(),
+  total: z.number(),
+});
+
+const EvaluateMeasureResultSchema = z.object({
+  measure_code: z.string(),
+  measure_name: z.string(),
+  numerator: z.number(),
+  denominator: z.number(),
+  percentage: z.string(),
+  meets_target: z.boolean(),
+  notes: z.string(),
+});
+
+const EvaluateMeasuresResponseSchema = z.object({
+  clinic_id: z.number().optional(),
+  year: z.number(),
+  period: z.number(),
+  period_type: z.string(),
+  results: z.array(EvaluateMeasureResultSchema).optional(),
+  total_evaluated: z.number().optional(),
+  clinics_evaluated: z.number().optional(),
+  clinic_results: z.array(
+    z.object({
+      clinic_id: z.number(),
+      clinic_name: z.string(),
+      results: z.array(EvaluateMeasureResultSchema),
+      total_evaluated: z.number(),
+    }),
+  ).optional(),
+});
 
 // =============================================================================
 // QUARTERLY REPORT ENDPOINTS
@@ -205,7 +267,9 @@ export const qualityApi = {
       `${BASE}/measures/preview-rule/`,
       data,
     );
-    return response.data;
+    return parseResponse(QualityRulePreviewResponseSchema, response.data, {
+      context: 'qualityApi.previewRule',
+    }) as QualityRulePreviewResponse;
   },
 
   importMeasures: async (
@@ -231,10 +295,10 @@ export const qualityApi = {
       const response = await apiClient.post(`${BASE}/measures/export/`, data, {
         responseType: 'blob',
       });
-      return response.data;
+      return response.data as Blob;
     }
     const response = await apiClient.post(`${BASE}/measures/export/`, data);
-    return response.data;
+    return parseResponse(z.unknown(), response.data, { context: 'qualityApi.exportMeasures' });
   },
 
   // -------------------------------------------------------------------------
@@ -362,7 +426,9 @@ export const qualityApi = {
    */
   seedDefaults: async (): Promise<{ created: number; skipped: number; total: number }> => {
     const response = await apiClient.post(`${BASE}/measures/seed-defaults/`);
-    return response.data as { created: number; skipped: number; total: number };
+    return parseResponse(QualitySeedDefaultsResponseSchema, response.data, {
+      context: 'qualityApi.seedDefaults',
+    });
   },
 
   // -------------------------------------------------------------------------
@@ -417,7 +483,9 @@ export const qualityApi = {
       period: params.period,
       period_type: params.period_type,
     });
-    return response.data;
+    return parseResponse(EvaluateMeasuresResponseSchema, response.data, {
+      context: 'qualityApi.evaluateMeasures',
+    });
   },
 };
 

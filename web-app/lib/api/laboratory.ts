@@ -104,6 +104,33 @@ import {
   LabWorkflowSettingsSchema,
 } from '@/lib/schemas/laboratory.schema';
 
+const ResolveTestsResponseSchema = z.object({
+  resolved: z.array(
+    z.object({
+      query_name: z.string(),
+      query_loinc: z.string(),
+      match: LabTestCatalogListSchema.nullable(),
+      score: z.number(),
+    }),
+  ),
+});
+
+const SeedDefaultsResponseSchema = z.object({
+  created: z.number(),
+  total: z.number(),
+});
+
+const SeedDriverTemplatesResponseSchema = z.object({
+  created: z.number(),
+  skipped: z.number(),
+  total: z.number(),
+});
+
+const GenerateAntibiogramResponseSchema = z.object({
+  generated: z.number(),
+  year: z.number(),
+});
+
 export const laboratoryApi = {
   // ============ Test Catalog ============
 
@@ -159,7 +186,9 @@ export const laboratoryApi = {
     }>;
   }> {
     const response = await apiClient.post('/api/lab/tests/resolve/', { tests });
-    return response.data;
+    return parseResponse(ResolveTestsResponseSchema, response.data, {
+      context: 'laboratoryApi.resolveTests',
+    });
   },
 
   /**
@@ -167,7 +196,9 @@ export const laboratoryApi = {
    */
   async seedDefaults(): Promise<{ created: number; total: number }> {
     const response = await apiClient.post<{ created: number; total: number }>('/api/lab/tests/seed-defaults/');
-    return response.data;
+    return parseResponse(SeedDefaultsResponseSchema, response.data, {
+      context: 'laboratoryApi.seedDefaults',
+    });
   },
 
   /**
@@ -338,7 +369,7 @@ export const laboratoryApi = {
     const response = await apiClient.get(`/api/lab/orders/${orderNumber}/requisition/`, {
       responseType: 'blob',
     });
-    return response.data;
+    return response.data as Blob;
   },
 
   /**
@@ -1177,12 +1208,16 @@ export const laboratoryApi = {
 
   async getChannelHealth(id: number): Promise<Record<string, unknown>> {
     const response = await apiClient.get(`/api/lab/analyzers/channels/${id}/health/`);
-    return response.data;
+    return parseResponse(z.record(z.unknown()), response.data, {
+      context: 'laboratoryApi.getChannelHealth',
+    });
   },
 
   async testChannelConnection(id: number): Promise<Record<string, unknown>> {
     const response = await apiClient.post(`/api/lab/analyzers/channels/${id}/test_connection/`);
-    return response.data;
+    return parseResponse(z.record(z.unknown()), response.data, {
+      context: 'laboratoryApi.testChannelConnection',
+    });
   },
 
   async applyDriverTemplate(channelId: number, templateId: number): Promise<InstrumentChannel> {
@@ -1262,7 +1297,9 @@ export const laboratoryApi = {
     const response = await apiClient.post<{ created: number; skipped: number; total: number }>(
       '/api/lab/analyzers/templates/seed_defaults/',
     );
-    return response.data;
+    return parseResponse(SeedDriverTemplatesResponseSchema, response.data, {
+      context: 'laboratoryApi.seedDriverTemplates',
+    });
   },
 
   // ============ Analyzer Dashboard (L3) ============
@@ -1563,7 +1600,9 @@ export const microbiologyApi = {
 
   async generateAntibiogram(year: number): Promise<{ generated: number; year: number }> {
     const response = await apiClient.post('/api/lab/microbiology/antibiogram/generate/', { year });
-    return response.data;
+    return parseResponse(GenerateAntibiogramResponseSchema, response.data, {
+      context: 'microbiologyApi.generateAntibiogram',
+    });
   },
 
   // ============ WHONET Export ============
@@ -1575,6 +1614,6 @@ export const microbiologyApi = {
       params,
       responseType: 'blob',
     });
-    return response.data;
+    return response.data as Blob;
   },
 };

@@ -13,6 +13,7 @@
  */
 import { apiClient } from './client';
 import { parseResponse } from '@/lib/schemas/validation';
+import { z } from 'zod';
 import {
   ClientRegistryFetchResponseSchema,
   ClientRegistryRegisterResponseSchema,
@@ -153,6 +154,253 @@ function buildQueryString<T extends object>(params: T): string {
 
   return searchParams.toString();
 }
+
+const ClaimAttachmentSchema = z.object({
+  id: z.number(),
+  attachment_type: z.string(),
+  name: z.string(),
+  description: z.string().nullable().optional(),
+  file: z.string().nullable().optional(),
+  file_size: z.number().nullable().optional(),
+  mime_type: z.string().nullable().optional(),
+  checksum: z.string().nullable().optional(),
+  original_filename: z.string().nullable().optional(),
+  created_at: z.string().nullable().optional(),
+});
+
+const ClaimItemAllocationUpdateResponseSchema = z.object({
+  success: z.boolean(),
+  item: z.unknown(),
+  claim_claimed_amount: z.string(),
+});
+
+const LatestConsentSchema = ConsentTokenSchema.extend({ exists: z.boolean() });
+
+const ConsentAdmissionConflictSchema = z.object({
+  has_active_admission: z.boolean(),
+  admission: z
+    .object({
+      id: z.number(),
+      admission_number: z.string(),
+      admission_date: z.string(),
+      facility_id: z.number(),
+      facility_name: z.string(),
+      ward_id: z.number(),
+      ward_name: z.string(),
+      bed_id: z.number(),
+      bed_number: z.string(),
+    })
+    .optional(),
+});
+
+const AuthorizeBiometricResponseSchema = z.object({
+  consent_id: z.number(),
+  auth_guid: z.string(),
+  iframe_url: z.string(),
+  status: z.string(),
+  consent_token: z.string().optional(),
+  sandbox_mode: z.boolean().optional(),
+});
+
+const BiometricAuthStatusSchema = z.object({
+  auth_guid: z.string(),
+  status: z.string(),
+  consent_token: z.string(),
+});
+
+const StatusMessageSchema = z.object({
+  status: z.string(),
+  message: z.string().optional(),
+});
+
+const BeneficiaryContactsSchema = z.object({
+  contacts: z.array(
+    z.object({
+      id: z.string(),
+      value: z.string(),
+      contact_type: z.string(),
+    }),
+  ),
+});
+
+const CapitationSummarySchema = z.object({
+  period: z.object({ from_date: z.string().nullable(), to_date: z.string().nullable() }),
+  total_claims: z.number(),
+  total_claimed_amount: z.string(),
+  total_approved_amount: z.string(),
+  total_paid_amount: z.string(),
+  claims_by_status: z.record(z.number()),
+  top_interventions: z.array(
+    z.object({
+      intervention_code: z.string(),
+      intervention_name: z.string(),
+      count: z.number(),
+      total_tariff: z.string().nullable(),
+    }),
+  ),
+  monthly_breakdown: z.array(
+    z.object({
+      month: z.string(),
+      claims: z.number(),
+      claimed: z.string(),
+      approved: z.string(),
+      paid: z.string(),
+    }),
+  ),
+});
+
+const BatchValidationResultSchema = z.object({
+  total: z.number(),
+  ready: z.number(),
+  invalid: z.number(),
+  missing_docs: z.number(),
+  ready_claims: z.array(z.object({ id: z.number(), claim_number: z.string(), patient_name: z.string(), claimed_amount: z.string() })),
+  invalid_claims: z.array(z.object({ id: z.number(), claim_number: z.string(), patient_name: z.string(), errors: z.array(z.string()) })),
+  missing_docs_claims: z.array(z.object({ id: z.number(), claim_number: z.string(), patient_name: z.string(), missing_documents: z.array(z.string()) })),
+  total_claimable_amount: z.string(),
+});
+
+const BulkSubmitResultSchema = z.object({
+  submitted: z.number(),
+  failed: z.number(),
+  skipped: z.number(),
+  submitted_claims: z.array(z.object({ id: z.number(), claim_number: z.string(), status: z.string() })),
+  failed_claims: z.array(z.object({ id: z.number(), claim_number: z.string(), error: z.string() })),
+  skipped_claims: z.array(z.object({ id: z.number(), claim_number: z.string(), errors: z.array(z.string()) })),
+});
+
+const DailyDigestSchema = z.object({
+  date: z.string(),
+  facility_id: z.number(),
+  summary: z.object({
+    created_today: z.number(),
+    submitted_today: z.number(),
+    pending_submission: z.number(),
+    pending_amount: z.string(),
+    approved_today_amount: z.string(),
+    queries_outstanding: z.number(),
+    time_bar_risk_count: z.number(),
+  }),
+  action_items: z.object({
+    time_bar_risk: z.array(z.object({ id: z.number(), claim_number: z.string(), hours_remaining: z.number() })),
+    queries: z.array(z.object({ id: z.number(), claim_number: z.string(), patient: z.string() })),
+    unsubmitted_drafts: z.number(),
+  }),
+});
+
+const InterventionSuggestionSchema = z.object({
+  code: z.string(),
+  name: z.string(),
+  tariff: z.string().nullable(),
+  benefit_package: z.string(),
+  source: z.string(),
+  source_id: z.number(),
+  source_name: z.string(),
+});
+
+const SuggestInterventionsResponseSchema = z.object({
+  suggestions: z.array(InterventionSuggestionSchema),
+  count: z.number(),
+});
+
+const AttachedCountResponseSchema = z.object({ attached: z.number(), skipped: z.number() });
+const AutoAttachDocumentsResponseSchema = z.object({
+  attached: z.number(),
+  already_attached: z.number().optional(),
+  error: z.string().optional(),
+});
+
+const PaginatedRemittancesSchema = z.object({
+  count: z.number(),
+  next: z.string().nullable(),
+  previous: z.string().nullable(),
+  results: z.array(z.unknown()),
+});
+
+const RemittanceClaimsResponseSchema = z.object({ count: z.number(), results: z.array(z.unknown()) });
+const MessageCountResponseSchema = z.object({ message: z.string(), count: z.number() });
+
+const IlmPushLocalAttachmentsSchema = z.object({
+  local_count: z.number(),
+  uploaded: z.number(),
+  failed: z.number(),
+  errors: z.array(z.object({ attachment_id: z.string(), attachment_name: z.string(), error: z.string() })).optional(),
+  sync_status: z
+    .object({
+      local_count: z.number(),
+      matched: z.number(),
+      total: z.number(),
+      all_matched: z.boolean(),
+      missing: z.array(z.object({ attachment_id: z.number(), attachment_name: z.string(), attachment_type: z.string() })),
+      consent_token_present: z.boolean(),
+    })
+    .optional(),
+});
+
+const IlmAttachmentSyncStatusSchema = z.object({
+  local_count: z.number(),
+  matched: z.number(),
+  total: z.number(),
+  all_matched: z.boolean(),
+  matched_details: z
+    .array(
+      z.object({
+        attachment_id: z.number(),
+        attachment_name: z.string(),
+        attachment_type: z.string(),
+        remote_attachment_id: z.string(),
+        intervention_code: z.string(),
+      }),
+    )
+    .optional(),
+  missing: z.array(z.object({ attachment_id: z.number(), attachment_name: z.string(), attachment_type: z.string() })),
+  consent_token_present: z.boolean(),
+});
+
+const IlmRestartVisitSessionSchema = z.object({
+  success: z.boolean(),
+  message: z.string(),
+  cleared_visit_started: z.boolean(),
+  expired_tokens: z.number(),
+});
+
+const IlmApplyPreviewLinesResponseSchema = z.object({
+  success: z.boolean(),
+  message: z.string(),
+  replace_existing: z.boolean(),
+  previous_item_count: z.number(),
+  created_item_count: z.number(),
+  detected_invoice_number: z.string().optional(),
+  invoice_linked: z.boolean().optional(),
+  materialized_invoice_id: z.number().optional(),
+  materialized_invoice_number: z.string().optional(),
+  materialized_invoice_items_created: z.number().optional(),
+  materialized_invoice_items_replaced: z.number().optional(),
+  materialized_invoice_skipped_reason: z.string().optional(),
+  final_bill_attachment_id: z.number().optional(),
+  final_bill_created: z.boolean().optional(),
+  final_bill_updated: z.boolean().optional(),
+  final_bill_skipped_reason: z.string().optional(),
+  allocation_pending_count: z.number().optional(),
+  unmatched_tariff_codes: z.array(z.string()),
+  parse_errors: z.array(z.string()),
+  claimed_amount: z.string(),
+});
+
+const IlmMaterializePreviewInvoiceResponseSchema = z.object({
+  success: z.boolean(),
+  invoice_id: z.number().optional(),
+  invoice_number: z.string().optional(),
+  linked_existing_invoice: z.boolean().optional(),
+  materialized: z.boolean().optional(),
+  items_created: z.number().optional(),
+  items_replaced: z.number().optional(),
+  final_bill_attachment_id: z.number().optional(),
+  final_bill_created: z.boolean().optional(),
+  final_bill_updated: z.boolean().optional(),
+  final_bill_skipped_reason: z.string().optional(),
+  skipped_reason: z.string().optional(),
+});
 
 // ============================================================================
 // Client Registry API
@@ -773,7 +1021,7 @@ async function cancelClaim(claimId: number): Promise<void> {
  */
 async function getClaimBundle(claimId: number): Promise<unknown> {
   const response = await apiClient.get(`/api/billing/claims/${claimId}/bundle/`);
-  return response.data;
+  return parseResponse(z.unknown(), response.data, { context: 'shaApi.getClaimBundle' });
 }
 
 export interface ClaimAttachment {
@@ -798,7 +1046,9 @@ export interface ClaimAttachmentUpsertPayload {
 
 async function getClaimAttachments(claimId: number): Promise<ClaimAttachment[]> {
   const response = await apiClient.get(`/api/billing/claims/${claimId}/attachments/`);
-  return response.data as ClaimAttachment[];
+  return parseResponse(z.array(ClaimAttachmentSchema), response.data, {
+    context: 'shaApi.getClaimAttachments',
+  });
 }
 
 async function createClaimAttachment(
@@ -818,7 +1068,9 @@ async function createClaimAttachment(
   const response = await apiClient.post(`/api/sha/claims/${claimId}/attachments/`, formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   });
-  return response.data as ClaimAttachment;
+  return parseResponse(ClaimAttachmentSchema, response.data, {
+    context: 'shaApi.createClaimAttachment',
+  });
 }
 
 async function updateClaimAttachment(
@@ -844,7 +1096,9 @@ async function updateClaimAttachment(
     formData,
     { headers: { 'Content-Type': 'multipart/form-data' } }
   );
-  return response.data as ClaimAttachment;
+  return parseResponse(ClaimAttachmentSchema, response.data, {
+    context: 'shaApi.updateClaimAttachment',
+  });
 }
 
 async function deleteClaimAttachment(claimId: number, attachmentId: number): Promise<void> {
@@ -870,7 +1124,9 @@ async function updateClaimItemAllocation(
   payload: ClaimItemAllocationUpdateRequest,
 ): Promise<ClaimItemAllocationUpdateResponse> {
   const response = await apiClient.post(`/api/sha/claims/${claimId}/items/${itemId}/allocation/`, payload);
-  return response.data as ClaimItemAllocationUpdateResponse;
+  return parseResponse(ClaimItemAllocationUpdateResponseSchema, response.data, {
+    context: 'shaApi.updateClaimItemAllocation',
+  }) as ClaimItemAllocationUpdateResponse;
 }
 
 // ============================================================================
@@ -995,7 +1251,9 @@ async function getLatestConsent(
       ...(options?.interventionCode ? { intervention_code: options.interventionCode } : {}),
     },
   });
-  return response.data;
+  return parseResponse(LatestConsentSchema, response.data, {
+    context: 'shaApi.getLatestConsent',
+  });
 }
 
 async function getConsentAdmissionConflict(patientId: number): Promise<{
@@ -1015,20 +1273,9 @@ async function getConsentAdmissionConflict(patientId: number): Promise<{
   const response = await apiClient.get('/api/sha/consent/admission-conflict/', {
     params: { patient_id: patientId },
   });
-  return response.data as {
-    has_active_admission: boolean;
-    admission?: {
-      id: number;
-      admission_number: string;
-      admission_date: string;
-      facility_id: number;
-      facility_name: string;
-      ward_id: number;
-      ward_name: string;
-      bed_id: number;
-      bed_number: string;
-    };
-  };
+  return parseResponse(ConsentAdmissionConflictSchema, response.data, {
+    context: 'shaApi.getConsentAdmissionConflict',
+  });
 }
 
 /**
@@ -1048,7 +1295,9 @@ async function authorizeBiometric(data: {
   sandbox_mode?: boolean;
 }> {
   const response = await apiClient.post('/api/sha/consent/authorize/', data);
-  return response.data;
+  return parseResponse(AuthorizeBiometricResponseSchema, response.data, {
+    context: 'shaApi.authorizeBiometric',
+  });
 }
 
 /**
@@ -1061,7 +1310,9 @@ async function getBiometricAuthStatus(authGuid: string): Promise<{
   consent_token: string;
 }> {
   const response = await apiClient.get(`/api/sha/consent/authorize/${authGuid}/status/`);
-  return response.data;
+  return parseResponse(BiometricAuthStatusSchema, response.data, {
+    context: 'shaApi.getBiometricAuthStatus',
+  });
 }
 
 /**
@@ -1070,7 +1321,9 @@ async function getBiometricAuthStatus(authGuid: string): Promise<{
  */
 async function cancelBiometricAuth(authGuid: string): Promise<{ status: string; message: string }> {
   const response = await apiClient.post(`/api/sha/consent/authorize/${authGuid}/cancel/`);
-  return response.data;
+  return parseResponse(StatusMessageSchema, response.data, {
+    context: 'shaApi.cancelBiometricAuth',
+  }) as { status: string; message: string };
 }
 
 /**
@@ -1083,7 +1336,9 @@ async function getBeneficiaryContacts(beneficiaryCrId: string): Promise<{
   const response = await apiClient.get('/api/sha/consent/contacts/', {
     params: { beneficiary_cr_id: beneficiaryCrId },
   });
-  return response.data;
+  return parseResponse(BeneficiaryContactsSchema, response.data, {
+    context: 'shaApi.getBeneficiaryContacts',
+  });
 }
 
 // ============================================================================
@@ -1130,7 +1385,16 @@ async function validateCapitationProvider(
   const body: Record<string, number> = { sha_member_id: shaMemberId };
   if (claimId) body.claim_id = claimId;
   const response = await apiClient.post('/api/billing/capitation/validate/', body);
-  return response.data;
+  return parseResponse(
+    z.object({
+      is_valid: z.boolean(),
+      warning: z.string(),
+      blocking: z.boolean(),
+      details: z.record(z.unknown()).optional(),
+    }),
+    response.data,
+    { context: 'shaApi.validateCapitationProvider' },
+  );
 }
 
 /**
@@ -1144,7 +1408,16 @@ async function validateCapitationDirect(
   const response = await apiClient.post('/api/billing/capitation/validate-direct/', {
     eligibility_response: eligibilityResponse,
   });
-  return response.data;
+  return parseResponse(
+    z.object({
+      is_valid: z.boolean(),
+      warning: z.string(),
+      blocking: z.boolean(),
+      details: z.record(z.unknown()).optional(),
+    }),
+    response.data,
+    { context: 'shaApi.validateCapitationDirect' },
+  );
 }
 
 /**
@@ -1161,7 +1434,7 @@ async function getCapitationSummary(params?: {
   const response = await apiClient.get(
     `/api/billing/claims/capitation-summary/${qs ? `?${qs}` : ''}`
   );
-  return response.data;
+  return parseResponse(CapitationSummarySchema, response.data, { context: 'shaApi.getCapitationSummary' });
 }
 
 // ============================================================================
@@ -1226,7 +1499,7 @@ export interface InterventionSuggestion {
  */
 async function batchValidateClaims(): Promise<BatchValidationResult> {
   const response = await apiClient.post('/api/sha/claims/batch-validate/');
-  return response.data;
+  return parseResponse(BatchValidationResultSchema, response.data, { context: 'shaApi.batchValidateClaims' });
 }
 
 /**
@@ -1236,7 +1509,7 @@ async function bulkSubmitClaims(claimIds: number[]): Promise<BulkSubmitResult> {
   const response = await apiClient.post('/api/sha/claims/bulk-submit/', {
     claim_ids: claimIds,
   });
-  return response.data;
+  return parseResponse(BulkSubmitResultSchema, response.data, { context: 'shaApi.bulkSubmitClaims' });
 }
 
 /**
@@ -1244,7 +1517,7 @@ async function bulkSubmitClaims(claimIds: number[]): Promise<BulkSubmitResult> {
  */
 async function getDailyDigest(): Promise<DailyDigest> {
   const response = await apiClient.get('/api/sha/claims/daily-digest/');
-  return response.data;
+  return parseResponse(DailyDigestSchema, response.data, { context: 'shaApi.getDailyDigest' });
 }
 
 /**
@@ -1255,7 +1528,9 @@ async function suggestInterventions(claimId: number): Promise<{
   count: number;
 }> {
   const response = await apiClient.get(`/api/sha/claims/${claimId}/suggest-interventions/`);
-  return response.data;
+  return parseResponse(SuggestInterventionsResponseSchema, response.data, {
+    context: 'shaApi.suggestInterventions',
+  });
 }
 
 /**
@@ -1268,7 +1543,9 @@ async function attachSuggestedInterventions(
   const response = await apiClient.post(`/api/sha/claims/${claimId}/suggest-interventions/`, {
     interventions,
   });
-  return response.data;
+  return parseResponse(AttachedCountResponseSchema, response.data, {
+    context: 'shaApi.attachSuggestedInterventions',
+  });
 }
 
 /**
@@ -1276,7 +1553,9 @@ async function attachSuggestedInterventions(
  */
 async function autoAttachDocuments(claimId: number): Promise<{ attached: number; already_attached?: number; error?: string }> {
   const response = await apiClient.post(`/api/sha/claims/${claimId}/auto-attach-documents/`);
-  return response.data;
+  return parseResponse(AutoAttachDocumentsResponseSchema, response.data, {
+    context: 'shaApi.autoAttachDocuments',
+  });
 }
 
 /**
@@ -1286,7 +1565,9 @@ async function triggerEligibilityPreCheck(patientId: number): Promise<{ status: 
   const response = await apiClient.post('/api/sha/eligibility/pre-check/', {
     patient_id: patientId,
   });
-  return response.data;
+  return parseResponse(StatusMessageSchema, response.data, {
+    context: 'shaApi.triggerEligibilityPreCheck',
+  });
 }
 
 // ============================================================================
@@ -1298,7 +1579,9 @@ async function triggerEligibilityPreCheck(patientId: number): Promise<{ status: 
  */
 async function getRemittances(): Promise<{ count: number; next: string | null; previous: string | null; results: SHARemittanceType[] }> {
   const response = await apiClient.get('/api/sha/remittances/');
-  return response.data;
+  return parseResponse(PaginatedRemittancesSchema, response.data, {
+    context: 'shaApi.getRemittances',
+  }) as { count: number; next: string | null; previous: string | null; results: SHARemittanceType[] };
 }
 
 /**
@@ -1306,7 +1589,7 @@ async function getRemittances(): Promise<{ count: number; next: string | null; p
  */
 async function getRemittance(id: number): Promise<SHARemittanceType> {
   const response = await apiClient.get(`/api/sha/remittances/${id}/`);
-  return response.data;
+  return parseResponse(z.unknown(), response.data, { context: 'shaApi.getRemittance' }) as SHARemittanceType;
 }
 
 /**
@@ -1314,7 +1597,9 @@ async function getRemittance(id: number): Promise<SHARemittanceType> {
  */
 async function getRemittanceClaims(id: number): Promise<{ count: number; results: SHARemittanceLineType[] }> {
   const response = await apiClient.get(`/api/sha/remittances/${id}/claims/`);
-  return response.data;
+  return parseResponse(RemittanceClaimsResponseSchema, response.data, {
+    context: 'shaApi.getRemittanceClaims',
+  }) as { count: number; results: SHARemittanceLineType[] };
 }
 
 /**
@@ -1322,7 +1607,9 @@ async function getRemittanceClaims(id: number): Promise<{ count: number; results
  */
 async function fetchRemittancesFromDHA(): Promise<{ message: string; count: number }> {
   const response = await apiClient.post('/api/sha/remittances/fetch/');
-  return response.data;
+  return parseResponse(MessageCountResponseSchema, response.data, {
+    context: 'shaApi.fetchRemittancesFromDHA',
+  });
 }
 
 // ============================================================================
@@ -1469,7 +1756,9 @@ async function ilmPushLocalAttachments(claimId: number): Promise<{
   };
 }> {
   const response = await apiClient.post(`${ilmBase(claimId)}/attachments/push-local/`, {});
-  return response.data;
+  return parseResponse(IlmPushLocalAttachmentsSchema, response.data, {
+    context: 'shaApi.ilmPushLocalAttachments',
+  });
 }
 
 async function ilmAttachmentSyncStatus(claimId: number): Promise<{
@@ -1488,7 +1777,9 @@ async function ilmAttachmentSyncStatus(claimId: number): Promise<{
   consent_token_present: boolean;
 }> {
   const response = await apiClient.get(`${ilmBase(claimId)}/attachments/sync-status/`);
-  return response.data;
+  return parseResponse(IlmAttachmentSyncStatusSchema, response.data, {
+    context: 'shaApi.ilmAttachmentSyncStatus',
+  });
 }
 
 async function ilmPreview(claimId: number): Promise<IlmCallResult> {
@@ -1507,12 +1798,9 @@ async function ilmRestartVisitSession(claimId: number): Promise<{
   expired_tokens: number;
 }> {
   const response = await apiClient.post(`${ilmBase(claimId)}/restart-visit-session/`, {});
-  return response.data as {
-    success: boolean;
-    message: string;
-    cleared_visit_started: boolean;
-    expired_tokens: number;
-  };
+  return parseResponse(IlmRestartVisitSessionSchema, response.data, {
+    context: 'shaApi.ilmRestartVisitSession',
+  });
 }
 
 export interface IlmApplyPreviewLinesResponse {
@@ -1562,7 +1850,9 @@ async function ilmApplyPreviewLines(
     payload,
     replace_existing: replaceExisting,
   });
-  return response.data as IlmApplyPreviewLinesResponse;
+  return parseResponse(IlmApplyPreviewLinesResponseSchema, response.data, {
+    context: 'shaApi.ilmApplyPreviewLines',
+  });
 }
 
 async function ilmMaterializePreviewInvoice(
@@ -1573,7 +1863,9 @@ async function ilmMaterializePreviewInvoice(
     replace_existing: body?.replace_existing ?? true,
     ...(body?.invoice_number ? { invoice_number: body.invoice_number } : {}),
   });
-  return response.data as IlmMaterializePreviewInvoiceResponse;
+  return parseResponse(IlmMaterializePreviewInvoiceResponseSchema, response.data, {
+    context: 'shaApi.ilmMaterializePreviewInvoice',
+  });
 }
 
 async function ilmPreviewPayerClaim(claimId: number): Promise<IlmCallResult> {
@@ -1843,7 +2135,9 @@ async function pollDoctorConsent(preauthId: number): Promise<SHAPreauthType> {
   const response = await apiClient.get(`${ILM_BASE}/preauth/doctor-consent/poll/`, {
     params: { preauth_id: preauthId },
   });
-  return response.data;
+  return parseResponse(SHAPreauthSchema, response.data, {
+    context: 'shaApi.pollDoctorConsent',
+  });
 }
 
 async function ilmEmergencyOpen(body: {

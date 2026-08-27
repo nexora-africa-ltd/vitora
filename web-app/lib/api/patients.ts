@@ -7,6 +7,7 @@
 
 import { apiClient } from './client';
 import { parseResponse } from '@/lib/schemas/validation';
+import { z } from 'zod';
 import {
   PatientSchema,
   PatientListItemSchema,
@@ -22,6 +23,28 @@ import type { PaginatedResponse } from '@/lib/types';
 import type { VitalsDataPoint, TimeRange } from '@/components/shared/vitals-trend-chart';
 
 type IdParam = string | number;
+
+const DuplicateMatchSchema = z.object({
+  id: z.number(),
+  mrn: z.string(),
+  full_name: z.string(),
+  date_of_birth: z.string(),
+  gender: z.enum(['M', 'F', 'O']),
+  match_confidence: z.number(),
+  match_reason: z.string(),
+});
+
+const DuplicateCheckResultSchema = z.object({
+  has_duplicate: z.boolean(),
+  match_type: z.enum(['exact_id', 'demographic', 'partial']).nullable(),
+  matches: z.array(DuplicateMatchSchema),
+});
+
+const ContactPatientSmsResponseSchema = z.object({
+  status: z.literal('success'),
+  message: z.string(),
+  sms_sent: z.boolean(),
+});
 
 export const patientsApi = {
   /**
@@ -169,7 +192,9 @@ export const patientsApi = {
       `/api/patients/check-duplicate/?${searchParams.toString()}`
     );
 
-    return response.data;
+    return parseResponse(DuplicateCheckResultSchema, response.data, {
+      context: 'patientsApi.checkDuplicate',
+    });
   },
 
   /**
@@ -227,6 +252,8 @@ export const patientsApi = {
    */
   async contactPatient(id: IdParam, payload: ContactPatientSmsPayload): Promise<ContactPatientSmsResponse> {
     const response = await apiClient.post<ContactPatientSmsResponse>(`/api/patients/${id}/contact-patient/`, payload);
-    return response.data;
+    return parseResponse(ContactPatientSmsResponseSchema, response.data, {
+      context: 'patientsApi.contactPatient',
+    });
   },
 };

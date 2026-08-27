@@ -66,7 +66,12 @@ import {
   InterFacilityTransferArraySchema,
   InterFacilityTransferEventArraySchema,
   PaginatedInterFacilityTransferSchema,
+  WardUpdatesResponseSchema,
+  SupervisorAlertsResponseSchema,
 } from '@/lib/schemas/inpatient.schema';
+import { LabOrderSchema } from '@/lib/schemas/laboratory.schema';
+import { ImagingOrderSchema } from '@/lib/schemas/imaging.schema';
+import { PrescriptionSchema } from '@/lib/schemas/pharmacy.schema';
 import type { LabOrder } from '@/lib/types/laboratory';
 import type { ImagingOrder } from '@/lib/types/imaging';
 import type { Prescription } from '@/lib/types/pharmacy';
@@ -185,6 +190,109 @@ export interface DischargePrescriptionsResult {
   detail: string;
 }
 
+const GenerateWardBedsResponseSchema = z.object({
+  created: z.number(),
+  total: z.number(),
+  capacity: z.number(),
+  message: z.string(),
+});
+
+const SeedDefaultWardsResponseSchema = z.object({
+  created: z.number(),
+  facility_id: z.number(),
+  facility_name: z.string(),
+  wards: z.array(
+    z.object({
+      id: z.number(),
+      name: z.string(),
+      code: z.string(),
+      beds: z.number(),
+    })
+  ),
+  message: z.string(),
+});
+
+const DischargeDraftSchema = z
+  .object({
+    id: z.number(),
+    admission: z.number(),
+    discharge_type: z.string(),
+    diagnoses: z.array(z.record(z.unknown())),
+    treatment_summary: z.string(),
+    discharge_medications: z.array(z.record(z.unknown())),
+    patient_instructions: z.string(),
+  })
+  .passthrough();
+
+const DischargePrescriptionsResultSchema = z.object({
+  created: z.array(
+    z.object({
+      drug_name: z.string(),
+      prescription_id: z.number(),
+      prescription_number: z.string(),
+    })
+  ),
+  failed: z.array(
+    z.object({
+      drug_name: z.string(),
+      reason: z.string(),
+    })
+  ),
+  detail: z.string(),
+});
+
+const ResolveAllCarePlansResponseSchema = z.object({
+  message: z.string(),
+  resolved_count: z.number(),
+});
+
+const AcknowledgeAlertResponseSchema = z.object({
+  message: z.string(),
+  acknowledgment_id: z.number(),
+  acknowledged_at: z.string(),
+});
+
+const ConstraintOverrideMetricsSchema = z.object({
+  total_admissions: z.number(),
+  override_count: z.number(),
+  override_rate: z.number(),
+  critical_override_count: z.number(),
+  acknowledged_count: z.number(),
+  pending_acknowledgment_count: z.number(),
+  violation_breakdown: z.array(
+    z.object({
+      code: z.string(),
+      count: z.number(),
+    })
+  ),
+  ward_breakdown: z.array(
+    z.object({
+      ward_id: z.number(),
+      ward_name: z.string(),
+      override_count: z.number(),
+    })
+  ),
+  common_reasons: z.array(
+    z.object({
+      reason: z.string(),
+      count: z.number(),
+    })
+  ),
+});
+
+const AdmissionOrdersResponseSchema = z.object({
+  lab_orders: z.array(LabOrderSchema),
+  imaging_orders: z.array(ImagingOrderSchema),
+  prescriptions: z.array(PrescriptionSchema),
+});
+
+const BedOverrideResponseSchema = z.object({
+  admission: AdmissionSchema,
+  override_id: z.number(),
+  old_bed: z.string(),
+  new_bed: z.string(),
+});
+
 export const inpatientApi = {
   // ============================================================================
   // Wards
@@ -220,7 +328,9 @@ export const inpatientApi = {
     message: string;
   }> {
     const response = await apiClient.post(`/api/inpatient/wards/${wardId}/generate_beds/`);
-    return response.data;
+    return parseResponse(GenerateWardBedsResponseSchema, response.data, {
+      context: 'inpatientApi.generateWardBeds',
+    });
   },
 
   /**
@@ -237,7 +347,9 @@ export const inpatientApi = {
     const response = await apiClient.post('/api/inpatient/wards/seed-defaults/',
       facilityId ? { facility_id: facilityId } : {}
     );
-    return response.data;
+    return parseResponse(SeedDefaultWardsResponseSchema, response.data, {
+      context: 'inpatientApi.seedDefaultWards',
+    });
   },
 
   async listWardBeds(
@@ -328,7 +440,9 @@ export const inpatientApi = {
       '/api/inpatient/admission-recommendations/pending-admissions/',
       { params }
     );
-    return response.data;
+    return parseResponse(PaginatedAdmissionRecommendationSchema, response.data, {
+      context: 'inpatientApi.listPendingAdmissions',
+    });
   },
 
   // ============================================================================
@@ -394,7 +508,9 @@ export const inpatientApi = {
       const response = await apiClient.get<DischargeDraft>(
         `/api/inpatient/admissions/${admissionId}/discharge-draft/`
       );
-      return response.data;
+      return parseResponse(DischargeDraftSchema, response.data, {
+        context: 'inpatientApi.getAdmissionDischargeDraft',
+      }) as unknown as DischargeDraft;
     } catch (error: any) {
       if (error?.response?.status === 404) {
         return null;
@@ -411,7 +527,9 @@ export const inpatientApi = {
       `/api/inpatient/admissions/${admissionId}/discharge-draft/`,
       data
     );
-    return response.data;
+    return parseResponse(DischargeDraftSchema, response.data, {
+      context: 'inpatientApi.saveAdmissionDischargeDraft',
+    }) as unknown as DischargeDraft;
   },
 
   async deleteAdmissionDischargeDraft(admissionId: IdParam): Promise<void> {
@@ -447,7 +565,9 @@ export const inpatientApi = {
     const response = await apiClient.post<DischargePrescriptionsResult>(
       `/api/inpatient/discharges/${dischargeId}/create-prescriptions/`
     );
-    return response.data;
+    return parseResponse(DischargePrescriptionsResultSchema, response.data, {
+      context: 'inpatientApi.createDischargePrescriptions',
+    });
   },
 
   // ============================================================================
@@ -785,7 +905,9 @@ export const inpatientApi = {
       `/api/inpatient/kardex/${kardexId}/resolve-all-care-plans/`,
       evaluation ? { evaluation } : {}
     );
-    return response.data;
+    return parseResponse(ResolveAllCarePlansResponseSchema, response.data, {
+      context: 'inpatientApi.resolveAllCarePlans',
+    });
   },
 
   async discontinueCarePlanEntry(kardexId: number, entryId: number, reason: string): Promise<NursingCarePlanEntry> {
@@ -896,7 +1018,9 @@ export const inpatientApi = {
       `/api/inpatient/wards/${wardId}/updates/`,
       { params }
     );
-    return response.data;
+    return parseResponse(WardUpdatesResponseSchema, response.data, {
+      context: 'inpatientApi.getWardUpdates',
+    });
   },
 
   /**
@@ -911,7 +1035,9 @@ export const inpatientApi = {
       '/api/inpatient/supervisor/alerts/',
       { params }
     );
-    return response.data;
+    return parseResponse(SupervisorAlertsResponseSchema, response.data, {
+      context: 'inpatientApi.getSupervisorAlerts',
+    });
   },
 
   // ============================================================================
@@ -924,7 +1050,9 @@ export const inpatientApi = {
     const response = await apiClient.get<AdmissionOrdersResponse>(
       `/api/inpatient/admissions/${admissionId}/orders/`
     );
-    return response.data;
+    return parseResponse(AdmissionOrdersResponseSchema, response.data, {
+      context: 'inpatientApi.getAdmissionOrders',
+    });
   },
 
   /**
@@ -934,7 +1062,9 @@ export const inpatientApi = {
     const response = await apiClient.get<LabOrder[]>(
       `/api/inpatient/admissions/${admissionId}/lab-orders/`
     );
-    return response.data;
+    return parseResponse(z.array(LabOrderSchema), response.data, {
+      context: 'inpatientApi.getAdmissionLabOrders',
+    });
   },
 
   /**
@@ -944,7 +1074,9 @@ export const inpatientApi = {
     const response = await apiClient.get<ImagingOrder[]>(
       `/api/inpatient/admissions/${admissionId}/imaging-orders/`
     );
-    return response.data;
+    return parseResponse(z.array(ImagingOrderSchema), response.data, {
+      context: 'inpatientApi.getAdmissionImagingOrders',
+    });
   },
 
   /**
@@ -954,7 +1086,9 @@ export const inpatientApi = {
     const response = await apiClient.get<Prescription[]>(
       `/api/inpatient/admissions/${admissionId}/prescriptions/`
     );
-    return response.data;
+    return parseResponse(z.array(PrescriptionSchema), response.data, {
+      context: 'inpatientApi.getAdmissionPrescriptions',
+    });
   },
 
   /**
@@ -1015,7 +1149,9 @@ export const inpatientApi = {
       '/api/inpatient/supervisor/alerts/acknowledge/',
       data
     );
-    return response.data;
+    return parseResponse(AcknowledgeAlertResponseSchema, response.data, {
+      context: 'inpatientApi.acknowledgeAlert',
+    });
   },
 
   /**
@@ -1029,7 +1165,9 @@ export const inpatientApi = {
       '/api/inpatient/supervisor/alerts/metrics/',
       { params }
     );
-    return response.data;
+    return parseResponse(ConstraintOverrideMetricsSchema, response.data, {
+      context: 'inpatientApi.getConstraintOverrideMetrics',
+    });
   },
 
   // ============================================================================
@@ -1220,7 +1358,9 @@ export const inpatientApi = {
       `/api/inpatient/admissions/${admissionId}/override_bed/`,
       data
     );
-    return response.data;
+    return parseResponse(BedOverrideResponseSchema, response.data, {
+      context: 'inpatientApi.overrideBed',
+    });
   },
 
   // ============================================================================

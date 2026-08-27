@@ -187,6 +187,40 @@ export interface ZonesSummaryResponse {
   total_patients: number;
 }
 
+const CriticalPatientSchema = z.object({
+  id: z.number(),
+  queue_id: z.number(),
+  encounter_id: z.number(),
+  encounter_status: z.string(),
+  patient_name: z.string(),
+  mrn: z.string(),
+  chief_complaint: z.string(),
+  assigned_area: z.string(),
+  assigned_area_display: z.string(),
+  wait_minutes: z.number(),
+  arrival_time: z.string(),
+  status: z.string(),
+});
+
+const ZoneSummarySchema = z.object({
+  code: z.string(),
+  name: z.string(),
+  capacity: z.number(),
+  total: z.number(),
+  primary_category: z.string(),
+  by_category: z.record(z.number()),
+});
+
+const CriticalPatientsResponseSchema = z.object({
+  count: z.number(),
+  patients: z.array(CriticalPatientSchema),
+});
+
+const ZonesSummaryResponseSchema = z.object({
+  zones: z.array(ZoneSummarySchema),
+  total_patients: z.number(),
+});
+
 // =============================================================================
 // WAITING QUEUE TYPES
 // =============================================================================
@@ -413,7 +447,9 @@ export const triageApi = {
     const response = await apiClient.get<CriticalPatientsResponse>(
       '/api/triage/queue/critical/'
     );
-    return response.data;
+    return parseResponse(CriticalPatientsResponseSchema, response.data, {
+      context: 'triageApi.getCriticalPatients',
+    }) as CriticalPatientsResponse;
   },
 
   /**
@@ -424,7 +460,9 @@ export const triageApi = {
     const response = await apiClient.get<ZonesSummaryResponse>(
       '/api/triage/queue/zones-summary/'
     );
-    return response.data;
+    return parseResponse(ZonesSummaryResponseSchema, response.data, {
+      context: 'triageApi.getZonesSummary',
+    }) as ZonesSummaryResponse;
   },
 
   // ============ Vital Thresholds ============
@@ -499,7 +537,7 @@ export const triageApi = {
     const response = await apiClient.get('/api/triage/vital-thresholds/export/', {
       responseType: 'blob',
     });
-    return response.data;
+    return response.data as Blob;
   },
 
   /**
@@ -549,7 +587,7 @@ export const triageApi = {
       params: { format, ...params },
       responseType: 'blob',
     });
-    return response.data;
+    return response.data as Blob;
   },
 
   // ============ Waiting Queue ============
@@ -787,7 +825,9 @@ export const triageApi = {
    */
   async getAvailableTriageRooms(): Promise<AvailableTriageRoom[]> {
     const response = await apiClient.get('/api/triage/waiting/available-triage-rooms/');
-    return z.array(AvailableTriageRoomSchema).parse(response.data);
+    return parseResponse(z.array(AvailableTriageRoomSchema), response.data, {
+      context: 'triageApi.getAvailableTriageRooms',
+    });
   },
 
   /**

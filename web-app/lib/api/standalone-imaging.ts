@@ -3,6 +3,7 @@
  */
 
 import { apiClient } from './client';
+import { z } from 'zod';
 import { parseResponse } from '@/lib/schemas/validation';
 import {
   WalkInImagingPatientSchema,
@@ -10,6 +11,7 @@ import {
   ExternalImagingOrderRequestSchema,
   ExternalImagingOrderListSchema,
 } from '@/lib/schemas/standalone-imaging.schema';
+import { ImagingOrderSchema } from '@/lib/schemas/imaging.schema';
 import type {
   WalkInImagingPatient,
   WalkInImagingPatientCreateData,
@@ -18,6 +20,15 @@ import type {
 } from '@/lib/types/standalone-imaging';
 
 const BASE = '/api/imaging/standalone';
+
+const AcceptExternalOrderResponseSchema = z
+  .object({
+    external_order: ExternalImagingOrderRequestSchema.optional(),
+    walkin_patient: WalkInImagingPatientSchema.optional(),
+    imaging_order: ImagingOrderSchema.optional(),
+    message: z.string().optional(),
+  })
+  .passthrough();
 
 export const standaloneImagingApi = {
   // Walk-in Patients
@@ -70,7 +81,9 @@ export const standaloneImagingApi = {
   // Standalone Order Creation
   async createStandaloneOrder(data: StandaloneImagingOrderCreateData) {
     const response = await apiClient.post(`${BASE}/orders/create/`, data);
-    return response.data;
+    return parseResponse(ImagingOrderSchema, response.data, {
+      context: 'standaloneImagingApi.createStandaloneOrder',
+    });
   },
 
   // External Imaging Order Requests
@@ -92,7 +105,9 @@ export const standaloneImagingApi = {
     const response = await apiClient.post(`${BASE}/external-orders/${id}/accept/`, {
       auto_create_walkin: autoCreateWalkin,
     });
-    return response.data;
+    return parseResponse(AcceptExternalOrderResponseSchema, response.data, {
+      context: 'standaloneImagingApi.acceptExternalOrder',
+    });
   },
 
   async rejectExternalOrder(id: number, reason: string) {

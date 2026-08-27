@@ -10,6 +10,7 @@
 
 import { apiClient } from './client';
 import { parseResponse } from '@/lib/schemas/validation';
+import { z } from 'zod';
 import {
   MCHRegistrationSchema,
   MCHRegistrationListItemSchema,
@@ -102,6 +103,22 @@ import type { PaginatedResponse } from '@/lib/types';
 
 const BASE_URL = '/api/mch';
 
+const RouteToClinicResponseSchema = z.object({
+  message: z.string(),
+  clinic_visit_id: z.number(),
+  queue_number: z.number(),
+  clinic: z.string(),
+  session_id: z.number(),
+});
+
+const ScheduleANCVisitResponseSchema = z.object({
+  message: z.string(),
+  appointment_id: z.number(),
+  appointment_number: z.string(),
+  scheduled_date: z.string(),
+  resource: z.string(),
+});
+
 // =============================================================================
 // MCH REGISTRATION API
 // =============================================================================
@@ -181,7 +198,9 @@ export const mchRegistrationsApi = {
     session_id: number;
   }> => {
     const response = await apiClient.post(`${BASE_URL}/registrations/${id}/route_to_anc/`, data || {});
-    return response.data;
+    return parseResponse(RouteToClinicResponseSchema, response.data, {
+      context: 'mchRegistrationsApi.routeToANC',
+    });
   },
 
   /**
@@ -195,7 +214,9 @@ export const mchRegistrationsApi = {
     session_id: number;
   }> => {
     const response = await apiClient.post(`${BASE_URL}/registrations/${id}/route_to_pnc/`, data || {});
-    return response.data;
+    return parseResponse(RouteToClinicResponseSchema, response.data, {
+      context: 'mchRegistrationsApi.routeToPNC',
+    });
   },
 
   /**
@@ -209,7 +230,9 @@ export const mchRegistrationsApi = {
     resource: string;
   }> => {
     const response = await apiClient.post(`${BASE_URL}/registrations/${id}/schedule_anc_visit/`, data);
-    return response.data;
+    return parseResponse(ScheduleANCVisitResponseSchema, response.data, {
+      context: 'mchRegistrationsApi.scheduleANCVisit',
+    });
   },
 
   /**
@@ -648,7 +671,9 @@ export const immunizationsApi = {
       { patient: patientId }
     );
     // Backend returns serialized array directly (not wrapped in { records: [...] })
-    return response.data;
+    return parseResponse(z.array(ImmunizationRecordListItemSchema), response.data, {
+      context: 'immunizationsApi.generateSchedule',
+    });
   },
 
   /**

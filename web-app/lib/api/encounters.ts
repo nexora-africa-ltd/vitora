@@ -4,6 +4,7 @@
 
 import { apiClient } from './client';
 import { parseResponse } from '@/lib/schemas/validation';
+import { z } from 'zod';
 import {
   EncounterSchema,
   DiagnosisSchema,
@@ -42,6 +43,27 @@ import type { ClinicalSnapshot } from '@/lib/types/checkin';
 import { PaginatedResponse } from '@/lib/types';
 
 type IdParam = string | number;
+
+const EncounterTransitionResponseSchema = z.object({
+  id: z.number(),
+  status: z.string(),
+  previous_status: z.string(),
+  transitioned_at: z.string(),
+  transitioned_by: z.string(),
+});
+
+const RelatedEncounterSchema = z.object({
+  id: z.number(),
+  patient: z.number(),
+  patient_mrn: z.string(),
+  patient_name: z.string(),
+  encounter_type: z.string(),
+  encounter_date: z.string(),
+  chief_complaint: z.string(),
+  status: z.string(),
+  visit_reason: z.string().optional(),
+  created_at: z.string(),
+});
 
 export const encountersApi = {
   /**
@@ -137,7 +159,9 @@ export const encountersApi = {
       `/api/encounters/${id}/transition/`,
       data
     );
-    return response.data;
+    return parseResponse(EncounterTransitionResponseSchema, response.data, {
+      context: 'encountersApi.transition',
+    }) as EncounterTransitionResponse;
   },
 
   // ===========================================================================
@@ -154,7 +178,9 @@ export const encountersApi = {
     const response = await apiClient.get<RelatedEncounter[]>(
       `/api/encounters/${id}/related/`
     );
-    return response.data;
+    return parseResponse(z.array(RelatedEncounterSchema), response.data, {
+      context: 'encountersApi.getRelated',
+    }) as RelatedEncounter[];
   },
 
   // =========================================================================

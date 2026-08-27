@@ -4,6 +4,7 @@
  */
 
 import { apiClient } from './client';
+import { z } from 'zod';
 import type {
   ReflexRule,
   ReflexRuleCreateData,
@@ -19,6 +20,11 @@ import {
 } from '@/lib/schemas/reflex.schema';
 
 const BASE = '/api/lab/reflex';
+
+const SeedReflexDefaultsResponseSchema = z.object({
+  created: z.number(),
+  message: z.string(),
+});
 
 export const reflexApi = {
   // ===========================================================================
@@ -59,14 +65,18 @@ export const reflexApi = {
 
   async seedDefaults(): Promise<{ created: number; message: string }> {
     const response = await apiClient.post(`${BASE}/rules/seed_defaults/`);
-    return response.data;
+    return parseResponse(SeedReflexDefaultsResponseSchema, response.data, {
+      context: 'reflexApi.seedDefaults',
+    });
   },
 
   async evaluate(resultId: number): Promise<ReflexExecution[]> {
     const response = await apiClient.post(`${BASE}/rules/evaluate/`, {
       result_id: resultId,
     });
-    return response.data;
+    return parseResponse(z.array(ReflexExecutionSchema), response.data, {
+      context: 'reflexApi.evaluate',
+    });
   },
 
   // ===========================================================================

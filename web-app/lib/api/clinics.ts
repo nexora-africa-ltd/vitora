@@ -10,6 +10,7 @@
 
 import { apiClient } from './client';
 import { parseResponse } from '@/lib/schemas/validation';
+import { z } from 'zod';
 import {
   ClinicSchema,
   ClinicListItemSchema,
@@ -56,6 +57,53 @@ import type {
 } from '@/lib/types/clinic';
 import type { ProcedureOrderListItem } from '@/lib/types/procedure';
 import type { PaginatedResponse } from '@/lib/types';
+
+const ProcedureOrderListItemSchema = z.object({
+  id: z.number(),
+  order_number: z.string(),
+  procedure: z.number(),
+  procedure_name: z.string(),
+  patient: z.number(),
+  patient_name: z.string(),
+  status: z.enum(['ORDERED', 'CONSENT_PENDING', 'SCHEDULED', 'READY', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED']),
+  priority: z.enum(['EMERGENCY', 'URGENT', 'ROUTINE', 'ELECTIVE']),
+  scheduled_date: z.string().nullable(),
+  scheduled_time: z.string().nullable(),
+  scheduled_clinic: z.number().nullable(),
+  scheduled_clinic_name: z.string().nullable(),
+  is_overdue: z.boolean(),
+  ordered_at: z.string(),
+});
+
+const EnrollmentSmsTriggerResultSchema = z.object({
+  checked: z.number(),
+  errors: z.number(),
+  overdue_found: z.number().optional(),
+  alerts_sent: z.number().optional(),
+  reminders_sent: z.number().optional(),
+});
+
+const EnrollmentSmsTriggerResponseSchema = z.object({
+  status: z.literal('success'),
+  message: z.string(),
+  result: EnrollmentSmsTriggerResultSchema,
+});
+
+const ClinicRoomListResponseSchema = z.union([
+  z.array(ClinicRoomSchema),
+  ClinicRoomArrayResponseSchema,
+]);
+
+const SeedDefaultsResponseSchema = z.object({
+  created: z.array(
+    z.object({
+      code: z.string(),
+      name: z.string(),
+    }),
+  ),
+  skipped: z.number(),
+  total: z.number(),
+});
 
 // =============================================================================
 // CLINIC ENDPOINTS
@@ -138,7 +186,9 @@ export const clinicsApi = {
    */
   getSessionScheduledOrders: async (clinicId: number, sessionId: number): Promise<ProcedureOrderListItem[]> => {
     const response = await apiClient.get(`/api/clinics/${clinicId}/sessions/${sessionId}/scheduled-orders/`);
-    return response.data;
+    return parseResponse(z.array(ProcedureOrderListItemSchema), response.data, {
+      context: 'clinicsApi.getSessionScheduledOrders',
+    });
   },
 
   /**
@@ -417,7 +467,9 @@ export const clinicsApi = {
    */
   triggerOverdueAlerts: async (): Promise<EnrollmentSmsTriggerResponse> => {
     const response = await apiClient.post<EnrollmentSmsTriggerResponse>('/api/clinic-enrollments/trigger-overdue-alerts/');
-    return response.data;
+    return parseResponse(EnrollmentSmsTriggerResponseSchema, response.data, {
+      context: 'clinicsApi.triggerOverdueAlerts',
+    });
   },
 
   /**
@@ -425,7 +477,9 @@ export const clinicsApi = {
    */
   triggerUpcomingReminders: async (): Promise<EnrollmentSmsTriggerResponse> => {
     const response = await apiClient.post<EnrollmentSmsTriggerResponse>('/api/clinic-enrollments/trigger-upcoming-reminders/');
-    return response.data;
+    return parseResponse(EnrollmentSmsTriggerResponseSchema, response.data, {
+      context: 'clinicsApi.triggerUpcomingReminders',
+    });
   },
 
   // -------------------------------------------------------------------------
@@ -474,7 +528,10 @@ export const clinicsApi = {
    */
   listAvailableRooms: async (clinicId: number): Promise<ClinicRoom[]> => {
     const response = await apiClient.get<ClinicRoom[]>(`/api/clinics/${clinicId}/rooms/available/`);
-    return response.data;
+    const validated = parseResponse(ClinicRoomListResponseSchema, response.data, {
+      context: 'clinicsApi.listAvailableRooms',
+    });
+    return Array.isArray(validated) ? validated : validated.results;
   },
 
   /**
@@ -495,7 +552,9 @@ export const clinicsApi = {
       '/api/clinics/seed-defaults/',
       facilityId ? { facility_id: facilityId } : undefined,
     );
-    return response.data;
+    return parseResponse(SeedDefaultsResponseSchema, response.data, {
+      context: 'clinicsApi.seedDefaults',
+    });
   },
 };
 

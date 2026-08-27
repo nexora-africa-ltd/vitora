@@ -5,6 +5,7 @@
  */
 
 import { apiClient } from './client';
+import { z } from 'zod';
 import { parseResponse } from '@/lib/schemas/validation';
 import {
   ClinicalCommentSchema,
@@ -141,6 +142,11 @@ export const commentsApi = {
     const response = await apiClient.get<{ count: number }>('/api/comments/count/', {
       params: { entity_type: entityType, entity_id: entityId },
     });
-    return response.data.count ?? 0;
+    const parsed = parseResponse(
+      z.object({ count: z.number().optional() }),
+      response.data,
+      { context: `commentsApi.count(${entityType}, ${entityId})` }
+    );
+    return parsed.count ?? 0;
   },
 };

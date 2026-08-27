@@ -109,6 +109,53 @@ import { z } from 'zod';
 
 const BASE = '/api/inventory';
 
+const PaymentTermSchema = z.object({
+  id: z.number(),
+  code: z.string(),
+  name: z.string(),
+  days: z.number(),
+  is_active: z.boolean(),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+
+const PaginatedPaymentTermSchema = z.object({
+  count: z.number(),
+  next: z.string().nullable(),
+  previous: z.string().nullable(),
+  results: z.array(PaymentTermSchema),
+});
+
+const PaymentTermListResponseSchema = z.union([
+  z.array(PaymentTermSchema),
+  PaginatedPaymentTermSchema,
+]);
+
+const StockCountItemsGeneratedSchema = z.object({
+  created: z.number(),
+  total: z.number(),
+});
+
+const SuccessMessageSchema = z.object({
+  message: z.string(),
+});
+
+const ETIMSConnectionTestSchema = z.object({
+  success: z.boolean(),
+  message: z.string(),
+});
+
+const ForecastGenerateSummarySchema = z.object({
+  message: z.string(),
+  count: z.number(),
+});
+
+const ConvertReorderToPOSchema = z.object({
+  message: z.string(),
+  purchase_order_id: z.number(),
+  po_number: z.string(),
+});
+
 export const inventoryApi = {
   async getBootstrap(): Promise<InventoryBootstrap> {
     const response = await apiClient.get(`${BASE}/bootstrap/`);
@@ -168,17 +215,24 @@ export const inventoryApi = {
     const response = await apiClient.get(`${BASE}/payment-terms/`, {
       params: { page_size: 100 },
     });
-    return response.data.results ?? response.data;
+    const parsed = parseResponse(PaymentTermListResponseSchema, response.data, {
+      context: 'inventoryApi.listPaymentTerms',
+    });
+    return Array.isArray(parsed) ? parsed : parsed.results;
   },
 
   async createPaymentTerm(data: PaymentTermCreateData): Promise<PaymentTerm> {
     const response = await apiClient.post(`${BASE}/payment-terms/`, data);
-    return response.data;
+    return parseResponse(PaymentTermSchema, response.data, {
+      context: 'inventoryApi.createPaymentTerm',
+    });
   },
 
   async updatePaymentTerm(id: number, data: Partial<PaymentTermCreateData>): Promise<PaymentTerm> {
     const response = await apiClient.patch(`${BASE}/payment-terms/${id}/`, data);
-    return response.data;
+    return parseResponse(PaymentTermSchema, response.data, {
+      context: 'inventoryApi.updatePaymentTerm',
+    });
   },
 
   async deletePaymentTerm(id: number): Promise<void> {
@@ -548,7 +602,9 @@ export const inventoryApi = {
 
   async generateStockCountItems(id: number): Promise<{ created: number; total: number }> {
     const response = await apiClient.post(`${BASE}/stock-counts/${id}/generate_items/`);
-    return response.data as { created: number; total: number };
+    return parseResponse(StockCountItemsGeneratedSchema, response.data, {
+      context: 'inventoryApi.generateStockCountItems',
+    });
   },
 
   async startStockCount(id: number): Promise<StockCountDetail> {
@@ -633,7 +689,9 @@ export const inventoryApi = {
 
   async testETIMSConnection(id: number): Promise<{ success: boolean; message: string }> {
     const response = await apiClient.post(`${BASE}/etims-config/${id}/test_connection/`);
-    return response.data as { success: boolean; message: string };
+    return parseResponse(ETIMSConnectionTestSchema, response.data, {
+      context: 'inventoryApi.testETIMSConnection',
+    });
   },
 
   // ==========================================================================
@@ -665,12 +723,16 @@ export const inventoryApi = {
 
   async submitETIMSInvoice(id: number): Promise<{ message: string }> {
     const response = await apiClient.post(`${BASE}/etims-invoices/${id}/submit/`);
-    return response.data as { message: string };
+    return parseResponse(SuccessMessageSchema, response.data, {
+      context: 'inventoryApi.submitETIMSInvoice',
+    });
   },
 
   async retryETIMSInvoice(id: number): Promise<{ message: string }> {
     const response = await apiClient.post(`${BASE}/etims-invoices/${id}/retry/`);
-    return response.data as { message: string };
+    return parseResponse(SuccessMessageSchema, response.data, {
+      context: 'inventoryApi.retryETIMSInvoice',
+    });
   },
 
   async cancelETIMSInvoice(id: number): Promise<ETIMSInvoice> {
@@ -768,7 +830,9 @@ export const inventoryApi = {
         context: 'inventoryApi.generateForecast',
       });
     }
-    return response.data as { message: string; count: number };
+    return parseResponse(ForecastGenerateSummarySchema, response.data, {
+      context: 'inventoryApi.generateForecastSummary',
+    });
   },
 
   // ==========================================================================
@@ -797,7 +861,9 @@ export const inventoryApi = {
     const response = await apiClient.post(
       `${BASE}/reorder-suggestions/${id}/convert_to_po/`
     );
-    return response.data as { message: string; purchase_order_id: number; po_number: string };
+    return parseResponse(ConvertReorderToPOSchema, response.data, {
+      context: 'inventoryApi.convertReorderToPO',
+    });
   },
 
   async dismissReorderSuggestion(id: number): Promise<ReorderSuggestion> {

@@ -193,6 +193,11 @@ jobs:
         run: npm ci
         if: hashFiles('web-app/package.json') != ''
 
+      - name: Check API Raw Returns Guard
+        working-directory: ./web-app
+        run: npm run check:api-raw-returns
+        if: hashFiles('web-app/package.json') != ''
+
       - name: Run ESLint
         working-directory: ./web-app
         run: npm run lint

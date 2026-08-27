@@ -8,6 +8,8 @@
  */
 
 import { apiClient } from './client';
+import { z } from 'zod';
+import { parseResponse } from '@/lib/schemas/validation';
 
 export interface PushSubscriptionResponse {
   id: number;
@@ -21,11 +23,29 @@ export interface VapidKeyResponse {
   vapid_public_key: string;
 }
 
+const PushSubscriptionResponseSchema = z.object({
+  id: z.number(),
+  endpoint: z.string(),
+  p256dh: z.string(),
+  auth: z.string(),
+  created_at: z.string(),
+});
+
+const VapidKeyResponseSchema = z.object({
+  vapid_public_key: z.string(),
+});
+
+const PushSubscriptionListSchema = z.object({
+  results: z.array(PushSubscriptionResponseSchema),
+});
+
 export const pushApi = {
   /** Get the server's VAPID public key for PushManager.subscribe(). */
   async getVapidKey(): Promise<VapidKeyResponse> {
     const response = await apiClient.get('/api/push-subscriptions/vapid-key/');
-    return response.data;
+    return parseResponse(VapidKeyResponseSchema, response.data, {
+      context: 'pushApi.getVapidKey',
+    });
   },
 
   /** Register a push subscription with the backend. */
@@ -36,7 +56,9 @@ export const pushApi = {
       p256dh: json.keys?.p256dh ?? '',
       auth: json.keys?.auth ?? '',
     });
-    return response.data;
+    return parseResponse(PushSubscriptionResponseSchema, response.data, {
+      context: 'pushApi.subscribe',
+    });
   },
 
   /** Remove a push subscription from the backend. */
@@ -47,6 +69,8 @@ export const pushApi = {
   /** List all push subscriptions for the current user. */
   async list(): Promise<{ results: PushSubscriptionResponse[] }> {
     const response = await apiClient.get('/api/push-subscriptions/');
-    return response.data;
+    return parseResponse(PushSubscriptionListSchema, response.data, {
+      context: 'pushApi.list',
+    });
   },
 };

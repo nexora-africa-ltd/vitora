@@ -4,6 +4,7 @@
  */
 
 import { apiClient } from './client';
+import { z } from 'zod';
 import { parseResponse } from '@/lib/schemas/validation';
 import {
   OTOrderSchema,
@@ -12,6 +13,7 @@ import {
   PaginatedOTOrderListSchema,
   PaginatedOTSessionListSchema,
   PaginatedOTTreatmentTypeSchema,
+  OTSessionListItemSchema,
 } from '@/lib/schemas/occupational-therapy.schema';
 import type {
   OTOrder,
@@ -30,6 +32,11 @@ import type {
 import type { PaginatedResponse } from '@/lib/types/allied-health';
 
 const BASE_URL = '/api/occupational-therapy';
+
+const GenerateSessionsResponseSchema = z.object({
+  sessions_created: z.number(),
+  sessions: z.array(OTSessionListItemSchema),
+});
 
 export const occupationalTherapyApi = {
   // ============ Treatment Types ============
@@ -129,7 +136,9 @@ export const occupationalTherapyApi = {
     const response = await apiClient.post(`${BASE_URL}/orders/${id}/generate_sessions/`, {
       count,
     });
-    return response.data;
+    return parseResponse(GenerateSessionsResponseSchema, response.data, {
+      context: 'occupationalTherapyApi.generateSessions',
+    });
   },
 
   startOrder: async (id: number): Promise<OTOrder> => {

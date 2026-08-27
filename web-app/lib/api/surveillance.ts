@@ -207,7 +207,11 @@ export const surveillanceApi = {
     const response = await apiClient.post<{ created: number; total: number }>(
       '/api/surveillance/thresholds/seed/',
     );
-    return response.data;
+    return parseResponse(
+      z.object({ created: z.number(), total: z.number() }),
+      response.data,
+      { context: 'surveillanceApi.seedThresholds' }
+    );
   },
 
   async createThreshold(data: {
@@ -528,6 +532,10 @@ export const surveillanceApi = {
     const response = await apiClient.post<{ created: number; total: number }>(
       '/api/surveillance/diseases/seed/',
     );
-    return response.data;
+    return parseResponse(
+      z.object({ created: z.number(), total: z.number() }),
+      response.data,
+      { context: 'surveillanceApi.seedDiseases' }
+    );
   },
 };

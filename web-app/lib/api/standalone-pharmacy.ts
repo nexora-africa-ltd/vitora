@@ -3,6 +3,7 @@
  */
 
 import { apiClient } from './client';
+import { z } from 'zod';
 import { parseResponse } from '@/lib/schemas/validation';
 import {
   WalkInCustomerSchema,
@@ -10,6 +11,7 @@ import {
   ExternalPrescriptionRequestSchema,
   ExternalPrescriptionListSchema,
 } from '@/lib/schemas/standalone-pharmacy.schema';
+import { PrescriptionSchema } from '@/lib/schemas/pharmacy.schema';
 import type {
   WalkInCustomer,
   WalkInCustomerCreateData,
@@ -18,6 +20,15 @@ import type {
 } from '@/lib/types/standalone-pharmacy';
 
 const BASE = '/api/pharmacy/standalone';
+
+const AcceptExternalPrescriptionResponseSchema = z
+  .object({
+    external_prescription: ExternalPrescriptionRequestSchema.optional(),
+    walkin_customer: WalkInCustomerSchema.optional(),
+    prescription: PrescriptionSchema.optional(),
+    message: z.string().optional(),
+  })
+  .passthrough();
 
 export const standalonePharmacyApi = {
   // Walk-in Customers
@@ -65,7 +76,9 @@ export const standalonePharmacyApi = {
   // Standalone Prescription Creation
   async createStandalonePrescription(data: StandalonePrescriptionCreateData) {
     const response = await apiClient.post(`${BASE}/prescriptions/create/`, data);
-    return response.data;
+    return parseResponse(PrescriptionSchema, response.data, {
+      context: 'standalonePharmacyApi.createStandalonePrescription',
+    });
   },
 
   // External Prescription Requests
@@ -88,7 +101,9 @@ export const standalonePharmacyApi = {
       `${BASE}/external-prescriptions/${id}/accept/`,
       { auto_create_walkin: autoCreateWalkin }
     );
-    return response.data;
+    return parseResponse(AcceptExternalPrescriptionResponseSchema, response.data, {
+      context: 'standalonePharmacyApi.acceptExternalPrescription',
+    });
   },
 
   async rejectExternalPrescription(id: number, reason: string) {

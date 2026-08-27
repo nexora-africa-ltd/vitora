@@ -4,6 +4,7 @@
 
 import { apiClient } from '@/lib/api/client';
 import { parseResponse } from '@/lib/schemas/validation';
+import { z } from 'zod';
 import type { PaginatedResponse } from '@/lib/types';
 import type {
   DHIS2Payload,
@@ -26,6 +27,12 @@ import {
 } from '@/lib/schemas/moh-reporting.schema';
 
 const BASE = '/api/moh-reports';
+
+const DHIS2SubmitResponseSchema = z.object({
+  status: z.string().optional(),
+  message: z.string().optional(),
+  submitted: z.boolean().optional(),
+}).passthrough();
 
 export const mohReportsApi = {
   // -----------------------------------------------------------------------
@@ -62,7 +69,9 @@ export const mohReportsApi = {
 
   submitMOH705ToDHIS2: async (id: number) => {
     const response = await apiClient.post(`${BASE}/705/${id}/submit-to-dhis2/`);
-    return response.data;
+    return parseResponse(DHIS2SubmitResponseSchema, response.data, {
+      context: 'mohReportsApi.submitMOH705ToDHIS2',
+    });
   },
 
   previewMOH705DHIS2: async (id: number): Promise<DHIS2Payload> => {
@@ -106,7 +115,9 @@ export const mohReportsApi = {
 
   submitMOH711ToDHIS2: async (id: number) => {
     const response = await apiClient.post(`${BASE}/711/${id}/submit-to-dhis2/`);
-    return response.data;
+    return parseResponse(DHIS2SubmitResponseSchema, response.data, {
+      context: 'mohReportsApi.submitMOH711ToDHIS2',
+    });
   },
 
   // -----------------------------------------------------------------------
@@ -143,6 +154,8 @@ export const mohReportsApi = {
 
   submitMOH717ToDHIS2: async (id: number) => {
     const response = await apiClient.post(`${BASE}/717/${id}/submit-to-dhis2/`);
-    return response.data;
+    return parseResponse(DHIS2SubmitResponseSchema, response.data, {
+      context: 'mohReportsApi.submitMOH717ToDHIS2',
+    });
   },
 };

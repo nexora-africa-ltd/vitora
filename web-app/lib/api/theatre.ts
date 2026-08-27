@@ -410,7 +410,7 @@ export const theatreApi = {
     const response = await apiClient.get(`/api/theatre/cases/${caseNumber}/operative-note/pdf/`, {
       responseType: 'blob',
     });
-    return response.data;
+    return response.data as Blob;
   },
 
   // =========================================================================
@@ -478,7 +478,7 @@ export const theatreApi = {
     const response = await apiClient.get(`/api/theatre/cases/${caseNumber}/pacu/pdf/`, {
       responseType: 'blob',
     });
-    return response.data;
+    return response.data as Blob;
   },
 
   // =========================================================================

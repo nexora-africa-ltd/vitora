@@ -5,6 +5,7 @@
  */
 
 import { apiClient } from './client';
+import { z } from 'zod';
 import { parseResponse } from '@/lib/schemas/validation';
 import {
   PaginatedFacilitySummarySchema,
@@ -117,7 +118,17 @@ export const analyticsApi = {
    */
   getMetabaseDashboards: async (): Promise<MetabaseDashboardInfo[]> => {
     const response = await apiClient.get('/api/analytics/metabase-dashboards/');
-    return response.data;
+    return parseResponse(
+      z.array(
+        z.object({
+          id: z.number(),
+          name: z.string(),
+          description: z.string(),
+        })
+      ),
+      response.data,
+      { context: 'analyticsApi.getMetabaseDashboards' }
+    );
   },
 
   /**

@@ -4,6 +4,7 @@
  */
 
 import { apiClient } from './client';
+import { z } from 'zod';
 import type {
   WorksheetTemplate,
   WorksheetTemplateCreateData,
@@ -28,6 +29,12 @@ import {
 } from '@/lib/schemas/worksheets.schema';
 
 const BASE = '/api/lab/worksheets';
+
+const SeedDefaultTemplatesResponseSchema = z.object({
+  created: z.number(),
+  total: z.number(),
+  message: z.string(),
+});
 
 export const worksheetsApi = {
   // ===========================================================================
@@ -68,7 +75,9 @@ export const worksheetsApi = {
 
   async seedDefaultTemplates(): Promise<{ created: number; total: number; message: string }> {
     const response = await apiClient.post(`${BASE}/templates/seed_defaults/`);
-    return response.data;
+    return parseResponse(SeedDefaultTemplatesResponseSchema, response.data, {
+      context: 'worksheetsApi.seedDefaultTemplates',
+    });
   },
 
   // ===========================================================================
@@ -107,7 +116,7 @@ export const worksheetsApi = {
     const response = await apiClient.get(`${BASE}/batches/${id}/export_csv/`, {
       responseType: 'blob',
     });
-    return response.data;
+    return response.data as Blob;
   },
 
   // ===========================================================================

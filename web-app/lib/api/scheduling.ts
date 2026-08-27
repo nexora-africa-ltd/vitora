@@ -91,6 +91,76 @@ import type {
 
 const BASE_URL = '/api/scheduling';
 
+const LinkedClinicSchema = z.object({
+  clinic_room_id: z.number(),
+  clinic_id: z.number(),
+  clinic_name: z.string(),
+  clinic_code: z.string(),
+  is_default: z.boolean(),
+});
+
+const ResourceSyncResultSchema = z.object({
+  created: z.number(),
+  message: z.string(),
+});
+
+const WeeklyAvailabilitySchema = z.record(z.unknown());
+
+const BulkCreateShiftsResultSchema = z.object({
+  created: z.number(),
+  skipped: z.number(),
+  errors: z.number(),
+  created_ids: z.array(z.number()),
+  skipped_details: z.array(z.object({ index: z.number(), reason: z.string() })),
+  error_details: z.array(
+    z.object({
+      index: z.number(),
+      errors: z.union([z.string(), z.record(z.array(z.string()))]),
+    }),
+  ),
+});
+
+const BulkDeleteResultSchema = z.object({ deleted: z.number() });
+
+const CrossFacilityConflictSchema = z.object({
+  staff_resource_id: z.number(),
+  staff_resource_name: z.string(),
+  staff_profile_id: z.number(),
+  shift_date: z.string(),
+  this_facility_shift: z.object({
+    shift_type: z.string(),
+    start_time: z.string(),
+    end_time: z.string(),
+  }),
+  other_facility: z.object({
+    id: z.number(),
+    name: z.string(),
+  }),
+  other_shift: z.object({
+    shift_type: z.string(),
+    start_time: z.string(),
+    end_time: z.string(),
+  }),
+});
+
+const AutofillRunSchema = z.object({
+  id: z.string(),
+  created_at: z.string(),
+  week_start: z.string().optional(),
+  week_end: z.string().optional(),
+  strategy: z.string().optional(),
+  report: z.record(z.unknown()),
+});
+
+const ShiftTypeConfigDefaultsSchema = z.record(
+  z.object({
+    start_time: z.string(),
+    end_time: z.string(),
+    label: z.string(),
+    color: z.string(),
+  }),
+);
+
 // =============================================================================
 // Resources API
 // =============================================================================
@@ -135,37 +205,49 @@ export const resourcesApi = {
     { clinic_room_id: number; clinic_id: number; clinic_name: string; clinic_code: string; is_default: boolean }[]
   > => {
     const response = await apiClient.get(`${BASE_URL}/resources/${id}/linked-clinics/`);
-    return response.data;
+    return parseResponse(z.array(LinkedClinicSchema), response.data, {
+      context: 'resourcesApi.linkedClinics',
+    });
   },
 
   /** Auto-create PERSON resources from staff profiles that don't have one yet. */
   syncFromStaff: async (): Promise<{ created: number; message: string }> => {
     const response = await apiClient.post(`${BASE_URL}/resources/sync-from-staff/`);
-    return response.data;
+    return parseResponse(ResourceSyncResultSchema, response.data, {
+      context: 'resourcesApi.syncFromStaff',
+    });
   },
 
   /** Auto-create PLACE resources from active clinics that don't have one yet. */
   syncFromClinics: async (): Promise<{ created: number; message: string }> => {
     const response = await apiClient.post(`${BASE_URL}/resources/sync-from-clinics/`);
-    return response.data;
+    return parseResponse(ResourceSyncResultSchema, response.data, {
+      context: 'resourcesApi.syncFromClinics',
+    });
   },
 
   /** Auto-create PLACE resources from active inpatient wards that don't have one yet. */
   syncFromWards: async (): Promise<{ created: number; message: string }> => {
     const response = await apiClient.post(`${BASE_URL}/resources/sync-from-wards/`);
-    return response.data;
+    return parseResponse(ResourceSyncResultSchema, response.data, {
+      context: 'resourcesApi.syncFromWards',
+    });
   },
 
   /** Auto-create ASSET resources from operational cold chain equipment that don't have one yet. */
   syncFromEquipment: async (): Promise<{ created: number; message: string }> => {
     const response = await apiClient.post(`${BASE_URL}/resources/sync-from-equipment/`);
-    return response.data;
+    return parseResponse(ResourceSyncResultSchema, response.data, {
+      context: 'resourcesApi.syncFromEquipment',
+    });
   },
 
   /** Auto-create ASSET resources from active theatre equipment types that don't have one yet. */
   syncFromTheatreEquipment: async (): Promise<{ created: number; message: string }> => {
     const response = await apiClient.post(`${BASE_URL}/resources/sync-from-theatre-equipment/`);
-    return response.data;
+    return parseResponse(ResourceSyncResultSchema, response.data, {
+      context: 'resourcesApi.syncFromTheatreEquipment',
+    });
   },
 
   /** Get available slots for a resource on a specific date. */
@@ -183,7 +265,9 @@ export const resourcesApi = {
     const params: Record<string, string | number> = { start_date: startDate };
     if (weeks) params.weeks = weeks;
     const response = await apiClient.get(`${BASE_URL}/resources/${id}/availability/weekly/`, { params });
-    return response.data;
+    return parseResponse(WeeklyAvailabilitySchema, response.data, {
+      context: 'resourcesApi.getWeeklyAvailability',
+    });
   },
 
   /** Check if a specific time slot is available. */
@@ -412,7 +496,9 @@ export const shiftsApi = {
     const response = await apiClient.post(`${BASE_URL}/shifts/bulk-create/`, payload, {
       timeout: 120000, // 2 minutes — large rosters can take time
     });
-    return response.data;
+    return parseResponse(BulkCreateShiftsResultSchema, response.data, {
+      context: 'shiftsApi.bulkCreate',
+    });
   },
 
   /** Bulk-delete shifts in a date range. Pass includeAll to also remove active/completed shifts. */
@@ -422,13 +508,17 @@ export const shiftsApi = {
       to_date: toDate,
       include_all: includeAll,
     });
-    return response.data;
+    return parseResponse(BulkDeleteResultSchema, response.data, {
+      context: 'shiftsApi.bulkDelete',
+    });
   },
 
   /** Check for cross-facility scheduling conflicts. */
   crossFacilityConflicts: async (params: { from_date: string; to_date: string }): Promise<CrossFacilityConflict[]> => {
     const response = await apiClient.get(`${BASE_URL}/shifts/cross-facility-conflicts/`, { params });
-    return response.data;
+    return parseResponse(z.array(CrossFacilityConflictSchema), response.data, {
+      context: 'shiftsApi.crossFacilityConflicts',
+    });
   },
 };
 
@@ -455,12 +545,16 @@ export const schedulingSettingsApi = {
 
   listAutofillRuns: async (): Promise<AutofillRun[]> => {
     const response = await apiClient.get(`${BASE_URL}/settings/autofill-runs/`);
-    return response.data as AutofillRun[];
+    return parseResponse(z.array(AutofillRunSchema), response.data, {
+      context: 'schedulingSettingsApi.listAutofillRuns',
+    });
   },
 
   createAutofillRun: async (report: Record<string, unknown>): Promise<AutofillRun> => {
     const response = await apiClient.post(`${BASE_URL}/settings/autofill-runs/`, report);
-    return response.data as AutofillRun;
+    return parseResponse(AutofillRunSchema, response.data, {
+      context: 'schedulingSettingsApi.createAutofillRun',
+    });
   },
 };
 
@@ -601,7 +695,7 @@ export const attendanceApi = {
       params,
       responseType: 'blob',
     });
-    return response.data;
+    return response.data as Blob;
   },
 };
 
@@ -742,7 +836,9 @@ export const shiftTypeConfigsApi = {
   /** Get the defaults mapping for all active configs (shift_type -> times). */
   defaults: async (): Promise<ShiftTypeConfigDefaults> => {
     const response = await apiClient.get(`${BASE_URL}/shift-type-configs/defaults/`);
-    return response.data;
+    return parseResponse(ShiftTypeConfigDefaultsSchema, response.data, {
+      context: 'shiftTypeConfigsApi.defaults',
+    });
   },
 
   /** Bulk create or update multiple configs at once. */

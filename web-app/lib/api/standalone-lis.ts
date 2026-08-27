@@ -3,6 +3,7 @@
  */
 
 import { apiClient } from './client';
+import { z } from 'zod';
 import { parseResponse } from '@/lib/schemas/validation';
 import {
   WalkInPatientSchema,
@@ -10,6 +11,7 @@ import {
   ExternalOrderRequestSchema,
   ExternalOrderListSchema,
 } from '@/lib/schemas/standalone-lis.schema';
+import { LabOrderSchema } from '@/lib/schemas/laboratory.schema';
 import type {
   WalkInPatient,
   WalkInPatientCreateData,
@@ -19,6 +21,21 @@ import type {
 import type { LabOrder } from '@/lib/types/laboratory';
 
 const BASE = '/api/lab/standalone';
+
+const PromoteWalkInResponseSchema = z.object({
+  walkin: WalkInPatientSchema,
+  patient_id: z.number(),
+  mrn: z.string(),
+});
+
+const AcceptExternalOrderResponseSchema = z
+  .object({
+    external_order: ExternalOrderRequestSchema.optional(),
+    walkin_patient: WalkInPatientSchema.optional(),
+    lab_order: LabOrderSchema.optional(),
+    message: z.string().optional(),
+  })
+  .passthrough();
 
 export const standaloneLisApi = {
   // Walk-in Patients
@@ -78,13 +95,17 @@ export const standaloneLisApi = {
       `${BASE}/walkin-patients/${walkInId}/promote/`,
       data ?? {}
     );
-    return response.data;
+    return parseResponse(PromoteWalkInResponseSchema, response.data, {
+      context: 'standaloneLisApi.promoteWalkInToPatient',
+    });
   },
 
   // Standalone Orders
   async createStandaloneOrder(data: StandaloneOrderCreateData): Promise<LabOrder> {
     const response = await apiClient.post(`${BASE}/orders/create/`, data);
-    return response.data;
+    return parseResponse(LabOrderSchema, response.data, {
+      context: 'standaloneLisApi.createStandaloneOrder',
+    });
   },
 
   // External Order Requests
@@ -106,7 +127,9 @@ export const standaloneLisApi = {
     const response = await apiClient.post(`${BASE}/external-orders/${id}/accept/`, {
       auto_create_walkin: autoCreateWalkin,
     });
-    return response.data;
+    return parseResponse(AcceptExternalOrderResponseSchema, response.data, {
+      context: 'standaloneLisApi.acceptExternalOrder',
+    });
   },
 
   async rejectExternalOrder(id: number, reason: string) {

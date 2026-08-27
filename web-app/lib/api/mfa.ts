@@ -20,6 +20,8 @@ import {
   BackupCodesResponseSchema,
   WebAuthnCredentialListSchema,
   WebAuthnCredentialSchema,
+  WebAuthnRegisterBeginResponseSchema,
+  WebAuthnAuthenticateBeginResponseSchema,
   type MFAStatusSchemaType,
   type TOTPSetupSchemaType,
   type TOTPConfirmRequestSchemaType,
@@ -192,7 +194,9 @@ export const mfaApi = {
    */
   async webauthnRegisterBegin(): Promise<string> {
     const response = await apiClient.post('/api/mfa/webauthn/register/begin/');
-    return response.data.options;
+    return parseResponse(WebAuthnRegisterBeginResponseSchema, response.data, {
+      context: 'mfaApi.webauthnRegisterBegin',
+    }).options;
   },
 
   /**
@@ -235,7 +239,9 @@ export const mfaApi = {
     const response = await apiClient.post('/api/mfa/webauthn/authenticate/begin/', {
       mfa_token: mfaToken,
     });
-    return response.data.options;
+    return parseResponse(WebAuthnAuthenticateBeginResponseSchema, response.data, {
+      context: 'mfaApi.webauthnAuthenticateBegin',
+    }).options;
   },
 
   /**

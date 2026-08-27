@@ -58,7 +58,9 @@ export const lastOfficeApi = {
    */
   async create(data: DeathRecordCreateData): Promise<DeathRecord> {
     const response = await apiClient.post('/api/death-records/', data);
-    return response.data;
+    return parseResponse(DeathRecordSchema, response.data, {
+      context: 'lastOfficeApi.create',
+    }) as DeathRecord;
   },
 
   /**
