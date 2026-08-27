@@ -66,6 +66,7 @@ pywebpush = "^2.3.0"
 httpx = "^0.28.1"
 defusedxml = "^0.7.1"
 sentry-sdk = {extras = ["django", "celery"], version = "^2.35.0"}
+openai = "^3.5.0"
 
 [tool.poetry.extras]
 azure = ["azure-identity", "azure-keyvault-keys"]
