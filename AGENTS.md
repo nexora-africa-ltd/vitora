@@ -8,6 +8,9 @@
   - what the file is for,
   - how to run or use it,
   - and supported args/inputs (CLI args and/or environment variables) when applicable.
+- Every newly created source file must start with this exact first line:
+  - `# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.`
+- Keep files under 1500 lines. If a file grows beyond 1500 lines, modularize it into smaller focused modules and keep a compatibility shim when needed.
 
 ---
 
