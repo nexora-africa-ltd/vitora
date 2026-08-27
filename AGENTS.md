@@ -1342,6 +1342,45 @@ def test_delete_with_permission(self, authenticated_client):
 
 ---
 
+### 15. Anti-Vibecoding Guardrails for Refactors
+
+> ⚠️ **CRITICAL**: Large refactors must preserve behavior first, structure second. Do not ship mechanical code movement that changes API semantics, error mapping, or patch/import compatibility.
+
+**When splitting a monolithic file:**
+- Split by **single concern** (workflow, ILM, attachments, reporting, helpers) using focused modules/mixins
+- Keep one small composition module (shim/aggregator) that assembles the final class
+- Preserve public import surfaces for existing callers (`sha_views`-style re-export shim when needed)
+
+**Error-handling invariants (must not regress):**
+- Do not replace typed handlers with broad `except Exception` in request paths
+- Keep existing status-code contracts (`400/409/502/503`) and error `code` fields stable
+- If a handler method is called via `self.method()`, ensure `@staticmethod` is present only when intended (missing decorators can cause runtime `TypeError`)
+
+**Broad catch policy (`except Exception`)**
+- Allowed only at true boundaries (telemetry, best-effort cleanup, background/audit logging) where failure must never block the primary response
+- Every allowed broad catch must include an inline rationale comment (e.g. `# noqa: BLE001 - telemetry must not break API`)
+- In request/endpoint paths, catch specific exception classes and map to explicit HTTP responses; do not silently downgrade to generic `400`
+- If broad catch is unavoidable, log with context (`action`, `resource_id`, exception class) and add a focused test proving expected mapping/behavior
+
+**Mixin split safety rules:**
+- Methods that call shared helpers must import them explicitly from the helper module (no implicit cross-file globals)
+- Ensure MRO order is deliberate: core helpers/errors should be available before action mixins
+- Keep DRF action signatures intact (`pk`, path kwargs) to avoid router/runtime breakage
+
+**Compatibility and test patch points:**
+- If tests patch symbols via legacy paths (e.g. `hmis.apps.billing.sha_views.*`), keep those symbols re-exported
+- When moving helpers/services, verify old patch targets still resolve
+
+**Required verification for structural refactors:**
+- Run targeted suites for affected endpoints first, then full app suite (for billing changes: `pytest tests/billing -q`)
+- If behavior changes are intentional, update tests/docs in the same PR with explicit rationale
+
+**Testing is mandatory (no testless refactors):**
+- Structural moves must keep or improve test coverage for touched behaviors; do not merge without automated verification
+- Add/adjust tests for: error mapping contracts, compatibility import paths, patched legacy symbols, and any moved helper used by public endpoints
+- Minimum for billing view refactors: targeted SHA API/ILM action tests + full `tests/billing` run green
+- If a refactor changes expected behavior, include before/after assertions in tests and document why the change is intentional
+
 ## 🔐 Security & Compliance
 
 ### Kenya Data Protection Act 2019 Compliance
