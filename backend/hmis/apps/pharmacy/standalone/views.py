@@ -161,7 +161,15 @@ class ExternalPrescriptionRequestViewSet(TenantScopedViewMixin, viewsets.ModelVi
                 },
                 status=status.HTTP_201_CREATED,
             )
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ) as e:
             logger.exception("Error processing external prescription %s", ext_req.id)
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 

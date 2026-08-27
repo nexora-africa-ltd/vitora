@@ -126,7 +126,15 @@ class EmergencyAccessViewSet(viewsets.ModelViewSet):
         # Trigger escalation notification asynchronously
         try:
             send_emergency_access_escalation.delay(emergency_access.id)
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ) as e:
             logger.warning(f"Failed to queue escalation notification: {e}")
 
         logger.warning(

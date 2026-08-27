@@ -3718,7 +3718,15 @@ class MedicationAdministration(TimeStampedModel):
         """Convenience access to the drug name from the prescription item."""
         try:
             return self.prescription_item.drug.name
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ):
             return ""
 
     def administer(self, user, dose_given: str = "", notes: str = ""):
@@ -3767,7 +3775,15 @@ def create_kardex_for_admission(sender, instance, created, **kwargs):
             )
             if active_allergies:
                 allergies_text = ", ".join(active_allergies)
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ):
             pass  # Graceful fallback if allergy model not available
 
         # Fallback: check latest encounter's free-text allergies field

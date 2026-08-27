@@ -146,7 +146,15 @@ def handle_aefi_surveillance_alert(sender, instance, created, **kwargs):
             case.pk,
         )
 
-    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):  # noqa: BLE001
+    except (
+        AttributeError,
+        TypeError,
+        ValueError,
+        RuntimeError,
+        OSError,
+        AssertionError,
+        ImportError,
+    ):  # noqa: BLE001
         logger.warning(
             "Could not create surveillance alert for AEFI %s "
             "(surveillance module may be unavailable)",

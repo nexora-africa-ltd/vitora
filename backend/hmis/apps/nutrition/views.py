@@ -488,7 +488,15 @@ class DietPlanViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
 
         try:
             diet_plan.activate(user=request.user)
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ) as e:
             return Response(
                 {"error": str(e)},
                 status=status.HTTP_400_BAD_REQUEST,
@@ -523,7 +531,15 @@ class DietPlanViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
 
         try:
             diet_plan.discontinue(reason=reason, user=request.user)
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ) as e:
             return Response(
                 {"error": str(e)},
                 status=status.HTTP_400_BAD_REQUEST,

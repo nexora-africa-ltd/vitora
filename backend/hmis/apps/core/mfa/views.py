@@ -689,7 +689,15 @@ class WebAuthnRegisterCompleteView(APIView):
                 expected_rp_id=_get_webauthn_rp_id(),
                 expected_origin=_get_webauthn_origin(),
             )
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ):
             logger.exception("WebAuthn registration verification failed")
             return Response(
                 {"error": "Registration verification failed. Please try again."},
@@ -1000,7 +1008,15 @@ class WebAuthnAuthenticateCompleteView(APIView):
                 credential_public_key=bytes(stored_cred.public_key),
                 credential_current_sign_count=stored_cred.sign_count,
             )
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ):
             mfa_token.increment_failed_attempts()
             AuditLog.log(
                 action="mfa_verification_failed",

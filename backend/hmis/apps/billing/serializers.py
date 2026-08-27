@@ -534,7 +534,15 @@ class InvoiceSerializer(serializers.ModelSerializer):
     def _money(value) -> Decimal:
         try:
             return Decimal(str(value or "0.00")).quantize(Decimal("0.01"))
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ):
             return Decimal("0.00")
 
     def _insurance_reservation_credit(self, payer) -> Decimal:

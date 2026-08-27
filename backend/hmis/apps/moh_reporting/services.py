@@ -543,7 +543,15 @@ class DHIS2SubmissionService:
             data = resp.json()
             report.mark_submitted(data)
             return data
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as exc:
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ) as exc:
             error = {"status": "error", "message": str(exc)}
             report.mark_failed(error)
             return error

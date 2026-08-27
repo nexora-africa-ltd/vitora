@@ -447,7 +447,15 @@ def auto_create_clinic_resource(sender, instance, created, **kwargs):
                 "location": getattr(instance, "location", ""),
             },
         )
-    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
+    except (
+        AttributeError,
+        TypeError,
+        ValueError,
+        RuntimeError,
+        OSError,
+        AssertionError,
+        ImportError,
+    ):
         logger.exception("Failed to auto-create scheduling resource for Clinic %s", instance.pk)
 
 
@@ -468,5 +476,13 @@ def auto_create_ward_resource(sender, instance, created, **kwargs):
                 "floor": getattr(instance, "floor", ""),
             },
         )
-    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
+    except (
+        AttributeError,
+        TypeError,
+        ValueError,
+        RuntimeError,
+        OSError,
+        AssertionError,
+        ImportError,
+    ):
         logger.exception("Failed to auto-create scheduling resource for Ward %s", instance.pk)

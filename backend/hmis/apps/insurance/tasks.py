@@ -56,7 +56,15 @@ def check_pending_claims_status() -> str:
             polled += 1
             if claim.status != old_status:
                 updated += 1
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ):
             errors += 1
             logger.exception("Failed to check status for claim %s", claim.claim_number)
 
@@ -93,7 +101,15 @@ def check_expiring_preauths() -> str:
         try:
             preauth.expire()
             expired_count += 1
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ):
             logger.exception("Failed to expire preauth %s", preauth.preauth_number)
 
     # Alert near-expiry
@@ -149,7 +165,15 @@ def fetch_remittances() -> str:
         try:
             created = service.fetch_and_reconcile(config, date_from, date_to)
             fetched += len(created)
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ):
             errors += 1
             logger.exception(
                 "Failed to fetch remittances for provider %s at facility %s",
@@ -248,7 +272,15 @@ def poll_claim_remittance_statuses() -> str:
             polled += 1
             if claim.paid_amount != old_paid or claim.status != old_status:
                 updated += 1
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ):
             errors += 1
             logger.exception("Failed remittance poll for claim %s", claim.claim_number)
 

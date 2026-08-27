@@ -125,7 +125,15 @@ def _publish_safe(event_type: str, payload: dict) -> None:
 
         aggregate_id = payload.get("claim_id") or payload.get("patient_id") or ""
         publish_event(event_type, "SHAClaim", aggregate_id, payload)
-    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):  # pragma: no cover
+    except (
+        AttributeError,
+        TypeError,
+        ValueError,
+        RuntimeError,
+        OSError,
+        AssertionError,
+        ImportError,
+    ):  # pragma: no cover
         logger.exception("Failed to publish DHA HIE lifecycle event %s", event_type)
 
 

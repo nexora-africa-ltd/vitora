@@ -83,7 +83,15 @@ def generate_idsr_weekly_report(
             "status": report.status,
         }
 
-    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
+    except (
+        AttributeError,
+        TypeError,
+        ValueError,
+        RuntimeError,
+        OSError,
+        AssertionError,
+        ImportError,
+    ) as e:
         logger.error(f"Failed to generate IDSR report: {e}")
         raise
 
@@ -111,7 +119,15 @@ def check_overdue_notifications() -> dict:
             "cases": [{"id": case.id, "disease": case.disease.name} for case in overdue_cases],
         }
 
-    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
+    except (
+        AttributeError,
+        TypeError,
+        ValueError,
+        RuntimeError,
+        OSError,
+        AssertionError,
+        ImportError,
+    ) as e:
         logger.error(f"Failed to check overdue notifications: {e}")
         raise
 
@@ -155,7 +171,15 @@ def check_outbreak_thresholds() -> dict:
             "exceeded": exceeded,
         }
 
-    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
+    except (
+        AttributeError,
+        TypeError,
+        ValueError,
+        RuntimeError,
+        OSError,
+        AssertionError,
+        ImportError,
+    ) as e:
         logger.error(f"Failed to check outbreak thresholds: {e}")
         raise
 
@@ -194,6 +218,14 @@ def submit_idsr_to_dhis2(report_id: int) -> dict:
     except IDSRWeeklyReport.DoesNotExist:
         logger.error(f"IDSR report {report_id} not found")
         return {"success": False, "error": f"Report {report_id} not found"}
-    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
+    except (
+        AttributeError,
+        TypeError,
+        ValueError,
+        RuntimeError,
+        OSError,
+        AssertionError,
+        ImportError,
+    ) as e:
         logger.error(f"Failed to submit IDSR report to DHIS2: {e}")
         raise

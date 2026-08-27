@@ -55,7 +55,15 @@ def _publish_safe(event_type: str, payload: dict, *, aggregate_id: int | str = 0
         from hmis.apps.core.events import publish_event
 
         publish_event(event_type, "dha_registry", aggregate_id, payload)
-    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):  # pragma: no cover
+    except (
+        AttributeError,
+        TypeError,
+        ValueError,
+        RuntimeError,
+        OSError,
+        AssertionError,
+        ImportError,
+    ):  # pragma: no cover
         logger.exception("Failed to publish DHA HIE registry event %s", event_type)
 
 

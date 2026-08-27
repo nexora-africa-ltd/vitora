@@ -752,7 +752,15 @@ class ClientRegistryService:
             try:
                 response_text = response.text[:1000] if response.text else "(empty)"
                 logger.debug(f"CR registration response body: {response_text}")
-            except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as exc:
+            except (
+                AttributeError,
+                TypeError,
+                ValueError,
+                RuntimeError,
+                OSError,
+                AssertionError,
+                ImportError,
+            ) as exc:
                 logger.debug(f"Unable to read CR registration response body: {exc}")
 
             if response.status_code == 409:

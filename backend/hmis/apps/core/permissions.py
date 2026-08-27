@@ -345,7 +345,15 @@ class RoleBasedPermission(permissions.BasePermission):
                 queryset = view.get_queryset()
                 if hasattr(queryset, "model"):
                     return queryset.model.__name__
-            except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as exc:
+            except (
+                AttributeError,
+                TypeError,
+                ValueError,
+                RuntimeError,
+                OSError,
+                AssertionError,
+                ImportError,
+            ) as exc:
                 logger.debug("Unable to infer model from queryset: %s", exc)
 
         # Try to get from serializer
@@ -354,7 +362,15 @@ class RoleBasedPermission(permissions.BasePermission):
                 serializer_class = view.get_serializer_class()
                 if hasattr(serializer_class, "Meta") and hasattr(serializer_class.Meta, "model"):
                     return serializer_class.Meta.model.__name__
-            except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as exc:
+            except (
+                AttributeError,
+                TypeError,
+                ValueError,
+                RuntimeError,
+                OSError,
+                AssertionError,
+                ImportError,
+            ) as exc:
                 logger.debug("Unable to infer model from serializer: %s", exc)
 
         # Fallback to view basename
@@ -493,7 +509,15 @@ class SHAPermission(permissions.BasePermission):
                 queryset = view.get_queryset()
                 if hasattr(queryset, "model"):
                     return queryset.model.__name__.lower()
-            except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as exc:
+            except (
+                AttributeError,
+                TypeError,
+                ValueError,
+                RuntimeError,
+                OSError,
+                AssertionError,
+                ImportError,
+            ) as exc:
                 logger.debug("Unable to infer lowercase model name from queryset: %s", exc)
 
         if hasattr(view, "queryset") and view.queryset is not None:
@@ -777,14 +801,30 @@ class WriteRequiresRolePermission(permissions.BasePermission):
                 queryset = view.get_queryset()
                 if hasattr(queryset, "model"):
                     return queryset.model.__name__
-            except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
+            except (
+                AttributeError,
+                TypeError,
+                ValueError,
+                RuntimeError,
+                OSError,
+                AssertionError,
+                ImportError,
+            ):
                 pass
         if hasattr(view, "get_serializer_class"):
             try:
                 serializer_class = view.get_serializer_class()
                 if hasattr(serializer_class, "Meta") and hasattr(serializer_class.Meta, "model"):
                     return serializer_class.Meta.model.__name__
-            except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
+            except (
+                AttributeError,
+                TypeError,
+                ValueError,
+                RuntimeError,
+                OSError,
+                AssertionError,
+                ImportError,
+            ):
                 pass
         return "Unknown"
 

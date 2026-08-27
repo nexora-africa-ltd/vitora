@@ -306,14 +306,30 @@ class LISIntegrationSettingsPermission(BasePermission):
                 qs = get_queryset()
                 if hasattr(qs, "model"):
                     return qs.model
-            except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
+            except (
+                AttributeError,
+                TypeError,
+                ValueError,
+                RuntimeError,
+                OSError,
+                AssertionError,
+                ImportError,
+            ):
                 return None
 
         model_label = getattr(view, "required_model_label", "")
         if model_label:
             try:
                 return apps.get_model(model_label)
-            except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
+            except (
+                AttributeError,
+                TypeError,
+                ValueError,
+                RuntimeError,
+                OSError,
+                AssertionError,
+                ImportError,
+            ):
                 return None
 
         return None

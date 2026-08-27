@@ -220,7 +220,15 @@ class ClinicVisitPatientSerializer(serializers.Serializer):
         """Get phone number, returning empty string if encrypted/unavailable."""
         try:
             return obj.phone_number or ""
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ):
             return ""
 
 

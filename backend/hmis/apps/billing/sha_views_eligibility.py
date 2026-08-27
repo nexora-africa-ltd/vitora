@@ -26,7 +26,15 @@ def _stringify_error(exc: Exception) -> str:
     if detail is not None:
         try:
             return str(detail)
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ):
             return exc.__class__.__name__
     return str(exc)
 
@@ -155,7 +163,15 @@ class EligibilityCheckView(APIView):
                 }
             )
 
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as exc:
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ) as exc:
             logger.exception("SHA eligibility check failed")
             return Response(
                 {"error": _stringify_error(exc), "is_eligible": False},
@@ -255,7 +271,15 @@ class DirectEligibilityCheckView(APIView):
 
             return Response(result)
 
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as exc:
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ) as exc:
             logger.exception("Direct SHA eligibility check failed")
             return Response(
                 {

@@ -219,7 +219,15 @@ class Command(BaseCommand):
 
         except IntegrityError as e:
             self.stdout.write(self.style.ERROR(f"Failed to create superuser: {e}"))
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ) as e:
             self.stdout.write(self.style.ERROR(f"Unexpected error: {e}"))
 
     # ------------------------------------------------------------------

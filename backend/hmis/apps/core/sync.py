@@ -162,7 +162,7 @@ class ConnectivityMonitor:
         for callback in self._callbacks:
             try:
                 callback(new_status)
-            except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
+            except Exception as e:  # noqa: BLE001 - callback failures must not break connectivity notifications
                 logger.error(f"Callback error: {e}")
 
     def check_and_notify(self) -> bool:
@@ -319,7 +319,7 @@ class SyncManager:
                     entry.mark_failed(sync_result.get("error", "Unknown error"))
                     results["failed"] += 1
 
-            except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
+            except Exception as e:  # noqa: BLE001 - per-entry sync failures must not stop the queue loop
                 logger.error(f"Error syncing entry {entry.id}: {e}")
                 entry.mark_failed(str(e))
                 results["failed"] += 1
@@ -348,7 +348,7 @@ class SyncManager:
 
             return response
 
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
+        except Exception as e:  # noqa: BLE001 - sync transport boundary should return structured failure
             return {"success": False, "error": str(e)}
 
     def trigger_background_sync(self) -> None:
@@ -788,7 +788,15 @@ def process_queue_entry(entry: "SyncQueue") -> dict:
 
         return result
 
-    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
+    except (
+        AttributeError,
+        TypeError,
+        ValueError,
+        RuntimeError,
+        OSError,
+        AssertionError,
+        ImportError,
+    ) as e:
         logger.error(f"Error processing queue entry {entry.id}: {e}")
         entry.mark_failed(str(e))
         return {"success": False, "error": str(e)}

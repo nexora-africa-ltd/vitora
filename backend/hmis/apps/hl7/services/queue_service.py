@@ -193,7 +193,7 @@ class HL7QueueService:
             )
             return msg.status in (HL7MessageStatus.SENT, HL7MessageStatus.ACKNOWLEDGED)
 
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as exc:
+        except Exception as exc:  # noqa: BLE001 - MLLP transport boundary must fail-open and queue retries
             msg.status = HL7MessageStatus.FAILED
             msg.retry_count += 1
             msg.last_error = str(exc)[:500]

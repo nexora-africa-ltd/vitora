@@ -648,7 +648,15 @@ class LabOrder(FacilityScopedModel):
                             "updated_at",
                         ]
                     )
-            except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
+            except (
+                AttributeError,
+                TypeError,
+                ValueError,
+                RuntimeError,
+                OSError,
+                AssertionError,
+                ImportError,
+            ):
                 logger.warning("Could not create invoice item for order %s", self.order_number)
 
         # Update order total cost
@@ -710,7 +718,15 @@ class LabOrder(FacilityScopedModel):
                                 "updated_at",
                             ]
                         )
-            except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
+            except (
+                AttributeError,
+                TypeError,
+                ValueError,
+                RuntimeError,
+                OSError,
+                AssertionError,
+                ImportError,
+            ):
                 logger.warning(
                     "Could not remove invoice items for cancelled order %s",
                     self.order_number,

@@ -184,5 +184,13 @@ def _broadcast_breach_alerts(breaches):
             finally:
                 new_loop.close()
 
-    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
+    except (
+        AttributeError,
+        TypeError,
+        ValueError,
+        RuntimeError,
+        OSError,
+        AssertionError,
+        ImportError,
+    ):
         logger.exception("Failed to broadcast breach alerts via WebSocket")

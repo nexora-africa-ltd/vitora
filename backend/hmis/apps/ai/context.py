@@ -67,7 +67,15 @@ def build_user_context(request: Request) -> dict[str, Any]:
                 role_code = primary_role.code
                 seniority = _hierarchy_to_seniority(primary_role.hierarchy_level)
             specialization = staff_profile.specialization or None
-    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
+    except (
+        AttributeError,
+        TypeError,
+        ValueError,
+        RuntimeError,
+        OSError,
+        AssertionError,
+        ImportError,
+    ):
         logger.debug(
             "Could not read StaffProfile for user %s; falling back to User.role",
             user.pk,
@@ -107,7 +115,15 @@ def build_facility_context(request: Request | None = None) -> dict[str, Any]:
             )
             if primary_facility is not None:
                 facility_level = getattr(primary_facility, "level", None) or None
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ):
             logger.debug(
                 "Could not read primary_facility for user %s",
                 getattr(request.user, "pk", "?"),

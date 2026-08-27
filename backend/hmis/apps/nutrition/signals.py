@@ -87,7 +87,14 @@ def create_invoice_item_for_completed_consultation(sender, instance, created, **
 
     except ImportError:
         logger.warning("Billing module not available. Skipping invoice item creation.")
-    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
+    except (
+        AttributeError,
+        TypeError,
+        ValueError,
+        RuntimeError,
+        OSError,
+        AssertionError,
+    ) as e:
         logger.error(f"Error creating invoice item for nutrition consultation: {e}")
 
 
@@ -180,5 +187,12 @@ def route_to_nutrition_clinic(sender, instance, created, **kwargs):
 
     except ImportError:
         logger.warning("Clinics module not available. Skipping clinic queue routing.")
-    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
+    except (
+        AttributeError,
+        TypeError,
+        ValueError,
+        RuntimeError,
+        OSError,
+        AssertionError,
+    ) as e:
         logger.error(f"Error routing to nutrition clinic: {e}")

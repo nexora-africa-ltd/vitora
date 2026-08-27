@@ -320,7 +320,15 @@ def _resolve_test_code(code: str) -> TestCatalog | None:
         mapped = ExternalCodeMapping.resolve("LIS_DEFAULT", code)
         if mapped and isinstance(mapped, TestCatalog):
             return mapped
-    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):  # noqa: S110
+    except (
+        AttributeError,
+        TypeError,
+        ValueError,
+        RuntimeError,
+        OSError,
+        AssertionError,
+        ImportError,
+    ):  # noqa: S110
         logger.debug("ExternalCodeMapping unavailable for code: %s", code)
 
     return None

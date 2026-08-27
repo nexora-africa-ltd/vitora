@@ -33,7 +33,15 @@ def generate_moh705_monthly(year: int | None = None, month: int | None = None):
         try:
             MOH705Generator.generate(facility, year, month)
             generated += 1
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ):
             logger.exception("MOH 705 generation failed for %s", facility.name)
     logger.info("MOH 705: generated %d reports for %04d-%02d", generated, year, month)
 
@@ -48,7 +56,15 @@ def generate_moh711_monthly(year: int | None = None, month: int | None = None):
         try:
             MOH711Generator.generate(facility, year, month)
             generated += 1
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ):
             logger.exception("MOH 711 generation failed for %s", facility.name)
     logger.info("MOH 711: generated %d reports for %04d-%02d", generated, year, month)
 
@@ -63,6 +79,14 @@ def generate_moh717_monthly(year: int | None = None, month: int | None = None):
         try:
             MOH717Generator.generate(facility, year, month)
             generated += 1
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ):
             logger.exception("MOH 717 generation failed for %s", facility.name)
     logger.info("MOH 717: generated %d reports for %04d-%02d", generated, year, month)

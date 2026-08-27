@@ -5,6 +5,7 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
+from django.utils.dateparse import parse_date, parse_datetime
 
 from hmis.apps.core.mixins import FacilityScopedModel
 from hmis.apps.core.models import TimeStampedModel
@@ -242,6 +243,20 @@ class BloodUnit(FacilityScopedModel, TimeStampedModel):
 
         if not self.unit_number:
             self.unit_number = self._generate_unit_number()
+
+        if isinstance(self.expiry_date, str):
+            parsed_expiry_datetime = parse_datetime(self.expiry_date)
+            if parsed_expiry_datetime is None:
+                parsed_expiry_date = parse_date(self.expiry_date)
+                if parsed_expiry_date is not None:
+                    parsed_expiry_datetime = timezone.make_aware(
+                        timezone.datetime.combine(parsed_expiry_date, timezone.datetime.min.time())
+                    )
+            if parsed_expiry_datetime is not None:
+                self.expiry_date = parsed_expiry_datetime
+
+        if self.expiry_date and timezone.is_naive(self.expiry_date):
+            self.expiry_date = timezone.make_aware(self.expiry_date)
 
         if (
             self.expiry_date

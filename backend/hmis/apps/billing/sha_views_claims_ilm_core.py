@@ -66,7 +66,15 @@ class SHAClaimILMCoreMixin:
                     "path": getattr(exc, "path", None),
                 },
             )
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):  # noqa: S110 — telemetry failure must not break the API
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ):  # noqa: S110 — telemetry failure must not break the API
             pass
 
         if isinstance(exc, DHAValidationError):
@@ -102,7 +110,15 @@ class SHAClaimILMCoreMixin:
                     extracted = _extract_message(parsed_body, "")
                     if extracted:
                         resolved_message = extracted
-                except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):  # noqa: BLE001 - best effort only
+                except (
+                    AttributeError,
+                    TypeError,
+                    ValueError,
+                    RuntimeError,
+                    OSError,
+                    AssertionError,
+                    ImportError,
+                ):  # noqa: BLE001 - best effort only
                     logger.debug(
                         "Failed to extract validation message from parsed ILM body", exc_info=True
                     )
@@ -137,7 +153,15 @@ class SHAClaimILMCoreMixin:
                                 resolved_message = extracted
                             if resolved_errors is None and isinstance(parsed_audit, dict):
                                 resolved_errors = parsed_audit.get("errors")
-                except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):  # noqa: BLE001 - best effort only
+                except (
+                    AttributeError,
+                    TypeError,
+                    ValueError,
+                    RuntimeError,
+                    OSError,
+                    AssertionError,
+                    ImportError,
+                ):  # noqa: BLE001 - best effort only
                     logger.debug(
                         "Failed to recover ILM validation error from outbound audit",
                         exc_info=True,

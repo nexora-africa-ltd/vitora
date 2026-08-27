@@ -121,7 +121,15 @@ def _get_clinic_id_from_lab_result(lab_result) -> int | None:
         )
         if enrollment:
             return enrollment.clinic_id
-    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):  # noqa: S110
+    except (
+        AttributeError,
+        TypeError,
+        ValueError,
+        RuntimeError,
+        OSError,
+        AssertionError,
+        ImportError,
+    ):  # noqa: S110
         pass
     return None
 
@@ -136,6 +144,14 @@ def _schedule_evaluation(clinic_id: int) -> None:
             kwargs={"clinic_id": clinic_id},
             countdown=60,
         )
-    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
+    except (
+        AttributeError,
+        TypeError,
+        ValueError,
+        RuntimeError,
+        OSError,
+        AssertionError,
+        ImportError,
+    ):
         # Celery not available (dev mode without Redis) — skip silently
         logger.debug("Celery not available, skipping CQM evaluation for clinic %d", clinic_id)

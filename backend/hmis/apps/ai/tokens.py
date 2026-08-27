@@ -82,7 +82,15 @@ def mint_tibabot_jwt(user: AbstractBaseUser) -> str | None:
             )
         # HS256 fallback (dev/test)
         return jwt.encode(claims, secret, algorithm="HS256")
-    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
+    except (
+        AttributeError,
+        TypeError,
+        ValueError,
+        RuntimeError,
+        OSError,
+        AssertionError,
+        ImportError,
+    ):
         logger.warning("Failed to mint TibaBot JWT for user %s", user.pk, exc_info=True)
         return None
 
@@ -125,7 +133,15 @@ def _build_tibabot_claims(user: AbstractBaseUser) -> dict[str, Any]:
             if level:
                 claims["tibabot/facility_level"] = _parse_facility_level(level)
 
-    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
+    except (
+        AttributeError,
+        TypeError,
+        ValueError,
+        RuntimeError,
+        OSError,
+        AssertionError,
+        ImportError,
+    ):
         logger.debug(
             "Could not read StaffProfile for TibaBot JWT (user %s)",
             user.pk,

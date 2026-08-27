@@ -799,7 +799,15 @@ class Encounter(HistoryMixin, FacilityScopedModel):
                 patient = self.patient
                 if patient.registered_at_facility_id:
                     self.facility_id = patient.registered_at_facility_id
-            except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
+            except (
+                AttributeError,
+                TypeError,
+                ValueError,
+                RuntimeError,
+                OSError,
+                AssertionError,
+                ImportError,
+            ):
                 pass  # patient not loaded yet (raw FK only)
 
         # --- Denormalize clinical_template_data into flat SOAP fields ---
@@ -1159,7 +1167,15 @@ class Encounter(HistoryMixin, FacilityScopedModel):
             from hmis.apps.billing.services.automation_rules import BillingAutomationRuleService
 
             BillingAutomationRuleService.apply_checkout(self)
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ):
             logger.exception(
                 "Billing automation rules failed for encounter checkout %s",
                 self.id,

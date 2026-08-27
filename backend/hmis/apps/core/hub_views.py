@@ -95,7 +95,15 @@ def hub_health(request):  # noqa: ARG001
         with connection.cursor() as cursor:
             cursor.execute("SELECT 1")
         health["database"] = {"status": "ok"}
-    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
+    except (
+        AttributeError,
+        TypeError,
+        ValueError,
+        RuntimeError,
+        OSError,
+        AssertionError,
+        ImportError,
+    ) as e:
         health["database"] = {"status": "error", "message": str(e)[:100]}
         health["status"] = "unhealthy"
 
@@ -122,7 +130,15 @@ def hub_health(request):  # noqa: ARG001
         if failed_count > 10:
             health["status"] = "degraded"
 
-    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
+    except (
+        AttributeError,
+        TypeError,
+        ValueError,
+        RuntimeError,
+        OSError,
+        AssertionError,
+        ImportError,
+    ) as e:
         health["sync"] = {"status": "error", "message": str(e)[:100]}
         health["status"] = "degraded"
 

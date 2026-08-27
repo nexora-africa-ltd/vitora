@@ -70,7 +70,7 @@ class SDMXImportService:
         """
         try:
             root = DefusedET.fromstring(xml_content)
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
+        except (DefusedET.ParseError, AttributeError, TypeError, ValueError) as e:
             raise ValueError(f"Invalid XML: {e}") from e
 
         dataset = SDMXDataset()

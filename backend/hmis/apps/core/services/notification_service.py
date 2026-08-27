@@ -86,7 +86,15 @@ def notify_user(
             related_id=related_id,
             action_url=action_url,
         )
-    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
+    except (
+        AttributeError,
+        TypeError,
+        ValueError,
+        RuntimeError,
+        OSError,
+        AssertionError,
+        ImportError,
+    ):
         logger.exception("Failed to create notification for user %s", user)
         return None
 

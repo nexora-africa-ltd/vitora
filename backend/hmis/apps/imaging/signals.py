@@ -10,6 +10,7 @@ This module contains Django signals for imaging-billing integration:
 import logging
 from decimal import Decimal
 
+from django.core.exceptions import ValidationError
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
@@ -105,7 +106,16 @@ def create_invoice_item_for_imaging(sender, instance, created, **kwargs):
             },
             facility_id=getattr(imaging_order, "facility_id", None),
         )
-    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
+    except (
+        ValidationError,
+        AttributeError,
+        TypeError,
+        ValueError,
+        RuntimeError,
+        OSError,
+        AssertionError,
+        ImportError,
+    ) as e:
         logger.error(f"Failed to create invoice item for imaging order item {instance.id}: {e}")
 
 
@@ -144,7 +154,15 @@ def notify_imaging_results_ready(sender, instance, created, **kwargs):
             action_url=f"/imaging/orders/{instance.id}",
             deduplicate=True,
         )
-    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
+    except (
+        AttributeError,
+        TypeError,
+        ValueError,
+        RuntimeError,
+        OSError,
+        AssertionError,
+        ImportError,
+    ):
         logger.exception("Failed to notify imaging results for order %s", instance.id)
 
 
@@ -175,7 +193,15 @@ def publish_study_received_event(sender, instance, created, **kwargs):
             },
             facility_id=getattr(instance, "facility_id", None),
         )
-    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
+    except (
+        AttributeError,
+        TypeError,
+        ValueError,
+        RuntimeError,
+        OSError,
+        AssertionError,
+        ImportError,
+    ):
         logger.exception("Failed to publish STUDY_RECEIVED for %s", instance.pk)
 
 
@@ -201,5 +227,13 @@ def publish_equipment_registered_event(sender, instance, created, **kwargs):
             },
             facility_id=getattr(instance, "facility_id", None),
         )
-    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
+    except (
+        AttributeError,
+        TypeError,
+        ValueError,
+        RuntimeError,
+        OSError,
+        AssertionError,
+        ImportError,
+    ):
         logger.exception("Failed to publish equipment.registered for %s", instance.pk)

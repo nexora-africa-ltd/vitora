@@ -205,7 +205,15 @@ class ClinicalReferralViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
 
         try:
             referral.accept(user=request.user)
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ) as e:
             return Response(
                 {"detail": str(e)},
                 status=status.HTTP_400_BAD_REQUEST,
@@ -241,7 +249,15 @@ class ClinicalReferralViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
                 user=request.user,
                 reason=serializer.validated_data["reason"],
             )
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ) as e:
             return Response(
                 {"detail": str(e)},
                 status=status.HTTP_400_BAD_REQUEST,
@@ -275,7 +291,15 @@ class ClinicalReferralViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
 
         try:
             referral.cancel(user=request.user, reason=cancel_reason)
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ) as e:
             return Response(
                 {"detail": str(e)},
                 status=status.HTTP_400_BAD_REQUEST,

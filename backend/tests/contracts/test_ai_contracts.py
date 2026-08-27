@@ -34,6 +34,7 @@ from hmis.apps.ai.serializers import (
     AutopopulateRequestSerializer,
     AutopopulateResponseSerializer,
     AutopopulateSuggestedFieldSerializer,
+    CarePlanADPIEEntrySerializer,
     CarePlanFollowUpSerializer,
     CarePlanGenerateRequestSerializer,
     CarePlanGoalSerializer,
@@ -471,6 +472,20 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
         ),
     ),
     (
+        CarePlanADPIEEntrySerializer,
+        frozenset(
+            {
+                "assessment",
+                "evaluation",
+                "goal_and_outcome_criteria",
+                "implementation",
+                "nursing_diagnosis",
+                "plan_of_action",
+                "scientific_rationale",
+            }
+        ),
+    ),
+    (
         CarePlanFollowUpSerializer,
         frozenset(
             {
@@ -494,6 +509,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "icd10_code",
                 "is_pregnant",
                 "lab_results",
+                "output_format",
                 "patient_age",
                 "patient_sex",
                 "primary_diagnosis",
@@ -536,6 +552,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
         CarePlanResponseSerializer,
         frozenset(
             {
+                "adpie_entries",
                 "cds_alerts",
                 "discharge_criteria",
                 "error",

@@ -158,7 +158,15 @@ class Command(BaseCommand):
                         drugs_to_update = []
                         self.stdout.write(f"  Updated {updated_count} drugs...")
 
-                except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
+                except (
+                    AttributeError,
+                    TypeError,
+                    ValueError,
+                    RuntimeError,
+                    OSError,
+                    AssertionError,
+                    ImportError,
+                ) as e:
                     error_count += 1
                     errors.append(f"Row {row_num}: {str(e)}")
                     if error_count <= 10:  # Only show first 10 errors

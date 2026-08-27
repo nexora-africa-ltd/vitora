@@ -16,6 +16,7 @@ from datetime import date, time
 import numpy as np
 import pydicom
 from PIL import Image
+from pydicom.errors import InvalidDicomError
 
 logger = logging.getLogger(__name__)
 
@@ -83,7 +84,15 @@ class DICOMParsingService:
             ds = pydicom.dcmread(file_path, force=True)
         except pydicom.errors.InvalidDicomError as exc:
             raise ValueError(f"Invalid DICOM file: {file_path}") from exc
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as exc:
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ) as exc:
             raise ValueError(f"Could not parse DICOM file: {file_path} — {exc}") from exc
 
         # Verify critical tags exist (force=True may "succeed" on non-DICOM data)
@@ -166,7 +175,15 @@ class DICOMParsingService:
             ds = pydicom.dcmread(file_path, force=True)
         except pydicom.errors.InvalidDicomError:
             return False, ["File is not a valid DICOM file"]
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as exc:
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ) as exc:
             return False, [f"Could not read file: {exc}"]
 
         # Check required tags
@@ -204,7 +221,15 @@ class DICOMParsingService:
 
             return pixel_array
 
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ):
             logger.exception("Failed to extract pixel data from %s", file_path)
             return None
 
@@ -280,7 +305,16 @@ class DICOMParsingService:
 
             return thumb_relative
 
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
+        except (
+            InvalidDicomError,
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ):
             logger.exception("Failed to generate thumbnail for %s", dicom_file_path)
             return None
 

@@ -129,7 +129,15 @@ def _create_appointments_for_records(records, *, created_by=None):
                 len(appointments),
                 len(scheduled_records),
             )
-    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):  # noqa: BLE001
+    except (
+        AttributeError,
+        TypeError,
+        ValueError,
+        RuntimeError,
+        OSError,
+        AssertionError,
+        ImportError,
+    ):  # noqa: BLE001
         logger.warning(
             "Could not create vaccination appointments (scheduling may be unavailable)",
             exc_info=True,

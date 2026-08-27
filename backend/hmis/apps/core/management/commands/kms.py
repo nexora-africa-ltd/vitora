@@ -150,7 +150,15 @@ class Command(BaseCommand):
                     self.stdout.write(self.style.WARNING("⚠️  Key rotation is recommended!"))
                     self.stdout.write("   Run: python manage.py kms rotate")
 
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ) as e:
             raise CommandError(f"Failed to get KMS status: {e}")
 
     def handle_rotate(self, options):
@@ -196,7 +204,15 @@ class Command(BaseCommand):
                 for error in result.errors:
                     self.stdout.write(f"  - {error}")
 
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ) as e:
             raise CommandError(f"Key rotation failed: {e}")
 
     def handle_generate_key(self, options):
@@ -224,5 +240,13 @@ class Command(BaseCommand):
                 self.stdout.write(self.style.ERROR("❌ KMS provider is NOT healthy"))
                 raise CommandError("KMS health check failed")
 
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ) as e:
             raise CommandError(f"KMS health check failed: {e}")

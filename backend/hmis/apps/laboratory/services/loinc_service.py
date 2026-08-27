@@ -120,7 +120,9 @@ class LOINCTerminologyService:
                 "display": getattr(loinc, "long_common_name", "")
                 or getattr(loinc, "component", ""),
             }
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
+        except LOINCCode.DoesNotExist:
+            return None
+        except (AttributeError, TypeError, ValueError):
             return None
 
     def _search_local(self, term: str, limit: int) -> list[dict[str, Any]]:
@@ -153,7 +155,7 @@ class LOINCTerminologyService:
                     return None
                 resp.raise_for_status()
                 data = resp.json()
-        except (httpx.HTTPError, Exception) as e:
+        except (httpx.HTTPError, ValueError, TypeError) as e:
             logger.error(f"LOINC lookup failed for {code}: {e}")
             return None
 
@@ -190,7 +192,7 @@ class LOINCTerminologyService:
                 resp = client.get(url, params=params)
                 resp.raise_for_status()
                 data = resp.json()
-        except (httpx.HTTPError, Exception) as e:
+        except (httpx.HTTPError, ValueError, TypeError) as e:
             logger.error(f"LOINC search failed for '{term}': {e}")
             return []
 

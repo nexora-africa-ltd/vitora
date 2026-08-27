@@ -392,7 +392,14 @@ class PatientCheckinView(views.APIView):
                 },
                 status=status.HTTP_409_CONFLICT if is_duplicate else status.HTTP_400_BAD_REQUEST,
             )
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
+        except (
+            AttributeError,
+            TypeError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ) as e:
             return Response(
                 {"detail": str(e)},
                 status=status.HTTP_400_BAD_REQUEST,

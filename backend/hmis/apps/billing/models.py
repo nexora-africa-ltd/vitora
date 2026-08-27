@@ -2587,7 +2587,15 @@ class SHAClaim(FacilityScopedModel):
                 enc = self.encounter
                 if enc.facility_id:
                     self.facility_id = enc.facility_id
-            except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):  # noqa: S110
+            except (
+                AttributeError,
+                TypeError,
+                ValueError,
+                RuntimeError,
+                OSError,
+                AssertionError,
+                ImportError,
+            ):  # noqa: S110
                 pass  # Encounter may not be loaded yet during migrations
         # Backfill facility_code from facility FK if not set.
         # Priority: billing_config.sha_facility_fr_code > dha_fr_code > mfl_code (last resort)
@@ -2597,7 +2605,15 @@ class SHAClaim(FacilityScopedModel):
                 bc = getattr(self.facility, "billing_config", None)
                 if bc:
                     fr_code = getattr(bc, "sha_facility_fr_code", None) or None
-            except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
+            except (
+                AttributeError,
+                TypeError,
+                ValueError,
+                RuntimeError,
+                OSError,
+                AssertionError,
+                ImportError,
+            ):
                 fr_code = None
             if not fr_code:
                 fr_code = getattr(self.facility, "dha_fr_code", None) or None

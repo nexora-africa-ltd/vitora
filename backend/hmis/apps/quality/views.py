@@ -417,7 +417,15 @@ class QualityMeasureViewSet(viewsets.ModelViewSet):
 
         try:
             result = evaluator(clinic_id_int, start_date, end_date, params)
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ):
             return Response(
                 {"detail": "Failed to evaluate rule preview with provided configuration."},
                 status=status.HTTP_400_BAD_REQUEST,

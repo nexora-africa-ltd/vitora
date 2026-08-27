@@ -105,7 +105,15 @@ def _broadcast_bed_update(bed: ERBed, action_name: str) -> None:
                 new_loop.run_until_complete(channel_layer.group_send("emergency_queue", message))
             finally:
                 new_loop.close()
-    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
+    except (
+        AttributeError,
+        TypeError,
+        ValueError,
+        RuntimeError,
+        OSError,
+        AssertionError,
+        ImportError,
+    ):
         # Never let broadcast failures break the HTTP response
         logger.exception("Failed to broadcast bed update")
 
@@ -257,7 +265,15 @@ class TriageAssessmentViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             try:
                 result = serializer.calculate_category()
                 return Response(result, status=status.HTTP_200_OK)
-            except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
+            except (
+                AttributeError,
+                TypeError,
+                ValueError,
+                RuntimeError,
+                OSError,
+                AssertionError,
+                ImportError,
+            ):
                 logger.exception("Error calculating triage category")
                 return Response(
                     {"detail": "Error calculating triage category. Please try again."},
@@ -2059,7 +2075,15 @@ def _broadcast_escalation(escalation: Escalation) -> None:
                 new_loop.run_until_complete(channel_layer.group_send("emergency_queue", message))
             finally:
                 new_loop.close()
-    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
+    except (
+        AttributeError,
+        TypeError,
+        ValueError,
+        RuntimeError,
+        OSError,
+        AssertionError,
+        ImportError,
+    ):
         logger.exception("Failed to broadcast escalation event")
 
 

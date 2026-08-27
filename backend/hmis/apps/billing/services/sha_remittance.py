@@ -93,7 +93,15 @@ class SHARemittanceService:
             response = requests.get(endpoint, params=params, headers=headers, timeout=self.timeout)
             response.raise_for_status()
             data = response.json()
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ) as e:
             raise SHARemittanceError(
                 f"Failed to fetch remittances from DHA: {e}",
                 code="fetch_failed",
@@ -159,7 +167,15 @@ class SHARemittanceService:
             response = requests.get(endpoint, params=params, headers=headers, timeout=self.timeout)
             response.raise_for_status()
             data = response.json()
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ) as e:
             raise SHARemittanceError(
                 f"Failed to fetch claims for remittance {remittance.bank_reference}: {e}",
                 code="fetch_claims_failed",

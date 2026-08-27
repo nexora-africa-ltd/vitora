@@ -55,7 +55,15 @@ def _pii_encryption_healthy() -> int:
         if not kms.is_healthy():
             logger.warning("PII gauge: KMS health check failed")
             return 0
-    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as exc:
+    except (
+        AttributeError,
+        TypeError,
+        ValueError,
+        RuntimeError,
+        OSError,
+        AssertionError,
+        ImportError,
+    ) as exc:
         logger.warning("PII gauge: KMS unavailable (%s)", exc)
         return 0
 
@@ -74,7 +82,15 @@ def _pii_encryption_healthy() -> int:
             if not decrypted:
                 logger.warning("PII gauge: decryption returned empty for Facility pk=%s", pk)
                 return 0
-    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as exc:
+    except (
+        AttributeError,
+        TypeError,
+        ValueError,
+        RuntimeError,
+        OSError,
+        AssertionError,
+        ImportError,
+    ) as exc:
         logger.warning("PII gauge: sample decryption failed (%s)", exc)
         return 0
 

@@ -145,7 +145,15 @@ class HubCloudSyncWorker:
         while not self._stop_event.is_set():
             try:
                 self._sync_cycle()
-            except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
+            except (
+                AttributeError,
+                TypeError,
+                ValueError,
+                RuntimeError,
+                OSError,
+                AssertionError,
+                ImportError,
+            ):
                 logger.exception("Hub-to-cloud sync cycle failed")
 
             self._stop_event.wait(timeout=self.interval)

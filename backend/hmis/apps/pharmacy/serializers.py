@@ -711,7 +711,15 @@ class PrescriptionCreateSerializer(serializers.ModelSerializer):
                         ),
                     }
                 )
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ):
             logger.debug("eGFR lookup failed during prescription validation", exc_info=True)
 
         if renal_warnings and not acknowledge_renal:

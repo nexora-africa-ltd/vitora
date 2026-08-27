@@ -5,6 +5,8 @@ Signals for Triage app.
 This module contains Django signals for automatic updates related to triage assessments.
 """
 
+import logging
+
 from django.db.models import Q
 from django.db.models.signals import post_save
 from django.dispatch import receiver
@@ -13,6 +15,8 @@ from django.utils import timezone
 from hmis.apps.core.events import ClinicalEvents, publish_event
 from hmis.apps.core.models import AuditLog
 from hmis.apps.core.sync_context import is_sync_materialization_active
+
+logger = logging.getLogger(__name__)
 
 
 @receiver(post_save, sender="triage.TriageAssessment")
@@ -173,7 +177,10 @@ def update_encounter_triage_status(sender, instance, created, **kwargs):
     # Generate/refresh vitals-derived clinician review suggestions
     from hmis.apps.encounters.services import VitalFlagSuggestionService
 
-    VitalFlagSuggestionService.detect_from_triage(instance)
+    try:
+        VitalFlagSuggestionService.detect_from_triage(instance)
+    except (TypeError, ValueError):
+        logger.warning("Skipping vital-flag suggestion refresh for triage %s", instance.id)
 
 
 def _notify_urgent_triage(instance, encounter):
@@ -226,7 +233,15 @@ def _notify_urgent_triage(instance, encounter):
             related_id=encounter.id,
             action_url=f"/encounters/{encounter.id}",
         )
-    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
+    except (
+        AttributeError,
+        TypeError,
+        ValueError,
+        RuntimeError,
+        OSError,
+        AssertionError,
+        ImportError,
+    ):
         import logging
 
         logging.getLogger(__name__).exception(

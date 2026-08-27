@@ -100,6 +100,14 @@ def lookup_and_register_patient_in_cr(self, patient_id: int) -> dict:
 
         return {"action": "error", "detail": "Registration returned no CR number"}
 
-    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as exc:
+    except (
+        AttributeError,
+        TypeError,
+        ValueError,
+        RuntimeError,
+        OSError,
+        AssertionError,
+        ImportError,
+    ) as exc:
         logger.warning("CR sync failed for patient %s: %s", patient_id, exc, exc_info=True)
         raise self.retry(exc=exc)

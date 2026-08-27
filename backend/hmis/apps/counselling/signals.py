@@ -145,7 +145,15 @@ def route_to_counselling_clinic_on_acceptance(sender, instance, created, **kwarg
             f"(Clinic: {counselling_clinic.name})"
         )
 
-    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
+    except (
+        AttributeError,
+        TypeError,
+        ValueError,
+        RuntimeError,
+        OSError,
+        AssertionError,
+        ImportError,
+    ) as e:
         logger.error(
             f"Failed to create clinic visit for counselling referral {instance.referral_number}: {e}"
         )
@@ -252,7 +260,15 @@ def create_billing_item_on_session_completion(sender, instance, created, **kwarg
             f"Amount: KES {counselling_type.cost_per_session}"
         )
 
-    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
+    except (
+        AttributeError,
+        TypeError,
+        ValueError,
+        RuntimeError,
+        OSError,
+        AssertionError,
+        ImportError,
+    ) as e:
         logger.error(
             f"Failed to create billing item for counselling session {instance.session_number}: {e}"
         )
@@ -311,7 +327,15 @@ def create_clinic_visit_for_session(sender, instance, created, **kwargs):
 
         logger.info(f"Created clinic visit for counselling session {instance.session_number}")
 
-    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
+    except (
+        AttributeError,
+        TypeError,
+        ValueError,
+        RuntimeError,
+        OSError,
+        AssertionError,
+        ImportError,
+    ) as e:
         logger.error(
             f"Failed to create clinic visit for counselling session {instance.session_number}: {e}"
         )

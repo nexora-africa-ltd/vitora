@@ -98,7 +98,15 @@ class ClinicQueueProjection(Projection):
                     "longest_wait_seconds": stats.longest_wait_seconds,
                 },
             )
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ):
             logger.debug("Failed to broadcast clinic queue stats", exc_info=True)
 
     def reset(self, **filters) -> None:

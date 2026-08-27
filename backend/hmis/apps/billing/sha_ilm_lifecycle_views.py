@@ -467,7 +467,15 @@ class IlmDischargeView(BillingILMSchemaMixin, APIView):
                     "claim_form_updated": claim_form.updated,
                     "claim_form_skipped_reason": claim_form.skipped_reason,
                 }
-            except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):  # noqa: BLE001 - best-effort guardrail
+            except (
+                AttributeError,
+                TypeError,
+                ValueError,
+                RuntimeError,
+                OSError,
+                AssertionError,
+                ImportError,
+            ):  # noqa: BLE001 - best-effort guardrail
                 logger.exception(
                     "Failed to auto-generate claim attachments for claim %s during discharge",
                     claim.id,

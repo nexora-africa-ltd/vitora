@@ -65,7 +65,15 @@ def _build_tibabot_config(facility) -> dict[str, Any]:
             fk = getattr(facility, "tibabot_key", None)
             if fk and fk.is_active and fk.api_key:
                 config["api_key"] = fk.api_key
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):  # noqa: S110
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ):  # noqa: S110
             pass
 
     return config

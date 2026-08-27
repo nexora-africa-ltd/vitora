@@ -232,7 +232,15 @@ class HL7BidirectionalAdapter(ProtocolAdapter):
             # MSH must have at least 9 fields
             fields = segments[0].split(self.FIELD_SEPARATOR)
             return not len(fields) < 9
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ):
             return False
 
     def _split_segments(self, message: str) -> list[str]:

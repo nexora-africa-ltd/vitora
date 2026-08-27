@@ -126,7 +126,15 @@ class WalkInPatientViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.Mo
                     }
                 },
             )
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as exc:  # noqa: BLE001
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ) as exc:  # noqa: BLE001
             logger.exception("Walk-in promotion failed for id=%s", walkin.pk)
             return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -247,7 +255,15 @@ class ExternalOrderRequestViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
                 },
                 status=status.HTTP_201_CREATED,
             )
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ) as e:
             logger.exception("Error processing external order %s", ext_order.id)
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 

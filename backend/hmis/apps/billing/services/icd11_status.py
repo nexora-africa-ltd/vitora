@@ -26,7 +26,15 @@ def get_icd11_local_code_count() -> int:
         return ICD11CodeReference.objects.filter(is_active=True).count()
     except (OperationalError, ProgrammingError):
         return 0
-    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as exc:
+    except (
+        AttributeError,
+        TypeError,
+        ValueError,
+        RuntimeError,
+        OSError,
+        AssertionError,
+        ImportError,
+    ) as exc:
         logger.warning("Unable to determine ICD-11 local fallback count: %s", exc)
         return 0
 

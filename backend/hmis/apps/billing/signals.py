@@ -245,7 +245,7 @@ def _maybe_create_phc_claim(encounter):
             facility_id=getattr(encounter, "facility_id", None),
             organization_id=getattr(encounter, "organization_id", None),
         )
-    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
+    except Exception:  # noqa: BLE001 - auto-claim creation should queue retry instead of breaking encounter save
         logger.exception(
             "Auto claim creation failed for encounter %s — queuing retry",
             encounter.id,

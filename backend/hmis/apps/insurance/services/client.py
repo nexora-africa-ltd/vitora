@@ -417,6 +417,14 @@ class InsuranceHttpClient:
                 error_code=error_code,
             )
             return row.pk
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ):
             logger.exception("Failed to write InsuranceOutboundCall audit row")
             return None

@@ -595,7 +595,15 @@ class ClinicSession(FacilityScopedModel, TimeStampedModel):
                 clinic = self.clinic
                 if clinic.facility_id:
                     self.facility_id = clinic.facility_id
-            except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
+            except (
+                AttributeError,
+                TypeError,
+                ValueError,
+                RuntimeError,
+                OSError,
+                AssertionError,
+                ImportError,
+            ):
                 pass
         super().save(*args, **kwargs)
 
@@ -936,7 +944,15 @@ class ClinicVisit(FacilityScopedModel, TimeStampedModel):
                 session = self.session
                 if session.facility_id:
                     self.facility_id = session.facility_id
-            except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
+            except (
+                AttributeError,
+                TypeError,
+                ValueError,
+                RuntimeError,
+                OSError,
+                AssertionError,
+                ImportError,
+            ):
                 pass
 
         super().save(*args, **kwargs)

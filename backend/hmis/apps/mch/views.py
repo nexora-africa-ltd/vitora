@@ -502,7 +502,15 @@ class MCHRegistrationViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
                 }
             )
 
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as exc:
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ) as exc:
             return Response(
                 {"detail": f"Failed to schedule ANC visit: {exc!s}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -1198,7 +1206,15 @@ class GrowthMeasurementViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
                         target_key = "height"
                     if data:
                         percentile_lines = calculator.get_percentile_lines(data, target_key)
-            except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
+            except (
+                AttributeError,
+                TypeError,
+                ValueError,
+                RuntimeError,
+                OSError,
+                AssertionError,
+                ImportError,
+            ):
                 percentile_lines = {}
 
         # Pass the queryset (model instances) so GrowthChartDataSerializer can serialize
@@ -1249,7 +1265,15 @@ class GrowthMeasurementViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
             )
             return response
 
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as exc:
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ) as exc:
             return Response(
                 {"detail": f"Failed to generate PDF: {exc!s}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,

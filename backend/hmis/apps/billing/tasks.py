@@ -93,7 +93,7 @@ def poll_preauth_statuses():
             service = SHAPreauthService()
             service.poll_status(preauth)
             polled += 1
-        except _billing_task_handled_exceptions():
+        except Exception:  # noqa: BLE001 - background poll should continue when one preauth fails
             errors += 1
             logger.exception("Failed to poll preauth %s", preauth.preauth_reference)
 

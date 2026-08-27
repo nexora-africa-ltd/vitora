@@ -213,7 +213,15 @@ def sync_single_entry(self, entry_id: int):
 
         return result
 
-    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
+    except (
+        AttributeError,
+        TypeError,
+        ValueError,
+        RuntimeError,
+        OSError,
+        AssertionError,
+        ImportError,
+    ) as e:
         logger.error(f"Error syncing entry {entry_id}: {e}")
         entry.mark_failed(str(e))
         raise self.retry(countdown=calculate_retry_delay(self.request.retries)) from e
@@ -400,7 +408,15 @@ def send_overdue_appointment_alerts():
                         f"Sent overdue alert for enrollment {enrollment.id} "
                         f"(patient: {enrollment.patient.mrn}, clinic: {enrollment.clinic.name})"
                     )
-            except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
+            except (
+                AttributeError,
+                TypeError,
+                ValueError,
+                RuntimeError,
+                OSError,
+                AssertionError,
+                ImportError,
+            ) as e:
                 results["errors"] += 1
                 logger.error(f"Failed to send alert for enrollment {enrollment.id}: {e}")
 
@@ -510,7 +526,15 @@ def send_upcoming_appointment_reminders():
                     enrollment.last_reminder_sent = timezone.now()
                     enrollment.save(update_fields=["last_reminder_sent"])
                     results["reminders_sent"] += 1
-            except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
+            except (
+                AttributeError,
+                TypeError,
+                ValueError,
+                RuntimeError,
+                OSError,
+                AssertionError,
+                ImportError,
+            ) as e:
                 results["errors"] += 1
                 logger.error(f"Failed to send reminder for enrollment {enrollment.id}: {e}")
 
@@ -783,7 +807,15 @@ def verify_staff_hwr_licenses():
                     "hwr_last_verified_at",
                 ]
             )
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ):
             failed += 1
             logger.exception(
                 "HWR verification failed for staff %s (user=%s)",
@@ -854,7 +886,15 @@ def _verify_single_profile(profile):
 
         except DHAError:
             continue
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ):
             logger.exception("ILM error for regulator %s, staff %s", regulator, profile.pk)
             continue
 
@@ -883,7 +923,15 @@ def _publish_license_event(event_type: str, profile, extra: dict) -> None:
                 **extra,
             },
         )
-    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
+    except (
+        AttributeError,
+        TypeError,
+        ValueError,
+        RuntimeError,
+        OSError,
+        AssertionError,
+        ImportError,
+    ):
         logger.exception("Failed to publish license event %s for staff %s", event_type, profile.pk)
 
 

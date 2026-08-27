@@ -66,7 +66,15 @@ class KENHDDValidationMixin:
 
             if warnings:
                 data["kenhdd_warnings"] = warnings
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ):
             logger.exception("KENHDD validation mixin failed")
 
         return data

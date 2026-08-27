@@ -667,7 +667,15 @@ class AssignmentService:
                 target_id=target_id,
             )
 
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ) as e:
             import traceback
 
             return AssignmentResult(
@@ -735,7 +743,15 @@ class AssignmentService:
                 override=override,
             )
 
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ) as e:
             return OverrideResult(
                 success=False,
                 error=str(e),

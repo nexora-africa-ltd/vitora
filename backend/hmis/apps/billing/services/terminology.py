@@ -852,7 +852,15 @@ class TerminologyService:
                 )
                 for code in local_codes
             ]
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ) as e:
             logger.error(f"Local ICD-11 fallback failed: {e}")
             return []
 
@@ -1121,7 +1129,15 @@ class TerminologyService:
                 results = self._search_loinc_fhir(query, limit)
                 if results:
                     return results
-            except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
+            except (
+                AttributeError,
+                TypeError,
+                ValueError,
+                RuntimeError,
+                OSError,
+                AssertionError,
+                ImportError,
+            ) as e:
                 logger.warning(f"FHIR LOINC search failed: {e}")
 
         # Final fallback: local database
@@ -1336,7 +1352,15 @@ class TerminologyService:
                 )
                 for c in local_codes
             ]
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ) as e:
             logger.error(f"Local LOINC fallback failed: {e}")
             return []
 
@@ -1388,7 +1412,15 @@ class TerminologyService:
                 results = self._lookup_loinc_code_fhir(loinc_num)
                 if results:
                     return results[0]
-            except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
+            except (
+                AttributeError,
+                TypeError,
+                ValueError,
+                RuntimeError,
+                OSError,
+                AssertionError,
+                ImportError,
+            ) as e:
                 logger.warning(f"FHIR LOINC lookup failed: {e}")
 
         # Final fallback: local database
@@ -1418,7 +1450,15 @@ class TerminologyService:
                 short_name=c.short_name,
                 status="ACTIVE",
             )
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ):
             raise CodeNotFoundError(loinc_num, "LOINC")
 
     # =========================================================================

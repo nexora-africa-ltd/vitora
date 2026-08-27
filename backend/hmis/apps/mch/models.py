@@ -1279,7 +1279,15 @@ class LabourPartographObservation(HistoryMixin, TimeStampedModel):
         if dilation_value not in (None, "") and not isinstance(dilation_value, Decimal):
             try:
                 dilation_value = Decimal(str(dilation_value))
-            except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
+            except (
+                AttributeError,
+                TypeError,
+                ValueError,
+                RuntimeError,
+                OSError,
+                AssertionError,
+                ImportError,
+            ):
                 dilation_value = None
 
         if self.fetal_heart_rate is not None:
@@ -2060,7 +2068,15 @@ class GrowthMeasurement(HistoryMixin, TimeStampedModel):
                 self.head_circumference_for_age_z = calculator.head_circumference_for_age_z(
                     float(self.head_circumference), self.age_in_days, sex
                 )
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ):
             # Z-score calculation is optional; don't prevent saving
             pass
 

@@ -1073,7 +1073,15 @@ class ProcedureLog(FacilityScopedModel, TimeStampedModel):
             from hmis.apps.billing.agent import BillingAgentService
 
             BillingAgentService.handle_procedure_completed(self.order)
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ):
             import logging
 
             logging.getLogger(__name__).exception(

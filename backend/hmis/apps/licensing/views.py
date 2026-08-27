@@ -15,6 +15,7 @@ import secrets
 import uuid
 from pathlib import Path
 
+import jwt
 from django.conf import settings
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema, inline_serializer
@@ -458,7 +459,15 @@ def license_status(request: Request) -> Response:
             },
             status=status.HTTP_200_OK,
         )
-    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
+    except (
+        jwt.PyJWTError,
+        ValueError,
+        TypeError,
+        UnicodeDecodeError,
+        AttributeError,
+        RuntimeError,
+        OSError,
+    ) as e:
         return Response(
             {
                 "valid": False,

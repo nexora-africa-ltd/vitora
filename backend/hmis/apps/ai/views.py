@@ -1857,7 +1857,7 @@ class ICUPredictView(AIFeatureGatedMixin, APIView):
                 for field in lab_fields:
                     if patient_data.get(field) is None and field in lab_values:
                         patient_data[field] = lab_values[field]
-            except _ai_view_handled_exceptions():
+            except Exception:  # noqa: BLE001 - lab enrichment is best-effort and must not block ICU prediction
                 logger.warning("Failed to enrich ICU prediction with lab data", exc_info=True)
 
         # Sanitize free-text fields

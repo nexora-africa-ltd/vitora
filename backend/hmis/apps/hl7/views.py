@@ -85,7 +85,15 @@ class HL7EndpointViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.Mode
             sock.connect((endpoint.mllp_host, endpoint.mllp_port))
             sock.close()
             success = True
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as exc:
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ) as exc:
             error = str(exc)
 
         latency_ms = (time.time() - start) * 1000

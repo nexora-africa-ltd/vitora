@@ -95,7 +95,15 @@ class Command(BaseCommand):
                             defaults={**defaults, "organization": facility.organization},
                         )
                         daily_count += 1
-                    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
+                    except (
+                        AttributeError,
+                        TypeError,
+                        ValueError,
+                        RuntimeError,
+                        OSError,
+                        AssertionError,
+                        ImportError,
+                    ) as e:
                         self.stderr.write(f"  ERROR: {facility.name} – {current}: {e}")
             current += timedelta(days=1)
 
@@ -183,7 +191,15 @@ class Command(BaseCommand):
                         defaults={**defaults, "organization": facility.organization},
                     )
                     demo_count += 1
-                except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
+                except (
+                    AttributeError,
+                    TypeError,
+                    ValueError,
+                    RuntimeError,
+                    OSError,
+                    AssertionError,
+                    ImportError,
+                ) as e:
                     self.stderr.write(f"  ERROR demographics: {facility.name}: {e}")
 
         self.stdout.write(self.style.SUCCESS(f"Demographics snapshots: {demo_count} rows"))

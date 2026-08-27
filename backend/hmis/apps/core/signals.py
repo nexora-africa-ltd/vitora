@@ -81,7 +81,15 @@ def send_push_on_notification_create(sender, instance, created, **kwargs):
             url=instance.action_url or "",
             tag=f"notification-{instance.pk}",
         )
-    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
+    except (
+        AttributeError,
+        TypeError,
+        ValueError,
+        RuntimeError,
+        OSError,
+        AssertionError,
+        ImportError,
+    ):
         logger.exception("Failed to send push notification for Notification %s", instance.pk)
 
 
@@ -124,7 +132,15 @@ def broadcast_notification_via_websocket(sender, instance, created, **kwargs):
                 },
             },
         )
-    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
+    except (
+        AttributeError,
+        TypeError,
+        ValueError,
+        RuntimeError,
+        OSError,
+        AssertionError,
+        ImportError,
+    ):
         logger.exception("Failed to broadcast notification %s via WebSocket", instance.pk)
 
 
@@ -610,7 +626,15 @@ def publish_org_activation_event(sender, instance, created, **kwargs):
                     facility_name=first_facility.name if first_facility else "",
                     facility_mfl_code=first_facility.mfl_code if first_facility else "",
                 )
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ):
             logger.exception("Failed to send org-activated email for org %s", instance.pk)
 
 

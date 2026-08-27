@@ -21,6 +21,8 @@ from hmis.apps.blood_bank.serializers import (
     BloodUnitCreateSerializer,
     BloodUnitDetailSerializer,
     BloodUnitListSerializer,
+    BloodUnitStatusEventSerializer,
+    BloodUnitStatusTransitionSerializer,
     CrossMatchCreateSerializer,
     CrossMatchSerializer,
 )
@@ -80,6 +82,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "is_active",
                 "last_donation_date",
                 "last_name",
+                "patient",
                 "total_donations",
             }
         ),
@@ -197,6 +200,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "expiry_date",
                 "notes",
                 "storage_location",
+                "unit_number",
                 "volume_ml",
             }
         ),
@@ -206,6 +210,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
         frozenset(
             {
                 "all_screens_negative",
+                "allowed_next_statuses",
                 "blood_group",
                 "collection_date",
                 "component",
@@ -219,9 +224,14 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "id",
                 "is_available",
                 "is_expired",
+                "last_status_change_at",
+                "last_status_changed_by",
+                "last_status_changed_by_name",
                 "malaria_screened",
                 "notes",
                 "status",
+                "status_reason",
+                "status_timeline",
                 "storage_location",
                 "syphilis_screened",
                 "unit_number",
@@ -248,6 +258,31 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "status",
                 "unit_number",
                 "volume_ml",
+            }
+        ),
+    ),
+    (
+        BloodUnitStatusEventSerializer,
+        frozenset(
+            {
+                "blood_unit",
+                "changed_at",
+                "changed_by",
+                "changed_by_name",
+                "from_status",
+                "id",
+                "reason",
+                "source",
+                "to_status",
+            }
+        ),
+    ),
+    (
+        BloodUnitStatusTransitionSerializer,
+        frozenset(
+            {
+                "reason",
+                "target_status",
             }
         ),
     ),

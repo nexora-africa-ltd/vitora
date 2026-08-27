@@ -680,7 +680,15 @@ class EncounterSerializer(serializers.ModelSerializer):
         try:
             if hasattr(obj, "triage_assessment") and obj.triage_assessment:
                 return obj.triage_assessment.triage_category
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ):
             pass
         return None
 
@@ -690,7 +698,15 @@ class EncounterSerializer(serializers.ModelSerializer):
             if hasattr(obj, "triage_assessment") and obj.triage_assessment:
                 if obj.triage_assessment.triage_end_time:
                     return obj.triage_assessment.triage_end_time.isoformat()
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ):
             pass
         return None
 

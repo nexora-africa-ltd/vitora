@@ -26,6 +26,7 @@ logger = logging.getLogger(__name__)
 def _laboratory_signal_handled_exceptions() -> tuple[type[Exception], ...]:
     """Exceptions that lab signals may safely log and continue on."""
     return (
+        Exception,
         ValidationError,
         ObjectDoesNotExist,
         DatabaseError,

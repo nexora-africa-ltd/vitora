@@ -47,11 +47,16 @@ from hmis.apps.inpatient.serializers import (
     InpatientWardSerializer,
     InterFacilityTransferEventSerializer,
     InterFacilityTransferSerializer,
+    KardexFieldChangeSerializer,
     KardexHandoverNoteSerializer,
+    KardexScheduleItemCreateSerializer,
+    KardexScheduleItemSerializer,
+    KardexScheduleItemUpdateSerializer,
     KardexShiftNoteSerializer,
     MedicationAdministrationActionSerializer,
     MedicationAdministrationCreateSerializer,
     MedicationAdministrationSerializer,
+    NursingCarePlanEntryChangeSerializer,
     NursingCarePlanEntryCreateSerializer,
     NursingCarePlanEntrySerializer,
     NursingKardexSerializer,
@@ -116,6 +121,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "previous_transfusion_comment",
                 "renal_reactions",
                 "transfusion",
+                "volume_transfused_ml",
             }
         ),
     ),
@@ -208,6 +214,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "vitals_during_pulse",
                 "vitals_during_rr",
                 "vitals_during_temp",
+                "volume_transfused_ml",
                 "ward_name",
             }
         ),
@@ -490,6 +497,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
             {
                 "admission",
                 "amount_ml",
+                "blood_bank_unit",
                 "blood_group",
                 "blood_product",
                 "blood_product_other",
@@ -507,6 +515,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
             {
                 "admission",
                 "amount_ml",
+                "blood_bank_unit",
                 "blood_group",
                 "blood_product",
                 "blood_product_display",
@@ -941,6 +950,22 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
         ),
     ),
     (
+        KardexFieldChangeSerializer,
+        frozenset(
+            {
+                "changed_at",
+                "changed_by",
+                "changed_by_username",
+                "field_label",
+                "field_name",
+                "id",
+                "kardex",
+                "new_value",
+                "old_value",
+            }
+        ),
+    ),
+    (
         KardexHandoverNoteSerializer,
         frozenset(
             {
@@ -955,6 +980,53 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "outgoing_nurse_username",
                 "pending_tasks",
                 "shift_ending",
+            }
+        ),
+    ),
+    (
+        KardexScheduleItemCreateSerializer,
+        frozenset(
+            {
+                "frequency",
+                "item_type",
+                "notes",
+                "scheduled_for",
+                "status",
+                "title",
+            }
+        ),
+    ),
+    (
+        KardexScheduleItemSerializer,
+        frozenset(
+            {
+                "created_at",
+                "created_by",
+                "created_by_username",
+                "frequency",
+                "id",
+                "item_type",
+                "item_type_display",
+                "kardex",
+                "notes",
+                "scheduled_for",
+                "status",
+                "status_display",
+                "title",
+                "updated_at",
+            }
+        ),
+    ),
+    (
+        KardexScheduleItemUpdateSerializer,
+        frozenset(
+            {
+                "frequency",
+                "item_type",
+                "notes",
+                "scheduled_for",
+                "status",
+                "title",
             }
         ),
     ),
@@ -1026,6 +1098,24 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
         ),
     ),
     (
+        NursingCarePlanEntryChangeSerializer,
+        frozenset(
+            {
+                "action",
+                "action_display",
+                "after_data",
+                "before_data",
+                "care_plan_entry",
+                "changed_by",
+                "changed_by_username",
+                "changed_fields",
+                "created_at",
+                "id",
+                "notes",
+            }
+        ),
+    ),
+    (
         NursingCarePlanEntryCreateSerializer,
         frozenset(
             {
@@ -1051,12 +1141,15 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "goal_and_outcome_criteria",
                 "id",
                 "implementation",
+                "is_review_due",
                 "kardex",
+                "last_reviewed_at",
                 "nursing_diagnosis",
                 "plan_of_action",
                 "recorded_at",
                 "recorded_by",
                 "recorded_by_username",
+                "review_due_at",
                 "scientific_rationale",
                 "status",
                 "status_display",
@@ -1074,16 +1167,23 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "bed_number",
                 "care_plan_entries",
                 "care_task_frequency",
+                "code_status",
+                "code_status_display",
+                "code_status_notes",
                 "created_at",
+                "current_medications",
                 "dietary_requirements",
                 "fall_risk",
                 "fall_risk_display",
+                "field_change_history",
                 "handover_notes",
+                "hygiene_precautions",
                 "id",
                 "interventions",
                 "isolation_required",
                 "isolation_type",
                 "iv_access",
+                "iv_fluids",
                 "maternity_continuity_action",
                 "maternity_continuity_action_display",
                 "maternity_continuity_notes",
@@ -1093,6 +1193,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "patient_name",
                 "pressure_sore_risk",
                 "pressure_sore_risk_display",
+                "schedule_items",
                 "shift_notes",
                 "updated_at",
                 "ward_name",

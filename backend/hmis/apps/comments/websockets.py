@@ -50,5 +50,13 @@ def broadcast_comment_event(
                 "data": data,
             },
         )
-    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
+    except (
+        AttributeError,
+        TypeError,
+        ValueError,
+        RuntimeError,
+        OSError,
+        AssertionError,
+        ImportError,
+    ):
         logger.exception(f"Failed to broadcast comment event to group {group_name}")

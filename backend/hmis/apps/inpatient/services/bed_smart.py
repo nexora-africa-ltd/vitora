@@ -19,6 +19,7 @@ from dataclasses import dataclass, field
 from datetime import timedelta
 from typing import TYPE_CHECKING, Any
 
+from django.core.exceptions import FieldError
 from django.db import models, transaction
 from django.db.models import Avg, F
 from django.utils import timezone
@@ -470,7 +471,15 @@ class SmartBedAllocationService:
                 kardex = admission.kardex
                 if kardex.isolation_required:
                     return True, f"Kardex: {kardex.isolation_type or 'isolation required'}"
-            except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
+            except (
+                AttributeError,
+                TypeError,
+                ValueError,
+                RuntimeError,
+                OSError,
+                AssertionError,
+                ImportError,
+            ):
                 pass  # No kardex yet
 
         # Check for critical infection-related lab results
@@ -478,7 +487,7 @@ class SmartBedAllocationService:
             from hmis.apps.laboratory.models import LabResult
 
             recent_results = LabResult.objects.filter(
-                order__encounter__patient=patient,
+                order_item__lab_order__encounter__patient=patient,
                 result_flag__in=["CRITICAL_HIGH", "CRITICAL_LOW"],
             ).order_by("-verified_at")[:10]
 
@@ -487,7 +496,16 @@ class SmartBedAllocationService:
                 test_code = (result.test_item.code or "").upper()
                 if any(marker in test_code for marker in infection_markers):
                     return True, f"Critical lab: {result.test_item.name} ({result.result_flag})"
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+            FieldError,
+        ):
             pass  # Lab module may not exist or have different structure
 
         return False, ""
@@ -741,7 +759,15 @@ class SmartBedAllocationService:
                         )
                         if fallback:
                             return fallback
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ):
             pass
 
         # Try from admission recommendation
@@ -756,7 +782,15 @@ class SmartBedAllocationService:
             )
             if rec:
                 return rec.provisional_diagnosis
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ):
             pass
 
         return None

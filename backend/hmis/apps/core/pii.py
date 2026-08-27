@@ -90,7 +90,15 @@ def encrypted_pii_property(field_name: str):
 
         try:
             return get_kms_provider().decrypt_string(raw)
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ):
             logger.error(
                 "PII decryption failed for %s.%s pk=%s — key mismatch or corrupted data",
                 type(self).__name__,

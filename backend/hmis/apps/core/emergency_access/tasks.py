@@ -120,7 +120,15 @@ This is an automated alert. Do not reply to this email.
             )
             emails_sent = len(admin_emails)
             logger.info(f"Sent emergency access escalation email to {emails_sent} admins")
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ) as e:
             logger.exception(f"Failed to send escalation email: {e}")
             errors.append(f"Email: {str(e)}")
     else:
@@ -145,11 +153,27 @@ This is an automated alert. Do not reply to this email.
                 try:
                     sms_gateway.send_reminder(phone, sms_message)
                     sms_sent += 1
-                except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
+                except (
+                    AttributeError,
+                    TypeError,
+                    ValueError,
+                    RuntimeError,
+                    OSError,
+                    AssertionError,
+                    ImportError,
+                ) as e:
                     logger.warning(f"Failed to send SMS to {phone}: {e}")
             if sms_sent:
                 logger.info(f"Sent emergency access escalation SMS to {sms_sent} admins")
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ) as e:
             logger.exception(f"Failed to initialize SMS gateway: {e}")
             errors.append(f"SMS: {str(e)}")
 

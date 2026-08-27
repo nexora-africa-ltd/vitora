@@ -93,7 +93,15 @@ def create_invoice_item_for_completed_session(sender, instance, created, **kwarg
             f"(Order: {order.order_number})"
         )
 
-    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
+    except (
+        AttributeError,
+        TypeError,
+        ValueError,
+        RuntimeError,
+        OSError,
+        AssertionError,
+        ImportError,
+    ) as e:
         logger.error(f"Failed to create invoice item for OT session {instance.id}: {e}")
 
 
@@ -171,5 +179,13 @@ def route_to_ot_clinic_on_approval(sender, instance, created, **kwargs):
 
         logger.info(f"Created clinic visit {clinic_visit.id} for OT order {instance.order_number}")
 
-    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
+    except (
+        AttributeError,
+        TypeError,
+        ValueError,
+        RuntimeError,
+        OSError,
+        AssertionError,
+        ImportError,
+    ) as e:
         logger.error(f"Failed to route OT order {instance.order_number} to clinic: {e}")

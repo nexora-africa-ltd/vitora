@@ -383,7 +383,15 @@ def resolve_tenant_from_related(instance, encounter_field="encounter", patient_f
                 fac = instance.facility
                 if fac and fac.organization_id:
                     instance.organization_id = fac.organization_id
-            except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
+            except (
+                AttributeError,
+                TypeError,
+                ValueError,
+                RuntimeError,
+                OSError,
+                AssertionError,
+                ImportError,
+            ):
                 pass
         return
 
@@ -397,7 +405,15 @@ def resolve_tenant_from_related(instance, encounter_field="encounter", patient_f
                     instance.facility_id = enc.facility_id
                     instance.organization_id = enc.organization_id
                     return
-            except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
+            except (
+                AttributeError,
+                TypeError,
+                ValueError,
+                RuntimeError,
+                OSError,
+                AssertionError,
+                ImportError,
+            ):
                 pass
 
     # Fall back to patient
@@ -410,7 +426,15 @@ def resolve_tenant_from_related(instance, encounter_field="encounter", patient_f
                     instance.facility_id = pat.registered_at_facility_id
                     instance.organization_id = pat.organization_id
                     return
-            except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
+            except (
+                AttributeError,
+                TypeError,
+                ValueError,
+                RuntimeError,
+                OSError,
+                AssertionError,
+                ImportError,
+            ):
                 pass
 
 
@@ -562,7 +586,15 @@ class TenantScopedAdminMixin:
                 f.name == field_name
                 for f in (self.model._meta.concrete_fields + self.model._meta.many_to_many)
             )
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):  # noqa: S110
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ):  # noqa: S110
             return False
 
     def get_queryset(self, request):

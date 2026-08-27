@@ -100,7 +100,15 @@ class EmergencyQueueConsumer(AsyncJsonWebsocketConsumer):
                 await self._send_current_state()
             except asyncio.CancelledError:
                 break
-            except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
+            except (
+                AttributeError,
+                TypeError,
+                ValueError,
+                RuntimeError,
+                OSError,
+                AssertionError,
+                ImportError,
+            ) as e:
                 logger.error(f"Error in periodic broadcast: {e}")
 
     async def _send_current_state(self):
@@ -119,7 +127,15 @@ class EmergencyQueueConsumer(AsyncJsonWebsocketConsumer):
                     },
                 }
             )
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ) as e:
             logger.error(f"Error sending state: {e}")
 
     @database_sync_to_async

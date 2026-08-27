@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import jwt
 from django.contrib.auth.models import AnonymousUser
 from rest_framework import permissions
 from rest_framework.authentication import BaseAuthentication
@@ -18,7 +19,12 @@ def authenticate_hub_license(request: Request, token: str) -> bool:
     """Validate a hub license JWT and attach installation context to the request."""
     try:
         payload = verify_license_token(token)
-    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
+    except (
+        jwt.PyJWTError,
+        ValueError,
+        TypeError,
+        UnicodeDecodeError,
+    ):
         return False
 
     installation_id = payload.get("installation_id")

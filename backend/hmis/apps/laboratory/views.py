@@ -662,7 +662,15 @@ class LabOrderViewSet(AuditedMutationMixin, TenantScopedViewMixin, viewsets.Mode
             order = LabWorkflowService.submit_order(order, request.user)
             serializer = self.get_serializer(order)
             return Response(serializer.data)
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ):
             logger.exception("Error submitting lab order %s", order.pk)
             return Response(
                 {"error": "Unable to submit this lab order at this time."},
@@ -686,7 +694,15 @@ class LabOrderViewSet(AuditedMutationMixin, TenantScopedViewMixin, viewsets.Mode
                 {"error": message},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ):
             logger.exception("Error recording specimen collection for lab order %s", order.pk)
             return Response(
                 {"error": "Unable to record specimen collection at this time."},
@@ -702,7 +718,15 @@ class LabOrderViewSet(AuditedMutationMixin, TenantScopedViewMixin, viewsets.Mode
             order = LabWorkflowService.cancel_order(order, request.user, reason)
             serializer = self.get_serializer(order)
             return Response(serializer.data)
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ):
             logger.exception("Error cancelling lab order %s", order.pk)
             return Response(
                 {"error": "Unable to cancel this lab order at this time."},
@@ -832,7 +856,7 @@ class LabOrderViewSet(AuditedMutationMixin, TenantScopedViewMixin, viewsets.Mode
             return response
         except ValueError as exc:
             return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
+        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError, ImportError):
             logger.exception("Error generating requisition PDF for order %s", order.pk)
             return Response(
                 {"error": "Unable to generate requisition PDF."},
@@ -1184,11 +1208,6 @@ class LabResultViewSet(AuditedMutationMixin, NestedTenantScopeMixin, viewsets.Mo
             ).exclude(validations__validation_type="CLINICAL", validations__status="APPROVED")
 
         results = results.distinct()
-        page = self.paginate_queryset(results)
-        if page is not None:
-            serializer = self.get_serializer(page, many=True)
-            return self.get_paginated_response(serializer.data)
-
         serializer = self.get_serializer(results, many=True)
         return Response(serializer.data)
 
@@ -1241,7 +1260,17 @@ class LabResultViewSet(AuditedMutationMixin, NestedTenantScopeMixin, viewsets.Mo
 
         try:
             validate_lab_attachment(uploaded_file)
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as exc:
+        except (
+            ValidationError,
+            DjangoValidationError,
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ) as exc:
             return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
         attachment_type = (
@@ -2025,7 +2054,17 @@ class DiagnosticReportViewSet(AuditedMutationMixin, NestedTenantScopeMixin, view
         try:
             report.finalize()
             return Response(DiagnosticReportSerializer(report, context={"request": request}).data)
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
+        except (
+            ValidationError,
+            DjangoValidationError,
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ) as e:
             logger.exception("Error finalizing diagnostic report %s", report_number)
             return Response(
                 {"detail": str(e)},
@@ -2049,7 +2088,17 @@ class DiagnosticReportViewSet(AuditedMutationMixin, NestedTenantScopeMixin, view
                 amended_by=request.user,
             )
             return Response(DiagnosticReportSerializer(report, context={"request": request}).data)
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
+        except (
+            ValidationError,
+            DjangoValidationError,
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ) as e:
             logger.exception("Error amending diagnostic report %s", report_number)
             return Response(
                 {"detail": str(e)},
@@ -2070,7 +2119,17 @@ class DiagnosticReportViewSet(AuditedMutationMixin, NestedTenantScopeMixin, view
         try:
             report.cancel(reason=serializer.validated_data["reason"])
             return Response(DiagnosticReportSerializer(report, context={"request": request}).data)
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
+        except (
+            ValidationError,
+            DjangoValidationError,
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ) as e:
             logger.exception("Error cancelling diagnostic report %s", report_number)
             return Response(
                 {"detail": str(e)},

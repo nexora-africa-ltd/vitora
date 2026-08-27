@@ -768,7 +768,15 @@ class AEFI(HistoryMixin, FacilityScopedModel, TimeStampedModel):
             from hmis.apps.immunizations.tasks import submit_aefi_to_dhis2
 
             submit_aefi_to_dhis2.delay(self.pk)
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):  # noqa: BLE001
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ):  # noqa: BLE001
             import logging
 
             logging.getLogger(__name__).warning(

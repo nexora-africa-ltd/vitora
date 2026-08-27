@@ -109,7 +109,15 @@ class SHAAuthService:
                         "username": billing_config.sha_username,
                         "password": billing_config.sha_password,
                     }
-            except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
+            except (
+                AttributeError,
+                TypeError,
+                ValueError,
+                RuntimeError,
+                OSError,
+                AssertionError,
+                ImportError,
+            ):
                 pass  # No billing_config or incomplete — fall through to global
 
         # Global fallback from env vars

@@ -1628,7 +1628,7 @@ class SHAClaimsService:
                     }
                 )
 
-            except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
+            except Exception as e:  # noqa: BLE001 - queued claim processing must fail-open per entry
                 entry.retry_count += 1
                 entry.error_message = str(e)
 
@@ -1705,7 +1705,15 @@ class SHAClaimsService:
 
             try:
                 exists = file_field.storage.exists(file_field.name)
-            except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):  # noqa: BLE001
+            except (
+                AttributeError,
+                TypeError,
+                ValueError,
+                RuntimeError,
+                OSError,
+                AssertionError,
+                ImportError,
+            ):  # noqa: BLE001
                 exists = False
 
             if not exists:

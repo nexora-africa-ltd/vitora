@@ -66,7 +66,15 @@ def _publish_safe(event_type: str, payload: dict) -> None:
 
         aggregate_id = payload.get("claim_id") or payload.get("patient_id") or ""
         publish_event(event_type, "SHAClaim", aggregate_id, payload)
-    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):  # pragma: no cover
+    except (
+        AttributeError,
+        TypeError,
+        ValueError,
+        RuntimeError,
+        OSError,
+        AssertionError,
+        ImportError,
+    ):  # pragma: no cover
         logger.exception("Failed to publish DHA HIE event %s", event_type)
 
 
@@ -402,7 +410,15 @@ class IlmClaimService:
             result = self._post_with_consent(claim, PREVIEW_PATH, {}, user=user)
         except (ConsentTokenNotFoundError, ConsentTokenExpiredError):
             return False
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as exc:  # noqa: BLE001 - fail open to avoid blocking valid retries
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ) as exc:  # noqa: BLE001 - fail open to avoid blocking valid retries
             logger.warning(
                 "Unable to probe DHA visit activity for claim %s: %s",
                 getattr(claim, "pk", None),
@@ -538,7 +554,15 @@ class IlmClaimService:
                     unit_price = str(tariff.sha_amount)
                 else:
                     unit_price = "0.01"
-            except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
+            except (
+                AttributeError,
+                TypeError,
+                ValueError,
+                RuntimeError,
+                OSError,
+                AssertionError,
+                ImportError,
+            ):
                 unit_price = "0.01"
         if quantity is None:
             quantity = "1"
@@ -1218,7 +1242,15 @@ class IlmClaimService:
                         for key, value in fill_updates.items():
                             setattr(intervention, key, value)
                         intervention.save(update_fields=list(fill_updates.keys()) + ["updated_at"])
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ):
             logger.exception(
                 "Failed to persist intervention %s for claim %s",
                 intervention_code,
@@ -1518,7 +1550,15 @@ class IlmClaimService:
                     ).strip()
                     if code == intervention_code:
                         return payload
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ):
             logger.warning(
                 "Intervention metadata enrichment failed (fail-open) for claim=%s code=%s",
                 getattr(claim, "pk", None),
@@ -1579,7 +1619,15 @@ class IlmClaimService:
                 auto_retired_by_omission=False,
                 last_seen_in_preview_at=timezone.now(),
             )
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ):
             logger.exception(
                 "Failed to update intervention status %s → %s for claim %s",
                 intervention_code,

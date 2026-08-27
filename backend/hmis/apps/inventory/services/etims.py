@@ -555,7 +555,15 @@ def submit_etims_invoice(etims_invoice_id: int) -> ETIMSResponse:
     # Build payload
     try:
         payload = build_etims_payload(etims_inv)
-    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as exc:
+    except (
+        AttributeError,
+        TypeError,
+        ValueError,
+        RuntimeError,
+        OSError,
+        AssertionError,
+        ImportError,
+    ) as exc:
         etims_inv.mark_failed(f"Payload build error: {exc}")
         return ETIMSResponse(success=False, message=str(exc))
 

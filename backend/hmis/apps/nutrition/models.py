@@ -611,7 +611,15 @@ class NutritionConsultation(HistoryMixin, FacilityScopedModel):
             age = self._calculate_age()
             if not age:
                 return
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ):
             return
 
         weight = float(self.weight)

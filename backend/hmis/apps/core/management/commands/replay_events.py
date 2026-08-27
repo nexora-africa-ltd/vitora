@@ -148,7 +148,15 @@ class Command(BaseCommand):
                     bus._safe_call(handler, event)
 
                 dispatched += 1
-            except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
+            except (
+                AttributeError,
+                TypeError,
+                ValueError,
+                RuntimeError,
+                OSError,
+                AssertionError,
+                ImportError,
+            ):
                 errors += 1
                 logger.exception(f"Failed to replay event {record.event_id}")
 

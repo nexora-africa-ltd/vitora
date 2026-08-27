@@ -164,7 +164,15 @@ class Command(BaseCommand):
                     raise CommandError(f"Required seed '{step.command}' failed: {msg}") from exc
                 self.stdout.write(self.style.WARNING(f"SKIPPED ({msg})"))
                 skipped.append(step.command)
-            except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as exc:  # noqa: BLE001
+            except (
+                AttributeError,
+                TypeError,
+                ValueError,
+                RuntimeError,
+                OSError,
+                AssertionError,
+                ImportError,
+            ) as exc:  # noqa: BLE001
                 elapsed = time.monotonic() - start
                 msg = f"{type(exc).__name__}: {exc}"
                 if step.required or strict:

@@ -198,7 +198,15 @@ def process_inbound_message(channel: InstrumentChannel, raw_data: str) -> Analyz
         message.mark_failed(f"Protocol error: {e}")
         channel.update_status(InstrumentChannel.ConnectionStatus.ERROR, str(e))
         return message
-    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
+    except (
+        AttributeError,
+        TypeError,
+        ValueError,
+        RuntimeError,
+        OSError,
+        AssertionError,
+        ImportError,
+    ) as e:
         logger.error(f"Unexpected error processing analyzer message: {e}", exc_info=True)
         message.mark_failed(f"Unexpected error: {e}")
         return message

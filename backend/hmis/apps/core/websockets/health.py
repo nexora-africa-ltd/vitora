@@ -76,7 +76,15 @@ def websocket_health(request):
         result["websocket"] = "healthy" if ok else "degraded"
         result["latency_ms"] = round(elapsed, 2)
 
-    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as exc:
+    except (
+        AttributeError,
+        TypeError,
+        ValueError,
+        RuntimeError,
+        OSError,
+        AssertionError,
+        ImportError,
+    ) as exc:
         logger.warning("WebSocket health probe failed: %s", exc)
         result["websocket"] = "unhealthy"
         result["detail"] = str(exc)

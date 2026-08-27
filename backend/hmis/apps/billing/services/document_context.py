@@ -75,7 +75,15 @@ def build_claim_document_context(claim) -> ClaimDocumentContext:
     if facility is not None:
         try:
             fr_code = resolve_fr_code(facility, allow_settings_fallback=False).value
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):  # noqa: BLE001 - display helper should never fail generation
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ):  # noqa: BLE001 - display helper should never fail generation
             fr_code = str(getattr(facility, "dha_fr_code", "") or "").strip()
 
     return ClaimDocumentContext(

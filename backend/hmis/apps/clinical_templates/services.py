@@ -335,7 +335,15 @@ class TemplateDataSynchronizer:
                 if callable(attr):
                     try:
                         return attr()
-                    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
+                    except (
+                        AttributeError,
+                        TypeError,
+                        ValueError,
+                        RuntimeError,
+                        OSError,
+                        AssertionError,
+                        ImportError,
+                    ):
                         return None
                 return attr
         return None

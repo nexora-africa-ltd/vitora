@@ -52,7 +52,15 @@ async def broadcast_pharmacy_event(
             },
         )
         logger.debug(f"Broadcasted {event_type} to {group_name}")
-    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
+    except (
+        AttributeError,
+        TypeError,
+        ValueError,
+        RuntimeError,
+        OSError,
+        AssertionError,
+        ImportError,
+    ) as e:
         logger.error(f"Failed to broadcast {event_type} to {group_name}: {e}")
 
 
@@ -88,7 +96,15 @@ def broadcast_pharmacy_event_sync(
             },
         )
         logger.debug(f"Broadcasted {event_type} to {group_name}")
-    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
+    except (
+        AttributeError,
+        TypeError,
+        ValueError,
+        RuntimeError,
+        OSError,
+        AssertionError,
+        ImportError,
+    ) as e:
         logger.error(f"Failed to broadcast {event_type} to {group_name}: {e}")
 
 

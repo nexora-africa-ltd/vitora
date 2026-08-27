@@ -90,7 +90,15 @@ class LocalKMSProvider(KMSProvider):
                     extra={"context": context, "size": len(plaintext)},
                 )
             return ciphertext
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ) as e:
             logger.error(f"Encryption failed: {e}")
             raise EncryptionError(f"Failed to encrypt data: {e}") from e
 
@@ -119,7 +127,15 @@ class LocalKMSProvider(KMSProvider):
         except InvalidToken as e:
             logger.error("Decryption failed: invalid token (wrong key or corrupted data)")
             raise DecryptionError("Invalid ciphertext or wrong encryption key") from e
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ) as e:
             logger.error(f"Decryption failed: {e}")
             raise DecryptionError(f"Failed to decrypt data: {e}") from e
 
@@ -190,7 +206,15 @@ class LocalKMSProvider(KMSProvider):
                 version="new",
                 tags={"new_key": new_key},
             )
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ) as e:
             logger.error(f"Key rotation failed: {e}")
             raise KeyRotationError(f"Failed to rotate key: {e}") from e
 
@@ -228,7 +252,15 @@ class LocalKMSProvider(KMSProvider):
             encrypted = self.encrypt(test_data)
             decrypted = self.decrypt(encrypted)
             return decrypted == test_data
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ) as e:
             logger.error(f"Health check failed: {e}")
             return False
 

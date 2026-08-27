@@ -201,6 +201,14 @@ def _check_recent_claims(sha_member, facility) -> str:
                 f"Patient's most recent capitation claim was processed at "
                 f"'{recent_phc}'. Verify this is their current selected provider."
             )
-    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):  # noqa: S110
+    except (
+        AttributeError,
+        TypeError,
+        ValueError,
+        RuntimeError,
+        OSError,
+        AssertionError,
+        ImportError,
+    ):  # noqa: S110
         pass
     return ""

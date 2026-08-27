@@ -351,23 +351,30 @@ def create_baby_patient_on_delivery(sender, instance, created, **kwargs):
         )
 
         creator = instance.delivered_by or instance.registration.registered_by
-        AuditLog.log(
-            action="patient_create",
-            user=creator,
-            resource_type="Patient",
-            resource_id=baby.id,
-            patient_id=baby.id,
-            user_agent="mch_delivery_signal",
-            details={
-                "source": "mch_delivery",
-                "patient_mrn": baby.mrn,
-                "delivery_id": instance.id,
-                "mother_id": mother.id,
-                "registered_by": getattr(creator, "username", ""),
-            },
-            facility=getattr(instance, "facility", None),
-            organization=getattr(instance, "organization", None),
-        )
+        try:
+            AuditLog.log(
+                action="patient_create",
+                user=creator,
+                resource_type="Patient",
+                resource_id=baby.id,
+                patient_id=baby.id,
+                user_agent="mch_delivery_signal",
+                details={
+                    "source": "mch_delivery",
+                    "patient_mrn": baby.mrn,
+                    "delivery_id": instance.id,
+                    "mother_id": mother.id,
+                    "registered_by": getattr(creator, "username", ""),
+                },
+                facility=getattr(instance, "facility", None),
+                organization=getattr(instance, "organization", None),
+            )
+        except _mch_signal_handled_exceptions() as exc:
+            logger.warning(
+                "Baby patient audit logging failed for delivery %s: %s",
+                instance.id,
+                exc,
+            )
 
         instance.baby_patient = baby
         instance.save(update_fields=["baby_patient"])

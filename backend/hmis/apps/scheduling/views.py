@@ -1702,7 +1702,15 @@ class ShiftViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewS
                 created.append(shift.id)
                 # Add to existing_keys so subsequent duplicates in the same batch are caught
                 existing_keys.add(dup_key)
-            except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
+            except (
+                AttributeError,
+                TypeError,
+                ValueError,
+                RuntimeError,
+                OSError,
+                AssertionError,
+                ImportError,
+            ):
                 logger.exception("Failed to create shift at index %d in bulk_create", idx)
                 errors.append({"index": idx, "errors": "Failed to create shift"})
 

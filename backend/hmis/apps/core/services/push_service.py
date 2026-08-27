@@ -64,7 +64,15 @@ def send_push_notification(subscription_info: dict, payload: dict) -> bool:
         else:
             logger.warning("Web push failed: %s", e)
         return False
-    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
+    except (
+        AttributeError,
+        TypeError,
+        ValueError,
+        RuntimeError,
+        OSError,
+        AssertionError,
+        ImportError,
+    ):
         logger.exception("Unexpected error sending push notification")
         return False
 

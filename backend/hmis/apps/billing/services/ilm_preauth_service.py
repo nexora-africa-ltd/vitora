@@ -494,7 +494,15 @@ def _publish_safe(event_type: str, payload: dict) -> None:
         from hmis.apps.core.events import publish_event
 
         publish_event(event_type, payload)
-    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):  # pragma: no cover
+    except (
+        AttributeError,
+        TypeError,
+        ValueError,
+        RuntimeError,
+        OSError,
+        AssertionError,
+        ImportError,
+    ):  # pragma: no cover
         logger.exception("Failed to publish DHA HIE preauth event %s", event_type)
 
 

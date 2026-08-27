@@ -135,7 +135,15 @@ def _get_db_mapping(
             indicator_type=indicator_type,
             environment=environment,
         )
-    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
+    except (
+        AttributeError,
+        TypeError,
+        ValueError,
+        RuntimeError,
+        OSError,
+        AssertionError,
+        ImportError,
+    ) as e:
         # Table might not exist yet (pre-migration)
         logger.debug(f"Database mapping lookup failed: {e}")
         return None
@@ -244,7 +252,15 @@ def get_all_mappings(environment: str | None = None) -> dict[str, IndicatorMappi
             if disease_key not in result:
                 result[disease_key] = {}
             result[disease_key].update(indicators)  # type: ignore
-    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
+    except (
+        AttributeError,
+        TypeError,
+        ValueError,
+        RuntimeError,
+        OSError,
+        AssertionError,
+        ImportError,
+    ) as e:
         logger.debug(f"Database mapping lookup failed (may not be migrated): {e}")
 
     return result
@@ -302,7 +318,15 @@ def validate_mappings(environment: str | None = None) -> dict:
             "environment": environment,
         }
 
-    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
+    except (
+        AttributeError,
+        TypeError,
+        ValueError,
+        RuntimeError,
+        OSError,
+        AssertionError,
+        ImportError,
+    ) as e:
         logger.error(f"Error validating mappings: {e}")
         return {
             "valid": False,

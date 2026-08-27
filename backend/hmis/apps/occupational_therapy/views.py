@@ -213,7 +213,15 @@ class OccupationalTherapyOrderViewSet(TenantScopedViewMixin, viewsets.ModelViewS
 
         try:
             order.update_status(new_status, user=request.user)
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ) as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
         AuditLog.log(
@@ -248,7 +256,15 @@ class OccupationalTherapyOrderViewSet(TenantScopedViewMixin, viewsets.ModelViewS
 
         try:
             order.update_status("APPROVED", user=request.user)
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ) as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
         AuditLog.log(
@@ -412,7 +428,15 @@ class OccupationalTherapyOrderViewSet(TenantScopedViewMixin, viewsets.ModelViewS
 
         try:
             order.update_status("IN_PROGRESS", user=request.user)
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ) as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
         AuditLog.log(
@@ -444,7 +468,15 @@ class OccupationalTherapyOrderViewSet(TenantScopedViewMixin, viewsets.ModelViewS
 
         try:
             order.update_status("COMPLETED", user=request.user)
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ) as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
         AuditLog.log(
@@ -479,7 +511,15 @@ class OccupationalTherapyOrderViewSet(TenantScopedViewMixin, viewsets.ModelViewS
 
         try:
             order.update_status("CANCELLED", user=request.user)
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ) as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
         AuditLog.log(
@@ -511,7 +551,15 @@ class OccupationalTherapyOrderViewSet(TenantScopedViewMixin, viewsets.ModelViewS
 
         try:
             order.update_status("ON_HOLD", user=request.user)
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ) as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
         AuditLog.log(

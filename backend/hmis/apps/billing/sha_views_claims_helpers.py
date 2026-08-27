@@ -85,7 +85,11 @@ def _to_local_attachment_type(dha_document_type: str) -> str:
 
 
 def _build_attachment_sync_status(claim: SHAClaim) -> dict:
-    from hmis.apps.billing.services.consent_token_resolver import resolve_for_claim
+    from hmis.apps.billing.services.consent_token_resolver import (
+        ConsentTokenExpiredError,
+        ConsentTokenNotFoundError,
+        resolve_for_claim,
+    )
     from hmis.apps.billing.services.ilm_claim_service import PREVIEW_PATH
     from hmis.apps.core.models import DHAOutboundCall
 
@@ -104,7 +108,13 @@ def _build_attachment_sync_status(claim: SHAClaim) -> dict:
     try:
         consent = resolve_for_claim(claim)
         consent_token = consent.token
-    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
+    except (
+        ConsentTokenNotFoundError,
+        ConsentTokenExpiredError,
+        AttributeError,
+        TypeError,
+        ValueError,
+    ):
         consent_token = ""
 
     if not consent_token:

@@ -70,7 +70,15 @@ class Command(BaseCommand):
                     try:
                         call_command("loaddata", fixture_name, verbosity=0)
                         self.stdout.write(self.style.SUCCESS(f"  ✓ Loaded: {fixture_name}"))
-                    except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
+                    except (
+                        AttributeError,
+                        TypeError,
+                        ValueError,
+                        RuntimeError,
+                        OSError,
+                        AssertionError,
+                        ImportError,
+                    ) as e:
                         self.stdout.write(
                             self.style.ERROR(f"  ✗ Failed to load {fixture_name}: {e}")
                         )
@@ -86,7 +94,15 @@ class Command(BaseCommand):
                 try:
                     call_command("setup_allied_health_permissions", verbosity=1)
                     self.stdout.write(self.style.SUCCESS("  ✓ Permission groups configured"))
-                except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
+                except (
+                    AttributeError,
+                    TypeError,
+                    ValueError,
+                    RuntimeError,
+                    OSError,
+                    AssertionError,
+                    ImportError,
+                ) as e:
                     self.stdout.write(self.style.ERROR(f"  ✗ Failed to set up permissions: {e}"))
         else:
             self.stdout.write("\n⏭️  Skipping permissions (--skip-permissions)")

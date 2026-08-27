@@ -61,7 +61,15 @@ class PowerSyncTokenObtainPairSerializer(TokenObtainPairSerializer):
         if profile:
             try:
                 profile = user.staff_profile
-            except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
+            except (
+                AttributeError,
+                TypeError,
+                ValueError,
+                RuntimeError,
+                OSError,
+                AssertionError,
+                ImportError,
+            ):
                 profile = None
 
         if profile:

@@ -1132,7 +1132,15 @@ class SHAConsentService:
                 )
             except SHAConsentError:
                 raise
-            except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
+            except (
+                AttributeError,
+                TypeError,
+                ValueError,
+                RuntimeError,
+                OSError,
+                AssertionError,
+                ImportError,
+            ) as e:
                 raise SHAConsentError(
                     f"Unexpected error calling DHA API: {e}",
                     code="unexpected_error",

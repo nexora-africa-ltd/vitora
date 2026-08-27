@@ -149,7 +149,15 @@ class Command(BaseCommand):
                     else:
                         ICD11CodeReference.objects.create(code=code, **defaults)
                         created_count += 1
-                except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as exc:
+                except (
+                    AttributeError,
+                    TypeError,
+                    ValueError,
+                    RuntimeError,
+                    OSError,
+                    AssertionError,
+                    ImportError,
+                ) as exc:
                     self.stderr.write(self.style.ERROR(f"Row {row_num}: {exc}"))
                     error_count += 1
 

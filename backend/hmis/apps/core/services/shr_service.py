@@ -70,7 +70,15 @@ class SHRService:
                 "response": response.json() if response.content else {},
             }
 
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as exc:
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ) as exc:
             logger.warning(
                 "SHR push failed for patient CR %s: %s",
                 patient_cr_id,
@@ -113,7 +121,15 @@ class SHRService:
             logger.info("SHR summary retrieved for patient CR %s", patient_cr_id)
             return response.json()
 
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as exc:
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ) as exc:
             logger.warning(
                 "SHR pull failed for patient CR %s: %s",
                 patient_cr_id,

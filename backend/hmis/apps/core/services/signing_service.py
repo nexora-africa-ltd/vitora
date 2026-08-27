@@ -16,6 +16,7 @@ import json
 import logging
 from dataclasses import dataclass, field
 
+from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
 from django.db.models import Q
@@ -250,7 +251,7 @@ class DocumentSigningService:
                     padding.PKCS1v15(),
                     hashes.SHA256(),
                 )
-            except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
+            except (InvalidSignature, ValueError, TypeError, AttributeError):
                 # If content has changed, try verifying against original hash
                 # (signature was over original content, so it won't match new content)
                 if not content_matches:
@@ -261,7 +262,15 @@ class DocumentSigningService:
                     signature_valid = False
                     errors.append("Cryptographic signature verification failed")
 
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as e:
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ) as e:
             errors.append(f"Verification error: {e}")
             content_matches = False
             signature_valid = False
@@ -508,7 +517,15 @@ class DocumentSigningService:
                     for chunk in iter(lambda: f.read(8192), b""):
                         hasher.update(chunk)
                 file_sha256 = hasher.hexdigest()
-            except (AttributeError, TypeError, RuntimeError, OSError, AssertionError):
+            except (
+                AttributeError,
+                TypeError,
+                ValueError,
+                RuntimeError,
+                OSError,
+                AssertionError,
+                ImportError,
+            ):
                 file_sha256 = ""
 
         return {

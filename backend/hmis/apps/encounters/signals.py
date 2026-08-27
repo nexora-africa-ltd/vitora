@@ -180,7 +180,10 @@ def publish_encounter_event(sender, instance, created, **kwargs):
         _notify_critical_vitals(instance)
 
     # Generate/refresh vitals-derived clinician review suggestions
-    VitalFlagSuggestionService.detect_from_encounter(instance)
+    try:
+        VitalFlagSuggestionService.detect_from_encounter(instance)
+    except (TypeError, ValueError):
+        logger.warning("Skipping vital-flag suggestion refresh for encounter %s", instance.id)
 
     # Sync SHA claim diagnosis when encounter is closed
     if not created and getattr(instance, "status", "") == "CLOSED":

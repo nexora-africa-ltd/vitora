@@ -132,7 +132,15 @@ class SHAClaimILMAttachmentsMixin:
                 extra_fields=extra or None,
                 user=request.user,
             )
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as exc:
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ) as exc:
             return self._ilm_handle_error(exc)
 
         if result.status_code < 400:
@@ -196,7 +204,15 @@ class SHAClaimILMAttachmentsMixin:
                     claim.id,
                     sync_summary,
                 )
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as exc:  # noqa: BLE001 - fail open for attachment push
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ) as exc:  # noqa: BLE001 - fail open for attachment push
             logger.warning(
                 "Intervention sync before push-local attachments failed for claim %s: %s",
                 claim.id,
@@ -284,7 +300,15 @@ class SHAClaimILMAttachmentsMixin:
                 if last_error:
                     raise ValueError(last_error)
                 uploaded += 1
-            except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as exc:  # noqa: BLE001 - collect and continue
+            except (
+                AttributeError,
+                TypeError,
+                ValueError,
+                RuntimeError,
+                OSError,
+                AssertionError,
+                ImportError,
+            ) as exc:  # noqa: BLE001 - collect and continue
                 failed += 1
                 errors.append(
                     {
@@ -336,6 +360,14 @@ class SHAClaimILMAttachmentsMixin:
                 intervention_code=intervention_code,
                 user=request.user,
             )
-        except (AttributeError, TypeError, RuntimeError, OSError, AssertionError) as exc:
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ) as exc:
             return self._ilm_handle_error(exc)
         return self._ilm_response(result)
