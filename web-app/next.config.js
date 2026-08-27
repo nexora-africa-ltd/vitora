@@ -12,9 +12,17 @@ try {
 const isVercel = process.env.VERCEL === '1';
 const isVercelProduction = process.env.VERCEL_ENV === 'production';
 const enableSentryBuildPlugin = Boolean(process.env.SENTRY_AUTH_TOKEN) && isVercelProduction;
+const allowedDevOrigins = [
+  'nonsolidly-municipal-sharita.ngrok-free.dev',
+  ...(process.env.NEXT_ALLOWED_DEV_ORIGINS || '')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean),
+];
 
 const nextConfig = {
   reactStrictMode: true,
+  allowedDevOrigins: Array.from(new Set(allowedDevOrigins)),
   // Standalone tracing/packaging is useful for self-hosting and desktop bundles,
   // but adds build overhead on Vercel where it is not needed.
   output: isVercel ? undefined : 'standalone',
