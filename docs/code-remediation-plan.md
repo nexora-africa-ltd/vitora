@@ -1,10 +1,10 @@
 <!--
-What this file is for: Actionable remediation plan to reduce "vibecoded" risk signals and improve maintainability, safety, and consistency across the Vitora repo.
+What this file is for: Actionable remediation plan to reduce ai risk signals and improve maintainability, safety, and consistency across the Vitora repo.
 How to use: Treat as a working checklist. Pick a workstream, implement tasks in small PRs, and record progress/status in each section.
 Supported inputs/args: N/A (documentation file).
 -->
 
-# Vibecode Remediation Plan
+# Code Remediation Plan
 
 This plan targets concrete risk signals found in the codebase: oversized files, broad exception swallowing, TypeScript `any` usage, inconsistent API schema validation, and desktop test coverage gaps.
 

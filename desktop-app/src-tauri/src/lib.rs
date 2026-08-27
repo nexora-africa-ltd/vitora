@@ -13,8 +13,11 @@ use tauri::{
     image::Image,
     menu::{MenuBuilder, MenuItemBuilder, PredefinedMenuItem},
     tray::TrayIconBuilder,
-    AppHandle, Emitter, Manager, State, WindowEvent,
+    AppHandle, Manager, State, WindowEvent,
 };
+#[cfg(not(debug_assertions))]
+use tauri::Emitter;
+#[cfg(not(debug_assertions))]
 use tauri_plugin_deep_link::DeepLinkExt;
 
 pub mod commands;
@@ -34,6 +37,62 @@ use updater::check_for_updates;
 const SIDECAR_READY_TIMEOUT: Duration = Duration::from_secs(10 * 60);
 const SIDECAR_READY_POLL_INTERVAL: Duration = Duration::from_millis(250);
 const PREFERRED_SIDECAR_PORT: u16 = 50872;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum WindowFocusAction {
+    Show,
+    Unminimize,
+    Focus,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum TrayMenuAction {
+    Show,
+    CheckUpdates,
+    Quit,
+    None,
+}
+
+fn tray_menu_action(id: &str) -> TrayMenuAction {
+    match id {
+        "show" => TrayMenuAction::Show,
+        "check-updates" => TrayMenuAction::CheckUpdates,
+        "quit" => TrayMenuAction::Quit,
+        _ => TrayMenuAction::None,
+    }
+}
+
+fn second_instance_focus_plan() -> [WindowFocusAction; 3] {
+    [
+        WindowFocusAction::Show,
+        WindowFocusAction::Unminimize,
+        WindowFocusAction::Focus,
+    ]
+}
+
+fn startup_error_html(error: &str) -> String {
+    let escaped_error = SidecarState::html_escape(error);
+    format!(
+        "data:text/html,<html><body style='font-family:sans-serif;padding:40px;background:%230f172a;color:%23f8fafc'><h1>Failed to start Vitora</h1><p style='color:%2394a3b8'>The application server did not respond in time.</p><pre style='color:%23ef4444;font-size:12px;white-space:pre-wrap'>{}</pre></body></html>",
+        escaped_error
+    )
+}
+
+fn sidecar_spawn_error_html(error: &str) -> String {
+    let escaped_error = SidecarState::html_escape(error);
+    format!(
+        "data:text/html,<html><body style='font-family:sans-serif;padding:40px;background:%230f172a;color:%23f8fafc'><h1>Failed to start Vitora</h1><p style='color:%2394a3b8'>Could not start the application server.</p><pre style='color:%23ef4444;font-size:12px;white-space:pre-wrap'>{}</pre></body></html>",
+        escaped_error
+    )
+}
+
+fn sidecar_crash_error_html(status: &str) -> String {
+    let escaped_status = SidecarState::html_escape(status);
+    format!(
+        "data:text/html,<html><body style='font-family:sans-serif;padding:40px;background:%230f172a;color:%23f8fafc'><h1>Vitora stopped unexpectedly</h1><p style='color:%2394a3b8'>The local application server exited after startup.</p><p style='color:%23ef4444;font-size:12px'>Status: {}</p><p style='color:%2394a3b8;font-size:12px'>Check sidecar-stderr.log for details.</p></body></html>",
+        escaped_status
+    )
+}
 
 /// Manages the Node.js sidecar process lifecycle.
 pub struct SidecarState {
@@ -662,6 +721,75 @@ impl Default for SidecarState {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::net::TcpListener;
+    use std::thread;
+
+    fn spawn_health_server(status_line: &str) -> (u16, thread::JoinHandle<()>) {
+        let listener = TcpListener::bind(("127.0.0.1", 0)).expect("bind health server");
+        let port = listener.local_addr().expect("local addr").port();
+        let status = status_line.to_string();
+
+        let handle = thread::spawn(move || {
+            if let Ok((mut stream, _)) = listener.accept() {
+                let mut request_buf = [0_u8; 512];
+                let _ = stream.read(&mut request_buf);
+                let response = format!(
+                    "{}\r\nContent-Length: 2\r\nConnection: close\r\n\r\nok",
+                    status
+                );
+                let _ = stream.write_all(response.as_bytes());
+            }
+        });
+
+        (port, handle)
+    }
+
+    #[test]
+    fn sidecar_health_probe_accepts_http_200() {
+        let (port, handle) = spawn_health_server("HTTP/1.1 200 OK");
+        assert!(SidecarState::is_port_ready(port));
+        let _ = handle.join();
+    }
+
+    #[test]
+    fn sidecar_health_probe_rejects_non_200() {
+        let (port, handle) = spawn_health_server("HTTP/1.1 503 Service Unavailable");
+        assert!(!SidecarState::is_port_ready(port));
+        let _ = handle.join();
+    }
+
+    #[test]
+    fn failure_pages_escape_untrusted_text() {
+        let html = startup_error_html("<script>alert(1)</script>");
+        assert!(html.contains("&lt;script&gt;alert(1)&lt;/script&gt;"));
+        assert!(!html.contains("<script>alert(1)</script>"));
+
+        let crash_html = sidecar_crash_error_html("terminated <abrupt>");
+        assert!(crash_html.contains("Status: terminated &lt;abrupt&gt;"));
+        assert!(crash_html.contains("sidecar-stderr.log"));
+    }
+
+    #[test]
+    fn tray_and_single_instance_routes_use_guardrail_actions() {
+        assert_eq!(tray_menu_action("show"), TrayMenuAction::Show);
+        assert_eq!(tray_menu_action("check-updates"), TrayMenuAction::CheckUpdates);
+        assert_eq!(tray_menu_action("quit"), TrayMenuAction::Quit);
+        assert_eq!(tray_menu_action("unknown"), TrayMenuAction::None);
+
+        assert_eq!(
+            second_instance_focus_plan(),
+            [
+                WindowFocusAction::Show,
+                WindowFocusAction::Unminimize,
+                WindowFocusAction::Focus,
+            ]
+        );
+    }
+}
+
 impl Drop for SidecarState {
     fn drop(&mut self) {
         self.kill();
@@ -721,25 +849,25 @@ fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
         .icon(icon)
         .menu(&menu)
         .tooltip("Vitora HMIS")
-        .on_menu_event(|app, event| match event.id().as_ref() {
-            "show" => {
+        .on_menu_event(|app, event| match tray_menu_action(event.id().as_ref()) {
+            TrayMenuAction::Show => {
                 if let Some(window) = app.get_webview_window("main") {
                     let _ = window.show();
                     let _ = window.set_focus();
                 }
             }
-            "check-updates" => {
+            TrayMenuAction::CheckUpdates => {
                 let app_handle = app.clone();
                 tauri::async_runtime::spawn(async move {
                     updater::check_and_install(app_handle, false).await;
                 });
             }
-            "quit" => {
+            TrayMenuAction::Quit => {
                 let state = app.state::<SidecarState>();
                 state.kill();
                 app.exit(0);
             }
-            _ => {}
+            TrayMenuAction::None => {}
         })
         .on_tray_icon_event(|tray, event| {
             if let tauri::tray::TrayIconEvent::DoubleClick { .. } = event {
@@ -769,9 +897,19 @@ pub fn run() {
         .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
             log::info!("Second instance launch intercepted; focusing main window");
             if let Some(window) = app.get_webview_window("main") {
-                let _ = window.show();
-                let _ = window.unminimize();
-                let _ = window.set_focus();
+                for action in second_instance_focus_plan() {
+                    match action {
+                        WindowFocusAction::Show => {
+                            let _ = window.show();
+                        }
+                        WindowFocusAction::Unminimize => {
+                            let _ = window.unminimize();
+                        }
+                        WindowFocusAction::Focus => {
+                            let _ = window.set_focus();
+                        }
+                    }
+                }
             }
         }))
         .plugin(tauri_plugin_shell::init())
@@ -948,11 +1086,7 @@ pub fn run() {
                                         if let Some(status) = state.exited_status() {
                                             log::error!("Sidecar exited after navigation: {}", status);
                                             if let Some(window) = monitor_handle.get_webview_window("main") {
-                                                let escaped_status = SidecarState::html_escape(&status);
-                                                let error_html = format!(
-                                                    "data:text/html,<html><body style='font-family:sans-serif;padding:40px;background:%230f172a;color:%23f8fafc'><h1>Vitora stopped unexpectedly</h1><p style='color:%2394a3b8'>The local application server exited after startup.</p><p style='color:%23ef4444;font-size:12px'>Status: {}</p><p style='color:%2394a3b8;font-size:12px'>Check sidecar-stderr.log for details.</p></body></html>",
-                                                    escaped_status
-                                                );
+                                                let error_html = sidecar_crash_error_html(&status);
                                                 let _ = window.navigate(error_html.parse().unwrap());
                                             }
                                             break;
@@ -964,11 +1098,7 @@ pub fn run() {
                                 log::error!("Sidecar failed to become ready: {}", e);
                                 // Show error in main window
                                 if let Some(main_window) = handle_clone.get_webview_window("main") {
-                                    let escaped_error = SidecarState::html_escape(&e);
-                                    let error_html = format!(
-                                        "data:text/html,<html><body style='font-family:sans-serif;padding:40px;background:%230f172a;color:%23f8fafc'><h1>Failed to start Vitora</h1><p style='color:%2394a3b8'>The application server did not respond in time.</p><pre style='color:%23ef4444;font-size:12px;white-space:pre-wrap'>{}</pre></body></html>",
-                                        escaped_error
-                                    );
+                                    let error_html = startup_error_html(&e);
                                     let _ = main_window.navigate(error_html.parse().unwrap());
                                 }
                             }
@@ -977,11 +1107,7 @@ pub fn run() {
                     Err(e) => {
                         log::error!("Failed to spawn sidecar: {}", e);
                         if let Some(main_window) = handle_clone.get_webview_window("main") {
-                            let escaped_error = SidecarState::html_escape(&e);
-                            let error_html = format!(
-                                "data:text/html,<html><body style='font-family:sans-serif;padding:40px;background:%230f172a;color:%23f8fafc'><h1>Failed to start Vitora</h1><p style='color:%2394a3b8'>Could not start the application server.</p><pre style='color:%23ef4444;font-size:12px;white-space:pre-wrap'>{}</pre></body></html>",
-                                escaped_error
-                            );
+                            let error_html = sidecar_spawn_error_html(&e);
                             let _ = main_window.navigate(error_html.parse().unwrap());
                         }
                     }

@@ -210,7 +210,42 @@ jobs:
         if: hashFiles('web-app/package.json') != ''
         continue-on-error: true
 
-  # Job 4: Documentation Check
+  # Job 4: Desktop Rust Smoke Tests
+  desktop-tests:
+    name: Desktop Tests & Guardrails
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: ['20.x']
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+          cache-dependency-path: desktop-app/package-lock.json
+        if: hashFiles('desktop-app/package.json') != ''
+
+      - name: Install Desktop Dependencies
+        working-directory: ./desktop-app
+        run: npm ci
+        if: hashFiles('desktop-app/package.json') != ''
+
+      - name: Set up Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        if: hashFiles('desktop-app/src-tauri/Cargo.toml') != ''
+
+      - name: Run desktop sidecar smoke tests
+        working-directory: ./desktop-app
+        run: npm run test:desktop-smoke
+        if: hashFiles('desktop-app/package.json') != ''
+
+  # Job 5: Documentation Check
   documentation-check:
     name: Documentation Quality Check
     runs-on: ubuntu-latest
@@ -251,7 +286,7 @@ jobs:
           config_file: ".markdownlint.json"
         continue-on-error: true
 
-  # Job 5: Build Validation
+  # Job 6: Build Validation
   build-validation:
     name: Build Validation
     runs-on: ubuntu-latest
@@ -293,7 +328,7 @@ jobs:
           fi
         continue-on-error: true
 
-  # Job 6: Test Coverage Report
+  # Job 7: Test Coverage Report
   coverage-report:
     name: Generate Coverage Report
     runs-on: ubuntu-latest
@@ -320,11 +355,11 @@ jobs:
           echo ""
           echo "Note: Full coverage reporting will be available once tests are implemented"
 
-  # Job 7: Quality Gate
+  # Job 8: Quality Gate
   quality-gate:
     name: Quality Gate
     runs-on: ubuntu-latest
-    needs: [backend-tests, security-scan, frontend-tests, documentation-check]
+    needs: [backend-tests, security-scan, frontend-tests, desktop-tests, documentation-check]
     if: always()
 
     steps:
@@ -336,6 +371,7 @@ jobs:
           echo "Backend Tests: ${{ needs.backend-tests.result }}"
           echo "Security Scan: ${{ needs.security-scan.result }}"
           echo "Frontend Tests: ${{ needs.frontend-tests.result }}"
+          echo "Desktop Tests: ${{ needs.desktop-tests.result }}"
           echo "Documentation: ${{ needs.documentation-check.result }}"
           echo ""
 
@@ -347,6 +383,11 @@ jobs:
 
           if [ "${{ needs.security-scan.result }}" == "failure" ]; then
             echo "⚠️  Security scan had issues (non-blocking in Phase 0)"
+          fi
+
+          if [ "${{ needs.desktop-tests.result }}" == "failure" ]; then
+            echo "❌ Desktop tests failed"
+            exit 1
           fi
 
           echo "✅ Quality gate passed (Phase 0 criteria)"
