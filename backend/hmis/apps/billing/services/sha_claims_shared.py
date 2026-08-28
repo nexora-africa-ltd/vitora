@@ -2,13 +2,13 @@
 """Billing sha claims shared for Vitora HMIS.
 
 What this file is for:
-- Implement sha claims shared logic for the billing domain.
+- Provide shared imports/constants/helpers used by split SHA claims service modules.
 
 How to use it:
-- Import classes and functions from this module in Django app code and tests.
+- Import from this module in split SHA claims mixins and compatibility shims.
 
 Supported inputs/args:
-- Python imports and Django ORM/runtime inputs; no standalone CLI arguments.
+- Service dependencies, model imports, and helper utilities for SHA claims workflows.
 """
 
 import logging
