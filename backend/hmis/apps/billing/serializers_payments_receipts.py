@@ -1,47 +1,22 @@
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 # ruff: noqa
-"""
-What this file is for: split billing serializers modules for focused domains.
-How to use: imported by `hmis.apps.billing.serializers` compatibility shim.
-Supported inputs/args: DRF serializer classes; no CLI args or environment variables.
-"""
+"""Billing serializers payments receipts for Vitora HMIS.
 
-# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
-"""
-Serializers for the billing app.
+What this file is for:
+- Implement serializers payments receipts logic for the billing domain.
 
-Following TDD - implemented to pass API tests.
-"""
+How to use it:
+- Import classes and functions from this module in Django app code and tests.
 
-from decimal import Decimal
+Supported inputs/args:
+- Python imports and Django ORM/runtime inputs; no standalone CLI arguments.
+"""
 
 from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
 
-from hmis.apps.billing.models import (
-    BillingAutomationRule,
-    CreditNote,
-    Invoice,
-    InvoiceItem,
-    InvoicePayer,
-    Payment,
-    PaymentPoint,
-    Receipt,
-    Service,
-    ServiceCategory,
-)
-from hmis.apps.billing.services.price_resolver import (
-    BillingPriceResolver,
-    CatalogItemInactive,
-    CatalogItemNotFound,
-    PriceNotConfigured,
-    ResolvePriceRequest,
-)
-from hmis.apps.core.qr_utils import (
-    generate_invoice_qr_url,
-    generate_qr_data_uri,
-    generate_receipt_qr_url,
-)
+from hmis.apps.billing.models import CreditNote, Payment, PaymentPoint, Receipt
+from hmis.apps.core.qr_utils import generate_qr_data_uri, generate_receipt_qr_url
 
 
 class PaymentPointSerializer(serializers.ModelSerializer):

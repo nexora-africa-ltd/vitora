@@ -1,9 +1,15 @@
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 # ruff: noqa
-"""
-What this file is for: shared dataclasses, constants, and helpers for ILM claim service modules.
-How to use: imported by split ILM claim service modules and compatibility shim.
-Supported inputs/args: data models/helpers for DHA ILM claim workflows.
+"""Billing ilm claim service shared for Vitora HMIS.
+
+What this file is for:
+- Implement ilm claim service shared logic for the billing domain.
+
+How to use it:
+- Import classes and functions from this module in Django app code and tests.
+
+Supported inputs/args:
+- Python imports and Django ORM/runtime inputs; no standalone CLI arguments.
 """
 
 from __future__ import annotations
@@ -14,17 +20,8 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from django.conf import settings
-from django.db import models, transaction
-from django.utils import timezone
 
-from .consent_token_resolver import (
-    ConsentTokenExpiredError,
-    ConsentTokenNotFoundError,
-    resolve_for_claim,
-)
-from .dha_errors import DHAValidationError
-from .ilm_client import IlmClient, IlmResponse
-from .multipart_builder import MultipartFile, build_multipart
+from .ilm_client import IlmResponse
 
 logger = logging.getLogger(__name__)
 

@@ -1,9 +1,15 @@
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 # ruff: noqa
-"""
-What this file is for: composed ILM claim service class built from focused mixins.
-How to use: imported by `hmis.apps.billing.services.ilm_claim_service` compatibility shim.
-Supported inputs/args: service class for DHA ILM claim operations.
+"""Billing ilm claim service core for Vitora HMIS.
+
+What this file is for:
+- Implement ilm claim service core logic for the billing domain.
+
+How to use it:
+- Import classes and functions from this module in Django app code and tests.
+
+Supported inputs/args:
+- Python imports and Django ORM/runtime inputs; no standalone CLI arguments.
 """
 
 from hmis.apps.billing.services.ilm_claim_service_clinical import IlmClaimClinicalMixin

@@ -1,9 +1,15 @@
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 # ruff: noqa
-"""
-What this file is for: composed terminology service class built from focused mixins.
-How to use: imported by `hmis.apps.billing.services.terminology` compatibility shim.
-Supported inputs/args: service class for DHA terminology integrations.
+"""Billing terminology core for Vitora HMIS.
+
+What this file is for:
+- Implement terminology core logic for the billing domain.
+
+How to use it:
+- Import classes and functions from this module in Django app code and tests.
+
+Supported inputs/args:
+- Python imports and Django ORM/runtime inputs; no standalone CLI arguments.
 """
 
 from importlib import import_module

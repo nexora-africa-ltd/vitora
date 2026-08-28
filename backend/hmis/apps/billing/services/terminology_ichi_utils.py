@@ -1,40 +1,22 @@
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 # ruff: noqa
-"""
-What this file is for: ICHI and utility terminology service mixin methods.
-How to use: mixed into TerminologyService in split terminology core module.
-Supported inputs/args: instance methods for ICHI endpoints and validation helpers.
-"""
+"""Billing terminology ichi utils for Vitora HMIS.
 
-# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
-"""
-Terminology Service for Vitora HMIS.
+What this file is for:
+- Implement terminology ichi utils logic for the billing domain.
 
-This module handles integration with Kenya DHA Terminology APIs
-for standardized medical coding. Implements remote-first approach
-with local database fallback.
+How to use it:
+- Import classes and functions from this module in Django app code and tests.
 
-Reference: docs/dha-api-usage-analysis.md
-Official Endpoints:
-    - GET /v1/sha-interventions - SHA interventions catalog
-    - GET /v1/icd-11 - ICD-11 disease classification
-    - GET /v1/drug-products - Drug products catalog
-    - GET /v1/active-component - Active pharmaceutical ingredients
-    - GET /v1/loinc - LOINC lab observation codes
-    - GET /v1/ichi - ICHI intervention classification
+Supported inputs/args:
+- Python imports and Django ORM/runtime inputs; no standalone CLI arguments.
 """
 
 import logging
-from dataclasses import dataclass, field
-from datetime import date, datetime
-from decimal import Decimal
 
 import requests
-from django.conf import settings
-from django.db.models import Q
 
-from .intervention_fallback import get_local_intervention, search_local_interventions
-from .sha_auth import SHAAuthError, SHAAuthService
+from .sha_auth import SHAAuthError
 
 logger = logging.getLogger(__name__)
 

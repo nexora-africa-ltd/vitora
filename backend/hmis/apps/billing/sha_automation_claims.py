@@ -1,9 +1,15 @@
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 # ruff: noqa
-"""
-What this file is for: consent, visit-start, and intervention auto-attach claim automation methods.
-How to use: mixed into SHAClaimAutomationService in split SHA automation core module.
-Supported inputs/args: classmethod workflow helpers for claim consent/start/interventions.
+"""Billing sha automation claims for Vitora HMIS.
+
+What this file is for:
+- Implement sha automation claims logic for the billing domain.
+
+How to use it:
+- Import classes and functions from this module in Django app code and tests.
+
+Supported inputs/args:
+- Python imports and Django ORM/runtime inputs; no standalone CLI arguments.
 """
 
 from hmis.apps.billing.sha_automation_shared import *  # noqa: F403

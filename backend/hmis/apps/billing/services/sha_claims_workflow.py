@@ -1,9 +1,15 @@
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 # ruff: noqa
-"""
-What this file is for: split SHA claims service mixin methods.
-How to use: mixed into SHAClaimsService in split SHA claims core module.
-Supported inputs/args: instance methods for SHA claim lifecycle operations.
+"""Billing sha claims workflow for Vitora HMIS.
+
+What this file is for:
+- Implement sha claims workflow logic for the billing domain.
+
+How to use it:
+- Import classes and functions from this module in Django app code and tests.
+
+Supported inputs/args:
+- Python imports and Django ORM/runtime inputs; no standalone CLI arguments.
 """
 
 from hmis.apps.billing.services.sha_claims_shared import *  # noqa: F403

@@ -1,9 +1,15 @@
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 # ruff: noqa
-"""
-What this file is for: composed SHA claim automation service class from focused mixins.
-How to use: imported by `hmis.apps.billing.sha_automation` compatibility shim.
-Supported inputs/args: service class only; methods accept claim/patient/encounter IDs and optional users.
+"""Billing sha automation core for Vitora HMIS.
+
+What this file is for:
+- Implement sha automation core logic for the billing domain.
+
+How to use it:
+- Import classes and functions from this module in Django app code and tests.
+
+Supported inputs/args:
+- Python imports and Django ORM/runtime inputs; no standalone CLI arguments.
 """
 
 from hmis.apps.billing.sha_automation_claims import SHAClaimAutomationClaimsMixin

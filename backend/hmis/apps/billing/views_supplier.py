@@ -1,81 +1,33 @@
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 # ruff: noqa
-"""
-What this file is for: supplier bill and supplier payment viewsets/actions.
-How to use: imported by `hmis.apps.billing.views` compatibility shim.
-Supported inputs/args: DRF viewsets for AP billing and supplier payment workflows.
-"""
+"""Billing views supplier for Vitora HMIS.
 
-# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
-"""
-Views for the billing app.
+What this file is for:
+- Implement views supplier logic for the billing domain.
 
-Following TDD - implemented to pass API tests.
+How to use it:
+- Import classes and functions from this module in Django app code and tests.
+
+Supported inputs/args:
+- Python imports and Django ORM/runtime inputs; no standalone CLI arguments.
 """
 
 import logging
 from datetime import date, timedelta
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal
 
 from django.core.exceptions import ValidationError
 from django.db.models import Q
-from django.http import HttpResponse
-from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
-from drf_spectacular.types import OpenApiTypes
-from drf_spectacular.utils import (
-    OpenApiParameter,
-    extend_schema,
-    extend_schema_view,
-    inline_serializer,
-)
-from rest_framework import filters, serializers, status, viewsets
+from rest_framework import filters, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from hmis.apps.billing.filters import CreditNoteFilter, InvoiceFilter, PaymentFilter
-from hmis.apps.billing.models import (
-    CreditNote,
-    FacilityBillingConfig,
-    Invoice,
-    InvoiceItem,
-    InvoicePayer,
-    Payment,
-    PaymentPoint,
-    Receipt,
-    Service,
-    ServiceCategory,
-    SHAClaim,
-    SHAClaimItem,
-)
-from hmis.apps.billing.serializers import (
-    BillingCatalogItemSerializer,
-    CreditNoteSerializer,
-    InvoiceItemSerializer,
-    InvoicePayerCreateSerializer,
-    InvoicePayerSerializer,
-    InvoiceSerializer,
-    PaymentPointSerializer,
-    PaymentReverseSerializer,
-    PaymentSerializer,
-    ReceiptSerializer,
-    ServiceCategorySerializer,
-    ServiceSerializer,
-)
 from hmis.apps.core.audit import AuditedMutationMixin
-from hmis.apps.core.mixins import (
-    NestedTenantScopeMixin,
-    PublicIdLookupMixin,
-    ReadOnCreateMixin,
-    TenantScopedViewMixin,
-)
-from hmis.apps.core.models import AuditLog, Facility
-from hmis.apps.core.permissions import (
-    ReadRequiresModelPermission,
-    RequiresActiveShiftPermission,
-    WriteRequiresRolePermission,
-)
+from hmis.apps.core.mixins import ReadOnCreateMixin, TenantScopedViewMixin
+from hmis.apps.core.models import AuditLog
+from hmis.apps.core.permissions import ReadRequiresModelPermission, RequiresActiveShiftPermission
 
 logger = logging.getLogger(__name__)
 
