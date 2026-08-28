@@ -1,0 +1,309 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
+# ruff: noqa
+"""
+What this file is for: billing catalog and core service/item viewsets.
+How to use: imported by `hmis.apps.billing.views` compatibility shim.
+Supported inputs/args: DRF viewsets for service categories, services, and catalog listing.
+"""
+
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
+"""
+Views for the billing app.
+
+Following TDD - implemented to pass API tests.
+"""
+
+import logging
+from datetime import date, timedelta
+from decimal import Decimal, InvalidOperation
+
+from django.core.exceptions import ValidationError
+from django.db.models import Q
+from django.http import HttpResponse
+from django.shortcuts import get_object_or_404
+from django_filters.rest_framework import DjangoFilterBackend
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import (
+    OpenApiParameter,
+    extend_schema,
+    extend_schema_view,
+    inline_serializer,
+)
+from rest_framework import filters, serializers, status, viewsets
+from rest_framework.decorators import action
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+
+from hmis.apps.billing.filters import CreditNoteFilter, InvoiceFilter, PaymentFilter
+from hmis.apps.billing.models import (
+    CreditNote,
+    FacilityBillingConfig,
+    Invoice,
+    InvoiceItem,
+    InvoicePayer,
+    Payment,
+    PaymentPoint,
+    Receipt,
+    Service,
+    ServiceCategory,
+    SHAClaim,
+    SHAClaimItem,
+)
+from hmis.apps.billing.serializers import (
+    BillingCatalogItemSerializer,
+    CreditNoteSerializer,
+    InvoiceItemSerializer,
+    InvoicePayerCreateSerializer,
+    InvoicePayerSerializer,
+    InvoiceSerializer,
+    PaymentPointSerializer,
+    PaymentReverseSerializer,
+    PaymentSerializer,
+    ReceiptSerializer,
+    ServiceCategorySerializer,
+    ServiceSerializer,
+)
+from hmis.apps.core.audit import AuditedMutationMixin
+from hmis.apps.core.mixins import (
+    NestedTenantScopeMixin,
+    PublicIdLookupMixin,
+    ReadOnCreateMixin,
+    TenantScopedViewMixin,
+)
+from hmis.apps.core.models import AuditLog, Facility
+from hmis.apps.core.permissions import (
+    ReadRequiresModelPermission,
+    RequiresActiveShiftPermission,
+    WriteRequiresRolePermission,
+)
+
+logger = logging.getLogger(__name__)
+
+
+class ServiceCategoryViewSet(AuditedMutationMixin, viewsets.ModelViewSet):
+    """
+    ViewSet for ServiceCategory model.
+
+    Provides CRUD operations for service categories.
+    """
+
+    queryset = ServiceCategory.objects.all()
+    audit_resource_type = "ServiceCategory"
+    audit_action_prefix = "billing.service_category"
+    audit_source = "billing_api"
+    serializer_class = ServiceCategorySerializer
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ["name", "code", "description"]
+    ordering_fields = ["display_order", "name", "created_at"]
+    ordering = ["display_order"]
+
+
+class ServiceViewSet(AuditedMutationMixin, viewsets.ModelViewSet):
+    """
+    ViewSet for Service model.
+
+    Provides CRUD operations for billable services with filtering.
+    """
+
+    queryset = Service.objects.select_related("category", "created_by").all()
+    audit_resource_type = "Service"
+    audit_action_prefix = "billing.service"
+    audit_source = "billing_api"
+    serializer_class = ServiceSerializer
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ["category", "is_active", "is_taxable", "sha_code"]
+    search_fields = ["name", "code", "description", "sha_code"]
+    ordering_fields = ["name", "unit_price", "created_at"]
+    ordering = ["name"]
+
+    def perform_destroy(self, instance):
+        """Soft delete - mark service as unavailable instead of deleting."""
+        instance.is_active = False
+        instance.save()
+
+
+class CatalogItemViewSet(TenantScopedViewMixin, viewsets.GenericViewSet):
+    """Read-only aggregate catalog for billable items across domains."""
+
+    queryset = Service.objects.none()
+    permission_classes = [IsAuthenticated, ReadRequiresModelPermission]
+
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                "search",
+                OpenApiTypes.STR,
+                location="query",
+                description="Search by code or name across all billable catalogs.",
+            ),
+            OpenApiParameter(
+                "kind",
+                OpenApiTypes.STR,
+                location="query",
+                description=(
+                    "Optional comma-separated kinds: service, procedure_catalog, "
+                    "lab_test_catalog, imaging_procedure"
+                ),
+            ),
+            OpenApiParameter(
+                "is_active",
+                OpenApiTypes.BOOL,
+                location="query",
+                description="Filter active/inactive rows (defaults to true).",
+            ),
+        ],
+        responses=inline_serializer(
+            name="PaginatedBillingCatalogItems",
+            fields={
+                "count": serializers.IntegerField(),
+                "next": serializers.CharField(allow_null=True),
+                "previous": serializers.CharField(allow_null=True),
+                "results": BillingCatalogItemSerializer(many=True),
+            },
+        ),
+    )
+    def list(self, request, *args, **kwargs):
+        from hmis.apps.imaging.models import ImagingProcedure
+        from hmis.apps.laboratory.models import TestCatalog
+        from hmis.apps.procedures.models import ProcedureCatalog
+
+        search = str(request.query_params.get("search") or "").strip().lower()
+        raw_kinds = str(request.query_params.get("kind") or "").strip().lower()
+        requested_kinds = {token.strip() for token in raw_kinds.split(",") if token.strip()}
+        allowed_kinds = {
+            "service",
+            "procedure_catalog",
+            "lab_test_catalog",
+            "imaging_procedure",
+        }
+        if requested_kinds:
+            requested_kinds = requested_kinds.intersection(allowed_kinds)
+        else:
+            requested_kinds = allowed_kinds
+
+        is_active_raw = request.query_params.get("is_active")
+        only_active = True
+        if is_active_raw is not None:
+            only_active = str(is_active_raw).strip().lower() in {"1", "true", "yes"}
+
+        facility = getattr(request, "facility", None)
+        rows = []
+
+        def _matches(code: str, name: str) -> bool:
+            if not search:
+                return True
+            return search in (code or "").lower() or search in (name or "").lower()
+
+        if "service" in requested_kinds:
+            services = Service.objects.all()
+            if only_active:
+                services = services.filter(is_active=True)
+            for service in services:
+                if not _matches(service.code, service.name):
+                    continue
+                rows.append(
+                    {
+                        "kind": "service",
+                        "id": service.id,
+                        "code": service.code,
+                        "name": service.name,
+                        "description": service.description or "",
+                        "unit_price": service.unit_price,
+                        "sha_code": service.sha_code or "",
+                        "item_type": InvoiceItem.ItemType.SERVICE,
+                        "service_id": service.id,
+                    }
+                )
+
+        if "procedure_catalog" in requested_kinds:
+            procedures = ProcedureCatalog.objects.select_related("billing_service").all()
+            if facility is not None:
+                procedures = procedures.filter(facility=facility)
+            if only_active:
+                procedures = procedures.filter(is_active=True)
+            for procedure in procedures:
+                if not _matches(procedure.code, procedure.name):
+                    continue
+                linked_service = procedure.billing_service if procedure.billing_service_id else None
+                unit_price = (
+                    getattr(linked_service, "unit_price", None)
+                    if linked_service is not None
+                    else procedure.base_fee
+                )
+                if unit_price is None:
+                    continue
+                rows.append(
+                    {
+                        "kind": "procedure_catalog",
+                        "id": procedure.id,
+                        "code": procedure.code,
+                        "name": procedure.name,
+                        "description": procedure.description or "",
+                        "unit_price": unit_price,
+                        "sha_code": (
+                            (linked_service.sha_code if linked_service else "")
+                            or procedure.sha_tariff_code
+                            or ""
+                        ),
+                        "item_type": InvoiceItem.ItemType.SERVICE,
+                        "service_id": linked_service.id if linked_service else None,
+                    }
+                )
+
+        if "lab_test_catalog" in requested_kinds:
+            tests = TestCatalog.objects.all()
+            if facility is not None:
+                tests = tests.filter(facility=facility)
+            if only_active:
+                tests = tests.filter(is_active=True)
+            for test in tests:
+                if not _matches(test.code, test.name):
+                    continue
+                rows.append(
+                    {
+                        "kind": "lab_test_catalog",
+                        "id": test.id,
+                        "code": test.code,
+                        "name": test.name,
+                        "description": "",
+                        "unit_price": test.cost,
+                        "sha_code": test.loinc_code or "",
+                        "item_type": InvoiceItem.ItemType.LAB,
+                        "service_id": None,
+                    }
+                )
+
+        if "imaging_procedure" in requested_kinds:
+            imaging = ImagingProcedure.objects.all()
+            if facility is not None:
+                imaging = imaging.filter(facility=facility)
+            if only_active:
+                imaging = imaging.filter(is_active=True)
+            for procedure in imaging:
+                if not _matches(procedure.code, procedure.name):
+                    continue
+                rows.append(
+                    {
+                        "kind": "imaging_procedure",
+                        "id": procedure.id,
+                        "code": procedure.code,
+                        "name": procedure.name,
+                        "description": "",
+                        "unit_price": procedure.cost,
+                        "sha_code": procedure.sha_intervention_code or "",
+                        "item_type": InvoiceItem.ItemType.IMAGING,
+                        "service_id": None,
+                    }
+                )
+
+        rows.sort(key=lambda row: (row["kind"], row["name"].lower(), row["code"].lower()))
+
+        page = self.paginate_queryset(rows)
+        if page is not None:
+            serializer = BillingCatalogItemSerializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = BillingCatalogItemSerializer(rows, many=True)
+        return Response(serializer.data)
