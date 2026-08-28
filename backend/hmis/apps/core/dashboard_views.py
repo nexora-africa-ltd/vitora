@@ -14,4 +14,6 @@ Supported inputs/args:
 from hmis.apps.core.dashboard_views_activity import *  # noqa: F403
 from hmis.apps.core.dashboard_views_shared import *  # noqa: F403
 from hmis.apps.core.dashboard_views_stats import *  # noqa: F403
+
+# Compatibility exports for tests/consumers that patch private helpers.
 from hmis.apps.core.dashboard_views_trends import *  # noqa: F403

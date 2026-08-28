@@ -19,8 +19,30 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from django.conf import settings
+from django.db import models, transaction
+from django.utils import timezone
 
-from .ilm_client import IlmResponse
+from .consent_token_resolver import (
+    ConsentTokenExpiredError,
+    ConsentTokenNotFoundError,
+    resolve_for_claim,
+)
+from .dha_errors import DHAValidationError
+from .ilm_client import IlmClient, IlmResponse
+from .multipart_builder import MultipartFile, build_multipart
+
+_STAR_EXPORTS = (
+    ConsentTokenExpiredError,
+    ConsentTokenNotFoundError,
+    DHAValidationError,
+    IlmClient,
+    MultipartFile,
+    build_multipart,
+    models,
+    resolve_for_claim,
+    timezone,
+    transaction,
+)
 
 logger = logging.getLogger(__name__)
 

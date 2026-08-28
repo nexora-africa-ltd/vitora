@@ -12,4 +12,6 @@ Supported inputs/args:
 """
 
 from hmis.apps.patients.views_patient import *  # noqa: F403
+
+# Backward-compatible patch point used by HIE integration tests.
 from hmis.apps.patients.views_related_records import *  # noqa: F403

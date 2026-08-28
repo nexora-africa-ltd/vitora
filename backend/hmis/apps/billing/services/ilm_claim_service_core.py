@@ -11,6 +11,8 @@ Supported inputs/args:
 - Python imports and Django ORM/runtime inputs; no standalone CLI arguments.
 """
 
+from __future__ import annotations
+
 from hmis.apps.billing.services.ilm_claim_service_clinical import IlmClaimClinicalMixin
 from hmis.apps.billing.services.ilm_claim_service_interventions import IlmClaimInterventionsMixin
 from hmis.apps.billing.services.ilm_claim_service_lifecycle import IlmClaimLifecycleMixin

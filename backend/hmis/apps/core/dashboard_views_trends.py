@@ -47,6 +47,12 @@ from hmis.apps.core.dashboard_views_shared import (
     _dashboard_section_exceptions,
     _resolve_tenant_for_request,
 )
+from hmis.apps.core.dashboard_views_stats import (
+    ENCOUNTER_TYPES,
+    MAX_DATE_RANGE_DAYS,
+    PATIENT_VOLUME_CACHE_PREFIX,
+    PATIENT_VOLUME_CACHE_TTL,
+)
 
 
 @extend_schema(

@@ -11,6 +11,8 @@ Supported inputs/args:
 - Python imports and Django ORM/runtime inputs; no standalone CLI arguments.
 """
 
+from __future__ import annotations
+
 from hmis.apps.billing.services.sha_claims_bundle import SHAClaimsBundleMixin
 from hmis.apps.billing.services.sha_claims_resources import SHAClaimsResourcesMixin
 from hmis.apps.billing.services.sha_claims_submission import SHAClaimsSubmissionMixin

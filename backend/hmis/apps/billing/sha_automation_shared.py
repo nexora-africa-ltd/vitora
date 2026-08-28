@@ -12,13 +12,33 @@ Supported inputs/args:
 """
 
 import logging
+from datetime import date, timedelta
+from decimal import Decimal
 
 from django.core.exceptions import FieldError
 from django.db import DatabaseError
+from django.db.models import Q, Sum
+from django.utils import timezone
 
 from hmis.apps.billing.facility_identifiers import resolve_fr_code
+from hmis.apps.billing.services.document_context import append_standard_header
 
 logger = logging.getLogger(__name__)
+
+__all__ = [
+    "DatabaseError",
+    "Decimal",
+    "FieldError",
+    "Q",
+    "Sum",
+    "append_standard_header",
+    "date",
+    "logger",
+    "timedelta",
+    "timezone",
+    "_resolve_fr_code",
+    "_sha_automation_handled_exceptions",
+]
 
 
 def _sha_automation_handled_exceptions() -> tuple[type[Exception], ...]:

@@ -12,6 +12,8 @@ Supported inputs/args:
 - Python imports and Django ORM/runtime inputs; no standalone CLI arguments.
 """
 
+from __future__ import annotations
+
 from hmis.apps.billing.services.ilm_claim_service_shared import *  # noqa: F403
 from hmis.apps.billing.services.ilm_claim_service_shared import (
     _CR_NUMBER_RE,
