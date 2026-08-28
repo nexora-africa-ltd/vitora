@@ -1,9 +1,15 @@
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 # ruff: noqa
-"""
-What this file is for: core AI serializers for ICD, status, context, and clinical chat flows.
-How to use: imported by `hmis.apps.ai.serializers` compatibility shim.
-Supported inputs/args: DRF serializers for AI request and response payloads.
+"""Ai serializers core context for Vitora HMIS.
+
+What this file is for:
+- Implement serializers core context logic for the ai domain.
+
+How to use it:
+- Import classes and functions from this module in Django app code and tests.
+
+Supported inputs/args:
+- Python imports and Django ORM/runtime inputs; no standalone CLI arguments.
 """
 
 from rest_framework import serializers

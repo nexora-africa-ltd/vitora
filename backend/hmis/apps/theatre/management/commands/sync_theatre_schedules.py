@@ -1,5 +1,15 @@
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
-"""Backfill scheduling resources and recurring schedules for theatres."""
+"""Theatre sync theatre schedules for Vitora HMIS.
+
+What this file is for:
+- Implement sync theatre schedules logic for the theatre domain.
+
+How to use it:
+- Import classes and functions from this module in Django app code and tests.
+
+Supported inputs/args:
+- Python imports and Django ORM/runtime inputs; no standalone CLI arguments.
+"""
 
 from django.core.management.base import BaseCommand
 

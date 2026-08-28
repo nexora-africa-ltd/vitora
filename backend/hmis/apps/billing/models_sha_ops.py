@@ -1,8 +1,14 @@
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
-"""
-What this file is for: SHA operational models for contacts, coverage snapshots, preauth, OTP, uploads, and remittances.
-How to use: imported by `hmis.apps.billing.models_sha` for model registration and compatibility.
-Supported inputs/args: Django model fields/methods for SHA operational and remittance workflows.
+"""Billing models sha ops for Vitora HMIS.
+
+What this file is for:
+- Implement models sha ops logic for the billing domain.
+
+How to use it:
+- Import classes and functions from this module in Django app code and tests.
+
+Supported inputs/args:
+- Python imports and Django ORM/runtime inputs; no standalone CLI arguments.
 """
 
 from decimal import Decimal

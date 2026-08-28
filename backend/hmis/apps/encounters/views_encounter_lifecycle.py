@@ -1,12 +1,17 @@
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 # ruff: noqa
-"""
-What this file is for: core encounter lifecycle viewset and related actions.
-How to use: imported by encounter view compatibility shims.
-Supported inputs/args: DRF viewset for encounter CRUD, status, and workflow endpoints.
+"""Encounters views encounter lifecycle for Vitora HMIS.
+
+What this file is for:
+- Implement views encounter lifecycle logic for the encounters domain.
+
+How to use it:
+- Import classes and functions from this module in Django app code and tests.
+
+Supported inputs/args:
+- Python imports and Django ORM/runtime inputs; no standalone CLI arguments.
 """
 
-# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 # ruff: noqa
 """
 What this file is for: encounter core viewset plus treatment-plan application API views.

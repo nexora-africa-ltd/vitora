@@ -1,9 +1,15 @@
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 # ruff: noqa
-"""
-What this file is for: adverse transfusion reaction enums/models and discharge template configuration models.
-How to use: imported by `hmis.apps.inpatient.models` compatibility module for model registration.
-Supported inputs/args: Django model fields/methods for ATR reporting and discharge summary templates.
+"""Inpatient models atr templates for Vitora HMIS.
+
+What this file is for:
+- Implement models atr templates logic for the inpatient domain.
+
+How to use it:
+- Import classes and functions from this module in Django app code and tests.
+
+Supported inputs/args:
+- Python imports and Django ORM/runtime inputs; no standalone CLI arguments.
 """
 
 from __future__ import annotations

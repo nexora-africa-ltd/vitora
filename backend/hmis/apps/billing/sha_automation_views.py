@@ -1,13 +1,14 @@
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
-"""
-SHA Claims Automation API Views.
+"""Billing sha automation views for Vitora HMIS.
 
-Provides endpoints for:
-- Batch claim validation
-- Bulk claim submission
-- Claims daily digest
-- Intervention suggestions
-- Eligibility pre-check trigger
+What this file is for:
+- Implement sha automation views logic for the billing domain.
+
+How to use it:
+- Import classes and functions from this module in Django app code and tests.
+
+Supported inputs/args:
+- Python imports and Django ORM/runtime inputs; no standalone CLI arguments.
 """
 
 import logging

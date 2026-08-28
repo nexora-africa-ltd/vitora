@@ -1,8 +1,14 @@
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
-"""
-What this file is for: invoice, invoice item, and invoice payer billing models.
-How to use: imported by `hmis.apps.billing.models_finance` for model registration and compatibility.
-Supported inputs/args: Django model fields/methods for invoice lifecycle and line-item billing.
+"""Billing models finance invoice for Vitora HMIS.
+
+What this file is for:
+- Implement models finance invoice logic for the billing domain.
+
+How to use it:
+- Import classes and functions from this module in Django app code and tests.
+
+Supported inputs/args:
+- Python imports and Django ORM/runtime inputs; no standalone CLI arguments.
 """
 
 import uuid

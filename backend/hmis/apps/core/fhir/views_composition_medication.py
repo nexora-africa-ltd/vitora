@@ -1,9 +1,15 @@
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 # ruff: noqa
-"""
-What this file is for: FHIR composition, allergy intolerance, and medication statement endpoints.
-How to use: imported by `hmis.apps.core.fhir.views` compatibility module for FHIR endpoint wiring.
-Supported inputs/args: Django REST Framework API view classes/helpers for FHIR R4 resources.
+"""Core views composition medication for Vitora HMIS.
+
+What this file is for:
+- Implement views composition medication logic for the core domain.
+
+How to use it:
+- Import classes and functions from this module in Django app code and tests.
+
+Supported inputs/args:
+- Python imports and Django ORM/runtime inputs; no standalone CLI arguments.
 """
 
 import logging

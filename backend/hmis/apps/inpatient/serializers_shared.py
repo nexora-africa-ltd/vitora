@@ -1,9 +1,15 @@
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 # ruff: noqa
-"""
-What this file is for: shared serializer helpers for inpatient serializer modules.
-How to use: imported by split inpatient serializer modules and the compatibility shim.
-Supported inputs/args: DRF serializer helper fields and utility validators.
+"""Inpatient serializers shared for Vitora HMIS.
+
+What this file is for:
+- Implement serializers shared logic for the inpatient domain.
+
+How to use it:
+- Import classes and functions from this module in Django app code and tests.
+
+Supported inputs/args:
+- Python imports and Django ORM/runtime inputs; no standalone CLI arguments.
 """
 
 from rest_framework import serializers

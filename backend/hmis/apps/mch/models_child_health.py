@@ -1,9 +1,15 @@
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 # ruff: noqa
-"""
-What this file is for: community screening, growth, immunization, and pediatric supplement/adverse event models.
-How to use: imported by `hmis.apps.mch.models` compatibility shim.
-Supported inputs/args: Django model classes for child health workflows.
+"""Mch models child health for Vitora HMIS.
+
+What this file is for:
+- Implement models child health logic for the mch domain.
+
+How to use it:
+- Import classes and functions from this module in Django app code and tests.
+
+Supported inputs/args:
+- Python imports and Django ORM/runtime inputs; no standalone CLI arguments.
 """
 
 from datetime import date, datetime, timedelta

@@ -1,11 +1,14 @@
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
-"""
-Drug Formulary proxy views.
+"""Ai views formulary for Vitora HMIS.
 
-Proxies requests to TibaBot's Drug Formulary endpoints:
-- /drugs/search — unified search across SmPC, PPB Products, KEML
-- /drugs/smpc/{doc_id} — full SmPC monograph detail
-- /drugs/stats — service health and data statistics
+What this file is for:
+- Implement views formulary logic for the ai domain.
+
+How to use it:
+- Import classes and functions from this module in Django app code and tests.
+
+Supported inputs/args:
+- Python imports and Django ORM/runtime inputs; no standalone CLI arguments.
 """
 
 import logging

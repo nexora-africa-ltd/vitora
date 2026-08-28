@@ -1,9 +1,15 @@
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 # ruff: noqa: ARG002, DJ012
-"""
-What this file is for: security, invitations, membership, and outbound DHA call core models.
-How to use: imported by `hmis.apps.core.models` compatibility module.
-Supported inputs/args: Django model fields and methods for certificates, invites, org membership, and call audit.
+"""Core models security for Vitora HMIS.
+
+What this file is for:
+- Implement models security logic for the core domain.
+
+How to use it:
+- Import classes and functions from this module in Django app code and tests.
+
+Supported inputs/args:
+- Python imports and Django ORM/runtime inputs; no standalone CLI arguments.
 """
 
 import uuid

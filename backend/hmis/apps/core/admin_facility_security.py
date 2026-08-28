@@ -1,12 +1,17 @@
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 # ruff: noqa
-"""
-What this file is for: facility, security/certificates, and operational admin classes/registrations.
-How to use: imported by `hmis.apps.core.admin` compatibility shim.
-Supported inputs/args: Django admin classes for facilities, certs, invitations, events, and outbound calls.
+"""Core admin facility security for Vitora HMIS.
+
+What this file is for:
+- Implement admin facility security logic for the core domain.
+
+How to use it:
+- Import classes and functions from this module in Django app code and tests.
+
+Supported inputs/args:
+- Python imports and Django ORM/runtime inputs; no standalone CLI arguments.
 """
 
-# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """
 Admin configuration for core app.
 """

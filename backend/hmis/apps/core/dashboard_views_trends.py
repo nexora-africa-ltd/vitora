@@ -1,12 +1,17 @@
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 # ruff: noqa
-"""
-What this file is for: patient volume and revenue trend dashboard endpoints.
-How to use: imported by `hmis.apps.core.dashboard_views` compatibility shim.
-Supported inputs/args: DRF function views/helpers for trend analytics endpoints.
+"""Core dashboard views trends for Vitora HMIS.
+
+What this file is for:
+- Implement dashboard views trends logic for the core domain.
+
+How to use it:
+- Import classes and functions from this module in Django app code and tests.
+
+Supported inputs/args:
+- Python imports and Django ORM/runtime inputs; no standalone CLI arguments.
 """
 
-# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """
 Dashboard Statistics API views.
 

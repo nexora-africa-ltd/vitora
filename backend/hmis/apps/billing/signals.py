@@ -1,14 +1,14 @@
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
-"""
-Billing signals for Vitora HMIS.
+"""Billing signals for Vitora HMIS.
 
-This module contains Django signals for billing integration:
-- Auto-create draft invoice when encounter is created
-- Auto-bill admission fee and create SHA claim on inpatient admission
-- Finalize invoice and update SHA claim with discharge data on discharge
-- Update invoice totals when items are added/modified
-- Broadcast real-time WebSocket events for billing updates
-- Publish domain events for cross-cutting observability
+What this file is for:
+- Implement signals logic for the billing domain.
+
+How to use it:
+- Import classes and functions from this module in Django app code and tests.
+
+Supported inputs/args:
+- Python imports and Django ORM/runtime inputs; no standalone CLI arguments.
 """
 
 import logging

@@ -1,12 +1,17 @@
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 # ruff: noqa
-"""
-What this file is for: MCH registration, ANC, and delivery maternal journey models.
-How to use: imported by MCH model compatibility shims.
-Supported inputs/args: Django model classes for maternal registration through delivery.
+"""Mch models maternal journey for Vitora HMIS.
+
+What this file is for:
+- Implement models maternal journey logic for the mch domain.
+
+How to use it:
+- Import classes and functions from this module in Django app code and tests.
+
+Supported inputs/args:
+- Python imports and Django ORM/runtime inputs; no standalone CLI arguments.
 """
 
-# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 # ruff: noqa
 """
 What this file is for: maternal journey models from registration through ANC, delivery, labour, and PNC.

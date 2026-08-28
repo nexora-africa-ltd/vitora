@@ -1,9 +1,15 @@
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 # ruff: noqa
-"""
-What this file is for: compatibility shim for split scheduling view modules.
-How to use: import from `hmis.apps.scheduling.views` to access scheduling filters and viewsets.
-Supported inputs/args: module exports only; no CLI args or environment variables.
+"""Scheduling views for Vitora HMIS.
+
+What this file is for:
+- Maintain backward-compatible exports for the scheduling module split.
+
+How to use it:
+- Import from this legacy module path to keep existing imports working.
+
+Supported inputs/args:
+- Python imports and Django ORM/runtime inputs; no standalone CLI arguments.
 """
 
 from hmis.apps.scheduling.views_assignment import *  # noqa: F403

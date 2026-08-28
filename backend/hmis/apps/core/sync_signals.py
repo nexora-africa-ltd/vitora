@@ -1,11 +1,14 @@
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
-"""Signals that queue model changes for hub↔cloud sync.
+"""Core sync signals for Vitora HMIS.
 
-Two independent signal paths:
-1. Hub → Cloud (upward): fires when ENVIRONMENT=hub, creates PENDING entries
-   that the HubCloudSyncWorker pushes to the cloud REST API.
-2. Cloud → Hub (downward): fires when ENVIRONMENT is a cloud env (production/staging),
-   creates pre-SYNCED entries so hubs can pull them via GET /api/sync/pull/.
+What this file is for:
+- Implement sync signals logic for the core domain.
+
+How to use it:
+- Import classes and functions from this module in Django app code and tests.
+
+Supported inputs/args:
+- Python imports and Django ORM/runtime inputs; no standalone CLI arguments.
 """
 
 from __future__ import annotations

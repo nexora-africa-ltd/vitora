@@ -1,14 +1,14 @@
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
-"""
-Scheduling serializers for Vitora HMIS.
+"""Scheduling serializers for Vitora HMIS.
 
-Phase 1: Core Scheduling Foundation
+What this file is for:
+- Maintain backward-compatible exports for the scheduling module split.
 
-This module contains serializers for:
-- Resource CRUD
-- Schedule CRUD
-- Appointment CRUD
-- Availability queries
+How to use it:
+- Import from this legacy module path to keep existing imports working.
+
+Supported inputs/args:
+- Python imports and Django ORM/runtime inputs; no standalone CLI arguments.
 """
 
 from rest_framework import serializers

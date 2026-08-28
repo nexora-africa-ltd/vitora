@@ -1,9 +1,15 @@
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 # ruff: noqa
-"""
-What this file is for: analytics and export actions mixed into scheduling ShiftViewSet.
-How to use: imported by `hmis.apps.scheduling.views_shift_roster` and inherited by ShiftViewSet.
-Supported inputs/args: DRF action methods for shift conflict checks, trends, exports, on-duty, and QR flows.
+"""Scheduling views shift analytics for Vitora HMIS.
+
+What this file is for:
+- Implement views shift analytics logic for the scheduling domain.
+
+How to use it:
+- Import classes and functions from this module in Django app code and tests.
+
+Supported inputs/args:
+- Python imports and Django ORM/runtime inputs; no standalone CLI arguments.
 """
 
 import logging

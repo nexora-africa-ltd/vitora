@@ -1,9 +1,15 @@
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 # ruff: noqa
-"""
-What this file is for: Encounter behavior mixin methods for workflow, vitals interpretation, triage, consultation, and billing helpers.
-How to use: imported by `hmis.apps.encounters.models_encounter_core` and mixed into `Encounter`.
-Supported inputs/args: model instance methods operating on Encounter fields and related records.
+"""Encounters models encounter behaviors for Vitora HMIS.
+
+What this file is for:
+- Implement models encounter behaviors logic for the encounters domain.
+
+How to use it:
+- Import classes and functions from this module in Django app code and tests.
+
+Supported inputs/args:
+- Python imports and Django ORM/runtime inputs; no standalone CLI arguments.
 """
 
 import logging

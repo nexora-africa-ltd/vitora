@@ -1,9 +1,15 @@
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 # ruff: noqa
-"""
-What this file is for: compatibility shim for split imaging view modules.
-How to use: import from `hmis.apps.imaging.views` to access imaging DRF views and helpers.
-Supported inputs/args: module exports only; no CLI args or environment variables.
+"""Imaging views for Vitora HMIS.
+
+What this file is for:
+- Maintain backward-compatible exports for the imaging module split.
+
+How to use it:
+- Import from this legacy module path to keep existing imports working.
+
+Supported inputs/args:
+- Python imports and Django ORM/runtime inputs; no standalone CLI arguments.
 """
 
 from hmis.apps.imaging.views_dicom import *  # noqa: F403

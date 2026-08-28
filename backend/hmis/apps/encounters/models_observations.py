@@ -1,9 +1,15 @@
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 # ruff: noqa
-"""
-What this file is for: structured observation/history encounter models (social, pregnancy, chronic conditions, medication/surgery/family history, vital suggestions).
-How to use: imported by `hmis.apps.encounters.models` compatibility module for model registration.
-Supported inputs/args: Django model fields and methods for structured encounter-adjacent observations.
+"""Encounters models observations for Vitora HMIS.
+
+What this file is for:
+- Implement models observations logic for the encounters domain.
+
+How to use it:
+- Import classes and functions from this module in Django app code and tests.
+
+Supported inputs/args:
+- Python imports and Django ORM/runtime inputs; no standalone CLI arguments.
 """
 
 import logging

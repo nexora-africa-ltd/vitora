@@ -1,9 +1,15 @@
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 # ruff: noqa: SIM103
-"""
-What this file is for: SHA eligibility, billing config, automation, consent, and preauth request models.
-How to use: imported by `hmis.apps.billing.models_sha` for model registration and compatibility.
-Supported inputs/args: Django model fields/methods for eligibility/cache, automation rules, and preauth prep.
+"""Billing models sha config for Vitora HMIS.
+
+What this file is for:
+- Implement models sha config logic for the billing domain.
+
+How to use it:
+- Import classes and functions from this module in Django app code and tests.
+
+Supported inputs/args:
+- Python imports and Django ORM/runtime inputs; no standalone CLI arguments.
 """
 
 from datetime import date, timedelta

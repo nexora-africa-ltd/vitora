@@ -1,9 +1,14 @@
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
-"""
-External laboratory integration for Vitora HMIS.
+"""Laboratory external for Vitora HMIS.
 
-This module provides functionality for integrating with external laboratory
-partners including requisition generation and result import.
+What this file is for:
+- Implement external logic for the laboratory domain.
+
+How to use it:
+- Import classes and functions from this module in Django app code and tests.
+
+Supported inputs/args:
+- Python imports and Django ORM/runtime inputs; no standalone CLI arguments.
 """
 
 import csv

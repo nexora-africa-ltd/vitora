@@ -1,21 +1,14 @@
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
-"""
-FHIR R4 Resource Validator for Vitora HMIS.
+"""Core fhir validator for Vitora HMIS.
 
-This module provides validation of FHIR R4 resources using the official
-fhir.resources library. It validates resources against the FHIR R4 specification
-and provides structured error reporting.
+What this file is for:
+- Implement fhir validator logic for the core domain.
 
-Reference: https://hl7.org/fhir/R4/
-Library: https://pypi.org/project/fhir.resources/
+How to use it:
+- Import classes and functions from this module in Django app code and tests.
 
-Usage:
-    >>> from hmis.apps.core.services.fhir_validator import FHIRValidator
-    >>> validator = FHIRValidator()
-    >>> is_valid, errors = validator.validate_bundle(bundle_dict)
-    >>> if not is_valid:
-    ...     for error in errors:
-    ...         print(f"{error['field']}: {error['message']}")
+Supported inputs/args:
+- Python imports and Django ORM/runtime inputs; no standalone CLI arguments.
 """
 
 import logging

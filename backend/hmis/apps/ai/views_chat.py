@@ -1,9 +1,15 @@
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 # ruff: noqa
-"""
-What this file is for: clinical chat and assist endpoints with chat session management.
-How to use: imported by `hmis.apps.ai.views` compatibility module for endpoint wiring.
-Supported inputs/args: Django REST Framework API view classes and helper functions for AI endpoints.
+"""Ai views chat for Vitora HMIS.
+
+What this file is for:
+- Implement views chat logic for the ai domain.
+
+How to use it:
+- Import classes and functions from this module in Django app code and tests.
+
+Supported inputs/args:
+- Python imports and Django ORM/runtime inputs; no standalone CLI arguments.
 """
 
 import json

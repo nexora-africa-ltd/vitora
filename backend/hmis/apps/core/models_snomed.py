@@ -1,8 +1,14 @@
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
-"""
-What this file is for: SNOMED reference concept model used in core interoperability features.
-How to use: imported by `hmis.apps.core.models_org_facility` for model registration and compatibility.
-Supported inputs/args: Django model fields/methods for SNOMED concept storage and lookups.
+"""Core models snomed for Vitora HMIS.
+
+What this file is for:
+- Implement models snomed logic for the core domain.
+
+How to use it:
+- Import classes and functions from this module in Django app code and tests.
+
+Supported inputs/args:
+- Python imports and Django ORM/runtime inputs; no standalone CLI arguments.
 """
 
 from django.db import models

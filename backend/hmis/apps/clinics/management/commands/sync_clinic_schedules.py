@@ -1,18 +1,14 @@
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
-"""
-Backfill scheduling resources and schedules for existing clinics.
+"""Clinics sync clinic schedules for Vitora HMIS.
 
-For each Clinic that has a facility but no scheduling_resource:
-  1. Create a scheduling.Resource (PLACE type)
-  2. Link it via Clinic.scheduling_resource
+What this file is for:
+- Implement sync clinic schedules logic for the clinics domain.
 
-For each ClinicSchedule whose clinic has a scheduling_resource:
-  1. Create/update a scheduling.Schedule (RECURRING type) mirroring the hours
+How to use it:
+- Import classes and functions from this module in Django app code and tests.
 
-Usage:
-    python manage.py sync_clinic_schedules             # Full backfill
-    python manage.py sync_clinic_schedules --dry-run    # Preview only
-    python manage.py sync_clinic_schedules --clinic OPD-DEFAULT  # Specific clinic
+Supported inputs/args:
+- Python imports and Django ORM/runtime inputs; no standalone CLI arguments.
 """
 
 from django.core.management.base import BaseCommand

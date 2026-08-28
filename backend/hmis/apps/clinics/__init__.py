@@ -1,14 +1,14 @@
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
-"""
-Clinics app for Vitora HMIS.
+"""Clinics   init   for Vitora HMIS.
 
-This app provides clinic management functionality including:
-- Clinic organizational units (service delivery points)
-- Clinic sessions (daily operations)
-- Clinic visits (queue management)
-- Clinic staff assignments
-- Clinic schedules
-- Clinic enrollments (for chronic care programs)
+What this file is for:
+- Implement   init   logic for the clinics domain.
+
+How to use it:
+- Import classes and functions from this module in Django app code and tests.
+
+Supported inputs/args:
+- Python imports and Django ORM/runtime inputs; no standalone CLI arguments.
 """
 
 default_app_config = "hmis.apps.clinics.apps.ClinicsConfig"

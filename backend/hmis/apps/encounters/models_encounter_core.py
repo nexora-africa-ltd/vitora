@@ -1,9 +1,15 @@
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 # ruff: noqa
-"""
-What this file is for: ICD10 reference and Encounter core model definitions (fields/base save-clean logic).
-How to use: imported by `hmis.apps.encounters.models` compatibility module for model registration.
-Supported inputs/args: Django model fields and base methods for encounter records.
+"""Encounters models encounter core for Vitora HMIS.
+
+What this file is for:
+- Implement models encounter core logic for the encounters domain.
+
+How to use it:
+- Import classes and functions from this module in Django app code and tests.
+
+Supported inputs/args:
+- Python imports and Django ORM/runtime inputs; no standalone CLI arguments.
 """
 
 import logging

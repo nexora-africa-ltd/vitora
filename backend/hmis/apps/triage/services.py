@@ -1,11 +1,14 @@
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
-"""
-Triage services for Vitora HMIS.
+"""Triage services for Vitora HMIS.
 
-This module contains business logic for triage operations,
-particularly the KETA (Kenya Emergency Triage Assessment) category calculator.
+What this file is for:
+- Implement services logic for the triage domain.
 
-Sprint 1.5-1.6 Track E: Triage Module MVP
+How to use it:
+- Import classes and functions from this module in Django app code and tests.
+
+Supported inputs/args:
+- Python imports and Django ORM/runtime inputs; no standalone CLI arguments.
 """
 
 import uuid

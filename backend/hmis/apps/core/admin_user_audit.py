@@ -1,12 +1,17 @@
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 # ruff: noqa
-"""
-What this file is for: user/MFA admin and audit-sync-reference admin registrations.
-How to use: imported by `hmis.apps.core.admin` compatibility shim.
-Supported inputs/args: Django admin classes and registrations for user/audit/core reference data.
+"""Core admin user audit for Vitora HMIS.
+
+What this file is for:
+- Implement admin user audit logic for the core domain.
+
+How to use it:
+- Import classes and functions from this module in Django app code and tests.
+
+Supported inputs/args:
+- Python imports and Django ORM/runtime inputs; no standalone CLI arguments.
 """
 
-# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """
 Admin configuration for core app.
 """

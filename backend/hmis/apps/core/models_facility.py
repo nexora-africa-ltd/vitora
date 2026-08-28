@@ -1,8 +1,14 @@
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
-"""
-What this file is for: facility branch model and facility-level operating configuration.
-How to use: imported by `hmis.apps.core.models_org_facility` for model registration and compatibility.
-Supported inputs/args: Django model fields/methods for facility profile, addresses, and operational settings.
+"""Core models facility for Vitora HMIS.
+
+What this file is for:
+- Implement models facility logic for the core domain.
+
+How to use it:
+- Import classes and functions from this module in Django app code and tests.
+
+Supported inputs/args:
+- Python imports and Django ORM/runtime inputs; no standalone CLI arguments.
 """
 
 from django.db import models

@@ -1,9 +1,15 @@
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 # ruff: noqa
-"""
-What this file is for: compatibility shim for split inpatient serializer modules.
-How to use: import from `hmis.apps.inpatient.serializers` to access serializer classes and helpers.
-Supported inputs/args: module exports only; no CLI args or environment variables.
+"""Inpatient serializers for Vitora HMIS.
+
+What this file is for:
+- Maintain backward-compatible exports for the inpatient module split.
+
+How to use it:
+- Import from this legacy module path to keep existing imports working.
+
+Supported inputs/args:
+- Python imports and Django ORM/runtime inputs; no standalone CLI arguments.
 """
 
 from hmis.apps.inpatient.serializers_atr_templates import *  # noqa: F403

@@ -1,9 +1,15 @@
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 # ruff: noqa
-"""
-What this file is for: compatibility shim for split encounter view modules.
-How to use: import from `hmis.apps.encounters.views` to access encounter API views/viewsets.
-Supported inputs/args: module exports only; no CLI args or environment variables.
+"""Encounters views for Vitora HMIS.
+
+What this file is for:
+- Maintain backward-compatible exports for the encounters module split.
+
+How to use it:
+- Import from this legacy module path to keep existing imports working.
+
+Supported inputs/args:
+- Python imports and Django ORM/runtime inputs; no standalone CLI arguments.
 """
 
 from hmis.apps.encounters.views_catalog_diagnosis import *  # noqa: F403

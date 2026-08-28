@@ -1,11 +1,14 @@
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
-"""
-Triage module for Vitora HMIS.
+"""Triage   init   for Vitora HMIS.
 
-This module implements the Kenya Emergency Triage Assessment (KETA) system
-for patient prioritization and queue management.
+What this file is for:
+- Implement   init   logic for the triage domain.
 
-Sprint 1.5-1.6 Track E: Triage Module MVP
+How to use it:
+- Import classes and functions from this module in Django app code and tests.
+
+Supported inputs/args:
+- Python imports and Django ORM/runtime inputs; no standalone CLI arguments.
 """
 
 default_app_config = "hmis.apps.triage.apps.TriageConfig"

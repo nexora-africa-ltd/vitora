@@ -1,8 +1,14 @@
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
-"""
-What this file is for: compatibility shim for billing finance model modules.
-How to use: import from `hmis.apps.billing.models_finance` to access invoice/payment models.
-Supported inputs/args: module exports only; no CLI args or environment variables.
+"""Billing models finance for Vitora HMIS.
+
+What this file is for:
+- Implement models finance logic for the billing domain.
+
+How to use it:
+- Import classes and functions from this module in Django app code and tests.
+
+Supported inputs/args:
+- Python imports and Django ORM/runtime inputs; no standalone CLI arguments.
 """
 
 from hmis.apps.billing.models_finance_invoice import *  # noqa: F403

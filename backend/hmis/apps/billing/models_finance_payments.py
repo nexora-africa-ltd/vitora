@@ -1,8 +1,14 @@
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
-"""
-What this file is for: payment, payment point, receipt, and credit note billing models.
-How to use: imported by `hmis.apps.billing.models_finance` for model registration and compatibility.
-Supported inputs/args: Django model fields/methods for payment processing and receipt/credit workflows.
+"""Billing models finance payments for Vitora HMIS.
+
+What this file is for:
+- Implement models finance payments logic for the billing domain.
+
+How to use it:
+- Import classes and functions from this module in Django app code and tests.
+
+Supported inputs/args:
+- Python imports and Django ORM/runtime inputs; no standalone CLI arguments.
 """
 
 from datetime import date

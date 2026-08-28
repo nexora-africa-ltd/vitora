@@ -1,31 +1,14 @@
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
-"""
-FHIR R4 HTTP Client for Vitora HMIS.
+"""Core fhir client for Vitora HMIS.
 
-This module provides an HTTP client for interacting with FHIR R4 servers,
-specifically designed for integration testing with HAPI FHIR and
-production use with Kenya SHA FHIR endpoints.
+What this file is for:
+- Implement fhir client logic for the core domain.
 
-Features:
-- Resource CRUD operations (Create, Read, Update, Delete)
-- Bundle transaction and message submission
-- Search with FHIR standard parameters
-- Response time tracking for performance monitoring
-- Automatic retry with exponential backoff
+How to use it:
+- Import classes and functions from this module in Django app code and tests.
 
-Reference:
-- HAPI FHIR: https://hapifhir.io/
-- FHIR R4 REST API: https://hl7.org/fhir/R4/http.html
-- Phase 3: docs/fhir-validation-plan.md
-
-Usage:
-    >>> from hmis.apps.core.services.fhir_client import FHIRClient
-    >>> client = FHIRClient("http://localhost:8090/fhir")
-    >>> # Create a patient
-    >>> result = client.create_resource("Patient", patient_data)
-    >>> print(result.resource_id)
-    >>> # Get a patient
-    >>> patient = client.read_resource("Patient", patient_id)
+Supported inputs/args:
+- Python imports and Django ORM/runtime inputs; no standalone CLI arguments.
 """
 
 import logging

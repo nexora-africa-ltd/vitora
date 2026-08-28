@@ -1,9 +1,15 @@
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 # ruff: noqa
-"""
-What this file is for: clinical documentation, CDS, stored AI result, and eGFR serializers.
-How to use: imported by `hmis.apps.ai.serializers` compatibility shim.
-Supported inputs/args: DRF serializers for documentation and persisted AI outputs.
+"""Ai serializers docs cds stored for Vitora HMIS.
+
+What this file is for:
+- Implement serializers docs cds stored logic for the ai domain.
+
+How to use it:
+- Import classes and functions from this module in Django app code and tests.
+
+Supported inputs/args:
+- Python imports and Django ORM/runtime inputs; no standalone CLI arguments.
 """
 
 from rest_framework import serializers

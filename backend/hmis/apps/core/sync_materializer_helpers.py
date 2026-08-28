@@ -1,9 +1,15 @@
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 # ruff: noqa
-"""
-What this file is for: data cleaning, remap orchestration, conflict, and utility helpers for sync materialization.
-How to use: imported by sync materializer core module and compatibility shim.
-Supported inputs/args: helper functions for parsing, remapping, and conflict bookkeeping.
+"""Core sync materializer helpers for Vitora HMIS.
+
+What this file is for:
+- Implement sync materializer helpers logic for the core domain.
+
+How to use it:
+- Import classes and functions from this module in Django app code and tests.
+
+Supported inputs/args:
+- Python imports and Django ORM/runtime inputs; no standalone CLI arguments.
 """
 
 from __future__ import annotations

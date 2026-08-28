@@ -1,9 +1,14 @@
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
-"""
-Laboratory services for Vitora HMIS.
+"""Laboratory services legacy for Vitora HMIS.
 
-This module provides service layer for laboratory workflow management,
-critical result alerts, and business logic.
+What this file is for:
+- Implement services legacy logic for the laboratory domain.
+
+How to use it:
+- Import classes and functions from this module in Django app code and tests.
+
+Supported inputs/args:
+- Python imports and Django ORM/runtime inputs; no standalone CLI arguments.
 """
 
 from datetime import timedelta

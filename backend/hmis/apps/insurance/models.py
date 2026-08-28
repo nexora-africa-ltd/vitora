@@ -1,20 +1,14 @@
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
-"""
-Insurance models for Vitora HMIS.
+"""Insurance models for Vitora HMIS.
 
-This module contains all private insurance–related models including:
-- InsuranceProvider: Registry of insurance companies
-- InsurancePlan: Plans/schemes offered by each provider
-- PatientInsurance: Patient enrollment in insurance plans
-- InsuranceProviderConfig: Per-facility insurer credentials & contract info
-- FacilitySladeCredential: Facility-level Slade OAuth credentials
-- InsuranceClaim: Claims submitted to private insurers
-- InsuranceClaimItem: Line items on claims
-- InsurancePreauth: Pre-authorization requests
-- InsuranceRemittance / InsuranceRemittanceLine: Batch payment tracking
-- PayerTariff: Service-to-payer code/rate mapping
+What this file is for:
+- Maintain backward-compatible exports for the insurance module split.
 
-All models follow facility/org scoping and TDD approach.
+How to use it:
+- Import from this legacy module path to keep existing imports working.
+
+Supported inputs/args:
+- Python imports and Django ORM/runtime inputs; no standalone CLI arguments.
 """
 
 from datetime import date, timedelta

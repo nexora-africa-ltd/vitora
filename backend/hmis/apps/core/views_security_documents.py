@@ -1,9 +1,15 @@
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 # ruff: noqa
-"""
-What this file is for: certificate authority, user certificates, document signatures, and document sharing endpoints.
-How to use: imported by `hmis.apps.core.views` compatibility module for API route wiring.
-Supported inputs/args: Django REST Framework viewsets/api views for certificate and document security workflows.
+"""Core views security documents for Vitora HMIS.
+
+What this file is for:
+- Implement views security documents logic for the core domain.
+
+How to use it:
+- Import classes and functions from this module in Django app code and tests.
+
+Supported inputs/args:
+- Python imports and Django ORM/runtime inputs; no standalone CLI arguments.
 """
 
 import logging

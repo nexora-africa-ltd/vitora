@@ -1,12 +1,14 @@
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
-"""
-Triage models for Vitora HMIS.
+"""Triage models for Vitora HMIS.
 
-This module implements the Kenya Emergency Triage Assessment (KETA) system
-for patient prioritization and queue management.
+What this file is for:
+- Maintain backward-compatible exports for the triage module split.
 
-Sprint 1.5-1.6 Track E: Triage Module MVP
-Phase 4: Auto-Escalation & Alerts
+How to use it:
+- Import from this legacy module path to keep existing imports working.
+
+Supported inputs/args:
+- Python imports and Django ORM/runtime inputs; no standalone CLI arguments.
 """
 
 from decimal import Decimal

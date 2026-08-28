@@ -1,16 +1,14 @@
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
-"""
-Billing Agent Service for Vitora HMIS.
+"""Billing agent for Vitora HMIS.
 
-Centralized orchestrator that automates the entire billing lifecycle:
-- Invoice creation and line item management (event-driven)
-- Daily bed charge accrual (scheduled)
-- Invoice finalization on discharge (event-driven)
-- SHA eligibility checks and claim creation (automatic)
-- Overdue invoice flagging (scheduled)
+What this file is for:
+- Implement agent logic for the billing domain.
 
-All billing logic flows through this service to ensure consistency,
-audit logging, and a single place to manage billing rules.
+How to use it:
+- Import classes and functions from this module in Django app code and tests.
+
+Supported inputs/args:
+- Python imports and Django ORM/runtime inputs; no standalone CLI arguments.
 """
 
 from __future__ import annotations

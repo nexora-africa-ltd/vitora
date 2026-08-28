@@ -1,9 +1,15 @@
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 # ruff: noqa
-"""
-What this file is for: diagnosis, treatment plan/template, medication, and encounter state history models.
-How to use: imported by `hmis.apps.encounters.models` compatibility module for model registration.
-Supported inputs/args: Django model fields and methods for diagnosis/treatment and encounter state tracking.
+"""Encounters models clinical for Vitora HMIS.
+
+What this file is for:
+- Implement models clinical logic for the encounters domain.
+
+How to use it:
+- Import classes and functions from this module in Django app code and tests.
+
+Supported inputs/args:
+- Python imports and Django ORM/runtime inputs; no standalone CLI arguments.
 """
 
 import logging

@@ -1,9 +1,15 @@
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 # ruff: noqa: ARG002, DJ012, SIM102
-"""
-What this file is for: geography, department, role, and staff reference models.
-How to use: imported by `hmis.apps.core.models_reference` for model registration and compatibility.
-Supported inputs/args: Django model fields/methods for identity, staffing, and location hierarchy.
+"""Core models reference geo staff for Vitora HMIS.
+
+What this file is for:
+- Implement models reference geo staff logic for the core domain.
+
+How to use it:
+- Import classes and functions from this module in Django app code and tests.
+
+Supported inputs/args:
+- Python imports and Django ORM/runtime inputs; no standalone CLI arguments.
 """
 
 from django.conf import settings

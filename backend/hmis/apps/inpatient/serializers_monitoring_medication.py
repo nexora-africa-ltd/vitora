@@ -1,9 +1,15 @@
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 # ruff: noqa
-"""
-What this file is for: inpatient monitoring, medication administration, and bed recommendation serializers.
-How to use: imported by `hmis.apps.inpatient.serializers` compatibility shim.
-Supported inputs/args: DRF serializers for vitals, fluid balance, transfusion, and medication workflows.
+"""Inpatient serializers monitoring medication for Vitora HMIS.
+
+What this file is for:
+- Implement serializers monitoring medication logic for the inpatient domain.
+
+How to use it:
+- Import classes and functions from this module in Django app code and tests.
+
+Supported inputs/args:
+- Python imports and Django ORM/runtime inputs; no standalone CLI arguments.
 """
 
 from rest_framework import serializers

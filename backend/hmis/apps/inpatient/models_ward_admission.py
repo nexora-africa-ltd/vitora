@@ -1,9 +1,15 @@
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 # ruff: noqa
-"""
-What this file is for: ward, bed, admission recommendation, admission, discharge, and discharge draft inpatient models.
-How to use: imported by `hmis.apps.inpatient.models` compatibility module for model registration.
-Supported inputs/args: Django model fields/methods for inpatient admission and discharge workflows.
+"""Inpatient models ward admission for Vitora HMIS.
+
+What this file is for:
+- Implement models ward admission logic for the inpatient domain.
+
+How to use it:
+- Import classes and functions from this module in Django app code and tests.
+
+Supported inputs/args:
+- Python imports and Django ORM/runtime inputs; no standalone CLI arguments.
 """
 
 from __future__ import annotations

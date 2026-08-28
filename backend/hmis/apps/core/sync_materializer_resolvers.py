@@ -1,9 +1,15 @@
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 # ruff: noqa
-"""
-What this file is for: natural-key resolver and FK remap helpers for sync materialization.
-How to use: imported by sync materializer core/helper modules and compatibility shim.
-Supported inputs/args: resolver functions for mapping cloud sync payloads to local FK IDs.
+"""Core sync materializer resolvers for Vitora HMIS.
+
+What this file is for:
+- Implement sync materializer resolvers logic for the core domain.
+
+How to use it:
+- Import classes and functions from this module in Django app code and tests.
+
+Supported inputs/args:
+- Python imports and Django ORM/runtime inputs; no standalone CLI arguments.
 """
 
 from __future__ import annotations

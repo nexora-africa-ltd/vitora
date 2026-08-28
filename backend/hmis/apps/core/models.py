@@ -1,8 +1,14 @@
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
-"""
-What this file is for: backward-compatible core model export surface.
-How to use: existing imports from `hmis.apps.core.models` continue to work while models live in focused modules.
-Supported inputs/args: import-time model symbol re-exports only.
+"""Core models for Vitora HMIS.
+
+What this file is for:
+- Maintain backward-compatible exports for the core module split.
+
+How to use it:
+- Import from this legacy module path to keep existing imports working.
+
+Supported inputs/args:
+- Python imports and Django ORM/runtime inputs; no standalone CLI arguments.
 """
 
 # Import EventStore so Django discovers it for migrations.
