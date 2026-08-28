@@ -1,5 +1,5 @@
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
-# ruff: noqa
+# ruff: noqa: ARG002, F401
 """Scheduling views shift swap for Vitora HMIS.
 
 What this file is for:

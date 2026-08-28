@@ -1,5 +1,5 @@
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
-# ruff: noqa
+# ruff: noqa: ARG002, E402, F401
 """Encounters views encounter treatment for Vitora HMIS.
 
 What this file is for:
@@ -12,7 +12,6 @@ Supported inputs/args:
 - Python imports and Django ORM/runtime inputs; no standalone CLI arguments.
 """
 
-# ruff: noqa
 """
 What this file is for: encounter core viewset plus treatment-plan application API views.
 How to use: imported by `hmis.apps.encounters.views` compatibility shim.

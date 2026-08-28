@@ -1,5 +1,5 @@
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
-# ruff: noqa
+# ruff: noqa: ARG002, F401
 """Core views staff rbac for Vitora HMIS.
 
 What this file is for:

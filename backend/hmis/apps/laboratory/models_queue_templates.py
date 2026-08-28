@@ -1,5 +1,5 @@
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
-# ruff: noqa
+# ruff: noqa: DJ012, E402, F405
 """Laboratory models queue templates for Vitora HMIS.
 
 What this file is for:

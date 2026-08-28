@@ -1,5 +1,5 @@
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
-# ruff: noqa
+# ruff: noqa: E402, F401
 """Core dashboard views stats for Vitora HMIS.
 
 What this file is for:

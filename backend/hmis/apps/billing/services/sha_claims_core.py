@@ -1,5 +1,4 @@
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
-# ruff: noqa
 """Billing sha claims core for Vitora HMIS.
 
 What this file is for:

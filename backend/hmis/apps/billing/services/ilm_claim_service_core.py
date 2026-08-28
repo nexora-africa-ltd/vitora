@@ -1,5 +1,4 @@
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
-# ruff: noqa
 """Billing ilm claim service core for Vitora HMIS.
 
 What this file is for:

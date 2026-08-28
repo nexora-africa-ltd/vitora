@@ -1,5 +1,5 @@
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
-# ruff: noqa
+# ruff: noqa: E402, F405
 """Billing terminology drug loinc for Vitora HMIS.
 
 What this file is for:

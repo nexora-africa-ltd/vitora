@@ -1,5 +1,5 @@
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
-# ruff: noqa
+# ruff: noqa: E402, F401
 """Mch models maternal journey for Vitora HMIS.
 
 What this file is for:
@@ -12,7 +12,6 @@ Supported inputs/args:
 - Python imports and Django ORM/runtime inputs; no standalone CLI arguments.
 """
 
-# ruff: noqa
 """
 What this file is for: maternal journey models from registration through ANC, delivery, labour, and PNC.
 How to use: imported by `hmis.apps.mch.models` compatibility shim.

@@ -1,5 +1,5 @@
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
-# ruff: noqa
+# ruff: noqa: ARG002, F401, SIM103
 """Inpatient models atr templates for Vitora HMIS.
 
 What this file is for:

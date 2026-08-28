@@ -1,5 +1,5 @@
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
-# ruff: noqa
+# ruff: noqa: ARG002, F401, F811, SIM105
 """Triage views assessment queue for Vitora HMIS.
 
 What this file is for:

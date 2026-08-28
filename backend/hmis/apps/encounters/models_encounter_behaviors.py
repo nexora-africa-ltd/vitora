@@ -1,5 +1,5 @@
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
-# ruff: noqa
+# ruff: noqa: F401, F811, F821
 """Encounters models encounter behaviors for Vitora HMIS.
 
 What this file is for:

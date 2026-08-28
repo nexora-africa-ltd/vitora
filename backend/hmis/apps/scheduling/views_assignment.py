@@ -1,5 +1,5 @@
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
-# ruff: noqa
+# ruff: noqa: ARG002, F401, F811
 """Scheduling views assignment for Vitora HMIS.
 
 What this file is for:

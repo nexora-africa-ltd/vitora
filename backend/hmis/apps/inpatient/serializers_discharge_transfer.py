@@ -1,5 +1,5 @@
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
-# ruff: noqa
+# ruff: noqa: F401, SIM102
 """Inpatient serializers discharge transfer for Vitora HMIS.
 
 What this file is for:

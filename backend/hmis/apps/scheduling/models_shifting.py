@@ -1,5 +1,4 @@
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
-# ruff: noqa
 """Scheduling models shifting for Vitora HMIS.
 
 What this file is for:
