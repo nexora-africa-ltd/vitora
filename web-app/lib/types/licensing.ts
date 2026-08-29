@@ -70,6 +70,15 @@ export interface InstallationDetail extends InstallationListItem {
   activation_code: string;
   activated_by: number | null;
   check_in_ip: string;
+  check_in_count: number;
+  hostname: string;
+  hardware_fingerprint: string;
+  binary_manifest_id: string;
+  tamper_flagged_at: string | null;
+  tamper_resolved_at: string | null;
+  revocation_epoch: number;
+  last_reported_hashes: Record<string, string>;
+  is_tampered: boolean;
   revoked_at: string | null;
   revoked_reason: string;
   updated_at: string;

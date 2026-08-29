@@ -263,6 +263,29 @@ class TestActivation:
         assert pending_installation.eula_accepted_at is not None
         assert pending_installation.eula_version == HUB_EULA_VERSION
 
+    def test_activation_defaults_name_to_installation_id_when_name_missing(
+        self, api_client, pending_installation
+    ):
+        """Activation should avoid empty display names for installations."""
+        pending_installation.name = ""
+        pending_installation.save(update_fields=["name"])
+        client_uuid = uuid.uuid4()
+
+        response = api_client.post(
+            "/api/licensing/activate/",
+            {
+                "installation_id": str(client_uuid),
+                "activation_code": "TEST-ACTIVATION-CODE",
+                "eula_accepted": True,
+                "eula_version": HUB_EULA_VERSION,
+            },
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        pending_installation.refresh_from_db()
+        assert pending_installation.name == str(client_uuid)
+
     def test_activation_returns_hub_bootstrap_payload(self, api_client, pending_installation):
         """Activation should return org/facility data needed to seed a local hub."""
         client_uuid = uuid.uuid4()

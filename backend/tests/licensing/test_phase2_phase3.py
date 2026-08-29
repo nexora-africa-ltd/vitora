@@ -300,6 +300,20 @@ class TestEnhancedCheckIn:
         assert "license" in response.data
         assert "binary_manifest_id" in response.data
 
+    def test_check_in_accepts_os_alias_and_persists_os_info(self, api_client, active_installation):
+        """Legacy payload key `os` should populate Installation.os_info."""
+        response = api_client.post(
+            "/api/licensing/check-in/",
+            {
+                "installation_id": "hub-test-12345",
+                "os": "Ubuntu 24.04 LTS",
+            },
+            format="json",
+        )
+        assert response.status_code == http_status.HTTP_200_OK
+        active_installation.refresh_from_db()
+        assert active_installation.os_info == "Ubuntu 24.04 LTS"
+
     def test_check_in_binds_hardware_fingerprint(self, api_client, active_installation):
         """First check-in with fingerprint should bind it to the installation."""
         fp = "deadbeef" * 8
@@ -353,6 +367,7 @@ class TestEnhancedCheckIn:
         assert response.status_code == http_status.HTTP_200_OK
         active_installation.refresh_from_db()
         assert active_installation.tamper_flagged_at is None
+        assert active_installation.binary_manifest_id == "1.4.5-r1"
 
     def test_check_in_integrity_fail_flags_tamper(
         self, api_client, active_installation, release_manifest

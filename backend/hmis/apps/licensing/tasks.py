@@ -92,7 +92,7 @@ def license_check_in(self) -> dict:
         "version": _get_app_version(),
         "uptime_seconds": _get_uptime_seconds(),
         "hostname": platform.node(),
-        "os": f"{platform.system()} {platform.release()}",
+        "os_info": f"{platform.system()} {platform.release()}",
         "ip_address": "",  # Cloud will see this from the request
         "user_count_24h": user_count,
         "encounter_count_24h": encounter_count,

@@ -185,7 +185,7 @@ def activate_installation(request: Request) -> Response:
     installation.activated_at = timezone.now()
     installation.eula_accepted_at = timezone.now()
     installation.eula_version = requested_eula_version
-    installation.name = data.get("name") or installation.name
+    installation.name = (data.get("name") or installation.name or installation_id).strip()
     installation.app_version = data.get("app_version", "")
     installation.os_info = data.get("os_info", "")
     installation.check_in_ip = _get_client_ip(request)
@@ -290,7 +290,9 @@ def check_in(request: Request) -> Response:
     installation.last_check_in = timezone.now()
     installation.check_in_ip = client_ip
     installation.app_version = app_version
-    installation.os_info = data.get("os_info") or installation.os_info
+    installation.os_info = (
+        data.get("os_info") or data.get("os") or request.data.get("os") or installation.os_info
+    )
     installation.hostname = data.get("hostname") or installation.hostname
     installation.check_in_count = (installation.check_in_count or 0) + 1
 
@@ -382,12 +384,14 @@ def _verify_integrity(installation, binary_hashes: dict, app_version: str) -> di
 
     result = manifest.verify_hashes(binary_hashes)
 
+    if installation.binary_manifest_id != manifest.manifest_id:
+        installation.binary_manifest_id = manifest.manifest_id
+        installation.save(update_fields=["binary_manifest_id", "updated_at"])
+
     if not result["match"]:
         # Flag tamper if not already flagged
         if not installation.tamper_flagged_at:
             installation.flag_tamper()
-        installation.binary_manifest_id = manifest.manifest_id
-        installation.save(update_fields=["binary_manifest_id", "updated_at"])
     else:
         # Hashes match — clear any previous tamper flag
         if installation.tamper_flagged_at and not installation.tamper_resolved_at:
@@ -405,7 +409,7 @@ def _create_check_in_log(installation, data: dict, client_ip: str, integrity_res
         ip_address=client_ip,
         hostname=data.get("hostname", ""),
         app_version=data.get("version") or data.get("app_version", ""),
-        os_info=data.get("os_info", ""),
+        os_info=data.get("os_info") or data.get("os", ""),
         uptime_seconds=data.get("uptime_seconds", 0),
         user_count_24h=data.get("user_count_24h", 0),
         encounter_count_24h=data.get("encounter_count_24h", 0),

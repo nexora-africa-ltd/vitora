@@ -35,6 +35,12 @@ class ActivationRequestSerializer(serializers.Serializer):
         required=False,
         default="",
     )
+    os = serializers.CharField(
+        max_length=200,
+        required=False,
+        default="",
+        help_text="Legacy alias for os_info used by older check-in clients.",
+    )
     eula_accepted = serializers.BooleanField(
         required=True,
         help_text="Must be true to confirm acceptance of the Hub EULA.",

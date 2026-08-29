@@ -251,7 +251,7 @@ export default function InstallationsPage() {
               sortable: true,
               cell: (item) => (
                 <div>
-                  <p className="font-medium">{item.name || 'Unnamed'}</p>
+                  <p className="font-medium">{item.name || item.installation_id || 'Unnamed'}</p>
                   <p className="text-xs text-muted-foreground">{item.org_name}</p>
                 </div>
               ),
@@ -294,7 +294,7 @@ export default function InstallationsPage() {
               <Card className="p-3">
                 <div className="flex justify-between items-start">
                   <div>
-                    <p className="font-medium">{item.name || 'Unnamed'}</p>
+                    <p className="font-medium">{item.name || item.installation_id || 'Unnamed'}</p>
                     <p className="text-xs text-muted-foreground">{item.org_name}</p>
                   </div>
                   <Badge className={`${statusColors[item.status]} gap-1 shrink-0`}>

@@ -124,7 +124,12 @@ export default function InstallationDetailPage({ params }: { params: Promise<{ i
   return (
     <div className="space-y-4 sm:space-y-6">
       <PageHeader
-        title={installation.name || 'Unnamed Installation'}
+        title={
+          installation.name ||
+          installation.hostname ||
+          installation.installation_id ||
+          'Unnamed Installation'
+        }
         helpContent="View installation details and manage its license status."
         actions={
           <div className="flex flex-col gap-2 sm:flex-row">
@@ -218,7 +223,9 @@ export default function InstallationDetailPage({ params }: { params: Promise<{ i
           <CardContent className="space-y-3 text-sm">
             <Row label="Version" value={installation.app_version || '—'} />
             <Row label="OS" value={installation.os_info || '—'} />
+            <Row label="Hostname" value={installation.hostname || '—'} />
             <Row label="Last IP" value={installation.check_in_ip || '—'} />
+            <Row label="Check-ins" value={String(installation.check_in_count || 0)} />
             <Row label="Created" value={formatDate(installation.created_at)} />
           </CardContent>
         </Card>
@@ -238,6 +245,23 @@ export default function InstallationDetailPage({ params }: { params: Promise<{ i
             {installation.revoked_reason && (
               <Row label="Reason" value={installation.revoked_reason} />
             )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Integrity & Security</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3 text-sm">
+            <Row label="Hardware fingerprint" value={installation.hardware_fingerprint || '—'} />
+            <Row label="Binary manifest ID" value={installation.binary_manifest_id || '—'} />
+            <Row label="Monotonic counter" value={String(installation.revocation_epoch ?? 0)} />
+            <Row
+              label="Last reported hashes"
+              value={String(Object.keys(installation.last_reported_hashes || {}).length)}
+            />
+            <Row label="Tamper flagged at" value={formatDate(installation.tamper_flagged_at)} />
+            <Row label="Tamper resolved at" value={formatDate(installation.tamper_resolved_at)} />
           </CardContent>
         </Card>
       </div>
