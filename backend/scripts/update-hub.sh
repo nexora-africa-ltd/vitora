@@ -20,6 +20,7 @@ SERVICE_NAME="vitora-hub"
 VERSION=""
 BACKUP_DIR="${APP_DIR}/backup"
 BACKUP_PATH="${BACKUP_DIR}/pre-update-current"
+HUB_RELEASE_BASE=""
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -29,6 +30,52 @@ NC='\033[0m'
 info()  { echo -e "${GREEN}[INFO]${NC} $*"; }
 warn()  { echo -e "${YELLOW}[WARN]${NC} $*"; }
 error() { echo -e "${RED}[ERROR]${NC} $*" >&2; }
+
+fetch_latest_version() {
+    local manifest_url manifest_json parsed_version
+    local candidates=(
+        "${CDN_BASE_URL}/hub/latest.json"
+        "${CDN_BASE_URL}/releases/hub/latest.json"
+    )
+
+    for manifest_url in "${candidates[@]}"; do
+        manifest_json=$(curl -fsSL "$manifest_url" 2>/dev/null || true)
+        if [[ -z "$manifest_json" ]]; then
+            continue
+        fi
+        parsed_version=$(python3 -c "import json,sys; print(json.load(sys.stdin).get('version',''))" <<<"$manifest_json" 2>/dev/null || true)
+        if [[ -n "$parsed_version" ]]; then
+            HUB_RELEASE_BASE="${manifest_url%/latest.json}"
+            echo "$parsed_version"
+            return 0
+        fi
+    done
+
+    return 1
+}
+
+resolve_artifact_url() {
+    local artifact_name="$1"
+    local url
+    local candidates=()
+
+    if [[ -n "$HUB_RELEASE_BASE" ]]; then
+        candidates+=("${HUB_RELEASE_BASE}/${artifact_name}")
+    fi
+    candidates+=(
+        "${CDN_BASE_URL}/hub/${artifact_name}"
+        "${CDN_BASE_URL}/releases/hub/${artifact_name}"
+    )
+
+    for url in "${candidates[@]}"; do
+        if curl -fsSL "$url" -o "$TEMP"; then
+            echo "$url"
+            return 0
+        fi
+    done
+
+    return 1
+}
 
 # Parse args
 while [[ $# -gt 0 ]]; do
@@ -55,8 +102,13 @@ info "Current version: $CURRENT_VERSION"
 # Resolve target version
 if [[ -z "$VERSION" ]]; then
     info "Fetching latest release..."
-    VERSION=$(curl -fsSL "${CDN_BASE_URL}/hub/latest.json" \
-        | python3 -c "import sys,json; print(json.load(sys.stdin)['version'])" 2>/dev/null)
+    VERSION=$(fetch_latest_version || true)
+    if [[ -z "$VERSION" ]]; then
+        error "Failed to fetch latest version manifest. Tried:"
+        error "  ${CDN_BASE_URL}/hub/latest.json"
+        error "  ${CDN_BASE_URL}/releases/hub/latest.json"
+        exit 1
+    fi
 fi
 
 if [[ "$VERSION" == "$CURRENT_VERSION" ]]; then
@@ -68,14 +120,16 @@ info "Updating to version: $VERSION"
 
 # Download
 ARTIFACT="vitora-hub-${VERSION}.tar.gz"
-URL="${CDN_BASE_URL}/hub/${ARTIFACT}"
 TEMP="/tmp/${ARTIFACT}"
 
-info "Downloading ${URL}..."
-curl -fsSL "$URL" -o "$TEMP" || {
-    error "Failed to download. Check version exists."
+URL=$(resolve_artifact_url "$ARTIFACT" || true)
+if [[ -z "$URL" ]]; then
+    error "Failed to download. Tried:"
+    error "  ${CDN_BASE_URL}/hub/${ARTIFACT}"
+    error "  ${CDN_BASE_URL}/releases/hub/${ARTIFACT}"
     exit 1
-}
+fi
+info "Downloading ${URL}..."
 
 # Stop service
 info "Stopping hub service..."

@@ -35,6 +35,7 @@ DB_DIR="/var/lib/vitora"
 VERSION=""
 DELIVERY_MODE="native"  # native | container
 DEFAULT_EULA_VERSION="2026-07-31"
+HUB_RELEASE_BASE=""
 
 # Colors
 RED='\033[0;31m'
@@ -233,21 +234,32 @@ resolve_version() {
     fi
 
     info "Fetching latest release version..."
-    local latest_url="${CDN_BASE_URL}/hub/latest.json"
-    local ver
+    local latest_url ver
+    local candidates=(
+        "${CDN_BASE_URL}/hub/latest.json"
+        "${CDN_BASE_URL}/releases/hub/latest.json"
+    )
 
-    if [[ "$DOWNLOADER" == "curl" ]]; then
-        ver=$(curl -fsSL "$latest_url" | python3 -c "import sys,json; print(json.load(sys.stdin)['version'])" 2>/dev/null)
-    else
-        ver=$(wget -qO- "$latest_url" | python3 -c "import sys,json; print(json.load(sys.stdin)['version'])" 2>/dev/null)
-    fi
+    for latest_url in "${candidates[@]}"; do
+        if [[ "$DOWNLOADER" == "curl" ]]; then
+            ver=$(curl -fsSL "$latest_url" | python3 -c "import sys,json; print(json.load(sys.stdin).get('version',''))" 2>/dev/null || true)
+        else
+            ver=$(wget -qO- "$latest_url" | python3 -c "import sys,json; print(json.load(sys.stdin).get('version',''))" 2>/dev/null || true)
+        fi
+        if [[ -n "$ver" ]]; then
+            HUB_RELEASE_BASE="${latest_url%/latest.json}"
+            echo "$ver"
+            return
+        fi
+    done
 
     if [[ -z "$ver" ]]; then
         error "Could not determine latest version. Use --version to specify manually."
+        error "Tried:"
+        error "  ${CDN_BASE_URL}/hub/latest.json"
+        error "  ${CDN_BASE_URL}/releases/hub/latest.json"
         exit 1
     fi
-
-    echo "$ver"
 }
 
 # --- Banner ---
@@ -525,13 +537,35 @@ fi
 step "2/7 Downloading Vitora Hub v${VERSION}..."
 TEMP_ARCHIVE="/tmp/${ARTIFACT_NAME}"
 
-download "$DOWNLOAD_URL" "$TEMP_ARCHIVE" || {
+DOWNLOAD_CANDIDATES=()
+if [[ -n "$HUB_RELEASE_BASE" ]]; then
+    DOWNLOAD_CANDIDATES+=("${HUB_RELEASE_BASE}/${ARTIFACT_NAME}")
+fi
+DOWNLOAD_CANDIDATES+=(
+    "${CDN_BASE_URL}/hub/${ARTIFACT_NAME}"
+    "${CDN_BASE_URL}/releases/hub/${ARTIFACT_NAME}"
+)
+
+DOWNLOAD_URL=""
+for candidate in "${DOWNLOAD_CANDIDATES[@]}"; do
+    if download "$candidate" "$TEMP_ARCHIVE"; then
+        DOWNLOAD_URL="$candidate"
+        break
+    fi
+done
+
+if [[ -z "$DOWNLOAD_URL" ]]; then
     error "Failed to download release artifact."
-    error "URL: $DOWNLOAD_URL"
-    error "Check that version '${VERSION}' is published at:"
+    error "Tried artifact URLs:"
+    error "  ${CDN_BASE_URL}/hub/${ARTIFACT_NAME}"
+    error "  ${CDN_BASE_URL}/releases/hub/${ARTIFACT_NAME}"
+    error "And manifest URLs:"
     error "  ${CDN_BASE_URL}/hub/latest.json"
+    error "  ${CDN_BASE_URL}/releases/hub/latest.json"
     exit 1
-}
+fi
+
+info "Downloaded artifact from: $DOWNLOAD_URL"
 
 info "Extracting to ${APP_DIR}..."
 

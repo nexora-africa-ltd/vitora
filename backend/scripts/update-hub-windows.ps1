@@ -26,6 +26,10 @@ $VenvDir = "$InstallDir\venv"
 $BackupDir = "$InstallDir\backup"
 $LogDir = "$InstallDir\logs"
 $LogFile = "$LogDir\update-$(Get-Date -Format 'yyyyMMdd-HHmmss').log"
+$script:HubArtifactBaseUrls = @(
+    "$CdnBaseUrl/hub",
+    "$CdnBaseUrl/releases/hub"
+)
 
 # --- Helper Functions ---
 function Write-Step  { param($num, $msg) Write-Host "[STEP $num] $msg" -ForegroundColor Cyan }
@@ -51,6 +55,28 @@ function Build-HubServiceEnvironment {
         "DJANGO_SETTINGS_MODULE=$(Get-HubEnvValue 'DJANGO_SETTINGS_MODULE' 'hmis.settings.hub')",
         "HUB_SECRETS_FILE=$(Get-HubEnvValue 'HUB_SECRETS_FILE' (Join-Path $InstallDir 'secrets\hub-secrets.dpapi.json'))"
     ) -join "`n"
+}
+
+function Resolve-LatestHubVersion {
+    $manifestUrls = @(
+        "$CdnBaseUrl/hub/latest.json",
+        "$CdnBaseUrl/releases/hub/latest.json"
+    )
+
+    foreach ($manifestUrl in $manifestUrls) {
+        try {
+            $manifest = Invoke-RestMethod -Uri $manifestUrl -UseBasicParsing
+            if ($manifest.version) {
+                $baseUrl = $manifestUrl -replace '/latest\.json$', ''
+                $script:HubArtifactBaseUrls = @($baseUrl) + @($script:HubArtifactBaseUrls | Where-Object { $_ -ne $baseUrl })
+                return $manifest.version
+            }
+        } catch {
+            continue
+        }
+    }
+
+    return $null
 }
 
 function Write-DpapiSecretsBundle {
@@ -189,14 +215,14 @@ Write-Step 1 "Resolving target version..."
 if ($Version) {
     Write-Info "Using specified version: $Version"
 } else {
-    try {
-        $manifest = Invoke-RestMethod -Uri "$CdnBaseUrl/hub/latest.json" -UseBasicParsing
-        $Version = $manifest.version
-        Write-Info "Latest version: $Version"
-    } catch {
-        Write-Err "Failed to fetch latest version from $CdnBaseUrl/hub/latest.json"
+    $Version = Resolve-LatestHubVersion
+    if (-not $Version) {
+        Write-Err "Failed to fetch latest version manifest. Tried:"
+        Write-Err "  $CdnBaseUrl/hub/latest.json"
+        Write-Err "  $CdnBaseUrl/releases/hub/latest.json"
         exit 1
     }
+    Write-Info "Latest version: $Version"
 }
 
 if ($Version -eq $CurrentVersion) {
@@ -213,11 +239,26 @@ Write-Step 2 "Downloading vitora-hub-${Version}..."
 $ArtifactUrl = "$CdnBaseUrl/hub/vitora-hub-${Version}.zip"
 $tempArchive = "$env:TEMP\vitora-hub-${Version}.zip"
 
-try {
-    Invoke-WebRequest -Uri $ArtifactUrl -OutFile $tempArchive -UseBasicParsing
-    Write-Ok "Downloaded successfully."
-} catch {
-    Write-Err "Failed to download: $ArtifactUrl"
+$downloadSucceeded = $false
+$downloadErrors = @()
+foreach ($baseUrl in $script:HubArtifactBaseUrls) {
+    $candidateUrl = "$baseUrl/vitora-hub-${Version}.zip"
+    try {
+        Invoke-WebRequest -Uri $candidateUrl -OutFile $tempArchive -UseBasicParsing
+        $ArtifactUrl = $candidateUrl
+        $downloadSucceeded = $true
+        Write-Ok "Downloaded successfully."
+        break
+    } catch {
+        $downloadErrors += $candidateUrl
+    }
+}
+
+if (-not $downloadSucceeded) {
+    Write-Err "Failed to download release artifact. Tried:"
+    foreach ($failedUrl in $downloadErrors) {
+        Write-Err "  $failedUrl"
+    }
     exit 1
 }
 

@@ -48,6 +48,10 @@ $NssmUrls = @(
     "https://nssm.cc/release/nssm-2.24.zip"
 )
 $NssmDir = "$InstallDir\nssm"
+$script:HubArtifactBaseUrls = @(
+    "$CdnBaseUrl/hub",
+    "$CdnBaseUrl/releases/hub"
+)
 
 # --- Helper Functions ---
 function Write-Step  { param($num, $msg) Write-Host "[STEP $num] $msg" -ForegroundColor Cyan }
@@ -126,13 +130,29 @@ function Resolve-LatestVersion {
     if ($Version) { return $Version }
 
     Write-Info "Fetching latest release version..."
-    try {
-        $manifest = Invoke-RestMethod -Uri "$CdnBaseUrl/hub/latest.json" -UseBasicParsing
-        return $manifest.version
-    } catch {
-        Write-Err "Could not determine latest version. Use -Version parameter."
-        exit 1
+    $manifestUrls = @(
+        "$CdnBaseUrl/hub/latest.json",
+        "$CdnBaseUrl/releases/hub/latest.json"
+    )
+
+    foreach ($manifestUrl in $manifestUrls) {
+        try {
+            $manifest = Invoke-RestMethod -Uri $manifestUrl -UseBasicParsing
+            if ($manifest.version) {
+                $baseUrl = $manifestUrl -replace '/latest\.json$', ''
+                $script:HubArtifactBaseUrls = @($baseUrl) + @($script:HubArtifactBaseUrls | Where-Object { $_ -ne $baseUrl })
+                return $manifest.version
+            }
+        } catch {
+            continue
+        }
     }
+
+    Write-Err "Could not determine latest version. Use -Version parameter."
+    Write-Err "Tried:"
+    Write-Err "  $CdnBaseUrl/hub/latest.json"
+    Write-Err "  $CdnBaseUrl/releases/hub/latest.json"
+    exit 1
 }
 
 # --- Banner ---
@@ -155,7 +175,7 @@ Write-Info "Python 3.12 OK"
 # --- Resolve Version ---
 $Version = Resolve-LatestVersion
 $ArtifactName = "vitora-hub-${Version}.zip"
-$DownloadUrl = "$CdnBaseUrl/hub/$ArtifactName"
+$DownloadUrl = "$($script:HubArtifactBaseUrls[0])/$ArtifactName"
 
 Write-Info "Version: $Version"
 Write-Info "Download: $DownloadUrl"
@@ -337,14 +357,32 @@ New-Item -ItemType Directory -Force -Path $NssmDir | Out-Null
 Write-Step 2 "Downloading Vitora Hub v${Version}..."
 $tempArchive = "$env:TEMP\$ArtifactName"
 
-try {
-    Invoke-WebRequest -Uri $DownloadUrl -OutFile $tempArchive -UseBasicParsing
-} catch {
+$downloadSucceeded = $false
+$downloadErrors = @()
+foreach ($baseUrl in $script:HubArtifactBaseUrls) {
+    $candidateUrl = "$baseUrl/$ArtifactName"
+    try {
+        Invoke-WebRequest -Uri $candidateUrl -OutFile $tempArchive -UseBasicParsing
+        $DownloadUrl = $candidateUrl
+        $downloadSucceeded = $true
+        break
+    } catch {
+        $downloadErrors += $candidateUrl
+    }
+}
+
+if (-not $downloadSucceeded) {
     Write-Err "Failed to download release artifact."
-    Write-Err "URL: $DownloadUrl"
-    Write-Err "Check that version '$Version' is published at: $CdnBaseUrl/hub/latest.json"
+    Write-Err "Tried URLs:"
+    foreach ($failedUrl in $downloadErrors) {
+        Write-Err "  $failedUrl"
+    }
+    Write-Err "Manifest URLs:"
+    Write-Err "  $CdnBaseUrl/hub/latest.json"
+    Write-Err "  $CdnBaseUrl/releases/hub/latest.json"
     exit 1
 }
+Write-Info "Downloaded artifact from: $DownloadUrl"
 
 # Extract zip
 Write-Info "Extracting to $InstallDir..."
