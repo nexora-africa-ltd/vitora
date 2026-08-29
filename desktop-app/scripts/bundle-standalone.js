@@ -19,7 +19,10 @@ const STATIC_SRC = path.join(WEB_APP_DIR, '.next/static');
 const PUBLIC_SRC = path.join(WEB_APP_DIR, 'public');
 const STAGING_DIR = path.resolve(__dirname, '../src-tauri/standalone');
 const ARCHIVE_DEST = path.resolve(__dirname, '../src-tauri/standalone.tar.gz');
-const LEGACY_API_HOST = 'api.vitora.digital';
+const BLOCKED_API_HOSTS = (process.env.DESKTOP_BLOCKED_API_HOSTS || '')
+  .split(',')
+  .map((host) => host.trim())
+  .filter(Boolean);
 const TEXT_FILE_EXTENSIONS = new Set([
   '.css',
   '.html',
@@ -64,13 +67,12 @@ function copyDirSync(src, dest) {
   }
 }
 
-function assertNoLegacyApiHost(dir) {
-  // Regex that matches the legacy host used as an API target (assigned to a
+function findBlockedHostOffenders(dir, host) {
+  const escapedHost = host.replace(/\./g, '\\.');
+  // Regex that matches the blocked host used as an API target (assigned to a
   // variable, passed to fetch, used as baseURL, etc.) but NOT when it only
   // appears in an equality comparison for migration detection.
-  // We flag a file if it contains the host AND it appears in a context that
-  // looks like a configuration value rather than a guard comparison.
-  const COMPARISON_RE = new RegExp(`[!=]=\\s*['"\`]https?://${LEGACY_API_HOST.replace(/\./g, '\\.')}|https?://${LEGACY_API_HOST.replace(/\./g, '\\.')}['"\`]\\s*[!=]=`);
+  const COMPARISON_RE = new RegExp(`[!=]=\\s*['"\`]https?://${escapedHost}|https?://${escapedHost}['"\`]\\s*[!=]=`);
   const offenders = [];
 
   function walk(current) {
@@ -86,12 +88,12 @@ function assertNoLegacyApiHost(dir) {
       }
 
       const contents = fs.readFileSync(fullPath, 'utf8');
-      if (!contents.includes(LEGACY_API_HOST)) {
+      if (!contents.includes(host)) {
         continue;
       }
 
       // Count total occurrences vs comparison-only occurrences
-      const allMatches = contents.split(LEGACY_API_HOST).length - 1;
+      const allMatches = contents.split(host).length - 1;
       const comparisonMatches = (contents.match(COMPARISON_RE) || []).length;
 
       // If every occurrence is in a comparison context, it's safe
@@ -103,14 +105,32 @@ function assertNoLegacyApiHost(dir) {
 
   walk(dir);
 
-  if (offenders.length > 0) {
-    console.error(`  ERROR: Legacy API host '${LEGACY_API_HOST}' found in standalone bundle:`);
+  return offenders;
+}
+
+function assertNoBlockedApiHosts(dir) {
+  if (BLOCKED_API_HOSTS.length === 0) {
+    return;
+  }
+
+  let hasFailure = false;
+  for (const host of BLOCKED_API_HOSTS) {
+    const offenders = findBlockedHostOffenders(dir, host);
+    if (offenders.length === 0) {
+      continue;
+    }
+
+    hasFailure = true;
+    console.error(`  ERROR: Blocked API host '${host}' found in standalone bundle:`);
     for (const offender of offenders.slice(0, 20)) {
       console.error(`    - ${offender}`);
     }
     if (offenders.length > 20) {
       console.error(`    ...and ${offenders.length - 20} more`);
     }
+  }
+
+  if (hasFailure) {
     process.exit(1);
   }
 }
@@ -161,7 +181,7 @@ if (missing) {
   process.exit(1);
 }
 
-assertNoLegacyApiHost(STAGING_DIR);
+assertNoBlockedApiHosts(STAGING_DIR);
 
 // 5. Create tar.gz archive
 console.log(`  Creating archive → ${ARCHIVE_DEST}`);
