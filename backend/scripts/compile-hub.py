@@ -155,8 +155,9 @@ def _build():
                 # Don't auto-generate cpdef for Python functions.
                 "auto_cpdef": False,
             }},
-            # If a file fails to translate, skip it (keeps .py - degraded protection but build wins).
-            exclude_failures=True,
+            # Keep default failure behavior (raise on translation errors).
+            # Cython 3.1.x can throw "TypeError: unhashable type: 'Extension'"
+            # when exclude_failures=True is used with setuptools Extension objects.
             build_dir="build/cython_c",
             force=True,
             quiet=False,

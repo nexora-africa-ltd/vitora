@@ -103,7 +103,9 @@ jobs:
           # and Windows file locks cause "[WinError 32] file in use" failures.
           # pip install -r is idempotent and only installs what's missing.
           pip install --no-warn-script-location -r requirements-hub.txt
-          pip install --no-warn-script-location "cython>=3.0" setuptools wheel
+          # Cython 3.1.x can fail with "unhashable type: 'Extension'" in mixed
+          # extension-list builds; pin to the stable 3.0 line for hub compilation.
+          pip install --no-warn-script-location "cython>=3.0,<3.1" setuptools wheel
 
       - name: Compile with Cython
         working-directory: backend
