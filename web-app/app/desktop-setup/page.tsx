@@ -11,7 +11,7 @@ import {
 } from '@/lib/desktop';
 import { discoverHub, probeHub, type HubInfo } from '@/lib/desktop/hub-discovery';
 
-const DEFAULT_API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.vitora.digital';
+const DEFAULT_API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:9088';
 
 const DEPLOYMENT_MODES: Array<{ value: DeploymentMode; label: string; description: string }> = [
   {

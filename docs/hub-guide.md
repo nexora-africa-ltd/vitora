@@ -278,6 +278,42 @@ For immediate local operations, create a hub-local admin with `C:\VitoraHub\hub-
 | `HUB_REDIS_URL` | No | Empty | Redis URL (enables Redis channel layer) |
 | `CELERY_BROKER_URL` | No | Empty | Celery broker (empty = thread-based sync) |
 
+### Secret/Config Source of Truth (Activation vs Local)
+
+The hub configuration is assembled from multiple sources during install/update.
+
+| Variable | Class | Source | Notes |
+|----------|-------|--------|-------|
+| `LICENSE_TOKEN` | Secret | **Cloud activation response** | Returned by `/api/licensing/activate/`; used for hub identity/check-in |
+| `ENCRYPTION_KEY` | Secret | **Cloud activation response** | Fernet key for encrypted PII fields |
+| `PII_HMAC_KEY` | Secret | Cloud activation response, or local fallback | If missing from cloud payload, installer generates fallback |
+| `DJANGO_SECRET_KEY` | Secret | **Generated locally** | Created during install |
+| `TIBABOT_API_KEY` | Secret | Cloud activation metadata and/or installer env override | Can be overridden by operator env |
+| `TIBABOT_JWT_PRIVATE_KEY` | Secret | Cloud activation metadata and/or installer env override | Optional |
+| `TIBABOT_JWT_SECRET` | Secret | Cloud activation metadata and/or installer env override | Optional |
+| `TIBABOT_ADMIN_KEY` | Secret | Cloud activation metadata and/or installer env override | Optional |
+| `HUB_ID` | Config | Generated locally | Derived from host + timestamp at activation time |
+| `HUB_ORGANIZATION_ID` | Config | Cloud activation response | Organization binding |
+| `HUB_FACILITY_ID` | Config | Cloud activation response | Facility binding |
+| `SYNC_SERVER_URL` | Config | Cloud activation response (or default) | Defaults to `<cloud>/api/sync` |
+| `WEBAUTHN_RP_ID` | Config | Cloud activation response and/or local override | Falls back to localhost profile |
+| `WEBAUTHN_ORIGIN` | Config | Cloud activation response and/or local override | Falls back to localhost profile |
+| `HUB_PORT` | Config | Installer arg/env/default | Default `9088` |
+
+### Windows Runtime Precedence (NSSM + Launcher)
+
+Windows native hub now starts via `C:\VitoraHub\start-hub.ps1` (NSSM launcher mode), not direct `daphne.exe` arguments.
+
+At runtime, values are loaded in this order:
+
+1. `C:\VitoraHub\.env`
+2. DPAPI bundle (`HUB_SECRETS_FILE`, default `C:\VitoraHub\secrets\hub-secrets.dpapi.json`) — **overrides matching `.env` keys**
+3. Launcher defaults (`DJANGO_ENV=hub`, `DJANGO_SETTINGS_MODULE=hmis.settings.hub`, `HUB_PORT=9088` if unset)
+
+Effective precedence: **DPAPI bundle > `.env` > defaults**.
+
+NSSM `AppEnvironmentExtra` should remain minimal bootstrap only (non-sensitive), because secrets are loaded dynamically by the launcher.
+
 ### Django Settings (hub.py)
 
 Key differences from cloud/production:
@@ -383,7 +419,9 @@ Patients and emergency contacts are bidirectional sync models. Hubs older than t
 
 #### TibaBot on Desktop/Hub
 
-The desktop app talks to TibaBot through the local hub backend. The packaged frontend flag only decides whether the UI asks `/api/ai/status/`; the hub service must also run with `TIBABOT_ENABLED=true` and the relevant `TIBABOT_*` endpoint/JWT/admin values in its Windows service environment. Current Windows installer/updater scripts write these values to `.env`/NSSM when provided by activation metadata or process environment.
+The desktop app talks to TibaBot through the local hub backend. The packaged frontend flag only decides whether the UI asks `/api/ai/status/`; the hub service must also run with `TIBABOT_ENABLED=true` and the relevant `TIBABOT_*` endpoint/JWT/admin values in runtime env.
+
+On Windows launcher-based installs, `TIBABOT_*` values are read from `.env` and then overridden by DPAPI bundle keys (when present), instead of being persisted directly in NSSM service environment.
 
 Check status from the hub:
 
@@ -391,7 +429,31 @@ Check status from the hub:
 Invoke-RestMethod http://127.0.0.1:9088/api/ai/status/
 ```
 
-If `enabled` is false after an update, confirm `C:\VitoraHub\.env` contains `TIBABOT_ENABLED=true`, rerun the updater to refresh `AppEnvironmentExtra`, then restart `VitoraHub`.
+If `enabled` is false after an update, confirm `C:\VitoraHub\.env` contains `TIBABOT_ENABLED=true`, rotate/update secrets if needed, then restart `VitoraHub`.
+
+#### Rotate Secrets
+
+Use these utilities to rotate secrets without reinstalling the hub.
+
+**Windows:**
+```powershell
+# Rebuild DPAPI secret bundle from current values and restart service
+powershell -ExecutionPolicy Bypass -File C:\VitoraHub\scripts\rotate-hub-secrets.ps1 -RestartService
+
+# Rotate specific keys explicitly
+powershell -ExecutionPolicy Bypass -File C:\VitoraHub\scripts\rotate-hub-secrets.ps1 \
+  -DjangoSecretKey "<new>" -EncryptionKey "<new>" -PiiHmacKey "<new>" -RestartService
+```
+
+**Linux:**
+```bash
+# Update secret keys in /opt/vitora/.env and restart
+sudo bash /opt/vitora/scripts/rotate-hub-secrets.sh --restart
+
+# Rotate specific keys explicitly
+sudo bash /opt/vitora/scripts/rotate-hub-secrets.sh \
+  --django-secret-key "<new>" --encryption-key "<new>" --pii-hmac-key "<new>" --restart
+```
 
 #### Check License Status
 

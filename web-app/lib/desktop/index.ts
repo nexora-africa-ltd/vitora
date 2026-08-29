@@ -3,8 +3,8 @@
  * Falls back gracefully in browser mode (all functions return false/undefined).
  */
 
-const DEFAULT_DESKTOP_API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.vitora.digital';
-const LEGACY_DESKTOP_API_URL = 'https://api.vitora.digital';
+const DEFAULT_DESKTOP_API_URL =
+  (process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:9088').trim().replace(/\/+$/, '');
 
 declare global {
   interface Window {
@@ -32,7 +32,7 @@ function getInvoke() {
 
 function normalizeDesktopApiUrl(url?: string | null): string {
   const normalized = (url || '').trim().replace(/\/+$/, '');
-  if (!normalized || normalized === LEGACY_DESKTOP_API_URL) {
+  if (!normalized) {
     return DEFAULT_DESKTOP_API_URL;
   }
   return normalized;

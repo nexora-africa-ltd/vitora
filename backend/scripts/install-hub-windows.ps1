@@ -71,6 +71,40 @@ function Resolve-ConfigValue {
     return $Default
 }
 
+function Write-DpapiSecretsBundle {
+    param(
+        [Parameter(Mandatory = $true)][hashtable]$Secrets,
+        [Parameter(Mandatory = $true)][string]$Path
+    )
+
+    $secretDir = Split-Path -Parent $Path
+    if (-not (Test-Path $secretDir)) {
+        New-Item -ItemType Directory -Path $secretDir -Force | Out-Null
+    }
+
+    $plaintext = @{
+        version = 1
+        generated_at = (Get-Date).ToUniversalTime().ToString("o")
+        secrets = $Secrets
+    } | ConvertTo-Json -Compress
+
+    $plainBytes = [Text.Encoding]::UTF8.GetBytes($plaintext)
+    $cipherBytes = [System.Security.Cryptography.ProtectedData]::Protect(
+        $plainBytes,
+        $null,
+        [System.Security.Cryptography.DataProtectionScope]::LocalMachine
+    )
+
+    $payload = @{
+        version = 1
+        scope = "LocalMachine"
+        ciphertext_b64 = [Convert]::ToBase64String($cipherBytes)
+        keys = @($Secrets.Keys | Sort-Object)
+    } | ConvertTo-Json
+
+    Set-Content -Path $Path -Value $payload
+}
+
 function Test-PythonVersion {
     # We require EXACTLY Python 3.12 because the hub ships pre-compiled .pyd
     # files tagged for the cp312 ABI. Other Python minor versions silently
@@ -541,6 +575,7 @@ if (-not $PiiHmacKey) {
 
 # --- Write Environment File ---
 Write-Step 5 "Writing configuration..."
+$HubSecretsFile = "$InstallDir\secrets\hub-secrets.dpapi.json"
 $envContent = @"
 DJANGO_ENV=hub
 DJANGO_SECRET_KEY=$secretKey
@@ -555,6 +590,7 @@ HUB_DATA_DIR=$DataDir
 HUB_LOG_FILE=$LogDir\hub.log
 SYNC_SERVER_URL=$SyncUrl
 LICENSE_TOKEN=$LicenseToken
+HUB_SECRETS_FILE=$HubSecretsFile
 ALLOWED_HOSTS=*
 HUB_VERSION=$Version
 HUB_CLOUD_AUTH_ENABLED=$HubCloudAuthEnabled
@@ -575,6 +611,18 @@ WEBAUTHN_ORIGIN=$WebauthnOrigin
 "@
 
 Set-Content -Path "$InstallDir\.env" -Value $envContent
+
+$dpapiSecrets = @{
+    DJANGO_SECRET_KEY = $secretKey
+    ENCRYPTION_KEY = $EncryptionKey
+    PII_HMAC_KEY = $PiiHmacKey
+    LICENSE_TOKEN = $LicenseToken
+    TIBABOT_API_KEY = $TibaBotApiKey
+    TIBABOT_JWT_PRIVATE_KEY = $TibaBotJwtPrivateKey
+    TIBABOT_JWT_SECRET = $TibaBotJwtSecret
+    TIBABOT_ADMIN_KEY = $TibaBotAdminKey
+}
+Write-DpapiSecretsBundle -Secrets $dpapiSecrets -Path $HubSecretsFile
 # Write version file
 Set-Content -Path "$InstallDir\VERSION" -Value $Version
 Write-Info "Configuration saved."
@@ -640,6 +688,17 @@ exit $exitCode
 '@
 Set-Content -Path "$InstallDir\hub-shell.ps1" -Value $hubShellContent
 Write-Info "Hub management wrapper installed at $InstallDir\hub-shell.ps1"
+
+# --- Hub Service Launcher Wrapper ---
+$launcherTemplatePath = "$InstallDir\scripts\start-hub-windows.ps1"
+$launcherPath = "$InstallDir\start-hub.ps1"
+if (-not (Test-Path $launcherTemplatePath)) {
+    Write-Err "Missing launcher template: $launcherTemplatePath"
+    Write-Err "The release artifact must include scripts/start-hub-windows.ps1"
+    exit 1
+}
+Copy-Item -Path $launcherTemplatePath -Destination $launcherPath -Force
+Write-Info "Hub service launcher installed at $launcherPath"
 
 # --- Set Environment Variables for Setup ---
 $env:DJANGO_ENV = "hub"
@@ -825,11 +884,12 @@ if ($existingService) {
     Start-Sleep -Seconds 2
 }
 
-# Install service
-$daphneExe = "$VenvDir\Scripts\daphne.exe"
-$daphneArgs = "-b 0.0.0.0 -p $HubPort hmis.asgi:application"
+# Install service via launcher (loads .env + DPAPI secrets at runtime)
+$powershellExe = "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe"
+$launcherPath = "$InstallDir\start-hub.ps1"
+$launcherArgs = "-NoProfile -ExecutionPolicy Bypass -File `"$launcherPath`""
 
-& $nssmExe install $ServiceName $daphneExe $daphneArgs
+& $nssmExe install $ServiceName $powershellExe $launcherArgs
 
 # Configure service parameters
 & $nssmExe set $ServiceName DisplayName $ServiceDisplayName
@@ -837,37 +897,12 @@ $daphneArgs = "-b 0.0.0.0 -p $HubPort hmis.asgi:application"
 & $nssmExe set $ServiceName AppDirectory $InstallDir
 & $nssmExe set $ServiceName Start SERVICE_AUTO_START
 
-# Environment variables for the service
+# Non-sensitive bootstrap environment for the service.
+# Secrets are loaded dynamically by start-hub.ps1 from .env + DPAPI bundle.
 $envVars = @(
     "DJANGO_ENV=hub",
-    "DJANGO_SETTINGS_MODULE=hmis.settings",
-    "DJANGO_SECRET_KEY=$secretKey",
-    "ENCRYPTION_KEY=$EncryptionKey",
-    "PII_HMAC_KEY=$PiiHmacKey",
-    "HUB_ID=$HubId",
-    "HUB_FACILITY_ID=$FacilityId",
-    "HUB_ORGANIZATION_ID=$OrgId",
-    "HUB_DB_PATH=$DataDir\hub.sqlite3",
-    "HUB_DATA_DIR=$DataDir",
-    "HUB_LOG_FILE=$LogDir\hub.log",
-    "SYNC_SERVER_URL=$SyncUrl",
-    "LICENSE_TOKEN=$LicenseToken",
-    "ALLOWED_HOSTS=*",
-    "WEBAUTHN_RP_ID=$WebauthnRpId",
-    "WEBAUTHN_ORIGIN=$WebauthnOrigin",
-    "HUB_CLOUD_AUTH_ENABLED=$HubCloudAuthEnabled",
-    "HUB_CLOUD_AUTH_URL=$HubCloudAuthUrl",
-    "TIBABOT_ENABLED=$TibaBotEnabled",
-    "TIBABOT_API_URL=$TibaBotApiUrl",
-    "TIBABOT_API_KEY=$TibaBotApiKey",
-    "TIBABOT_TIMEOUT=$TibaBotTimeout",
-    "TIBABOT_JWT_PRIVATE_KEY=$TibaBotJwtPrivateKey",
-    "TIBABOT_JWT_SECRET=$TibaBotJwtSecret",
-    "TIBABOT_JWT_ISSUER=$TibaBotJwtIssuer",
-    "TIBABOT_JWT_AUDIENCE=$TibaBotJwtAudience",
-    "TIBABOT_JWT_EXPIRY_SECONDS=$TibaBotJwtExpirySeconds",
-    "TIBABOT_JWKS_URL=$TibaBotJwksUrl",
-    "TIBABOT_ADMIN_KEY=$TibaBotAdminKey"
+    "DJANGO_SETTINGS_MODULE=hmis.settings.hub",
+    "HUB_SECRETS_FILE=$HubSecretsFile"
 ) -join "`n"
 & $nssmExe set $ServiceName AppEnvironmentExtra $envVars
 

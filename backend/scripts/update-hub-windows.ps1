@@ -46,39 +46,45 @@ function Get-HubEnvValue {
 }
 
 function Build-HubServiceEnvironment {
-    $defaultHubDbPath = Join-Path $InstallDir "data\hub.sqlite3"
-    $defaultHubDataDir = Join-Path $InstallDir "data"
-    $defaultHubLogFile = Join-Path $LogDir "hub.log"
-
     return @(
         "DJANGO_ENV=hub",
-        "DJANGO_SETTINGS_MODULE=$(Get-HubEnvValue 'DJANGO_SETTINGS_MODULE' 'hmis.settings')",
-        "DJANGO_SECRET_KEY=$(Get-HubEnvValue 'DJANGO_SECRET_KEY')",
-        "ENCRYPTION_KEY=$(Get-HubEnvValue 'ENCRYPTION_KEY')",
-        "PII_HMAC_KEY=$(Get-HubEnvValue 'PII_HMAC_KEY')",
-        "HUB_ID=$(Get-HubEnvValue 'HUB_ID')",
-        "HUB_FACILITY_ID=$(Get-HubEnvValue 'HUB_FACILITY_ID')",
-        "HUB_ORGANIZATION_ID=$(Get-HubEnvValue 'HUB_ORGANIZATION_ID')",
-        "HUB_DB_PATH=$(Get-HubEnvValue 'HUB_DB_PATH' $defaultHubDbPath)",
-        "HUB_DATA_DIR=$(Get-HubEnvValue 'HUB_DATA_DIR' $defaultHubDataDir)",
-        "HUB_LOG_FILE=$(Get-HubEnvValue 'HUB_LOG_FILE' $defaultHubLogFile)",
-        "SYNC_SERVER_URL=$(Get-HubEnvValue 'SYNC_SERVER_URL')",
-        "LICENSE_TOKEN=$(Get-HubEnvValue 'LICENSE_TOKEN')",
-        "ALLOWED_HOSTS=$(Get-HubEnvValue 'ALLOWED_HOSTS' '*')",
-        "HUB_CLOUD_AUTH_ENABLED=$(Get-HubEnvValue 'HUB_CLOUD_AUTH_ENABLED' 'true')",
-        "HUB_CLOUD_AUTH_URL=$(Get-HubEnvValue 'HUB_CLOUD_AUTH_URL')",
-        "TIBABOT_ENABLED=$(Get-HubEnvValue 'TIBABOT_ENABLED' 'false')",
-        "TIBABOT_API_URL=$(Get-HubEnvValue 'TIBABOT_API_URL')",
-        "TIBABOT_API_KEY=$(Get-HubEnvValue 'TIBABOT_API_KEY')",
-        "TIBABOT_TIMEOUT=$(Get-HubEnvValue 'TIBABOT_TIMEOUT' '30')",
-        "TIBABOT_JWT_PRIVATE_KEY=$(Get-HubEnvValue 'TIBABOT_JWT_PRIVATE_KEY')",
-        "TIBABOT_JWT_SECRET=$(Get-HubEnvValue 'TIBABOT_JWT_SECRET')",
-        "TIBABOT_JWT_ISSUER=$(Get-HubEnvValue 'TIBABOT_JWT_ISSUER' 'vitora-hmis')",
-        "TIBABOT_JWT_AUDIENCE=$(Get-HubEnvValue 'TIBABOT_JWT_AUDIENCE' 'tibabot')",
-        "TIBABOT_JWT_EXPIRY_SECONDS=$(Get-HubEnvValue 'TIBABOT_JWT_EXPIRY_SECONDS' '300')",
-        "TIBABOT_JWKS_URL=$(Get-HubEnvValue 'TIBABOT_JWKS_URL')",
-        "TIBABOT_ADMIN_KEY=$(Get-HubEnvValue 'TIBABOT_ADMIN_KEY')"
+        "DJANGO_SETTINGS_MODULE=$(Get-HubEnvValue 'DJANGO_SETTINGS_MODULE' 'hmis.settings.hub')",
+        "HUB_SECRETS_FILE=$(Get-HubEnvValue 'HUB_SECRETS_FILE' (Join-Path $InstallDir 'secrets\hub-secrets.dpapi.json'))"
     ) -join "`n"
+}
+
+function Write-DpapiSecretsBundle {
+    param(
+        [Parameter(Mandatory = $true)][hashtable]$Secrets,
+        [Parameter(Mandatory = $true)][string]$Path
+    )
+
+    $secretDir = Split-Path -Parent $Path
+    if (-not (Test-Path $secretDir)) {
+        New-Item -ItemType Directory -Path $secretDir -Force | Out-Null
+    }
+
+    $plaintext = @{
+        version = 1
+        generated_at = (Get-Date).ToUniversalTime().ToString("o")
+        secrets = $Secrets
+    } | ConvertTo-Json -Compress
+
+    $plainBytes = [Text.Encoding]::UTF8.GetBytes($plaintext)
+    $cipherBytes = [System.Security.Cryptography.ProtectedData]::Protect(
+        $plainBytes,
+        $null,
+        [System.Security.Cryptography.DataProtectionScope]::LocalMachine
+    )
+
+    $payload = @{
+        version = 1
+        scope = "LocalMachine"
+        ciphertext_b64 = [Convert]::ToBase64String($cipherBytes)
+        keys = @($Secrets.Keys | Sort-Object)
+    } | ConvertTo-Json
+
+    Set-Content -Path $Path -Value $payload
 }
 
 function Merge-DirectoryPreservingRuntimeData {
@@ -369,6 +375,27 @@ if (-not $env:DJANGO_SETTINGS_MODULE) {
     $env:DJANGO_SETTINGS_MODULE = "hmis.settings.hub"
 }
 $env:DJANGO_ENV = "hub"
+
+$hubSecretsFile = if ($env:HUB_SECRETS_FILE) {
+    $env:HUB_SECRETS_FILE
+} else {
+    Join-Path $InstallDir "secrets\hub-secrets.dpapi.json"
+}
+
+$dpapiSecrets = @{
+    DJANGO_SECRET_KEY = (Get-HubEnvValue "DJANGO_SECRET_KEY")
+    ENCRYPTION_KEY = (Get-HubEnvValue "ENCRYPTION_KEY")
+    PII_HMAC_KEY = (Get-HubEnvValue "PII_HMAC_KEY")
+    LICENSE_TOKEN = (Get-HubEnvValue "LICENSE_TOKEN")
+    TIBABOT_API_KEY = (Get-HubEnvValue "TIBABOT_API_KEY")
+    TIBABOT_JWT_PRIVATE_KEY = (Get-HubEnvValue "TIBABOT_JWT_PRIVATE_KEY")
+    TIBABOT_JWT_SECRET = (Get-HubEnvValue "TIBABOT_JWT_SECRET")
+    TIBABOT_ADMIN_KEY = (Get-HubEnvValue "TIBABOT_ADMIN_KEY")
+}
+Write-DpapiSecretsBundle -Secrets $dpapiSecrets -Path $hubSecretsFile
+Write-Info "Refreshed DPAPI secret bundle."
+Log "DPAPI secret bundle refreshed"
+
 Push-Location $InstallDir
 
 # Smart migration: query the DB directly for unapplied migrations so we can
@@ -574,13 +601,33 @@ exit $exitCode
 Set-Content -Path "$InstallDir\hub-shell.ps1" -Value $hubShellContent
 Write-Ok "Hub management wrapper refreshed."
 
+# Refresh service launcher script from packaged template.
+$launcherTemplate = "$InstallDir\scripts\start-hub-windows.ps1"
+$launcherPath = "$InstallDir\start-hub.ps1"
+if (Test-Path $launcherTemplate) {
+    Copy-Item -Path $launcherTemplate -Destination $launcherPath -Force
+    Write-Ok "Service launcher refreshed."
+    Log "Service launcher refreshed"
+} else {
+    Write-Err "Missing launcher template: $launcherTemplate"
+    Log "ERROR: missing launcher template"
+    exit 1
+}
+
 # Refresh NSSM service environment from the preserved .env before restart.
 $nssmExe = "$InstallDir\nssm\nssm.exe"
 if (Test-Path $nssmExe) {
+    $powershellExe = "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe"
+    $launcherArgs = "-NoProfile -ExecutionPolicy Bypass -File `"$launcherPath`""
+
+    & $nssmExe set $ServiceName Application $powershellExe 2>&1 | Out-Null
+    & $nssmExe set $ServiceName AppParameters $launcherArgs 2>&1 | Out-Null
+    & $nssmExe set $ServiceName AppDirectory $InstallDir 2>&1 | Out-Null
+
     $envVars = Build-HubServiceEnvironment
     & $nssmExe set $ServiceName AppEnvironmentExtra $envVars 2>&1 | Out-Null
-    Write-Ok "Service environment refreshed."
-    Log "Service environment refreshed"
+    Write-Ok "Service launcher and environment refreshed."
+    Log "Service launcher and environment refreshed"
 } else {
     Write-Info "NSSM not found at $nssmExe; service environment was not refreshed."
     Log "NSSM not found; service environment not refreshed"

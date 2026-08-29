@@ -19,7 +19,7 @@ import { isDesktop, isFirstRun, storeCredentials, getCredentials, clearCredentia
 import { licensingApi } from '@/lib/api/licensing';
 import Link from 'next/link';
 
-const LEGACY_DESKTOP_API_URL = 'https://api.vitora.digital';
+const LEGACY_DESKTOP_API_URL_RE = /^https?:\/\/api\.vitora\.digital\/?$/i;
 
 function normalizeApiUrl(url?: string | null): string {
   return (url || '').trim().replace(/\/+$/, '');
@@ -73,7 +73,12 @@ export default function LoginPage() {
       const config = await getAppConfig();
       if (cancelled) return;
 
-      if (!config?.setup_completed || normalizeApiUrl(config.api_url) === LEGACY_DESKTOP_API_URL) {
+      const normalizedApiUrl = normalizeApiUrl(config?.api_url);
+      if (
+        !config?.setup_completed ||
+        !normalizedApiUrl ||
+        LEGACY_DESKTOP_API_URL_RE.test(normalizedApiUrl)
+      ) {
         router.replace('/desktop-setup');
         return;
       }

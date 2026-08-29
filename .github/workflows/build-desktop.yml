@@ -12,6 +12,10 @@ name: Build Desktop App
 #   - Push a tag matching `desktop-v*` (e.g., `desktop-v0.3.0`)
 #   - Manual dispatch (workflow_dispatch) for testing
 #
+# Environment selection:
+#   - Tag builds always use `production`
+#   - Manual builds choose `staging` or `production` via input
+#
 # Build matrix:
 #   | Platform       | Target                       | Output       |
 #   |----------------|------------------------------|--------------|
@@ -41,7 +45,7 @@ name: Build Desktop App
 #   - RELEASE_TOKEN                   — GitHub PAT with contents:write scope
 #
 # Required vars (GitHub environment):
-#   - NEXT_PUBLIC_API_URL             — Backend API base URL (defaults to prod)
+#   - NEXT_PUBLIC_API_URL             — Backend API base URL (required, no fallback)
 # ===========================================================================
 
 on:
@@ -54,6 +58,13 @@ on:
         description: "Skip code signing (for testing)"
         type: boolean
         default: false
+      deploy_env:
+        description: "Target environment for API URL"
+        type: choice
+        options:
+          - staging
+          - production
+        default: staging
 
 permissions:
   contents: write # For creating releases
@@ -66,6 +77,7 @@ env:
 jobs:
   # --- Stage 1: Build per-platform installers in parallel ---
   build:
+    environment: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.deploy_env || 'production' }}
     strategy:
       fail-fast: false
       matrix:
@@ -129,12 +141,22 @@ jobs:
         run: npm ci
         working-directory: web-app
 
+      - name: Validate NEXT_PUBLIC_API_URL
+        shell: bash
+        run: |
+          if [[ -z "${{ vars.NEXT_PUBLIC_API_URL }}" ]]; then
+            echo "ERROR: NEXT_PUBLIC_API_URL is not set for environment '${{ github.event_name == 'workflow_dispatch' && github.event.inputs.deploy_env || 'production' }}'."
+            echo "Set it in GitHub Environments -> Variables before running this workflow."
+            exit 1
+          fi
+          echo "Using NEXT_PUBLIC_API_URL=${{ vars.NEXT_PUBLIC_API_URL }}"
+
       - name: Build web-app (standalone)
         run: npm run build
         working-directory: web-app
         env:
           NODE_OPTIONS: "--max-old-space-size=4096"
-          NEXT_PUBLIC_API_URL: ${{ vars.NEXT_PUBLIC_API_URL || 'https://api.vitora.digital' }}
+          NEXT_PUBLIC_API_URL: ${{ vars.NEXT_PUBLIC_API_URL }}
           NEXT_PUBLIC_POWERSYNC_URL: ""
           VITORA_DESKTOP: "1"
 

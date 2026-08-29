@@ -268,7 +268,7 @@ export function DesktopSettingsTab() {
               id="api-url"
               value={apiUrl}
               onChange={(e) => setApiUrlState(e.target.value)}
-              placeholder="https://api.vitora.digital"
+              placeholder="https://cloud-api.example.com"
             />
             <p className="text-xs text-muted-foreground">
               The base URL of the Vitora backend API.

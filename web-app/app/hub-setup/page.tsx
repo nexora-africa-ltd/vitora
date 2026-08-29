@@ -42,12 +42,17 @@ interface HubConfig {
   port: string;
 }
 
+const cloudApiBase = (process.env.NEXT_PUBLIC_API_URL || '').trim().replace(/\/+$/, '');
+const DEFAULT_SYNC_URL = cloudApiBase
+  ? `${cloudApiBase}/api/sync`
+  : 'https://cloud-api.example.com/api/sync';
+
 const DEFAULT_CONFIG: HubConfig = {
   hubId: '',
   facilityId: '',
   organizationId: '',
   encryptionKey: '',
-  syncUrl: 'https://api.vitora.digital/api/sync',
+  syncUrl: DEFAULT_SYNC_URL,
   port: '9088',
 };
 
@@ -392,7 +397,7 @@ export default function HubSetupWizardPage() {
                       type="url"
                       value={config.syncUrl}
                       onChange={(e) => setConfig({ ...config, syncUrl: e.target.value })}
-                      placeholder="https://api.vitora.digital/api/sync"
+                      placeholder={DEFAULT_SYNC_URL}
                       className="w-full rounded-md border border-slate-600 bg-slate-700 px-3 py-2 text-sm text-white placeholder-slate-400 focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500"
                     />
                   </div>

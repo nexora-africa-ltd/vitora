@@ -71,7 +71,7 @@ let syncTimer: ReturnType<typeof setInterval> | null = null;
  * Get the configured API URL from environment.
  */
 function getApiUrl(): string {
-  return process.env.NEXT_PUBLIC_API_URL || 'https://api.vitora.digital';
+  return process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:9088';
 }
 
 /**
