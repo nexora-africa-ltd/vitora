@@ -166,7 +166,7 @@ The workflow `.github/workflows/build-desktop.yml` builds for all platforms:
 | `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` | ✅ Set | Key password (empty) |
 | `WINDOWS_CERTIFICATE_BASE64` | ⚠️ Placeholder | PFX cert for Windows code signing |
 | `WINDOWS_CERTIFICATE_PASSWORD` | ⚠️ Placeholder | PFX password |
-| `AZURE_STORAGE_CONNECTION_STRING` | ✅ Set | For updater blob upload (vitorareleases) |
+| `AZURE_STORAGE_CONNECTION_STRING` | ✅ Set | For updater blob upload (vitorareleasessa) |
 
 ## Auth & CORS
 
@@ -193,7 +193,7 @@ Cookie persistence: WebView2 stores cookies in its user profile directory, survi
 
 2. **Set up custom domain `releases.vitora.digital`** (optional, CDN works without it)
    - Azure Front Door endpoint already provisioned: `vitora-releases-dzf4f6hmfdadf3gk.z01.azurefd.net`
-   - Storage account: `vitorareleases` (eastus), container: `releases`, public blob access
+   - Storage account: `vitorareleasessa` (eastus), container: `releases`, public blob access
    - To enable custom domain, add these records in **Vercel DNS**:
      ```
      CNAME  releases  →  vitora-releases-dzf4f6hmfdadf3gk.z01.azurefd.net
