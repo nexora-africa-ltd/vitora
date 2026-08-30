@@ -18,6 +18,12 @@ All notable changes to Vitora HMIS releases are documented in this file.
 ### Added
 - Placeholder section for upcoming release notes.
 
+## [1.0.2] - 2026-08-30
+
+### Desktop
+- Fixed desktop setup save failures in LAN client mode by coercing discovered facility/organization identifiers to strings before calling native config commands.
+- Improved setup error surfacing to show actionable native error details instead of a generic save failure message.
+
 ## [1.0.1] - 2026-08-30
 
 ### Desktop

@@ -140,7 +140,11 @@ export default function DesktopSetupPage() {
 
       // Save hub-specific config for LAN client mode
       if (mode === 'lan_client' && hubInfo) {
-        await saveHubConfig(normalizedUrl, hubInfo.facilityId, hubInfo.organizationId);
+        await saveHubConfig(
+          normalizedUrl,
+          String(hubInfo.facilityId ?? ''),
+          String(hubInfo.organizationId ?? '')
+        );
       }
 
       // Hub mode: redirect to hub setup wizard for installation
@@ -160,9 +164,22 @@ export default function DesktopSetupPage() {
       // Standalone mode: go to license activation (activation code validates the install)
       router.push('/activate');
     } catch (e) {
-      setError(
+      const errorMessage =
         e instanceof Error
-          ? `Failed to save desktop configuration: ${e.message}`
+          ? e.message
+          : typeof e === 'string'
+            ? e
+            : (() => {
+                try {
+                  return JSON.stringify(e);
+                } catch {
+                  return '';
+                }
+              })();
+
+      setError(
+        errorMessage
+          ? `Failed to save desktop configuration: ${errorMessage}`
           : 'Failed to save desktop configuration. Please try again.'
       );
     }

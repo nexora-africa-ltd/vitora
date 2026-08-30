@@ -89,11 +89,11 @@ export async function probeHub(url: string, timeoutMs = 5000): Promise<HubInfo |
 
     return {
       url: cleanUrl,
-      facilityId: data.facility_id || '',
-      organizationId: data.organization_id || '',
-      facilityName: data.facility_name || '',
-      hubId: data.hub_id,
-      version: data.version || 'unknown',
+      facilityId: String(data.facility_id ?? ''),
+      organizationId: String(data.organization_id ?? ''),
+      facilityName: String(data.facility_name ?? ''),
+      hubId: String(data.hub_id ?? ''),
+      version: String(data.version ?? 'unknown'),
     };
   } catch {
     return null;
