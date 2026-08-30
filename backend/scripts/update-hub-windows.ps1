@@ -753,9 +753,16 @@ if (Test-Path $launcherTemplate) {
     Write-Ok "Service launcher refreshed."
     Log "Service launcher refreshed"
 } else {
-    Write-Err "Missing launcher template: $launcherTemplate"
-    Log "ERROR: missing launcher template"
-    exit 1
+    if (Test-Path $launcherPath) {
+        Write-Info "Missing launcher template: $launcherTemplate"
+        Write-Info "Using existing launcher at $launcherPath"
+        Log "WARN: missing launcher template; using existing launcher"
+    } else {
+        Write-Err "Missing launcher template: $launcherTemplate"
+        Write-Err "No existing launcher found at $launcherPath"
+        Log "ERROR: missing launcher template and existing launcher"
+        exit 1
+    }
 }
 
 # Refresh NSSM service environment from the preserved .env before restart.

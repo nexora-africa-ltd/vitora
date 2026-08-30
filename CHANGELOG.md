@@ -18,6 +18,12 @@ All notable changes to Vitora HMIS releases are documented in this file.
 ### Added
 - Placeholder section for upcoming release notes.
 
+## [0.1.4] - 2026-08-30
+
+### Hub
+- Fixed Windows updater to continue when `scripts/start-hub-windows.ps1` is missing in an artifact by reusing the existing `C:\VitoraHub\start-hub.ps1` launcher.
+- Added explicit logging for launcher-template fallback behavior.
+
 ## [0.1.3] - 2026-08-30
 
 ### Hub
