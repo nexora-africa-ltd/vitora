@@ -7,7 +7,7 @@ import { useFacility } from '@/lib/context/facility-context';
 import { useAuth } from '@/lib/auth/context';
 
 /** Routes where facility banner should not render */
-const HIDDEN_PATHS = ['/login', '/signup', '/onboarding', '/setup'];
+const HIDDEN_PATHS = ['/login', '/signup', '/onboarding', '/setup', '/desktop-setup', '/hub-setup'];
 
 /**
  * Facility Banner

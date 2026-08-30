@@ -20,6 +20,57 @@ export interface HubInfo {
   version: string;
 }
 
+function parseUrl(url: string): URL | null {
+  try {
+    return new URL(url);
+  } catch {
+    return null;
+  }
+}
+
+function getPortCandidates(savedUrl?: string): number[] {
+  const candidates: number[] = [];
+  const parsed = savedUrl ? parseUrl(savedUrl) : null;
+  if (parsed?.port) {
+    const parsedPort = Number.parseInt(parsed.port, 10);
+    if (Number.isFinite(parsedPort) && parsedPort > 0) {
+      candidates.push(parsedPort);
+    }
+  }
+
+  for (const fallbackPort of [9099, 9088]) {
+    if (!candidates.includes(fallbackPort)) {
+      candidates.push(fallbackPort);
+    }
+  }
+
+  return candidates;
+}
+
+function getSubnetSeed(savedUrl?: string): string | null {
+  if (!savedUrl) {
+    return null;
+  }
+
+  const parsed = parseUrl(savedUrl);
+  const host = parsed?.hostname;
+  if (!host) {
+    return null;
+  }
+
+  const octets = host.split('.');
+  if (octets.length !== 4) {
+    return null;
+  }
+
+  const validIpv4 = octets.every((part) => /^\d+$/.test(part) && Number(part) >= 0 && Number(part) <= 255);
+  if (!validIpv4) {
+    return null;
+  }
+
+  return host;
+}
+
 /**
  * Probe for a hub on the local network using a health check.
  * Tries the given URL's /api/hub/health/ endpoint.
@@ -89,17 +140,38 @@ export async function discoverHub(savedUrl?: string): Promise<HubInfo | null> {
     if (result) return result;
   }
 
+  const portCandidates = getPortCandidates(savedUrl);
+  const protocol = parseUrl(savedUrl || '')?.protocol || 'http:';
+
   // Method 2: Try common addresses
-  const commonAddresses = [
-    'http://vitora-hub.local:9088', // mDNS hostname
-    'http://192.168.1.1:9088', // Common router subnet
-    'http://192.168.0.1:9088',
-    'http://10.0.0.1:9088',
+  const commonHosts = [
+    'vitora-hub.local', // mDNS hostname
+    '192.168.1.1',
+    '192.168.0.1',
+    '10.0.0.1',
   ];
+
+  const commonAddresses: string[] = [];
+  for (const port of portCandidates) {
+    for (const host of commonHosts) {
+      commonAddresses.push(`${protocol}//${host}:${port}`);
+    }
+  }
 
   for (const addr of commonAddresses) {
     const result = await probeHub(addr, 2000);
     if (result) return result;
+  }
+
+  // Method 3: If user entered an IPv4 host, scan its /24 subnet using the same port first.
+  const subnetSeed = getSubnetSeed(savedUrl);
+  if (subnetSeed) {
+    for (const port of portCandidates) {
+      const result = await scanSubnet(subnetSeed, port, 1500);
+      if (result) {
+        return result;
+      }
+    }
   }
 
   return null;

@@ -12,6 +12,7 @@ import {
 import { discoverHub, probeHub, type HubInfo } from '@/lib/desktop/hub-discovery';
 
 const DEFAULT_API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:9088';
+const LEGACY_LAN_DEFAULT_URL = 'http://192.168.1.100:9088';
 
 const DEPLOYMENT_MODES: Array<{ value: DeploymentMode; label: string; description: string }> = [
   {
@@ -47,6 +48,15 @@ export default function DesktopSetupPage() {
   // Hub discovery (LAN client mode)
   const [discovering, setDiscovering] = useState(false);
   const [hubInfo, setHubInfo] = useState<HubInfo | null>(null);
+
+  function normalizeServerUrl(raw: string): string {
+    const trimmed = raw.trim().replace(/\/+$/, '');
+    if (!trimmed) return '';
+    if (/^https?:\/\//i.test(trimmed)) {
+      return trimmed;
+    }
+    return `http://${trimmed}`;
+  }
 
   async function handleTest() {
     setError('');
@@ -111,36 +121,51 @@ export default function DesktopSetupPage() {
   }
 
   async function handleSave() {
+    setError('');
+
     if (!isDesktop()) {
       router.push('/login');
       return;
     }
 
-    const trimmed = url.replace(/\/$/, '');
-    await setApiUrl(trimmed);
-    await setDeploymentMode(mode);
-
-    // Save hub-specific config for LAN client mode
-    if (mode === 'lan_client' && hubInfo) {
-      await saveHubConfig(trimmed, hubInfo.facilityId, hubInfo.organizationId);
-    }
-
-    // Hub mode: redirect to hub setup wizard for installation
-    if (mode === 'lan_hub') {
-      router.push('/hub-setup');
+    const normalizedUrl = normalizeServerUrl(url);
+    if (!normalizedUrl) {
+      setError('Enter a valid server URL before continuing.');
       return;
     }
 
-    // LAN client (Facility Workstation): skip activation — workstations
-    // authenticate with the hub using staff username/password, not an
-    // activation code. Only the hub itself needs activation.
-    if (mode === 'lan_client') {
-      router.push('/login');
-      return;
-    }
+    try {
+      await setApiUrl(normalizedUrl);
+      await setDeploymentMode(mode);
 
-    // Standalone mode: go to license activation (activation code validates the install)
-    router.push('/activate');
+      // Save hub-specific config for LAN client mode
+      if (mode === 'lan_client' && hubInfo) {
+        await saveHubConfig(normalizedUrl, hubInfo.facilityId, hubInfo.organizationId);
+      }
+
+      // Hub mode: redirect to hub setup wizard for installation
+      if (mode === 'lan_hub') {
+        router.push('/hub-setup');
+        return;
+      }
+
+      // LAN client (Facility Workstation): skip activation — workstations
+      // authenticate with the hub using staff username/password, not an
+      // activation code. Only the hub itself needs activation.
+      if (mode === 'lan_client') {
+        router.push('/login');
+        return;
+      }
+
+      // Standalone mode: go to license activation (activation code validates the install)
+      router.push('/activate');
+    } catch (e) {
+      setError(
+        e instanceof Error
+          ? `Failed to save desktop configuration: ${e.message}`
+          : 'Failed to save desktop configuration. Please try again.'
+      );
+    }
   }
 
   return (
@@ -182,10 +207,19 @@ export default function DesktopSetupPage() {
                   checked={mode === option.value}
                   onChange={() => {
                     setMode(option.value);
-                    // Default URL based on mode
-                    if (option.value === 'lan_client' || option.value === 'lan_hub') {
-                      setUrl('http://192.168.1.100:9088');
-                    } else {
+                    // Keep manual overrides as-is. Only adjust obviously generic defaults.
+                    if (option.value === 'standalone') {
+                      if (!url.trim()) {
+                        setUrl(DEFAULT_API_URL);
+                      }
+                    } else if (
+                      url.trim() === DEFAULT_API_URL ||
+                      url.trim() === LEGACY_LAN_DEFAULT_URL
+                    ) {
+                      setUrl('');
+                    }
+
+                    if (option.value === 'standalone' && url.trim() === LEGACY_LAN_DEFAULT_URL) {
                       setUrl(DEFAULT_API_URL);
                     }
                     setError('');
@@ -233,7 +267,11 @@ export default function DesktopSetupPage() {
                 setError('');
                 setSuccess(false);
               }}
-              placeholder={DEFAULT_API_URL}
+              placeholder={
+                mode === 'lan_client' || mode === 'lan_hub'
+                  ? 'http://192.168.100.87:9099'
+                  : DEFAULT_API_URL
+              }
               className="w-full rounded-md border border-slate-600 bg-slate-700 px-3 py-2 text-sm text-white placeholder-slate-400 focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500"
             />
           </div>
@@ -283,7 +321,7 @@ export default function DesktopSetupPage() {
           {/* Save & Continue */}
           <button
             onClick={handleSave}
-            disabled={!url}
+            disabled={!url.trim()}
             className="w-full rounded-md bg-cyan-600 px-4 py-2 text-sm font-medium text-white hover:bg-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             Save & Continue

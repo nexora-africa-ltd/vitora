@@ -18,6 +18,19 @@ All notable changes to Vitora HMIS releases are documented in this file.
 ### Added
 - Placeholder section for upcoming release notes.
 
+## [1.0.1] - 2026-08-30
+
+### Desktop
+- Reworked desktop setup LAN defaults to avoid hard-coded `192.168.1.100` prefill and preserve manual overrides.
+- Improved setup save flow with URL normalization, explicit validation, and visible error reporting when save fails.
+- Upgraded hub discovery to be port-aware (entered port first, then `9099`/`9088`), expanded mDNS attempts, and added `/24` subnet fallback scans from entered IPv4 hosts.
+- Hid the facility banner on desktop setup and hub setup routes to remove persistent setup-page noise.
+
+### Hub
+- Added durable pre-start port ownership checks in Windows updater to prevent Daphne bind failures on stale listeners.
+- Updater now terminates stale hub-owned listeners safely, refuses to kill non-hub processes, and surfaces clear diagnostics.
+- Hardened service start error handling so updater rollback executes cleanly on start failures.
+
 ## [0.1.6] - 2026-08-30
 
 ### Hub

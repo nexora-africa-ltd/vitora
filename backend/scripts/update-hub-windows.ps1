@@ -185,6 +185,127 @@ function Write-DpapiSecretsBundle {
     Set-Content -Path $Path -Value $payload
 }
 
+function Get-HubPortFromEnvFile {
+    param(
+        [Parameter(Mandatory = $true)][string]$EnvFilePath,
+        [string]$DefaultPort = "9088"
+    )
+
+    if (-not (Test-Path $EnvFilePath)) {
+        return $DefaultPort
+    }
+
+    $portLine = Get-Content $EnvFilePath | Where-Object { $_ -match '^HUB_PORT=' } | Select-Object -First 1
+    if (-not $portLine) {
+        return $DefaultPort
+    }
+
+    $resolved = ($portLine -split "=", 2)[1].Trim()
+    if (-not $resolved) {
+        return $DefaultPort
+    }
+
+    return $resolved
+}
+
+function Get-PortListenerProcess {
+    param([Parameter(Mandatory = $true)][int]$Port)
+
+    try {
+        $listener = Get-NetTCPConnection -State Listen -LocalPort $Port -ErrorAction SilentlyContinue |
+            Select-Object -First 1
+        if (-not $listener) {
+            return $null
+        }
+
+        $pid = [int]$listener.OwningProcess
+        $proc = Get-Process -Id $pid -ErrorAction SilentlyContinue
+        $path = $null
+        if ($proc) {
+            try { $path = $proc.Path } catch { $path = $null }
+        }
+
+        $commandLine = $null
+        try {
+            $wmi = Get-CimInstance Win32_Process -Filter "ProcessId = $pid" -ErrorAction SilentlyContinue
+            if ($wmi) {
+                $commandLine = $wmi.CommandLine
+                if (-not $path -and $wmi.ExecutablePath) {
+                    $path = $wmi.ExecutablePath
+                }
+            }
+        } catch {
+            $commandLine = $null
+        }
+
+        return [PSCustomObject]@{
+            Port = $Port
+            ProcessId = $pid
+            Name = if ($proc) { $proc.ProcessName } else { "unknown" }
+            Path = $path
+            CommandLine = $commandLine
+        }
+    } catch {
+        return $null
+    }
+}
+
+function Ensure-HubPortAvailable {
+    param(
+        [Parameter(Mandatory = $true)][int]$Port,
+        [Parameter(Mandatory = $true)][string]$InstallRoot
+    )
+
+    $owner = Get-PortListenerProcess -Port $Port
+    if (-not $owner) {
+        return $true
+    }
+
+    $ownerPath = if ($owner.Path) { [string]$owner.Path } else { "" }
+    $ownerCmd = if ($owner.CommandLine) { [string]$owner.CommandLine } else { "" }
+    $isHubOwned = $false
+
+    if ($ownerPath -and $ownerPath.StartsWith($InstallRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
+        $isHubOwned = $true
+    }
+    if (-not $isHubOwned -and $ownerCmd -and $ownerCmd.IndexOf($InstallRoot, [System.StringComparison]::OrdinalIgnoreCase) -ge 0) {
+        $isHubOwned = $true
+    }
+
+    if (-not $isHubOwned) {
+        Write-Err "Port $Port is in use by PID $($owner.ProcessId) ($($owner.Name))."
+        Write-Err "Process path: $ownerPath"
+        Write-Err "Refusing to kill a non-hub process. Free the port or change HUB_PORT before retrying."
+        Log "ERROR: non-hub process owns port $Port (PID=$($owner.ProcessId), Name=$($owner.Name), Path=$ownerPath)"
+        return $false
+    }
+
+    Write-Info "Port $Port is in use by stale hub-owned PID $($owner.ProcessId) ($($owner.Name)). Stopping it..."
+    Log "Port $Port owned by stale hub process PID $($owner.ProcessId); terminating"
+
+    try {
+        Stop-Process -Id $owner.ProcessId -Force -ErrorAction Stop
+    } catch {
+        Write-Err "Failed to stop stale hub process on port ${Port}: $($_.Exception.Message)"
+        Log "ERROR: failed to stop stale process PID $($owner.ProcessId) on port $Port"
+        return $false
+    }
+
+    $deadline = (Get-Date).AddSeconds(15)
+    while ((Get-Date) -lt $deadline) {
+        Start-Sleep -Milliseconds 500
+        if (-not (Get-PortListenerProcess -Port $Port)) {
+            Write-Ok "Port $Port is now available."
+            Log "Port $Port cleared after terminating stale process"
+            return $true
+        }
+    }
+
+    Write-Err "Port $Port is still in use after stopping stale hub process."
+    Log "ERROR: port $Port still in use after stale process termination"
+    return $false
+}
+
 function Merge-DirectoryPreservingRuntimeData {
     param(
         [Parameter(Mandatory=$true)][string]$SourceDir,
@@ -797,10 +918,39 @@ try {
 
 # --- Step 9: Start service ---
 Write-Step 9 "Starting $ServiceName service..."
-Start-Service -Name $ServiceName
+$hubPort = [int](Get-HubPortFromEnvFile -EnvFilePath "$InstallDir\.env" -DefaultPort "9088")
+if (-not (Ensure-HubPortAvailable -Port $hubPort -InstallRoot $InstallDir)) {
+    Write-Err "Rolling back..."
+    Stop-Service -Name $ServiceName -Force -ErrorAction SilentlyContinue
+    foreach ($item in $itemsToBackup) {
+        $src = Join-Path $backupPath $item
+        $dest = Join-Path $InstallDir $item
+        if (Test-Path $src) {
+            if (Test-Path $dest) { Remove-Item -Recurse -Force $dest }
+            if ((Get-Item $src).PSIsContainer) {
+                Copy-Item -Path $src -Destination $dest -Recurse
+            } else {
+                Copy-Item -Path $src -Destination $dest
+            }
+        }
+    }
+    Start-Service -Name $ServiceName -ErrorAction SilentlyContinue
+    Log "ROLLBACK: port $hubPort unavailable before service start"
+    exit 1
+}
+
+$startFailed = $false
+try {
+    Start-Service -Name $ServiceName -ErrorAction Stop
+} catch {
+    Write-Err "Failed to start $ServiceName service: $($_.Exception.Message)"
+    Log "ERROR: Start-Service failed: $($_.Exception.Message)"
+    $startFailed = $true
+}
+
 Start-Sleep -Seconds 3
-$svc = Get-Service -Name $ServiceName
-if ($svc.Status -eq 'Running') {
+$svc = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
+if (-not $startFailed -and $svc -and $svc.Status -eq 'Running') {
     Write-Ok "Service running."
 } else {
     Write-Err "Service failed to start! Check logs at $LogDir"
@@ -829,12 +979,7 @@ Write-Step 10 "Verifying health..."
 Start-Sleep -Seconds 2
 
 # Read port from .env if available
-$hubPort = "9088"
-$envFile = "$InstallDir\.env"
-if (Test-Path $envFile) {
-    $portLine = Get-Content $envFile | Where-Object { $_ -match "^HUB_PORT=" }
-    if ($portLine) { $hubPort = ($portLine -split "=", 2)[1].Trim() }
-}
+$hubPort = Get-HubPortFromEnvFile -EnvFilePath "$InstallDir\.env" -DefaultPort "9088"
 
 try {
     $health = Invoke-RestMethod -Uri "http://127.0.0.1:${hubPort}/api/hub/health/" -TimeoutSec 5
