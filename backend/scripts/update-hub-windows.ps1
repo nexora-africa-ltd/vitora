@@ -30,6 +30,10 @@ $script:HubArtifactBaseUrls = @(
     "$CdnBaseUrl/hub",
     "$CdnBaseUrl/releases/hub"
 )
+$AutoUpdateTaskName = "VitoraHubWeeklyUpdate"
+$AutoUpdateLogFile = "$LogDir\hub-nightly-update.log"
+$AutoUpdateDay = if ($env:HUB_AUTO_UPDATE_DAY) { $env:HUB_AUTO_UPDATE_DAY } else { "Sunday" }
+$AutoUpdateTime = if ($env:HUB_AUTO_UPDATE_TIME) { $env:HUB_AUTO_UPDATE_TIME } else { "2:00AM" }
 
 # --- Helper Functions ---
 function Write-Step  { param($num, $msg) Write-Host "[STEP $num] $msg" -ForegroundColor Cyan }
@@ -77,6 +81,23 @@ function Resolve-LatestHubVersion {
     }
 
     return $null
+}
+
+function Register-HubAutoUpdateTask {
+    param(
+        [Parameter(Mandatory=$true)][string]$TaskName,
+        [Parameter(Mandatory=$true)][string]$ScriptPath,
+        [Parameter(Mandatory=$true)][string]$LogPath,
+        [Parameter(Mandatory=$true)][string]$DayOfWeek,
+        [Parameter(Mandatory=$true)][string]$AtTime
+    )
+
+    $taskAction = New-ScheduledTaskAction -Execute "cmd.exe" -Argument "/c powershell.exe -NoProfile -ExecutionPolicy Bypass -File `"$ScriptPath`" >> `"$LogPath`" 2>&1"
+    $taskTrigger = New-ScheduledTaskTrigger -Weekly -DaysOfWeek $DayOfWeek -At $AtTime
+    $taskPrincipal = New-ScheduledTaskPrincipal -UserId "SYSTEM" -RunLevel Highest -LogonType ServiceAccount
+    $taskSettings = New-ScheduledTaskSettingsSet -StartWhenAvailable -MultipleInstances IgnoreNew
+
+    Register-ScheduledTask -TaskName $TaskName -Action $taskAction -Trigger $taskTrigger -Principal $taskPrincipal -Settings $taskSettings -Force | Out-Null
 }
 
 function Write-DpapiSecretsBundle {
@@ -703,6 +724,17 @@ if (Test-Path $nssmExe) {
 } else {
     Write-Info "NSSM not found at $nssmExe; service environment was not refreshed."
     Log "NSSM not found; service environment not refreshed"
+}
+
+# --- Step 8c: Refresh weekly auto-update task ---
+Write-Step "8c" "Refreshing weekly auto-update task..."
+try {
+    Register-HubAutoUpdateTask -TaskName $AutoUpdateTaskName -ScriptPath "$InstallDir\scripts\update-hub-windows.ps1" -LogPath $AutoUpdateLogFile -DayOfWeek $AutoUpdateDay -AtTime $AutoUpdateTime
+    Write-Ok "Scheduled task '$AutoUpdateTaskName' refreshed ($AutoUpdateDay $AutoUpdateTime)."
+    Log "Scheduled task refreshed"
+} catch {
+    Write-Info "Unable to refresh scheduled task '$AutoUpdateTaskName': $_"
+    Log "Scheduled task refresh failed"
 }
 
 # --- Step 9: Start service ---

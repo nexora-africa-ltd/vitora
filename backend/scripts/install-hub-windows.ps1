@@ -52,6 +52,10 @@ $script:HubArtifactBaseUrls = @(
     "$CdnBaseUrl/hub",
     "$CdnBaseUrl/releases/hub"
 )
+$AutoUpdateTaskName = "VitoraHubWeeklyUpdate"
+$AutoUpdateLogFile = "$LogDir\hub-nightly-update.log"
+$AutoUpdateDay = if ($env:HUB_AUTO_UPDATE_DAY) { $env:HUB_AUTO_UPDATE_DAY } else { "Sunday" }
+$AutoUpdateTime = if ($env:HUB_AUTO_UPDATE_TIME) { $env:HUB_AUTO_UPDATE_TIME } else { "2:00AM" }
 
 # --- Helper Functions ---
 function Write-Step  { param($num, $msg) Write-Host "[STEP $num] $msg" -ForegroundColor Cyan }
@@ -107,6 +111,23 @@ function Write-DpapiSecretsBundle {
     } | ConvertTo-Json
 
     Set-Content -Path $Path -Value $payload
+}
+
+function Register-HubAutoUpdateTask {
+    param(
+        [Parameter(Mandatory=$true)][string]$TaskName,
+        [Parameter(Mandatory=$true)][string]$ScriptPath,
+        [Parameter(Mandatory=$true)][string]$LogPath,
+        [Parameter(Mandatory=$true)][string]$DayOfWeek,
+        [Parameter(Mandatory=$true)][string]$AtTime
+    )
+
+    $taskAction = New-ScheduledTaskAction -Execute "cmd.exe" -Argument "/c powershell.exe -NoProfile -ExecutionPolicy Bypass -File `"$ScriptPath`" >> `"$LogPath`" 2>&1"
+    $taskTrigger = New-ScheduledTaskTrigger -Weekly -DaysOfWeek $DayOfWeek -At $AtTime
+    $taskPrincipal = New-ScheduledTaskPrincipal -UserId "SYSTEM" -RunLevel Highest -LogonType ServiceAccount
+    $taskSettings = New-ScheduledTaskSettingsSet -StartWhenAvailable -MultipleInstances IgnoreNew
+
+    Register-ScheduledTask -TaskName $TaskName -Action $taskAction -Trigger $taskTrigger -Principal $taskPrincipal -Settings $taskSettings -Force | Out-Null
 }
 
 function Test-PythonVersion {
@@ -633,6 +654,8 @@ ALLOWED_HOSTS=*
 HUB_VERSION=$Version
 HUB_CLOUD_AUTH_ENABLED=$HubCloudAuthEnabled
 HUB_CLOUD_AUTH_URL=$HubCloudAuthUrl
+HUB_AUTO_UPDATE_DAY=$AutoUpdateDay
+HUB_AUTO_UPDATE_TIME=$AutoUpdateTime
 TIBABOT_ENABLED=$TibaBotEnabled
 TIBABOT_API_URL=$TibaBotApiUrl
 TIBABOT_API_KEY=$TibaBotApiKey
@@ -981,6 +1004,15 @@ if (-not $existing) {
     Write-Info "Firewall rule already exists."
 }
 
+# --- Weekly Auto-Update Task ---
+Write-Info "Registering weekly auto-update task ($AutoUpdateDay at $AutoUpdateTime)..."
+try {
+    Register-HubAutoUpdateTask -TaskName $AutoUpdateTaskName -ScriptPath "$InstallDir\scripts\update-hub-windows.ps1" -LogPath $AutoUpdateLogFile -DayOfWeek $AutoUpdateDay -AtTime $AutoUpdateTime
+    Write-Info "Scheduled task '$AutoUpdateTaskName' registered."
+} catch {
+    Write-Warn "Failed to register scheduled auto-update task: $_"
+}
+
 # --- Verify ---
 Start-Sleep -Seconds 3
 $svc = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
@@ -1022,7 +1054,9 @@ Write-Host ""
 Write-Host "  Manage:"
 Write-Host "    Restart-Service $ServiceName"
 Write-Host "    Stop-Service $ServiceName"
-Write-Host "    powershell -ExecutionPolicy Bypass -File $InstallDir\scripts\update-hub.ps1"
+Write-Host "    powershell -ExecutionPolicy Bypass -File $InstallDir\scripts\update-hub-windows.ps1"
+Write-Host "    Scheduled task: $AutoUpdateTaskName ($AutoUpdateDay $AutoUpdateTime)"
+Write-Host "    Auto-update log: $AutoUpdateLogFile"
 Write-Host "    # Updater keeps one rolling pre-update snapshot at $InstallDir\backup\pre-update-current"
 Write-Host "    $nssmExe edit $ServiceName"
 Write-Host ""
