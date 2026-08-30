@@ -23,6 +23,7 @@ All notable changes to Vitora HMIS releases are documented in this file.
 ### Hub
 - Updated hub CI packaging to always include `scripts/start-hub-windows.ps1` in both Linux and Windows artifacts.
 - Updated hub CI publish step to upload `start-hub-windows.ps1` to both root and `/releases/` CDN paths.
+- Stabilized Windows hub Cython builds by running Cython translation in single-thread mode to avoid intermittent `Bad file descriptor` worker crashes on GitHub runners.
 
 ## [0.1.4] - 2026-08-30
 

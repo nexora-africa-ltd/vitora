@@ -107,12 +107,18 @@ def run_cython_build(payload_dir: Path, files: list[Path], jobs: int) -> None:
     if sys.platform == "win32":
         extra_compile = '["/Od"]'
         extra_link = "[]"
+        # Cython's own multiprocessing can crash on GitHub Windows runners with
+        # OSError: [Errno 9] Bad file descriptor when worker processes flush stdout.
+        # Keep Cython translation single-threaded on Windows; C compilation still
+        # runs in parallel via build_ext -j below.
+        cython_threads = 1
     else:
         # -O0 disables optimization (10x faster builds on huge files)
         # -g0 strips debug info (smaller binaries)
         # -fvisibility=hidden hides internal symbols
         extra_compile = '["-O0", "-g0", "-fvisibility=hidden", "-pipe"]'
         extra_link = '["-Wl,--strip-all"]'
+        cython_threads = jobs
 
     extensions_code_lines = []
     for f in files:
@@ -140,7 +146,7 @@ def _build():
         name="vitora-hub-compiled",
         ext_modules=cythonize(
             extensions,
-            nthreads={jobs},
+            nthreads={cython_threads},
             compiler_directives={{
                 "language_level": "3",
                 "always_allow_keywords": True,
