@@ -80,6 +80,38 @@ function Set-ProcessEnv {
     }
 }
 
+function Initialize-DpapiType {
+    if ($script:DpapiTypeInitialized) {
+        return
+    }
+
+    $protectedDataType = [Type]::GetType("System.Security.Cryptography.ProtectedData, System.Security", $false)
+    if (-not $protectedDataType) {
+        try { Add-Type -AssemblyName "System.Security" -ErrorAction Stop } catch {}
+        try { Add-Type -AssemblyName "System.Security.Cryptography.ProtectedData" -ErrorAction Stop } catch {}
+        $protectedDataType = [Type]::GetType("System.Security.Cryptography.ProtectedData, System.Security", $false)
+        if (-not $protectedDataType) {
+            $protectedDataType = [Type]::GetType("System.Security.Cryptography.ProtectedData, System.Security.Cryptography.ProtectedData", $false)
+        }
+    }
+
+    if (-not $protectedDataType) {
+        throw "DPAPI is unavailable on this host. Run start-hub.ps1 from Windows PowerShell on Windows."
+    }
+
+    $scopeType = [Type]::GetType("System.Security.Cryptography.DataProtectionScope, System.Security", $false)
+    if (-not $scopeType) {
+        $scopeType = [Type]::GetType("System.Security.Cryptography.DataProtectionScope, System.Security.Cryptography.ProtectedData", $false)
+    }
+    if (-not $scopeType) {
+        throw "DPAPI DataProtectionScope type is unavailable on this host."
+    }
+
+    $script:DpapiProtectedDataType = $protectedDataType
+    $script:DpapiLocalMachineScope = [Enum]::Parse($scopeType, "LocalMachine")
+    $script:DpapiTypeInitialized = $true
+}
+
 function Load-DotEnv {
     param([Parameter(Mandatory = $true)][string]$Path)
 
@@ -105,11 +137,12 @@ function Load-DotEnv {
 function ConvertFrom-DpapiCiphertext {
     param([Parameter(Mandatory = $true)][string]$CiphertextB64)
 
+    Initialize-DpapiType
     $cipherBytes = [Convert]::FromBase64String($CiphertextB64)
-    $plainBytes = [System.Security.Cryptography.ProtectedData]::Unprotect(
+    $plainBytes = $script:DpapiProtectedDataType::Unprotect(
         $cipherBytes,
         $null,
-        [System.Security.Cryptography.DataProtectionScope]::LocalMachine
+        $script:DpapiLocalMachineScope
     )
 
     return [Text.Encoding]::UTF8.GetString($plainBytes)

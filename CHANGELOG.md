@@ -18,6 +18,12 @@ All notable changes to Vitora HMIS releases are documented in this file.
 ### Added
 - Placeholder section for upcoming release notes.
 
+## [0.1.2] - 2026-08-30
+
+### Hub
+- Fixed Windows DPAPI type initialization in hub scripts so secret bundle protect/unprotect works reliably across PowerShell runtimes.
+- Added explicit DPAPI availability errors with actionable guidance when running in unsupported environments.
+
 ## [0.1.1] - 2026-08-30
 
 ### Hub

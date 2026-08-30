@@ -79,6 +79,38 @@ function Resolve-ConfigValue {
     return $Default
 }
 
+function Initialize-DpapiType {
+    if ($script:DpapiTypeInitialized) {
+        return
+    }
+
+    $protectedDataType = [Type]::GetType("System.Security.Cryptography.ProtectedData, System.Security", $false)
+    if (-not $protectedDataType) {
+        try { Add-Type -AssemblyName "System.Security" -ErrorAction Stop } catch {}
+        try { Add-Type -AssemblyName "System.Security.Cryptography.ProtectedData" -ErrorAction Stop } catch {}
+        $protectedDataType = [Type]::GetType("System.Security.Cryptography.ProtectedData, System.Security", $false)
+        if (-not $protectedDataType) {
+            $protectedDataType = [Type]::GetType("System.Security.Cryptography.ProtectedData, System.Security.Cryptography.ProtectedData", $false)
+        }
+    }
+
+    if (-not $protectedDataType) {
+        throw "DPAPI is unavailable on this host. Run this installer from Windows PowerShell on Windows."
+    }
+
+    $scopeType = [Type]::GetType("System.Security.Cryptography.DataProtectionScope, System.Security", $false)
+    if (-not $scopeType) {
+        $scopeType = [Type]::GetType("System.Security.Cryptography.DataProtectionScope, System.Security.Cryptography.ProtectedData", $false)
+    }
+    if (-not $scopeType) {
+        throw "DPAPI DataProtectionScope type is unavailable on this host."
+    }
+
+    $script:DpapiProtectedDataType = $protectedDataType
+    $script:DpapiLocalMachineScope = [Enum]::Parse($scopeType, "LocalMachine")
+    $script:DpapiTypeInitialized = $true
+}
+
 function Write-DpapiSecretsBundle {
     param(
         [Parameter(Mandatory = $true)][hashtable]$Secrets,
@@ -96,11 +128,12 @@ function Write-DpapiSecretsBundle {
         secrets = $Secrets
     } | ConvertTo-Json -Compress
 
+    Initialize-DpapiType
     $plainBytes = [Text.Encoding]::UTF8.GetBytes($plaintext)
-    $cipherBytes = [System.Security.Cryptography.ProtectedData]::Protect(
+    $cipherBytes = $script:DpapiProtectedDataType::Protect(
         $plainBytes,
         $null,
-        [System.Security.Cryptography.DataProtectionScope]::LocalMachine
+        $script:DpapiLocalMachineScope
     )
 
     $payload = @{
