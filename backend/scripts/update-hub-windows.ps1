@@ -7,8 +7,8 @@
 # Keeps a single rolling pre-update backup at C:\VitoraHub\backup\pre-update-current.
 #
 # Usage (Run as Administrator):
-#   powershell -ExecutionPolicy Bypass -File C:\VitoraHub\scripts\update-hub.ps1
-#   powershell -ExecutionPolicy Bypass -File C:\VitoraHub\scripts\update-hub.ps1 -Version 0.4.0
+#   powershell -ExecutionPolicy Bypass -File C:\VitoraHub\scripts\update-hub-windows.ps1
+#   powershell -ExecutionPolicy Bypass -File C:\VitoraHub\scripts\update-hub-windows.ps1 -Version 0.4.0
 # ============================================================================
 
 #Requires -RunAsAdministrator
@@ -391,7 +391,38 @@ Log "Extracted version $Version"
 Write-Step 6 "Updating Python dependencies..."
 $pip = "$VenvDir\Scripts\pip.exe"
 if (Test-Path "$InstallDir\requirements-hub.txt") {
-    & $pip install -r "$InstallDir\requirements-hub.txt" --quiet 2>&1 | Out-Null
+    # pip can emit benign warnings to stderr (e.g. dist-info metadata notices).
+    # Under ErrorActionPreference=Stop, that becomes NativeCommandError and
+    # aborts the whole update even when pip exits 0. Relax error preference for
+    # this native command and gate on LASTEXITCODE instead.
+    $prevEAP = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    $pipOutput = & $pip install -r "$InstallDir\requirements-hub.txt" --quiet 2>&1
+    $pipExit = $LASTEXITCODE
+    $ErrorActionPreference = $prevEAP
+
+    Log "pip install output:`n$($pipOutput | Out-String)"
+
+    if ($pipExit -ne 0) {
+        Write-Err "Dependency update failed (exit code $pipExit)."
+        Write-Err "Restoring backup..."
+        foreach ($item in $itemsToBackup) {
+            $src = Join-Path $backupPath $item
+            $dest = Join-Path $InstallDir $item
+            if (Test-Path $src) {
+                if (Test-Path $dest) { Remove-Item -Recurse -Force $dest }
+                if ((Get-Item $src).PSIsContainer) {
+                    Copy-Item -Path $src -Destination $dest -Recurse
+                } else {
+                    Copy-Item -Path $src -Destination $dest
+                }
+            }
+        }
+        Start-Service -Name $ServiceName -ErrorAction SilentlyContinue
+        Log "ROLLBACK: dependency update failed (exit $pipExit)"
+        exit 1
+    }
+
     Write-Ok "Dependencies updated."
 } else {
     Write-Info "No requirements-hub.txt found, skipping."
