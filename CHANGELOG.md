@@ -18,6 +18,12 @@ All notable changes to Vitora HMIS releases are documented in this file.
 ### Added
 - Placeholder section for upcoming release notes.
 
+## [0.1.6] - 2026-08-30
+
+### Hub
+- Fixed Windows startup/secret-rotation JSON parsing to safely handle bundles without `ciphertext_b64` (including plaintext fallback bundles).
+- Prevented strict-mode startup crashes when `hub-secrets.dpapi.json` contains only a `secrets` map.
+
 ## [0.1.5] - 2026-08-30
 
 ### Hub

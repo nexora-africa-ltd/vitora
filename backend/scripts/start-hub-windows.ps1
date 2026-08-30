@@ -134,6 +134,24 @@ function Load-DotEnv {
     }
 }
 
+function Get-JsonPropertyValue {
+    param(
+        [Parameter(Mandatory = $true)]$Object,
+        [Parameter(Mandatory = $true)][string]$Name
+    )
+
+    if ($null -eq $Object) {
+        return $null
+    }
+
+    $prop = $Object.PSObject.Properties[$Name]
+    if ($null -eq $prop) {
+        return $null
+    }
+
+    return $prop.Value
+}
+
 function ConvertFrom-DpapiCiphertext {
     param([Parameter(Mandatory = $true)][string]$CiphertextB64)
 
@@ -171,9 +189,12 @@ function Load-DpapiSecrets {
         }
         $plainJson = ""
 
-        if ($null -ne $payload -and $null -ne $payload.ciphertext_b64 -and "$($payload.ciphertext_b64)" -ne "") {
-            $plainJson = ConvertFrom-DpapiCiphertext -CiphertextB64 $payload.ciphertext_b64
-        } elseif ($null -ne $payload -and $null -ne $payload.secrets) {
+        $ciphertextB64 = Get-JsonPropertyValue -Object $payload -Name "ciphertext_b64"
+        $payloadSecrets = Get-JsonPropertyValue -Object $payload -Name "secrets"
+
+        if ($null -ne $payload -and $null -ne $ciphertextB64 -and "$ciphertextB64" -ne "") {
+            $plainJson = ConvertFrom-DpapiCiphertext -CiphertextB64 $ciphertextB64
+        } elseif ($null -ne $payload -and $null -ne $payloadSecrets) {
             # Backward-compatible plain JSON fallback (not recommended)
             $plainJson = $raw
         } else {
@@ -182,7 +203,8 @@ function Load-DpapiSecrets {
         }
 
         $secretDoc = $plainJson | ConvertFrom-Json
-        $secretMap = if ($null -ne $secretDoc.secrets) { $secretDoc.secrets } else { $secretDoc }
+        $secretDocSecrets = Get-JsonPropertyValue -Object $secretDoc -Name "secrets"
+        $secretMap = if ($null -ne $secretDocSecrets) { $secretDocSecrets } else { $secretDoc }
 
         $secretMap.PSObject.Properties | ForEach-Object {
             $name = $_.Name
