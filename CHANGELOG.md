@@ -18,6 +18,12 @@ All notable changes to Vitora HMIS releases are documented in this file.
 ### Added
 - Placeholder section for upcoming release notes.
 
+## [0.1.3] - 2026-08-30
+
+### Hub
+- Updated Windows installer/updater/secret-rotation scripts to fall back to plaintext secret bundles when DPAPI types are unavailable, preventing update/install failures on affected hosts.
+- Added explicit warnings when plaintext fallback is used so operators can harden host/runtime configuration later.
+
 ## [0.1.2] - 2026-08-30
 
 ### Hub

@@ -45,7 +45,7 @@ function Log { param($msg) Add-Content -Path $LogFile -Value "$(Get-Date -Format
 
 function Initialize-DpapiType {
     if ($script:DpapiTypeInitialized) {
-        return
+        return $script:DpapiAvailable
     }
 
     $protectedDataType = [Type]::GetType("System.Security.Cryptography.ProtectedData, System.Security", $false)
@@ -59,7 +59,9 @@ function Initialize-DpapiType {
     }
 
     if (-not $protectedDataType) {
-        throw "DPAPI is unavailable on this host. Run this updater from Windows PowerShell on Windows."
+        $script:DpapiTypeInitialized = $true
+        $script:DpapiAvailable = $false
+        return $false
     }
 
     $scopeType = [Type]::GetType("System.Security.Cryptography.DataProtectionScope, System.Security", $false)
@@ -67,12 +69,16 @@ function Initialize-DpapiType {
         $scopeType = [Type]::GetType("System.Security.Cryptography.DataProtectionScope, System.Security.Cryptography.ProtectedData", $false)
     }
     if (-not $scopeType) {
-        throw "DPAPI DataProtectionScope type is unavailable on this host."
+        $script:DpapiTypeInitialized = $true
+        $script:DpapiAvailable = $false
+        return $false
     }
 
     $script:DpapiProtectedDataType = $protectedDataType
     $script:DpapiLocalMachineScope = [Enum]::Parse($scopeType, "LocalMachine")
     $script:DpapiTypeInitialized = $true
+    $script:DpapiAvailable = $true
+    return $true
 }
 
 function Get-HubEnvValue {
@@ -149,7 +155,19 @@ function Write-DpapiSecretsBundle {
         secrets = $Secrets
     } | ConvertTo-Json -Compress
 
-    Initialize-DpapiType
+    if (-not (Initialize-DpapiType)) {
+        $payload = @{
+            version = 1
+            scope = "PlaintextFallback"
+            generated_at = (Get-Date).ToUniversalTime().ToString("o")
+            secrets = $Secrets
+        } | ConvertTo-Json
+        Set-Content -Path $Path -Value $payload
+        Write-Info "DPAPI unavailable; wrote plaintext secret bundle fallback at $Path"
+        Log "WARN: DPAPI unavailable; wrote plaintext secret bundle fallback"
+        return
+    }
+
     $plainBytes = [Text.Encoding]::UTF8.GetBytes($plaintext)
     $cipherBytes = $script:DpapiProtectedDataType::Protect(
         $plainBytes,
