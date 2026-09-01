@@ -6,6 +6,7 @@
     "urls": ["http://127.0.0.1:*", "http://localhost:*"]
   },
   "permissions": [
+    "default",
     "core:default",
     "core:window:default",
     "core:window:allow-close",

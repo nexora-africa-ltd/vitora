@@ -18,6 +18,12 @@ All notable changes to Vitora HMIS releases are documented in this file.
 ### Added
 - Placeholder section for upcoming release notes.
 
+## [1.0.3] - 2026-08-30
+
+### Desktop
+- Added explicit Tauri ACL permissions for desktop app invoke commands (including `set_api_url`, `set_deployment_mode`, and `save_hub_config`) to unblock setup save flow in packaged builds.
+- Updated generated Tauri schema/capability manifests to reflect new desktop command permissions.
+
 ## [1.0.2] - 2026-08-30
 
 ### Desktop

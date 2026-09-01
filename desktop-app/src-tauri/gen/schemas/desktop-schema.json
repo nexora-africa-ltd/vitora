@@ -2211,6 +2211,116 @@
       "description": "Permission identifier",
       "oneOf": [
         {
+          "description": "Default permissions for Vitora desktop app commands.\n#### This permission set includes:\n\n- `allow-get-sidecar-port`\n- `allow-get-app-version`\n- `allow-print-receipt`\n- `allow-list-printers`\n- `allow-get-api-url`\n- `allow-set-api-url`\n- `allow-is-first-run`\n- `allow-get-app-config`\n- `allow-set-deployment-mode`\n- `allow-set-sync-interval`\n- `allow-set-backup-interval`\n- `allow-set-hub-url`\n- `allow-set-facility-id`\n- `allow-set-organization-id`\n- `allow-save-hub-config`\n- `allow-get-db-encryption-key`\n- `allow-set-fernet-key`\n- `allow-get-fernet-key`\n- `allow-get-installation-id`\n- `allow-store-license-token`\n- `allow-get-license-token`\n- `allow-clear-license-token`\n- `allow-store-credentials`\n- `allow-get-credentials`\n- `allow-clear-credentials`\n- `allow-check-for-updates`",
+          "type": "string",
+          "const": "default",
+          "markdownDescription": "Default permissions for Vitora desktop app commands.\n#### This permission set includes:\n\n- `allow-get-sidecar-port`\n- `allow-get-app-version`\n- `allow-print-receipt`\n- `allow-list-printers`\n- `allow-get-api-url`\n- `allow-set-api-url`\n- `allow-is-first-run`\n- `allow-get-app-config`\n- `allow-set-deployment-mode`\n- `allow-set-sync-interval`\n- `allow-set-backup-interval`\n- `allow-set-hub-url`\n- `allow-set-facility-id`\n- `allow-set-organization-id`\n- `allow-save-hub-config`\n- `allow-get-db-encryption-key`\n- `allow-set-fernet-key`\n- `allow-get-fernet-key`\n- `allow-get-installation-id`\n- `allow-store-license-token`\n- `allow-get-license-token`\n- `allow-clear-license-token`\n- `allow-store-credentials`\n- `allow-get-credentials`\n- `allow-clear-credentials`\n- `allow-check-for-updates`"
+        },
+        {
+          "type": "string",
+          "const": "allow-check-for-updates"
+        },
+        {
+          "type": "string",
+          "const": "allow-clear-credentials"
+        },
+        {
+          "type": "string",
+          "const": "allow-clear-license-token"
+        },
+        {
+          "type": "string",
+          "const": "allow-get-api-url"
+        },
+        {
+          "type": "string",
+          "const": "allow-get-app-config"
+        },
+        {
+          "type": "string",
+          "const": "allow-get-app-version"
+        },
+        {
+          "type": "string",
+          "const": "allow-get-credentials"
+        },
+        {
+          "type": "string",
+          "const": "allow-get-db-encryption-key"
+        },
+        {
+          "type": "string",
+          "const": "allow-get-fernet-key"
+        },
+        {
+          "type": "string",
+          "const": "allow-get-installation-id"
+        },
+        {
+          "type": "string",
+          "const": "allow-get-license-token"
+        },
+        {
+          "type": "string",
+          "const": "allow-get-sidecar-port"
+        },
+        {
+          "type": "string",
+          "const": "allow-is-first-run"
+        },
+        {
+          "type": "string",
+          "const": "allow-list-printers"
+        },
+        {
+          "type": "string",
+          "const": "allow-print-receipt"
+        },
+        {
+          "type": "string",
+          "const": "allow-save-hub-config"
+        },
+        {
+          "type": "string",
+          "const": "allow-set-api-url"
+        },
+        {
+          "type": "string",
+          "const": "allow-set-backup-interval"
+        },
+        {
+          "type": "string",
+          "const": "allow-set-deployment-mode"
+        },
+        {
+          "type": "string",
+          "const": "allow-set-facility-id"
+        },
+        {
+          "type": "string",
+          "const": "allow-set-fernet-key"
+        },
+        {
+          "type": "string",
+          "const": "allow-set-hub-url"
+        },
+        {
+          "type": "string",
+          "const": "allow-set-organization-id"
+        },
+        {
+          "type": "string",
+          "const": "allow-set-sync-interval"
+        },
+        {
+          "type": "string",
+          "const": "allow-store-credentials"
+        },
+        {
+          "type": "string",
+          "const": "allow-store-license-token"
+        },
+        {
           "description": "This permission set configures if your\napplication can enable or disable auto\nstarting the application on boot.\n\n#### Granted Permissions\n\nIt allows all to check, enable and\ndisable the automatic start on boot.\n\n\n#### This default permission set includes:\n\n- `allow-enable`\n- `allow-disable`\n- `allow-is-enabled`",
           "type": "string",
           "const": "autostart:default",

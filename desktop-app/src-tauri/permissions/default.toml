@@ -1,0 +1,140 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
+# This file defines app-command ACL permissions for the Tauri desktop shell.
+# Used automatically by Tauri capabilities to allow frontend invoke commands.
+# Inputs: command names registered in src/lib.rs via tauri::generate_handler!.
+
+[[set]]
+identifier = "default"
+description = "Default permissions for Vitora desktop app commands."
+permissions = [
+  "allow-get-sidecar-port",
+  "allow-get-app-version",
+  "allow-print-receipt",
+  "allow-list-printers",
+  "allow-get-api-url",
+  "allow-set-api-url",
+  "allow-is-first-run",
+  "allow-get-app-config",
+  "allow-set-deployment-mode",
+  "allow-set-sync-interval",
+  "allow-set-backup-interval",
+  "allow-set-hub-url",
+  "allow-set-facility-id",
+  "allow-set-organization-id",
+  "allow-save-hub-config",
+  "allow-get-db-encryption-key",
+  "allow-set-fernet-key",
+  "allow-get-fernet-key",
+  "allow-get-installation-id",
+  "allow-store-license-token",
+  "allow-get-license-token",
+  "allow-clear-license-token",
+  "allow-store-credentials",
+  "allow-get-credentials",
+  "allow-clear-credentials",
+  "allow-check-for-updates",
+]
+
+[[permission]]
+identifier = "allow-get-sidecar-port"
+commands.allow = ["get_sidecar_port"]
+
+[[permission]]
+identifier = "allow-get-app-version"
+commands.allow = ["get_app_version"]
+
+[[permission]]
+identifier = "allow-print-receipt"
+commands.allow = ["print_receipt"]
+
+[[permission]]
+identifier = "allow-list-printers"
+commands.allow = ["list_printers"]
+
+[[permission]]
+identifier = "allow-get-api-url"
+commands.allow = ["get_api_url"]
+
+[[permission]]
+identifier = "allow-set-api-url"
+commands.allow = ["set_api_url"]
+
+[[permission]]
+identifier = "allow-is-first-run"
+commands.allow = ["is_first_run"]
+
+[[permission]]
+identifier = "allow-get-app-config"
+commands.allow = ["get_app_config"]
+
+[[permission]]
+identifier = "allow-set-deployment-mode"
+commands.allow = ["set_deployment_mode"]
+
+[[permission]]
+identifier = "allow-set-sync-interval"
+commands.allow = ["set_sync_interval"]
+
+[[permission]]
+identifier = "allow-set-backup-interval"
+commands.allow = ["set_backup_interval"]
+
+[[permission]]
+identifier = "allow-set-hub-url"
+commands.allow = ["set_hub_url"]
+
+[[permission]]
+identifier = "allow-set-facility-id"
+commands.allow = ["set_facility_id"]
+
+[[permission]]
+identifier = "allow-set-organization-id"
+commands.allow = ["set_organization_id"]
+
+[[permission]]
+identifier = "allow-save-hub-config"
+commands.allow = ["save_hub_config"]
+
+[[permission]]
+identifier = "allow-get-db-encryption-key"
+commands.allow = ["get_db_encryption_key"]
+
+[[permission]]
+identifier = "allow-set-fernet-key"
+commands.allow = ["set_fernet_key"]
+
+[[permission]]
+identifier = "allow-get-fernet-key"
+commands.allow = ["get_fernet_key"]
+
+[[permission]]
+identifier = "allow-get-installation-id"
+commands.allow = ["get_installation_id"]
+
+[[permission]]
+identifier = "allow-store-license-token"
+commands.allow = ["store_license_token"]
+
+[[permission]]
+identifier = "allow-get-license-token"
+commands.allow = ["get_license_token"]
+
+[[permission]]
+identifier = "allow-clear-license-token"
+commands.allow = ["clear_license_token"]
+
+[[permission]]
+identifier = "allow-store-credentials"
+commands.allow = ["store_credentials"]
+
+[[permission]]
+identifier = "allow-get-credentials"
+commands.allow = ["get_credentials"]
+
+[[permission]]
+identifier = "allow-clear-credentials"
+commands.allow = ["clear_credentials"]
+
+[[permission]]
+identifier = "allow-check-for-updates"
+commands.allow = ["check_for_updates"]
