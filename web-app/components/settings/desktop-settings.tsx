@@ -41,6 +41,7 @@ import {
   clearCredentials,
 } from '@/lib/desktop';
 import { apiClient } from '@/lib/api/client';
+import { licensingApi } from '@/lib/api/licensing';
 import { useToast } from '@/lib/hooks/use-toast';
 
 const DEPLOYMENT_MODES: Array<{ value: DeploymentMode; label: string; description: string }> = [
@@ -117,6 +118,8 @@ export function DesktopSettingsTab() {
   const [saving, setSaving] = useState(false);
   const [healthLoading, setHealthLoading] = useState(false);
   const [syncingNow, setSyncingNow] = useState(false);
+  const [manualCheckIning, setManualCheckIning] = useState(false);
+  const [lastLicenseCheckInAt, setLastLicenseCheckInAt] = useState<number | null>(null);
   const [hubHealth, setHubHealth] = useState<HubHealth | null>(null);
   const [hubHealthError, setHubHealthError] = useState<string>('');
   const { toast } = useToast();
@@ -154,6 +157,16 @@ export function DesktopSettingsTab() {
   useEffect(() => {
     loadConfig();
   }, [loadConfig]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const raw = localStorage.getItem('vitora_last_check_in');
+    if (!raw) return;
+    const parsed = Number(raw);
+    if (Number.isFinite(parsed) && parsed > 0) {
+      setLastLicenseCheckInAt(parsed);
+    }
+  }, []);
 
   const isHubMode = deploymentMode === 'lan_client' || deploymentMode === 'lan_hub';
 
@@ -230,6 +243,36 @@ export function DesktopSettingsTab() {
       });
     } finally {
       setSyncingNow(false);
+    }
+  };
+
+  const handleManualCheckIn = async () => {
+    setManualCheckIning(true);
+    try {
+      const resolvedInstallationId = installationId || (await licensingApi.getInstallationIdAsync());
+      await licensingApi.checkIn({
+        installation_id: resolvedInstallationId,
+        app_version: process.env.NEXT_PUBLIC_APP_VERSION || '0.0.0',
+      });
+
+      const now = Date.now();
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('vitora_last_check_in', String(now));
+      }
+      setLastLicenseCheckInAt(now);
+
+      toast({
+        title: 'License check-in complete',
+        description: 'Desktop license token has been refreshed successfully.',
+      });
+    } catch {
+      toast({
+        title: 'License check-in failed',
+        description: 'Could not complete a manual check-in. Confirm internet access and try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setManualCheckIning(false);
     }
   };
 
@@ -444,10 +487,10 @@ export function DesktopSettingsTab() {
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2">
             <CardTitle className="text-base sm:text-lg">Device Information</CardTitle>
-            <HelpPopover content="Read-only device identifiers used for licensing and sync." />
+            <HelpPopover content="Read-only device identifiers used for licensing and sync. You can also run a manual desktop license check-in." />
           </div>
         </CardHeader>
-        <CardContent className="space-y-3">
+        <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
             <span className="text-sm text-muted-foreground">Installation ID</span>
             <Badge variant="secondary" className="font-mono text-xs">
@@ -463,6 +506,21 @@ export function DesktopSettingsTab() {
               {deploymentMode === 'web_only' && <HardDrive className="h-3 w-3" />}
               {DEPLOYMENT_MODES.find((m) => m.value === deploymentMode)?.label || deploymentMode}
             </Badge>
+          </div>
+
+          <div className="rounded-md border p-3">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div className="space-y-1">
+                <p className="text-sm font-medium">License Check-in</p>
+                <p className="text-xs text-muted-foreground">
+                  Last check-in: {lastLicenseCheckInAt ? formatDateTime(new Date(lastLicenseCheckInAt).toISOString()) : 'Never'}
+                </p>
+              </div>
+              <Button size="sm" variant="outline" onClick={handleManualCheckIn} disabled={manualCheckIning}>
+                {manualCheckIning ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <Activity className="h-4 w-4 mr-1.5" />}
+                Check In Now
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>

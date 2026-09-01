@@ -19,6 +19,14 @@ All notable changes to Vitora HMIS releases are documented in this file.
 
 - Placeholder section for upcoming release notes.
 
+## [1.0.5] - 2026-09-01
+
+### Desktop
+
+- Added a manual "Check In Now" action in Desktop Settings so operators can force a license check-in on demand without waiting for the background interval.
+- Added explicit Tauri ACL capability permissions for desktop invoke commands (including `set_api_url`) to fix setup save failures in packaged builds.
+- Bumped desktop app version metadata to `1.0.5` across `package.json`, `Cargo.toml`, and `tauri.conf.json`, and refreshed `package-lock.json`.
+
 ## [1.0.4] - 2026-09-01
 
 ### Desktop
