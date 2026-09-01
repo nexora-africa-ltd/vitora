@@ -536,6 +536,72 @@ class TestLicenseCheckInTask:
         assert "error" in result
         assert "No license token" in result["error"]
 
+    @override_settings(SYNC_SERVER_URL="https://cloud.example.com/api/sync")
+    def test_task_normalizes_sync_url_with_api_sync_suffix(self):
+        """Task should strip trailing /api/sync before calling licensing check-in."""
+        import jwt as pyjwt
+
+        from hmis.apps.licensing.tasks import license_check_in
+
+        token = pyjwt.encode(
+            {
+                "installation_id": "hub-test-12345",
+                "jti": "token-jti-1",
+            },
+            "test-secret-key-that-is-at-least-thirty-two-bytes",
+            algorithm="HS256",
+        )
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {}
+
+        with (
+            patch.dict("os.environ", {"DJANGO_ENV": "hub", "LICENSE_TOKEN": token}),
+            patch("hmis.apps.licensing.hardware.compute_binary_hashes", return_value={}),
+            patch(
+                "hmis.apps.licensing.hardware.get_hardware_fingerprint",
+                return_value="hw-fingerprint",
+            ),
+            patch("requests.post", return_value=mock_response) as mock_post,
+        ):
+            result = license_check_in()
+
+        assert result["success"] is True
+        assert mock_post.call_args.args[0] == "https://cloud.example.com/api/licensing/check-in/"
+
+    @override_settings(SYNC_SERVER_URL="https://cloud.example.com/api/sync/")
+    def test_task_normalizes_sync_url_with_api_sync_suffix_and_trailing_slash(self):
+        """Task should normalize /api/sync/ variants before building check-in URL."""
+        import jwt as pyjwt
+
+        from hmis.apps.licensing.tasks import license_check_in
+
+        token = pyjwt.encode(
+            {
+                "installation_id": "hub-test-12345",
+                "jti": "token-jti-2",
+            },
+            "test-secret-key-that-is-at-least-thirty-two-bytes",
+            algorithm="HS256",
+        )
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {}
+
+        with (
+            patch.dict("os.environ", {"DJANGO_ENV": "hub", "LICENSE_TOKEN": token}),
+            patch("hmis.apps.licensing.hardware.compute_binary_hashes", return_value={}),
+            patch(
+                "hmis.apps.licensing.hardware.get_hardware_fingerprint",
+                return_value="hw-fingerprint",
+            ),
+            patch("requests.post", return_value=mock_response) as mock_post,
+        ):
+            result = license_check_in()
+
+        assert result["success"] is True
+        assert mock_post.call_args.args[0] == "https://cloud.example.com/api/licensing/check-in/"
+
 
 # ---------------------------------------------------------------------------
 # CheckInLog Model Tests

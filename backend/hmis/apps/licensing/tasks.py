@@ -18,6 +18,20 @@ from django.conf import settings
 logger = logging.getLogger(__name__)
 
 
+def _normalize_sync_server_for_license_check_in(sync_server_url: str) -> str:
+    """Return a base API URL suitable for appending `/api/licensing/check-in/`.
+
+    Hub sync commonly sets `SYNC_SERVER_URL` to a sync endpoint such as
+    `https://api.vitora.digital/api/sync`. License check-in must target the
+    licensing endpoint on the same host, so strip a trailing `/api/sync` when
+    present.
+    """
+    normalized = (sync_server_url or "").strip().rstrip("/")
+    if normalized.lower().endswith("/api/sync"):
+        return normalized[: -len("/api/sync")]
+    return normalized
+
+
 def _licensing_optional_step_exceptions() -> tuple[type[Exception], ...]:
     """Exceptions tolerated by best-effort licensing telemetry steps."""
     return (ImportError, AttributeError, TypeError, ValueError, RuntimeError, OSError)
@@ -54,7 +68,8 @@ def license_check_in(self) -> dict:
     if not sync_server:
         return {"skipped": True, "reason": "SYNC_SERVER_URL not configured"}
 
-    check_in_url = f"{sync_server.rstrip('/')}/api/licensing/check-in/"
+    license_base_url = _normalize_sync_server_for_license_check_in(sync_server)
+    check_in_url = f"{license_base_url}/api/licensing/check-in/"
 
     # Read current license token for auth
     token_path = getattr(settings, "HUB_LICENSE_TOKEN_PATH", "/var/lib/vitora-hub/license.jwt")
