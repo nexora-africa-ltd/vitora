@@ -639,6 +639,82 @@ class TestSyncMaterializer:
         assert item.invoice_id == invoice.pk
         assert item.service_id == service.pk
 
+    def test_materialize_invoice_update_with_missing_encounter_returns_error_without_raising(
+        self, sample_patient, sample_facility, test_user
+    ):
+        """Unresolvable FK validation errors should return success=False instead of crashing pull."""
+        from hmis.apps.billing.models import Invoice
+        from hmis.apps.core.sync_materializer import materialize_entry
+
+        invoice = Invoice.objects.create(
+            invoice_number="INV-CLOUD-ERR-001",
+            patient=sample_patient,
+            facility=sample_facility,
+            organization=sample_facility.organization,
+            created_by=test_user,
+            invoice_date=date(2026, 6, 22),
+            due_date=date(2026, 6, 22),
+            total_amount="100.00",
+            balance_due="100.00",
+        )
+
+        result = materialize_entry(
+            {
+                "table": "billing.Invoice",
+                "operation": "UPDATE",
+                "record_id": invoice.pk,
+                "data": {
+                    "id": invoice.pk,
+                    "encounter_id": 999999,
+                },
+            }
+        )
+
+        assert result["success"] is False
+        assert "is not a valid choice" in result["error"]
+        invoice.refresh_from_db()
+        assert invoice.encounter_id is None
+
+    def test_materialize_invoice_nullable_encounter_falls_back_to_null_when_hints_unresolved(
+        self, sample_patient, sample_facility, test_user
+    ):
+        """Nullable Invoice.encounter should be nulled only for unresolved hinted parent rows."""
+        from hmis.apps.billing.models import Invoice
+        from hmis.apps.core.sync_materializer import materialize_entry
+
+        invoice = Invoice.objects.create(
+            invoice_number="INV-CLOUD-FB-001",
+            patient=sample_patient,
+            facility=sample_facility,
+            organization=sample_facility.organization,
+            created_by=test_user,
+            invoice_date=date(2026, 6, 22),
+            due_date=date(2026, 6, 22),
+            total_amount="100.00",
+            balance_due="100.00",
+        )
+
+        result = materialize_entry(
+            {
+                "table": "billing.Invoice",
+                "operation": "UPDATE",
+                "record_id": invoice.pk,
+                "data": {
+                    "id": invoice.pk,
+                    "encounter_id": 237,
+                    "encounter_patient_mrn": sample_patient.mrn,
+                    "encounter_facility_mfl_code": sample_facility.mfl_code,
+                    "encounter_encounter_date": "2026-06-20",
+                    "encounter_encounter_type": "OPD",
+                    "encounter_chief_complaint": "Cloud encounter not yet present",
+                },
+            }
+        )
+
+        assert result == {"success": True}
+        invoice.refresh_from_db()
+        assert invoice.encounter_id is None
+
     def test_materialize_payment_remaps_invoice_user_and_payment_point(
         self, sample_patient, sample_facility, test_user
     ):

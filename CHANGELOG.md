@@ -18,6 +18,17 @@ All notable changes to Vitora HMIS releases are documented in this file.
 ### Added
 - Placeholder section for upcoming release notes.
 
+## [1.0.4] - 2026-09-01
+
+### Desktop
+- Bumped desktop app version metadata to `1.0.4` across `package.json`, `Cargo.toml`, and `tauri.conf.json` so installers and updater artifacts carry the correct release version.
+- Updated lockfiles to keep desktop package metadata aligned with the new version.
+
+### Backend
+- Hardened sync materialization error handling to catch Django validation/integrity failures and return structured `success=false` responses instead of aborting pull processing.
+- Added guarded fallback for nullable `billing.Invoice.encounter` to null unresolved missing parent references only when strict natural-key hints indicate the encounter is absent.
+- Added regression tests for invoice FK materialization failures and hub pull deferral/logging behavior.
+
 ## [1.0.3] - 2026-08-30
 
 ### Desktop

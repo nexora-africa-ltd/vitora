@@ -1122,6 +1122,60 @@ class TestHubCloudSyncWorker:
         HUB_ID="hub-test",
         HUB_FACILITY_ID="1",
     )
+    def test_pull_defers_invoice_fk_validation_error_and_continues(self, db, caplog):
+        """Invoice FK validation failures should be deferred/logged without aborting the pull cycle."""
+        from hmis.apps.core.hub_sync import HubCloudSyncWorker
+
+        worker = HubCloudSyncWorker()
+        bad_invoice_change = {
+            "table": "billing.Invoice",
+            "operation": "UPDATE",
+            "record_id": "9001",
+            "data": {"id": 9001, "encounter_id": 237},
+        }
+        good_patient_change = {
+            "table": "patients.Patient",
+            "operation": "CREATE",
+            "record_id": "99",
+            "data": {"id": 99, "first_name": "CloudPatient"},
+        }
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "changes": [bad_invoice_change, good_patient_change],
+            "server_timestamp": timezone.now().isoformat(),
+            "has_more": False,
+        }
+
+        def _materialize(change):
+            if change["table"] == "billing.Invoice":
+                return {
+                    "success": False,
+                    "error": "{'encounter': ['Encounter instance with id 237 is not a valid choice.']}",
+                }
+            return {"success": True}
+
+        with (
+            patch.dict("os.environ", {"LICENSE_TOKEN": "license-token-xyz"}),
+            patch("hmis.apps.core.hub_sync.requests.get", return_value=mock_response),
+            patch("hmis.apps.core.hub_sync.materialize_entry", side_effect=_materialize),
+            caplog.at_level("WARNING", logger="hmis.apps.core.hub_sync"),
+        ):
+            pulled = worker._pull_changes()
+
+        assert pulled == 1
+        assert SyncQueue.objects.filter(model_name="patients.Patient", record_id=99).exists()
+        assert (
+            SyncQueue.objects.filter(model_name="billing.Invoice", record_id=9001).exists() is False
+        )
+        assert "Failed to apply pulled change billing.Invoice:9001" in caplog.text
+
+    @override_settings(
+        SYNC_SERVER_URL="https://cloud.example.com/api/sync",
+        HUB_ID="hub-test",
+        HUB_FACILITY_ID="1",
+    )
     def test_pull_carries_deferred_changes_across_pages(self, db):
         """Deferred child records should retry after later pages apply their parents."""
         from hmis.apps.core.hub_sync import HubCloudSyncWorker

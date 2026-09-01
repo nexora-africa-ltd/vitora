@@ -17,7 +17,8 @@ from __future__ import annotations
 from typing import Any
 
 from django.apps import apps
-from django.db import transaction
+from django.core.exceptions import ValidationError as DjangoValidationError
+from django.db import IntegrityError, transaction
 from django.utils.dateparse import parse_date, parse_datetime, parse_time
 
 from hmis.apps.core.models import AuditLog, SyncConflict, SyncQueue
@@ -97,6 +98,7 @@ def apply_entry(
     exclude = registry_entry.exclude_fields if registry_entry else ()
     cleaned_data = clean_model_data(model, data, exclude_fields=exclude)
     cleaned_data = remap_materialized_foreign_keys(model, cleaned_data, data)
+    cleaned_data = apply_nullable_fk_fallbacks(model, cleaned_data, data)
     cleaned_data = suppress_duplicate_user_email(model, record_id, cleaned_data)
 
     try:
@@ -150,6 +152,8 @@ def apply_entry(
                 if created_instance and model._meta.label == "patients.Patient":
                     _log_patient_create_from_sync_materializer(instance)
     except (
+        DjangoValidationError,
+        IntegrityError,
         AttributeError,
         TypeError,
         ValueError,
@@ -161,6 +165,67 @@ def apply_entry(
         return {"success": False, "error": str(exc)}
 
     return {"success": True}
+
+
+def apply_nullable_fk_fallbacks(
+    model,
+    cleaned_data: dict[str, Any],
+    raw_data: dict[str, Any],
+) -> dict[str, Any]:
+    """Apply narrowly scoped nullable-FK fallbacks for known sync edge cases."""
+    cleaned = cleaned_data.copy()
+
+    if model._meta.label == "billing.Invoice":
+        cleaned = _fallback_invoice_encounter_if_parent_missing(model, cleaned, raw_data)
+
+    return cleaned
+
+
+def _fallback_invoice_encounter_if_parent_missing(
+    model,
+    cleaned_data: dict[str, Any],
+    raw_data: dict[str, Any],
+) -> dict[str, Any]:
+    """Null ``Invoice.encounter`` only when unresolved natural hints indicate a missing parent.
+
+    Guardrails:
+    - Applies only to ``billing.Invoice.encounter`` (nullable FK).
+    - Requires encounter natural-key hints in payload.
+    - Requires that the current local ``encounter_id`` does not exist.
+    - Never changes required/non-null FKs.
+    """
+    encounter_field = model._meta.get_field("encounter")
+    if not getattr(encounter_field, "null", False):
+        return cleaned_data
+
+    encounter_id = cleaned_data.get("encounter_id")
+    if encounter_id in (None, ""):
+        return cleaned_data
+
+    from hmis.apps.encounters.models import Encounter
+
+    if Encounter.objects.filter(pk=encounter_id).exists():
+        return cleaned_data
+
+    hint_keys = (
+        "encounter_patient_mrn",
+        "encounter_patient_cr_number",
+        "encounter_encounter_date",
+        "encounter_type",
+        "encounter_encounter_type",
+        "encounter_facility_mfl_code",
+        "encounter_chief_complaint",
+    )
+    has_hints = any(str(raw_data.get(key) or "").strip() for key in hint_keys)
+    if not has_hints:
+        return cleaned_data
+
+    raw_encounter_id = raw_data.get("encounter_id")
+    if raw_encounter_id in (None, ""):
+        return cleaned_data
+
+    cleaned_data["encounter_id"] = None
+    return cleaned_data
 
 
 def _log_patient_create_from_sync_materializer(instance) -> None:
