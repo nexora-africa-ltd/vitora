@@ -273,8 +273,8 @@ if ($NonInteractive) {
     Write-Host "(Found at: Settings -> Facilities -> Hub Setup -> Generate Code)" -ForegroundColor DarkGray
     Write-Host ""
 
-    $ActivationCode = Read-Host "  Activation Code"
-    $cloudInput = Read-Host "  Cloud URL [https://api.vitora.digital]"
+    $ActivationCode = (Read-Host "  Activation Code").Trim()
+    $cloudInput = (Read-Host "  Cloud URL [https://api.vitora.digital]").Trim()
     if ($cloudInput) { $CloudUrl = $cloudInput }
 
     Write-Host ""
@@ -306,11 +306,25 @@ if ($NonInteractive) {
     }
 }
 
-$EulaVersion = if ($env:EULA_VERSION) { $env:EULA_VERSION } else { "" }
+$ActivationCode = [string]$ActivationCode
+$ActivationCode = $ActivationCode.Trim()
+if (-not $ActivationCode) {
+    Write-Err "Activation code is required."
+    exit 1
+}
+
+$CloudUrl = [string]$CloudUrl
+$CloudUrl = $CloudUrl.Trim().TrimEnd('/')
+if (-not $CloudUrl) {
+    Write-Err "Cloud URL is required."
+    exit 1
+}
+
+$EulaVersion = if ($env:EULA_VERSION) { ($env:EULA_VERSION).Trim() } else { "" }
 if (-not $EulaVersion) {
     try {
         $eulaInfo = Invoke-RestMethod -Uri "$CloudUrl/api/licensing/eula/" -Method GET -UseBasicParsing
-        $EulaVersion = [string]$eulaInfo.version
+        $EulaVersion = ([string]$eulaInfo.version).Trim()
     } catch {
         $EulaVersion = "2026-07-31"
     }
@@ -335,6 +349,18 @@ try {
     Write-Err "Activation failed. Check your activation code and internet connection."
     Write-Err "Cloud URL: $CloudUrl/api/licensing/activate/"
     Write-Err "Error: $_"
+
+    if ($_.Exception -and $_.Exception.Response -and $_.Exception.Response.GetResponseStream()) {
+        try {
+            $reader = New-Object System.IO.StreamReader($_.Exception.Response.GetResponseStream())
+            $errorBody = $reader.ReadToEnd()
+            if ($errorBody) {
+                Write-Err "Server response: $errorBody"
+            }
+        } catch {
+            # Best-effort diagnostics; keep original activation failure path.
+        }
+    }
     exit 1
 }
 

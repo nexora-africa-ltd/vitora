@@ -19,6 +19,13 @@ All notable changes to Vitora HMIS releases are documented in this file.
 
 - Placeholder section for upcoming release notes.
 
+## [1.0.8] - 2026-09-01
+
+### Hub
+
+- Hardened Windows hub activation input handling by trimming activation code, cloud URL, and EULA version before API calls.
+- Improved installer activation diagnostics to print backend error response bodies for `/api/licensing/activate/` failures.
+
 ## [1.0.7] - 2026-09-01
 
 ### Hub
