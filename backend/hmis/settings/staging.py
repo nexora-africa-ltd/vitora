@@ -42,6 +42,7 @@ if DATABASE_URL:
             ssl_require=True,
         )
     }
+    DATABASES["default"]["DISABLE_SERVER_SIDE_CURSORS"] = True
     # Wrap DB engine for Prometheus query metrics
     DATABASES["default"]["ENGINE"] = "django_prometheus.db.backends.postgresql"
 else:

@@ -36,6 +36,7 @@ if DATABASE_URL:
             ssl_require=True,
         )
     }
+    DATABASES["default"]["DISABLE_SERVER_SIDE_CURSORS"] = True
     # Wrap DB engine for Prometheus query metrics
     DATABASES["default"]["ENGINE"] = "django_prometheus.db.backends.postgresql"
 else:
@@ -49,6 +50,7 @@ else:
             "HOST": os.getenv("DB_HOST", "localhost"),
             "PORT": os.getenv("DB_PORT", "5432"),
             "CONN_MAX_AGE": 600,
+            "DISABLE_SERVER_SIDE_CURSORS": True,
         }
     }
 

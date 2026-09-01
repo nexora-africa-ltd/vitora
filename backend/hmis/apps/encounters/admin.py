@@ -103,6 +103,17 @@ class EncounterAdmin(admin.ModelAdmin):
     )
     date_hierarchy = "created_at"
     inlines = [DiagnosisInline, TreatmentPlanInline]
+    raw_id_fields = (
+        "patient",
+        "clinic_visit",
+        "vitals_recorded_by",
+        "clinical_template",
+        "finalized_by",
+        "created_by",
+        "facility",
+        "organization",
+    )
+    list_select_related = ("patient", "finalized_by", "created_by", "facility", "organization")
 
 
 @admin.register(Diagnosis)
