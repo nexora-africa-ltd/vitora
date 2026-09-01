@@ -19,6 +19,13 @@ All notable changes to Vitora HMIS releases are documented in this file.
 
 - Placeholder section for upcoming release notes.
 
+## [1.0.6] - 2026-09-01
+
+### Desktop
+
+- Fixed desktop API error handling so LAN workstation mode (`deployment_mode=lan_client`) no longer redirects to `/activate` when hub license guard codes are returned.
+- Bumped desktop app version metadata to `1.0.6` across `package.json`, `Cargo.toml`, and `tauri.conf.json`, and refreshed lockfiles.
+
 ## [1.0.9] - 2026-09-01
 
 ### Hub

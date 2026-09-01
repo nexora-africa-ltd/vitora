@@ -1,6 +1,6 @@
 import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from 'axios';
 import { tokenStorage } from '@/lib/auth/storage';
-import { isDesktop, getApiUrl } from '@/lib/desktop';
+import { isDesktop, getApiUrl, getAppConfig } from '@/lib/desktop';
 import { API_BASE_URL } from '@/lib/utils/constants';
 import { toast } from 'sonner';
 
@@ -191,7 +191,25 @@ apiClient.interceptors.response.use(
           data.code === 'hub_license_invalid' ||
           data.code === 'hub_license_locked')
       ) {
-        if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/activate')) {
+        let shouldRedirectToActivate = true;
+        if (isDesktop()) {
+          try {
+            const config = await getAppConfig();
+            if (config?.deployment_mode === 'lan_client') {
+              // Workstations rely on the hub's license and should not be
+              // redirected to local activation.
+              shouldRedirectToActivate = false;
+            }
+          } catch {
+            // Keep default behavior if we cannot read desktop config.
+          }
+        }
+
+        if (
+          shouldRedirectToActivate &&
+          typeof window !== 'undefined' &&
+          !window.location.pathname.startsWith('/activate')
+        ) {
           window.location.href = '/activate';
         }
         return Promise.reject(error);
