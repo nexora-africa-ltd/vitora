@@ -19,6 +19,13 @@ All notable changes to Vitora HMIS releases are documented in this file.
 
 - Placeholder section for upcoming release notes.
 
+## [1.0.7] - 2026-09-01
+
+### Hub
+
+- Added a manual sync example to the generated Windows `hub-shell.ps1` help text so operators can run `hub_sync --retry-failed` directly from the built-in wrapper.
+- Tagged Hub release `hub-v1.0.7`.
+
 ## [1.0.5] - 2026-09-01
 
 ### Desktop

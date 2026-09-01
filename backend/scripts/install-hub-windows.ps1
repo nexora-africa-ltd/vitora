@@ -757,6 +757,7 @@ $hubShellContent = @'
     .\hub-shell.ps1 create_superuser --force # Creates a hub-local superuser
     .\hub-shell.ps1 changepassword admin     # Changes a user's password
     .\hub-shell.ps1 migrate                  # Runs migrations
+    .\hub-shell.ps1 hub_sync --retry-failed  # Runs a manual hub sync cycle
 #>
 
 param(
