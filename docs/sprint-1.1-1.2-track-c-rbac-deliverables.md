@@ -36,6 +36,7 @@ Track C of Sprint 1.1-1.2 implements the Role-Based Access Control (RBAC) founda
 **Purpose**: Organize hospital staff by functional departments for access control and reporting.
 
 **Fields**:
+
 ```python
 class Department(models.Model):
     """Hospital department for staff organization."""
@@ -61,11 +62,13 @@ class Department(models.Model):
 ```
 
 **Methods**:
+
 - `get_staff_count()`: Count of active staff in department
 - `get_hierarchy()`: Full parent chain
 - `get_subdepartments()`: Child departments
 
 **Test Coverage**: 8 tests
+
 - Department creation with required fields
 - Department code uniqueness
 - Parent-child relationships
@@ -84,6 +87,7 @@ class Department(models.Model):
 **Purpose**: Define hospital roles with associated permissions beyond Django Groups.
 
 **Fields**:
+
 ```python
 class Role(models.Model):
     """Hospital role with hierarchical permissions."""
@@ -125,11 +129,13 @@ class Role(models.Model):
 ```
 
 **Methods**:
+
 - `has_permission(action, resource)`: Check permission matrix
 - `get_all_permissions()`: Inherited + direct permissions
 - `can_access_department(department)`: Department-based access check
 
 **Permission Matrix Structure**:
+
 ```python
 {
     "Patient": {
@@ -155,6 +161,7 @@ class Role(models.Model):
 ```
 
 **Test Coverage**: 12 tests
+
 - Role creation with required fields
 - Role code uniqueness
 - Permission matrix validation
@@ -177,6 +184,7 @@ class Role(models.Model):
 **Purpose**: Extended user profile for hospital staff with role and department assignments.
 
 **Fields**:
+
 ```python
 class StaffProfile(models.Model):
     """Extended profile for hospital staff members."""
@@ -234,6 +242,7 @@ class StaffProfile(models.Model):
 ```
 
 **Methods**:
+
 - `get_full_name()`: Title + User's full name
 - `get_all_roles()`: Primary + secondary roles
 - `get_all_departments()`: Primary + secondary departments
@@ -242,6 +251,7 @@ class StaffProfile(models.Model):
 - `get_supervisees()`: Direct reports
 
 **Test Coverage**: 15 tests
+
 - StaffProfile creation linked to User
 - Employee ID generation/uniqueness
 - Primary role assignment
@@ -267,6 +277,7 @@ class StaffProfile(models.Model):
 **Purpose**: DRF permission class that checks permissions against role matrices.
 
 **Implementation**:
+
 ```python
 class RoleBasedPermission(permissions.BasePermission):
     """
@@ -315,6 +326,7 @@ class RoleBasedPermission(permissions.BasePermission):
 ```
 
 **Test Coverage**: 18 tests
+
 - Permission check for authenticated users
 - Permission check for unauthenticated users (denied)
 - Superuser always allowed
@@ -343,6 +355,7 @@ class RoleBasedPermission(permissions.BasePermission):
 **Purpose**: Pre-configured roles for typical Kenya hospital setup.
 
 **Roles**:
+
 ```python
 DEFAULT_ROLES = [
     {
@@ -464,6 +477,7 @@ DEFAULT_ROLES = [
 ```
 
 **Test Coverage**: 10 tests
+
 - All default roles load successfully
 - Role hierarchy levels are consistent
 - Permission matrices are valid JSON
@@ -482,6 +496,7 @@ DEFAULT_ROLES = [
 **Module**: `hmis/apps/core/admin.py`
 
 **Features**:
+
 - Department management with hierarchy view
 - Role management with permission matrix editor
 - StaffProfile management with inline user info
@@ -491,6 +506,7 @@ DEFAULT_ROLES = [
 - Export staff list to CSV
 
 **Test Coverage**: 8 tests
+
 - Department admin list view
 - Department admin create
 - Role admin list view
@@ -507,6 +523,7 @@ DEFAULT_ROLES = [
 **Module**: `hmis/apps/core/views.py` (extended)
 
 **Endpoints**:
+
 ```
 # Departments
 GET     /api/departments/                    # List departments
@@ -535,6 +552,7 @@ PATCH   /api/staff/me/                       # Update own profile (limited field
 ```
 
 **Test Coverage**: 14 tests
+
 - Department CRUD operations
 - Role CRUD operations
 - StaffProfile CRUD operations
@@ -1036,6 +1054,7 @@ RBAC_HIERARCHY_LEVELS = {
 **Decision**: Use custom Role model that links to Django Groups
 
 **Rationale**:
+
 - Richer metadata (hierarchy, license requirements, Kenya-specific)
 - JSON permission matrix for flexible resource/action mapping
 - Keep Django Groups for standard permission checks as fallback
@@ -1046,6 +1065,7 @@ RBAC_HIERARCHY_LEVELS = {
 **Decision**: Store permissions in JSON field
 
 **Rationale**:
+
 - No join queries for permission checks
 - Easy to serialize/deserialize
 - Supports dynamic resources (future modules)
@@ -1057,6 +1077,7 @@ RBAC_HIERARCHY_LEVELS = {
 **Decision**: Store license info locally, manual verification
 
 **Rationale**:
+
 - Kenya licensing boards don't have public APIs
 - Manual verification by admin with `license_verified` flag
 - License expiry tracked for alerts

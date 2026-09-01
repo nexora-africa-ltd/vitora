@@ -199,11 +199,13 @@ All Allied Health orders follow a standardized state machine:
 **Location**: `backend/hmis/apps/physiotherapy/`
 
 **Models**:
+
 - `PhysiotherapyTreatmentType` - Treatment catalog with 12 categories (Musculoskeletal, Neurological, Cardiorespiratory, etc.)
 - `PhysiotherapyOrder` - Referral with order number format `PHYSIO-YYYYMMDD-XXXX`
 - `PhysiotherapySession` - Session with FIM-style functional improvement tracking
 
 **Key Features**:
+
 - Equipment tracking (requires_equipment, equipment_needed)
 - Contraindications and precautions documentation
 - Recommended sessions and frequency per treatment type
@@ -214,10 +216,12 @@ All Allied Health orders follow a standardized state machine:
 **Location**: `backend/hmis/apps/nutrition/`
 
 **Models**:
+
 - `NutritionConsultation` - Assessment with order number format `NUT-YYYYMMDD-XXXX`
 - `DietPlan` - Meal plans with number format `DIET-YYYYMMDD-XXXX`
 
 **Key Features**:
+
 - **Auto-calculated fields**:
   - BMI (weight / height²)
   - BMI classification (Underweight to Obese Class III)
@@ -232,6 +236,7 @@ All Allied Health orders follow a standardized state machine:
 - 16 referral reasons (Weight Management, Diabetes, Renal, etc.)
 
 **API Custom Actions**:
+
 - `sync_anthropometrics` - Pull latest vitals from patient encounters
 - `update_status` - Change consultation status
 - `activate/discontinue/put_on_hold` - Diet plan lifecycle
@@ -241,11 +246,13 @@ All Allied Health orders follow a standardized state machine:
 **Location**: `backend/hmis/apps/occupational_therapy/`
 
 **Models**:
+
 - `OTTreatmentType` - Treatment catalog with 13 categories (ADL Training, Cognitive Rehab, Hand Therapy, etc.)
 - `OccupationalTherapyOrder` - Referral with order number format `OT-YYYYMMDD-XXXX`
 - `OTSession` - Session with functional independence tracking
 
 **Key Features**:
+
 - FIM-style independence levels (1-7 scale)
 - ADL/cognitive/sensory activity tracking
 - Assistive technology assessment support
@@ -256,12 +263,14 @@ All Allied Health orders follow a standardized state machine:
 **Location**: `backend/hmis/apps/social_work/`
 
 **Models**:
+
 - `SocialWorkReferral` - Referral with number format `SW-YYYYMMDD-XXXX`
 - `SocialWorkCase` - Case management with number format `SWC-YYYYMMDD-XXXX`
 - `CaseNote` - Progress notes with contact tracking
 - `SocialWorkIntervention` - Discrete intervention records
 
 **Key Features**:
+
 - **Enhanced Privacy Protection**:
   - Auto-sensitive flag for GBV, Child Abuse, Human Trafficking cases
   - `view_sensitive_sw_referral` permission required
@@ -275,11 +284,13 @@ All Allied Health orders follow a standardized state machine:
 **Location**: `backend/hmis/apps/counselling/`
 
 **Models**:
+
 - `CounsellingType` - Type catalog with 15 categories (HIV, Mental Health, Family Planning, etc.)
 - `CounsellingReferral` - Referral with number format `COUNS-YYYYMMDD-XXXX`
 - `CounsellingSession` - Session with number format `CS-YYYYMMDD-XXXX`
 
 **Key Features**:
+
 - **Privacy for Sensitive Referrals**:
   - Auto-sensitive for HIV, Suicidal Ideation, GBV cases
   - `view_sensitive_counselling_referral` permission required
@@ -304,6 +315,7 @@ Hx → HPI → Template → Dx → Labs → Img → Rx → AH
 ```
 
 This section uses `EncounterAlliedHealthContent` to show existing allied health referrals and provide in-context referral buttons for all 5 modules. Located in:
+
 - Accordion section: `components/encounters/clinical-flow-accordion.tsx`
 - Content component: `components/encounters/encounter-allied-health-content.tsx`
 - Referral buttons: `components/encounters/allied-health-referral-actions.tsx`

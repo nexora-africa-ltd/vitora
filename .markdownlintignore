@@ -9,3 +9,17 @@ AGENTS.md
 **/coverage/
 .venv/
 vitora-marketing/
+CHANGELOG.md
+README.md
+ROADMAP.md
+backend/README.md
+desktop-app/README.md
+dhis2/readme.md
+docker/**/README.md
+mobile/README.md
+web-app/README.md
+web-app/BILLING_MODULE_PLAN.md
+web-app/IMPLEMENTATION_SUMMARY.md
+docs/
+web-app/docs/
+web-app/features/

@@ -40,6 +40,7 @@
 A dedicated page for front desk / reception staff to quickly check in returning patients.
 
 **Features:**
+
 - MRN/ID barcode scanner input (auto-focus)
 - Quick search by MRN, National ID, or phone number
 - Patient verification display (photo, name, DOB, last visit)
@@ -49,6 +50,7 @@ A dedicated page for front desk / reception staff to quickly check in returning 
 - Auto-detect `visit_type` based on patient history
 
 **Wireframe:**
+
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │  Patient Check-in                                           │

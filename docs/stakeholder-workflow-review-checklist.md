@@ -4,8 +4,8 @@
 
 | Item | Value |
 |------|-------|
-| **Frontend URL** | https://vitora-hmis-staging.onrender.com |
-| **API URL** | https://vitora-staging.onrender.com |
+| **Frontend URL** | <https://vitora-hmis-staging.onrender.com> |
+| **API URL** | <https://vitora-staging.onrender.com> |
 | **Environment** | Staging/Demo |
 | **Facility Name** | Demo Health Facility |
 
@@ -39,6 +39,7 @@
 - [ ] **Edit patient** - Can you update patient information?
 
 **Feedback:**
+
 ```
 [ ] Works as expected
 [ ] Minor issues (describe below)
@@ -68,6 +69,7 @@ _______________________________________________
 - [ ] **Send to consultation** - Can you send patient to doctor queue?
 
 **Feedback:**
+
 ```
 [ ] Works as expected
 [ ] Minor issues (describe below)
@@ -102,6 +104,7 @@ _______________________________________________
 - [ ] **Treatment plan** - Create follow-up instructions?
 
 **Feedback:**
+
 ```
 [ ] Works as expected
 [ ] Minor issues (describe below)
@@ -128,6 +131,7 @@ _______________________________________________
 - [ ] **Complete dispensing** - Finalize the prescription?
 
 **Feedback:**
+
 ```
 [ ] Works as expected
 [ ] Minor issues (describe below)
@@ -153,6 +157,7 @@ _______________________________________________
 - [ ] **Release results** - Make available to doctor?
 
 **Feedback:**
+
 ```
 [ ] Works as expected
 [ ] Minor issues (describe below)
@@ -180,6 +185,7 @@ _______________________________________________
 - [ ] **View payment history** - See patient's billing history?
 
 **Feedback:**
+
 ```
 [ ] Works as expected
 [ ] Minor issues (describe below)
@@ -201,6 +207,7 @@ _______________________________________________
 - [ ] **Generate reports** - Can you export data?
 
 **Feedback:**
+
 ```
 [ ] Works as expected
 [ ] Minor issues (describe below)
@@ -217,21 +224,25 @@ _______________________________________________
 ## General Usability Feedback
 
 ### Navigation & Layout
+
 - [ ] Easy to navigate between modules?
 - [ ] Menu structure intuitive?
 - [ ] Breadcrumbs helpful?
 
 ### Performance
+
 - [ ] Pages load quickly?
 - [ ] Forms submit without delay?
 - [ ] Search results appear fast?
 
 ### Mobile/Tablet
+
 - [ ] Tested on mobile device?
 - [ ] Tested on tablet?
 - [ ] Touch interactions work well?
 
 ### Accessibility
+
 - [ ] Text readable?
 - [ ] Color contrast sufficient?
 - [ ] Error messages clear?
@@ -241,11 +252,13 @@ _______________________________________________
 ## Priority Features Request
 
 **What features are CRITICAL for go-live?**
+
 1. _______________________________________________
 2. _______________________________________________
 3. _______________________________________________
 
 **What features would be NICE TO HAVE?**
+
 1. _______________________________________________
 2. _______________________________________________
 3. _______________________________________________
@@ -263,6 +276,7 @@ _______________________________________________
 | **Completeness** | ⭐⭐⭐⭐⭐ | |
 
 **Would you recommend this system for your facility?**
+
 - [ ] Yes, ready for pilot
 - [ ] Yes, with minor changes
 - [ ] Needs significant work
@@ -296,7 +310,7 @@ _______________________________________________
 
 *Thank you for your feedback! Your input helps us build a better system for Kenya's healthcare facilities.*
 
-**Submit feedback to:** feedback@nexora.africa
+**Submit feedback to:** <feedback@nexora.africa>
 
 ---
 

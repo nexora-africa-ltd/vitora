@@ -12,6 +12,7 @@
 ## Problem Statement
 
 The current triage assessment form captures:
+
 - ✅ Chief complaint
 - ✅ AVPU (consciousness level)
 - ✅ Mobility status
@@ -20,6 +21,7 @@ The current triage assessment form captures:
 - ❌ **Vital signs** (missing)
 
 Without vitals, the triage nurse cannot:
+
 1. Accurately categorize patients using KETA/WHO ETAT protocols
 2. Detect critical conditions (hypoxia, shock, severe hypertension)
 3. Provide complete handoff to clinicians
@@ -82,6 +84,7 @@ Add vital signs input fields to the triage assessment form, use them for KETA ca
 ### API Changes
 
 **POST /api/triage/assessments/** (updated request body):
+
 ```json
 {
   "encounter": 123,
@@ -110,6 +113,7 @@ Add vital signs input fields to the triage assessment form, use them for KETA ca
 ### Phase 1: Backend - Vitals in TriageAssessment
 
 #### 1.1 Add Vitals Fields to TriageAssessment Model
+
 - [x] Add `spo2` field (DecimalField, nullable)
 - [x] Add `heart_rate` field (IntegerField, nullable)
 - [x] Add `systolic_bp` field (IntegerField, nullable)
@@ -121,6 +125,7 @@ Add vital signs input fields to the triage assessment form, use them for KETA ca
 **File**: `backend/hmis/apps/triage/models.py`
 
 **Acceptance Criteria**:
+
 - [x] All vital fields are optional (nullable) - some facilities may not have all equipment
 - [x] Field constraints match clinical ranges (e.g., SpO2 0-100, HR 0-300)
 - [x] Migration applies without errors
@@ -128,6 +133,7 @@ Add vital signs input fields to the triage assessment form, use them for KETA ca
 ---
 
 #### 1.2 Update TriageAssessment Serializer
+
 - [x] Add vitals fields to `TriageAssessmentSerializer`
 - [x] Add vitals validation (reasonable ranges)
 - [x] Include vitals in create/update operations
@@ -135,6 +141,7 @@ Add vital signs input fields to the triage assessment form, use them for KETA ca
 **File**: `backend/hmis/apps/triage/serializers.py`
 
 **Acceptance Criteria**:
+
 - [x] Serializer accepts vitals on create
 - [x] Invalid vital ranges return 400 error with clear message
 - [x] Vitals are included in serialized response
@@ -142,6 +149,7 @@ Add vital signs input fields to the triage assessment form, use them for KETA ca
 ---
 
 #### 1.3 Auto-Copy Vitals to Encounter (Signal)
+
 - [x] Create/update signal to copy vitals from TriageAssessment to Encounter
 - [x] Only copy if Encounter vitals are empty (don't overwrite)
 - [x] Log audit entry for vitals source
@@ -149,6 +157,7 @@ Add vital signs input fields to the triage assessment form, use them for KETA ca
 **File**: `backend/hmis/apps/triage/signals.py`
 
 **Acceptance Criteria**:
+
 - [x] On TriageAssessment create, vitals copy to linked Encounter
 - [x] Existing Encounter vitals are NOT overwritten
 - [x] Works correctly when some vitals are null
@@ -156,6 +165,7 @@ Add vital signs input fields to the triage assessment form, use them for KETA ca
 ---
 
 #### 1.4 Add Vitals Source Tracking to Encounter
+
 - [x] Add `vitals_source` field (choices: TRIAGE, CONSULTATION, NURSING)
 - [x] Add `vitals_recorded_by` FK to User
 - [x] Add `vitals_recorded_at` DateTimeField
@@ -164,6 +174,7 @@ Add vital signs input fields to the triage assessment form, use them for KETA ca
 **File**: `backend/hmis/apps/encounters/models.py`
 
 **Acceptance Criteria**:
+
 - [x] Encounter shows who recorded vitals and when
 - [x] Source is set automatically based on how vitals were entered
 - [x] Fields are nullable for backwards compatibility
@@ -171,6 +182,7 @@ Add vital signs input fields to the triage assessment form, use them for KETA ca
 ---
 
 #### 1.5 Backend Tests
+
 - [x] Test TriageAssessment with vitals creates successfully
 - [x] Test vitals auto-copy to Encounter
 - [x] Test calculate-category endpoint with vitals returns correct category
@@ -181,6 +193,7 @@ Add vital signs input fields to the triage assessment form, use them for KETA ca
 **File**: `backend/tests/test_triage_vitals.py`
 
 **Acceptance Criteria**:
+
 - [x] All tests pass
 - [x] Coverage for critical paths ≥ 80%
 
@@ -189,6 +202,7 @@ Add vital signs input fields to the triage assessment form, use them for KETA ca
 ### Phase 2: Frontend - Vitals Input in Triage Form
 
 #### 2.1 Update Form Schema
+
 - [x] Add vitals fields to `triageFormSchema` Zod schema
 - [x] All vitals optional but validated when provided
 - [x] Update `TriageFormData` type
@@ -196,6 +210,7 @@ Add vital signs input fields to the triage assessment form, use them for KETA ca
 **File**: `web-app/components/triage/triage-assessment-form.tsx`
 
 **Acceptance Criteria**:
+
 - [x] Form validates vital ranges (e.g., SpO2 0-100)
 - [x] Empty vitals are allowed (submit as null)
 - [x] Type-safe form data
@@ -203,6 +218,7 @@ Add vital signs input fields to the triage assessment form, use them for KETA ca
 ---
 
 #### 2.2 Add Vitals Section UI
+
 - [x] Create collapsible "Vital Signs" section
 - [x] Add inputs: SpO2, Heart Rate, BP (systolic/diastolic), Temp, RR
 - [x] Add pain score slider (already exists, ensure integration)
@@ -212,6 +228,7 @@ Add vital signs input fields to the triage assessment form, use them for KETA ca
 **File**: `web-app/components/triage/triage-assessment-form.tsx`
 
 **UI Layout**:
+
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │ ▼ Vital Signs                                                   │
@@ -227,6 +244,7 @@ Add vital signs input fields to the triage assessment form, use them for KETA ca
 ```
 
 **Acceptance Criteria**:
+
 - [x] All vital inputs render correctly
 - [x] Critical values highlight in red (SpO2 < 90, HR < 40 or > 150, etc.)
 - [x] Form is accessible (labels, ARIA)
@@ -252,6 +270,7 @@ Add vital signs input fields to the triage assessment form, use them for KETA ca
     - ✅ Normal
 
 **Acceptance Criteria**:
+
 - [ ] Component renders all vital inputs
 - [ ] Responsive layout (mobile/desktop)
 - [ ] Inline validation messages
@@ -261,6 +280,7 @@ Add vital signs input fields to the triage assessment form, use them for KETA ca
 ---
 
 #### 2.4 Wire Up Calculate Category with Vitals
+
 - [x] Pass vitals to `useCalculateTriageCategory` mutation
 - [x] Update `calculateSuggestedCategory` local function to use form vitals
 - [x] Show suggested category updates as vitals are entered
@@ -269,6 +289,7 @@ Add vital signs input fields to the triage assessment form, use them for KETA ca
 **File**: `web-app/components/triage/triage-assessment-form.tsx`
 
 **Acceptance Criteria**:
+
 - [x] Suggested category updates when vitals change
 - [x] Critical vital alerts display prominently
 - [x] Backend calculation matches displayed suggestion
@@ -276,6 +297,7 @@ Add vital signs input fields to the triage assessment form, use them for KETA ca
 ---
 
 #### 2.4 Update Triage Types
+
 - [x] Add vitals to `TriageAssessmentCreateData` interface
 - [x] Add vitals to `TriageAssessment` response type
 - [x] Update `CalculateCategoryRequest` if needed
@@ -283,12 +305,14 @@ Add vital signs input fields to the triage assessment form, use them for KETA ca
 **File**: `web-app/lib/types/triage.ts`
 
 **Acceptance Criteria**:
+
 - [x] Types match backend API contract
 - [x] No TypeScript errors
 
 ---
 
 #### 2.5 Frontend Tests
+
 - [x] Test form renders vital inputs
 - [x] Test vital validation (range errors)
 - [x] Test suggested category updates with vitals
@@ -298,6 +322,7 @@ Add vital signs input fields to the triage assessment form, use them for KETA ca
 **File**: `web-app/__tests__/components/triage/triage-assessment-form.test.tsx`
 
 **Acceptance Criteria**:
+
 - [x] All tests pass
 - [x] Coverage for vital input interactions
 
@@ -306,34 +331,40 @@ Add vital signs input fields to the triage assessment form, use them for KETA ca
 ### Phase 3: Integration & Polish
 
 #### 3.1 E2E Test
+
 - [ ] Add Playwright test for complete triage flow with vitals
 - [ ] Test: Enter vitals → See suggested category → Submit → Verify on encounter
 
 **File**: `web-app/e2e/triage-vitals.spec.ts`
 
 **Acceptance Criteria**:
+
 - [ ] E2E test passes in CI
 - [ ] Covers happy path and edge cases
 
 ---
 
 #### 3.2 Documentation
+
 - [ ] Update triage workflow docs
 - [ ] Add vitals capture to training materials
 - [ ] Update API documentation
 
 **Acceptance Criteria**:
+
 - [ ] Docs reflect new workflow
 - [ ] Screenshots updated
 
 ---
 
 #### 3.3 Backwards Compatibility
+
 - [ ] Existing triage assessments without vitals continue to work
 - [ ] Category override still functions
 - [ ] No breaking changes to API consumers
 
 **Acceptance Criteria**:
+
 - [ ] Existing data unaffected
 - [ ] Mobile app (if any) continues to work
 
@@ -356,6 +387,7 @@ Add vital signs input fields to the triage assessment form, use them for KETA ca
 ### API Changes
 
 **POST /api/triage/assessments/** (updated request body):
+
 ```json
 {
   "encounter": 123,
@@ -378,6 +410,7 @@ Add vital signs input fields to the triage assessment form, use them for KETA ca
 ```
 
 **POST /api/triage/assessments/calculate-category/** (existing, vitals already supported):
+
 ```json
 {
   "spo2": 94,
@@ -457,6 +490,7 @@ Add vital signs input fields to the triage assessment form, use them for KETA ca
 ## Checklist Summary
 
 ### Backend
+
 - [x] Add vitals fields to TriageAssessment model
 - [x] Create migration
 - [x] Update serializer with vitals + validation
@@ -465,6 +499,7 @@ Add vital signs input fields to the triage assessment form, use them for KETA ca
 - [x] Write backend tests (6 test cases)
 
 ### Frontend
+
 - [x] Update TypeScript types for vitals
 - [x] Add vitals to form schema (Zod)
 - [x] Create VitalsInputSection component (integrated directly in form)
@@ -474,6 +509,7 @@ Add vital signs input fields to the triage assessment form, use them for KETA ca
 - [ ] Add E2E test (Phase 3)
 
 ### Documentation
+
 - [ ] Update API documentation
 - [ ] Update triage workflow docs
 

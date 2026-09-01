@@ -137,6 +137,7 @@ export function useLabClinicianSocket() {
 #### 1.3 Integrate into Lab Components
 
 **Target Components:**
+
 - `lab-queue-view.tsx` - Add `useLabEncounterSocket` for queue updates
 - `lab-order-detail.tsx` - Add `useLabOrderSocket` for order status
 - `lab-results-entry.tsx` - Add socket for multi-user awareness
@@ -186,11 +187,13 @@ export function LabResultsBadgeLive({
 > **Note**: PowerSync requires significant infrastructure changes and should be a dedicated sprint.
 
 #### 3.1 Prerequisites
+
 - [ ] Set up PowerSync backend service (or use hosted)
 - [ ] Define sync rules for laboratory data
 - [ ] Create SQLite schema for client-side storage
 
 #### 3.2 Implementation Steps
+
 1. Install PowerSync SDK: `@powersync/react-native` or `@powersync/web`
 2. Define sync schema matching Django models
 3. Replace REST API calls with PowerSync queries
@@ -202,12 +205,14 @@ export function LabResultsBadgeLive({
 ## File Changes Summary
 
 ### New Files
+
 | Path | Purpose | Status |
 |------|---------|--------|
 | `web-app/components/laboratory/lab-clinician-socket-provider.tsx` | Client wrapper for clinician alerts | ✅ Created |
 | `web-app/components/laboratory/lab-results-badge-live.tsx` | Real-time badge wrapper with WebSocket | ✅ Created |
 
 ### Modified Files
+
 | Path | Changes | Status |
 |------|---------|--------|
 | `web-app/lib/hooks/use-websocket.ts` | Added lab event types + 4 lab WebSocket hooks | ✅ Done |
@@ -223,15 +228,18 @@ export function LabResultsBadgeLive({
 ## Testing Checklist
 
 ### Unit Tests
+
 - [ ] `use-lab-websocket.test.tsx` - Hook behavior tests
 - [ ] Lab event type validation
 
 ### Integration Tests
+
 - [ ] WebSocket connection to backend
 - [ ] React Query cache invalidation on events
 - [ ] Critical alert toast display
 
 ### E2E Tests
+
 - [ ] Result verification updates badge in real-time
 - [ ] Critical result shows instant notification
 - [ ] Multi-user scenario (verify on one screen, updates on another)

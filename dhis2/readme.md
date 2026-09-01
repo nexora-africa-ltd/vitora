@@ -17,6 +17,7 @@ This setup exists to:
 - Simulate real-world DHIS2 deployments without coupling them to the backend
 
 This directory is **not**:
+
 - Part of the backend application codebase
 - A production-grade national DHIS2 deployment
 - A replacement for Ministry- or County-hosted DHIS2 instances
@@ -52,19 +53,20 @@ dhis2/
 ├── backups/             # Optional DB and filestore backups
 └── README.md            # This file
 ```
+
 ---
 
 ## Prerequisites
 
 You must have:
 
-* Docker Engine (v24+ recommended)
-* Docker Compose v2 (available as `docker compose`)
-* At least:
+- Docker Engine (v24+ recommended)
+- Docker Compose v2 (available as `docker compose`)
+- At least:
 
-  * 4 GB RAM (8 GB recommended)
-  * 2 CPU cores
-  * 20 GB free disk space
+  - 4 GB RAM (8 GB recommended)
+  - 2 CPU cores
+  - 20 GB free disk space
 
 Verify Docker setup:
 
@@ -148,9 +150,9 @@ docker compose down -v
 
 ## Data Persistence
 
-* PostgreSQL data is stored in a Docker volume
-* DHIS2 file storage is persistent across restarts
-* Removing volumes will **wipe all data**
+- PostgreSQL data is stored in a Docker volume
+- DHIS2 file storage is persistent across restarts
+- Removing volumes will **wipe all data**
 
 ---
 
@@ -158,15 +160,15 @@ docker compose down -v
 
 If backups are enabled:
 
-* Database dumps should be stored in `./backups`
-* Filestore backups should be stored separately or mounted
+- Database dumps should be stored in `./backups`
+- Filestore backups should be stored separately or mounted
 
 This local setup **does not automatically schedule backups**.
 
 For production:
 
-* Use external backups
-* Test restore procedures regularly
+- Use external backups
+- Test restore procedures regularly
 
 ---
 
@@ -183,8 +185,8 @@ ports:
 
 This ensures:
 
-* No accidental exposure to the network
-* No clashes with nginx, ICD-11, or other services
+- No accidental exposure to the network
+- No clashes with nginx, ICD-11, or other services
 
 ---
 
@@ -202,16 +204,16 @@ DHIS2_PASSWORD=...
 
 In staging or production:
 
-* `DHIS2_BASE_URL` may point to an external server
-* This directory may not be present
+- `DHIS2_BASE_URL` may point to an external server
+- This directory may not be present
 
 ---
 
 ## Versioning Policy
 
-* DHIS2 image versions should be **explicitly pinned**
-* Avoid `latest` tags
-* Upgrades should be tested locally before rollout
+- DHIS2 image versions should be **explicitly pinned**
+- Avoid `latest` tags
+- Upgrades should be tested locally before rollout
 
 Example:
 
@@ -225,10 +227,10 @@ image: dhis2/core:2.40
 
 Do **not** use this directory when:
 
-* Deploying national or county production DHIS2
-* Hosting multiple DHIS2 environments on one server
-* You require high availability or clustering
-* Ministry of Health mandates a specific deployment model
+- Deploying national or county production DHIS2
+- Hosting multiple DHIS2 environments on one server
+- You require high availability or clustering
+- Ministry of Health mandates a specific deployment model
 
 ---
 
@@ -243,15 +245,15 @@ This separation is intentional and should be preserved.
 
 ## Maintainers
 
-* Vitora / Nexora Engineering Team
-* This directory is owned by **infrastructure**, not application logic
+- Vitora / Nexora Engineering Team
+- This directory is owned by **infrastructure**, not application logic
 
 ---
 
 ## Notes
 
-* Changes here should be deliberate and documented
-* Avoid tight coupling with backend workflows
-* Treat DHIS2 as replaceable infrastructure
+- Changes here should be deliberate and documented
+- Avoid tight coupling with backend workflows
+- Treat DHIS2 as replaceable infrastructure
 
 ---

@@ -37,6 +37,7 @@
 ## Completed Features
 
 ### Models
+
 - ✅ **ServiceCategory** - Billable service categories
 - ✅ **Service** - Billable services with SHA codes
 - ✅ **Invoice** - Auto-numbered (INV-YYYYMMDD-XXXX), status workflow, discounts
@@ -46,6 +47,7 @@
 - ✅ **CreditNote** - Auto-numbered (CN-YYYYMMDD-XXXX), approval workflow
 
 ### API Endpoints
+
 - ✅ Invoice CRUD + finalize, cancel, add/remove items, apply discount
 - ✅ Payment recording + receipt generation
 - ✅ M-Pesa STK Push, callback, query
@@ -53,6 +55,7 @@
 - ✅ Service catalog CRUD
 
 ### Reports
+
 - ✅ Daily collection report
 - ✅ Revenue summary
 - ✅ Outstanding balances
@@ -60,6 +63,7 @@
 - ✅ Payment method analysis
 
 ### Services
+
 - ✅ **MpesaService** - OAuth, STK Push, callback processing, phone formatting
 - ✅ **SHAClaimsService** - Stub implementation for Phase 2
 
@@ -81,6 +85,7 @@ MPESA_PASSKEY=configured
 ## Future Enhancements (Phase 2+)
 
 The following items are documented in ROADMAP.md under Phase 2:
+
 - SHA Full API Integration (pending SHA credentials)
 - Insurance Module (private insurance providers)
 - Invoice PDF Generation
@@ -96,6 +101,7 @@ The following items are documented in ROADMAP.md under Phase 2:
 **Purpose**: Master catalog of billable services and their fees. Includes consultation fees, procedure fees, and links to pharmacy items.
 
 **Fields**:
+
 ```python
 class ServiceCategory(models.Model):
     """Category for billable services."""
@@ -149,6 +155,7 @@ class Service(models.Model):
 ```
 
 **Methods**:
+
 - `get_display_name()`: "Category - Service Name"
 - `calculate_line_total(quantity)`: unit_price × quantity
 - `is_available()`: Check if service is active
@@ -177,6 +184,7 @@ class Service(models.Model):
 **Purpose**: Track invoices for patient encounters with line items, totals, and payment status.
 
 **Fields**:
+
 ```python
 class Invoice(models.Model):
     """Patient invoice for services rendered."""
@@ -254,9 +262,11 @@ class Invoice(models.Model):
 ```
 
 **Auto-generated Invoice Number Format**: `INV-YYYYMMDD-XXXX`
+
 - Example: `INV-20260115-0042`
 
 **Methods**:
+
 - `generate_invoice_number()`: Auto-generate unique invoice number
 - `calculate_totals()`: Sum items, apply discounts, calculate balance
 - `add_item(service, quantity, unit_price)`: Add line item
@@ -301,6 +311,7 @@ class Invoice(models.Model):
 **Purpose**: Individual line items on an invoice, linked to services, pharmacy, or lab.
 
 **Fields**:
+
 ```python
 class InvoiceItem(models.Model):
     """Line item on an invoice."""
@@ -356,6 +367,7 @@ class InvoiceItem(models.Model):
 ```
 
 **Methods**:
+
 - `calculate_line_total()`: (quantity × unit_price) - discount
 - `save()`: Auto-calculate line_total, update invoice totals
 
@@ -385,6 +397,7 @@ class InvoiceItem(models.Model):
 **Purpose**: Track payments against invoices with multiple payment methods.
 
 **Fields**:
+
 ```python
 class Payment(models.Model):
     """Payment record against an invoice."""
@@ -458,6 +471,7 @@ class Payment(models.Model):
 **Auto-generated Payment Reference Format**: `PAY-YYYYMMDD-XXXX`
 
 **Methods**:
+
 - `generate_reference()`: Auto-generate unique reference
 - `process()`: Mark as completed, update invoice
 - `reverse(reason)`: Reverse payment
@@ -495,6 +509,7 @@ class Payment(models.Model):
 **Purpose**: Integration with Safaricom Daraja API for M-Pesa STK Push payments.
 
 **Implementation**:
+
 ```python
 from django.conf import settings
 import requests
@@ -685,6 +700,7 @@ class MpesaService:
 | `test_mpesa_timeout_handling` | Handle timeout gracefully |
 
 **Configuration Required** (`.env`):
+
 ```bash
 # M-Pesa Daraja API (Sandbox)
 MPESA_ENVIRONMENT=sandbox
@@ -704,6 +720,7 @@ MPESA_CALLBACK_URL=https://your-domain.com/api/billing/mpesa/callback/
 **Purpose**: Generate official receipts for payments, with KRA compliance support.
 
 **Fields**:
+
 ```python
 class Receipt(models.Model):
     """Official receipt for payment."""
@@ -758,6 +775,7 @@ class Receipt(models.Model):
 **Auto-generated Receipt Number Format**: `RCP-YYYYMMDD-XXXX`
 
 **Methods**:
+
 - `generate_receipt_number()`: Auto-generate unique number
 - `convert_amount_to_words()`: "One Thousand Two Hundred Shillings Only"
 - `void(user, reason)`: Void receipt
@@ -787,6 +805,7 @@ class Receipt(models.Model):
 **Purpose**: Track credit notes and refunds.
 
 **Fields**:
+
 ```python
 class CreditNote(models.Model):
     """Credit note for refunds or adjustments."""
@@ -1035,6 +1054,7 @@ class BillingReportService:
 **Purpose**: Stub implementation for SHA claims submission (full integration in Phase 2).
 
 **Implementation**:
+
 ```python
 class SHAClaimsService:
     """
@@ -1203,12 +1223,14 @@ SHA_API_KEY = env('SHA_API_KEY', default='')
 ## Dependencies
 
 ### Internal Dependencies
+
 - `patients` app - Patient model
 - `encounters` app - Encounter model
 - `pharmacy` app - Drug, Dispensing models (for pharmacy billing)
 - `laboratory` app - LabOrder model (for lab billing)
 
 ### External Dependencies
+
 ```
 # Add to pyproject.toml
 requests>=2.31.0  # For M-Pesa API calls

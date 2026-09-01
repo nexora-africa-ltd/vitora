@@ -45,6 +45,7 @@
 ## Authentication
 
 ### JWT Token (Header-based)
+
 ```
 POST   /api/token/                  # Login: {username, password} → {access, refresh}
                                      # username field accepts username OR email
@@ -53,6 +54,7 @@ POST   /api/token/verify/           # Verify: {token} → 200 OK or 401
 ```
 
 ### Cookie-based (Web Frontend)
+
 ```
 POST   /api/auth/login/             # Cookie login: sets httpOnly access+refresh cookies
 POST   /api/auth/refresh/           # Cookie refresh: rotates httpOnly cookies
@@ -61,6 +63,7 @@ POST   /api/auth/mfa-verify/        # MFA TOTP verification (cookie-based)
 ```
 
 ### Auth Flows (Public)
+
 ```
 POST   /api/core/auth/signup/                    # Org self-service signup
 POST   /api/core/auth/verify-email/              # Email verification token
@@ -74,6 +77,7 @@ POST   /api/core/auth/change-password/           # Change password (authenticate
 ## Patients
 
 ### CRUD
+
 ```
 GET    /api/patients/                # List patients (paginated, filterable)
 POST   /api/patients/                # Create patient (auto-generates MRN)
@@ -83,6 +87,7 @@ DELETE /api/patients/{id}/           # Delete patient (soft delete)
 ```
 
 ### Nested Resources
+
 ```
 # Emergency Contacts
 GET    /api/patients/{id}/emergency-contacts/
@@ -136,6 +141,7 @@ GET    /api/patients/{id}/lab-results/
 ## Encounters
 
 ### CRUD
+
 ```
 GET    /api/encounters/              # List encounters
 POST   /api/encounters/              # Create encounter
@@ -145,6 +151,7 @@ DELETE /api/encounters/{id}/         # Delete encounter
 ```
 
 ### Nested Resources
+
 ```
 # Diagnoses
 GET    /api/encounters/{id}/diagnoses/
@@ -178,6 +185,7 @@ GET    /api/encounters/snomed/search/?q={term}
 ```
 
 ### Reference Data
+
 ```
 GET    /api/icd10-codes/             # ICD-10 codes with search
 GET    /api/treatment-templates/     # Treatment plan templates
@@ -321,11 +329,13 @@ GET|POST        /api/admissions/{id}/comments/
 ## SHA / DHA HIE Integration
 
 ### Eligibility
+
 ```
 POST   /api/sha/eligibility/check/                          # Check patient eligibility (includes PFMS fields)
 ```
 
 ### Consent & Visit
+
 ```
 POST   /api/sha/consent/send-otp/                           # Send consent OTP to patient
 POST   /api/sha/consent/validate-otp/                       # Validate OTP → consent token
@@ -335,6 +345,7 @@ GET    /api/sha/consent/authorize/{guid}/status/             # Poll biometric st
 ```
 
 ### Claims
+
 ```
 POST   /api/sha/claims/{id}/validate/                       # Pre-submit validation
 POST   /api/sha/claims/{id}/submit/                         # Submit claim to DHA
@@ -344,6 +355,7 @@ POST   /api/sha/claims/{id}/ilm/preview-payer/              # Fetch payer-side a
 ```
 
 ### Preauthorizations
+
 ```
 POST   /api/sha/ilm/preauth/create/                         # Create preauth (7 types)
 POST   /api/sha/preauth/submit/                             # Submit preauth
@@ -355,6 +367,7 @@ GET    /api/sha/preauths/                                   # List preauths
 ```
 
 ### Remittances
+
 ```
 GET    /api/sha/remittances/                                # List remittances (facility-scoped)
 GET    /api/sha/remittances/{id}/                           # Remittance detail
@@ -381,6 +394,7 @@ GET             /api/insurance/claims/               # List claims
 ## Scheduling
 
 ### Shifts & Roster
+
 ```
 GET|POST        /api/scheduling/shifts/                       # List / bulk-create shifts
 PATCH|DELETE    /api/scheduling/shifts/{id}/                   # Update / delete shift
@@ -392,6 +406,7 @@ GET             /api/scheduling/shifts/available-rooms/        # Unoccupied PLAC
 ```
 
 ### Clock-in/out (Room-aware)
+
 ```
 POST            /api/scheduling/shifts/{id}/start/             # Clock in (blocks after shift end time)
 POST            /api/scheduling/shifts/{id}/complete/          # Clock out (auto-closes ClinicSession)
@@ -401,6 +416,7 @@ POST            /api/scheduling/shifts/{id}/resume/            # Resume from bre
 ```
 
 ### Settings & Constraints
+
 ```
 GET|POST|PATCH  /api/scheduling/settings/                      # Per-facility scheduling settings
 GET             /api/scheduling/settings/current/              # Current facility's settings
@@ -409,6 +425,7 @@ PATCH|DELETE    /api/scheduling/staff-constraints/{id}/        # Update / delete
 ```
 
 ### Resources
+
 ```
 POST            /api/scheduling/resources/sync_from_staff/     # Sync resources from staff profiles
 POST            /api/scheduling/resources/sync_from_clinics/   # Sync PLACE resources from clinics
@@ -417,6 +434,7 @@ GET             /api/scheduling/resources/{id}/linked_clinics/ # Clinics linked 
 ```
 
 ### Comments on Shifts
+
 ```
 GET|POST        /api/scheduling/shifts/{id}/comments/
 ```
@@ -546,6 +564,7 @@ POST            /api/referrals/{id}/reject/
 ## AI / TibaBot
 
 ### Stored AI Results
+
 ```
 GET    /api/ai/results/care-plans/?encounter_id={id}           # Stored care plans
 GET    /api/ai/results/cds/?encounter_id={id}                  # Stored CDS evaluations
@@ -556,6 +575,7 @@ GET    /api/ai/results/icu-risk/?admission_id={id}             # Stored ICU risk
 ```
 
 ### TibaBot Proxy
+
 ```
 POST   /api/ai/chat/                # Clinical chat (streaming)
 POST   /api/ai/icd10-suggest/       # ICD-10 code suggestions from clinical text
@@ -723,6 +743,7 @@ GET    /api/terminology/codesystems/                 # Available code systems (I
 ## Platform (MFA, Licensing, Setup)
 
 ### MFA
+
 ```
 GET    /api/mfa/status/                              # MFA enrollment status
 POST   /api/mfa/totp/setup/                          # Begin TOTP setup
@@ -731,6 +752,7 @@ GET    /api/mfa/backup-codes/                        # Get backup codes
 ```
 
 ### Licensing (Desktop Hub)
+
 ```
 GET    /api/licensing/eula/                          # Fetch current Hub EULA text + version
 POST   /api/licensing/activate/                      # Activate installation (requires eula_accepted + eula_version)
@@ -739,6 +761,7 @@ POST   /api/licensing/check-in/                      # Periodic license check-in
 ```
 
 ### Setup & Onboarding
+
 ```
 GET    /api/core/setup/check/                        # Check if setup wizard needed (public)
 POST   /api/core/setup/initialize/                   # First-run initialization (public)
@@ -751,6 +774,7 @@ GET|PATCH       /api/facilities/{id}/                # Facility detail / update
 ```
 
 ### Utilities
+
 ```
 GET    /api/core/generate/prc-number/                # Generate PRC number
 GET    /api/health/                                  # API health check
@@ -762,7 +786,9 @@ GET    /api/projections/                             # Read-model projection que
 ## Common Patterns
 
 ### Pagination
+
 All list endpoints return paginated responses:
+
 ```json
 {
   "count": 150,
@@ -773,7 +799,9 @@ All list endpoints return paginated responses:
 ```
 
 ### Filtering
+
 Most list endpoints support query parameters for filtering:
+
 ```
 GET /api/patients/?search=Jane&gender=F&county=1
 GET /api/encounters/?patient={id}&encounter_type=OPD&date_from=2026-01-01
@@ -781,7 +809,9 @@ GET /api/billing/invoices/?status=PENDING&patient={id}
 ```
 
 ### Tenant Scoping
+
 All requests must include the facility header (set automatically by the web frontend):
+
 ```
 X-Facility-Id: 1
 ```
@@ -789,6 +819,7 @@ X-Facility-Id: 1
 Organization-scoped resources (patients, allergies) are filtered by the user's organization. Facility-scoped resources (encounters, invoices) are filtered by the active facility.
 
 ### Error Responses
+
 ```json
 {
   "detail": "Not found.",

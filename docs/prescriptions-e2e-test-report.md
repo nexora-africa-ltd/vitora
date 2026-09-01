@@ -668,20 +668,21 @@ const navigateToDispense = (rx: Prescription) => {
 
 ### 🟡 Medium Priority (Important UX)
 
-4. **List View Columns** (7 tests) - Patient info, prescriber, validity
-5. **Cancel Prescription** (4 tests) - Important workflow action
-6. **Filtering** (4 tests) - Search and filter functionality
+1. **List View Columns** (7 tests) - Patient info, prescriber, validity
+2. **Cancel Prescription** (4 tests) - Important workflow action
+3. **Filtering** (4 tests) - Search and filter functionality
 
 ### 🟢 Lower Priority (Enhancements)
 
-7. **Print Actions** (2 tests) - Nice to have
-8. **Test Code Fix** - Fix `toBeDisabled` error in test file
+1. **Print Actions** (2 tests) - Nice to have
+2. **Test Code Fix** - Fix `toBeDisabled` error in test file
 
 ---
 
 ## Implementation Checklist
 
 ### List View
+
 - [ ] Add patient name column
 - [ ] Add patient MRN column
 - [ ] Add prescriber name column
@@ -692,12 +693,14 @@ const navigateToDispense = (rx: Prescription) => {
 - [ ] Add `expired` class to expired prescription rows
 
 ### Filtering
+
 - [ ] Implement status filter onChange handler
 - [ ] Add patient/MRN search input
 - [ ] Add date range inputs (from/to)
 - [ ] Add "Today" quick filter button
 
 ### Detail View
+
 - [ ] Create `PrescriptionDetailDialog` component
 - [ ] Add row click handler to open detail
 - [ ] Display patient info (name, MRN)
@@ -708,6 +711,7 @@ const navigateToDispense = (rx: Prescription) => {
 - [ ] Display validity status
 
 ### Create Form
+
 - [ ] Add "New Prescription" button
 - [ ] Create `PrescriptionForm` component
 - [ ] Add patient selection/search
@@ -720,17 +724,20 @@ const navigateToDispense = (rx: Prescription) => {
 - [ ] Implement form submission
 
 ### Cancel
+
 - [ ] Add cancel button to pending prescriptions
 - [ ] Create cancel confirmation dialog
 - [ ] Add reason input field
 - [ ] Hide/disable cancel for non-pending prescriptions
 
 ### Dispense
+
 - [ ] Add dispense button to pending prescriptions
 - [ ] Add continue button to partial prescriptions
 - [ ] Implement navigation to dispense page with context
 
 ### Print
+
 - [ ] Add print prescription button to detail view
 - [ ] Add print label button to detail view
 

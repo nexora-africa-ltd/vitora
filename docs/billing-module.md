@@ -172,6 +172,7 @@ Master catalog of billable items.
 | `created_by` | FK → User | `PROTECT` |
 
 **Key Methods:**
+
 - `calculate_line_total(quantity)` → `unit_price × quantity`
 - `is_available()` → returns `is_active`
 - `get_display_name()` → `"{category} - {name}"`
@@ -245,6 +246,7 @@ Core billing entity. Auto-numbers as `INV-YYYYMMDD-XXXX` (or `PRO-YYYYMMDD-XXXX`
 | `mixed` | Mixed Payment |
 
 **Key Methods:**
+
 - `calculate_totals()` — Recomputes subtotal, discount_amount, total_amount, balance_due from items
 - `apply_discount(amount, reason, discount_type?, discount_value?)` — Apply percentage or fixed discount
 - `record_payment(amount)` — Update amount_paid, status transitions
@@ -258,6 +260,7 @@ Core billing entity. Auto-numbers as `INV-YYYYMMDD-XXXX` (or `PRO-YYYYMMDD-XXXX`
 - `is_overdue()` — True if past due and not paid/cancelled
 
 **Properties:**
+
 - `is_valid` — True if proforma is not expired
 - `days_until_expiry` — Days remaining for proforma validity
 - `can_convert` — True if proforma can be converted
@@ -292,6 +295,7 @@ Line items on invoices.
 | `converted_from_item` | FK → self | |
 
 **Key Behavior:**
+
 - `save()` auto-calculates `line_total = (quantity × unit_price) - discount_amount`
 - After save, triggers `invoice.calculate_totals()` to update parent
 - `delete()` also triggers `invoice.calculate_totals()`
@@ -344,12 +348,14 @@ Payment records against invoices.
 | `refunded` | Refunded |
 
 **Key Methods:**
+
 - `process()` — Mark completed, update invoice via `record_payment()`
 - `reverse(reason)` — Reverse completed payment, adjust invoice amounts/status
 - `refund(amount, reason)` — Process refund
 - `is_mpesa()` — Check if M-Pesa payment
 
 **Validation Rules:**
+
 - Amount must be > 0
 - Amount must not exceed invoice `balance_due`
 - Cannot pay cancelled invoices
@@ -378,6 +384,7 @@ Physical or virtual payment collection points.
 | `created_by` | FK → User | |
 
 **Validation:**
+
 - M-Pesa points require `till_number` or `paybill_number`
 - Bank transfer points require `bank_account_number`
 
@@ -409,6 +416,7 @@ Official payment receipts with PDF generation.
 | `issued_by` | FK → User | |
 
 **Features:**
+
 - `convert_amount_to_words()` — e.g. "Five Hundred Shillings Only"
 - `generate_pdf()` — ReportLab A5 PDF with facility header, line items, QR code, amount in words
 - `void(user, reason)` — Mark receipt as voided
@@ -447,6 +455,7 @@ Refunds and adjustments with mandatory two-person approval.
 | `other` | Other |
 
 **Key Methods & Rules:**
+
 - `approve(user)` — Approver must differ from requester (self-approval blocked)
 - `reject(user, reason)` — Only draft notes can be rejected
 - `process_refund(method, reference)` — Only approved notes can be refunded
@@ -480,11 +489,13 @@ SHA (Social Health Authority) membership for patients.
 | `created_by` | FK → User | |
 
 **Key Methods:**
+
 - `is_eligible()` — Checks status, coverage end, eligibility validity
 - `needs_eligibility_check()` — True if no check or last check > 24 hours ago
 - `get_eligibility_display()` — Human-readable status
 
 **Validation:**
+
 - SHA number must start with `"SHA-"`
 - Principal members require national ID
 - Dependents must reference a principal member
@@ -514,6 +525,7 @@ SHA reimbursement rates by category and facility level.
 | `waiting_period_days` | IntegerField | |
 
 **Key Methods:**
+
 - `is_valid_on_date(date)` — Active, effective, not expired
 - `get_active_tariffs(category?, facility_level?)` — QuerySet of valid tariffs
 - `find_tariff_for_service(service, facility_level)` — Lookup by FK or SHA code
@@ -591,6 +603,7 @@ DRAFT → VALIDATED → PENDING_SUBMISSION → SUBMITTED → ACKNOWLEDGED
 | `written_off` | Written Off |
 
 **Key Methods:**
+
 - `calculate_claimed_amount()` — Sum from SHAClaimItem
 - `validate_for_submission()` → `(bool, list[str])` — Checks status, eligibility, items, tariffs, attachments, amount
 - `submit(user)` — Mark submitted + timestamp
@@ -599,6 +612,7 @@ DRAFT → VALIDATED → PENDING_SUBMISSION → SUBMITTED → ACKNOWLEDGED
 - `get_age_days()` — Days since submission
 
 **Custom Permissions:**
+
 - `submit_sha_claim`
 - `approve_sha_claim`
 - `appeal_sha_claim`
@@ -706,6 +720,7 @@ All endpoints require JWT authentication (`Authorization: Bearer <access_token>`
 ```http
 POST /api/billing/invoices/{id}/finalize/
 ```
+
 - Requires status = `DRAFT` and ≥ 1 item
 - Returns updated invoice with status `PENDING`
 
@@ -717,6 +732,7 @@ Content-Type: application/json
 
 { "reason": "Patient requested cancellation" }
 ```
+
 - Cannot cancel paid invoices
 
 #### Apply Discount
@@ -743,6 +759,7 @@ Content-Type: application/json
 // Partial conversion (specific items):
 { "item_ids": [1, 3, 5] }
 ```
+
 - Returns newly created invoice
 - Original proforma marked as converted
 
@@ -754,6 +771,7 @@ Content-Type: application/json
 
 { "validity_days": 60 }  // Optional, default 30
 ```
+
 - Returns new proforma, original is cancelled
 
 ### 4.4 Payments
@@ -783,6 +801,7 @@ Content-Type: application/json
   "notes": "Cash received at front desk"
 }
 ```
+
 - Auto-processes: status → `completed`, invoice updated
 - Returns payment with `payment_reference` (e.g. `PAY-20260322-0001`)
 
@@ -820,6 +839,7 @@ Content-Type: application/json
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -834,6 +854,7 @@ Content-Type: application/json
 ```
 
 **Flow:**
+
 1. Frontend calls `initiate/` → User sees STK Push prompt on phone
 2. User enters M-Pesa PIN
 3. Safaricom calls `callback/` → Payment status updated
@@ -978,6 +999,7 @@ POST /api/billing/credit-notes/{id}/refund/
 ### 5.2 Auto-Invoice Creation (Signal)
 
 When an `Encounter` is created, a signal in `signals.py` automatically:
+
 1. Checks for an existing draft invoice for the same patient from today
 2. If found, links it to the encounter
 3. If not, creates a new draft invoice
@@ -1041,6 +1063,7 @@ DRAFT (requested)
 ### 5.6 Discount Application
 
 Two discount types:
+
 - **Percentage**: `discount_amount = subtotal × (discount_value / 100)`
 - **Fixed**: `discount_amount = min(discount_value, subtotal)`
 
@@ -1077,6 +1100,7 @@ Before submitting a claim, the system checks member eligibility:
 ### 6.3 PFMS (Government Subsidy) Support
 
 For vulnerable populations (elderly, disabled, orphans, indigent):
+
 - `SHAMember.is_pfms_eligible` marks PFMS members
 - `SHAClaimItem.coverage_type` can be `sha`, `pfms`, or `both`
 - Special handling for government-subsidized coverage
@@ -1084,6 +1108,7 @@ For vulnerable populations (elderly, disabled, orphans, indigent):
 ### 6.4 Appeals
 
 Rejected or partially approved claims can be appealed:
+
 1. `claim.can_appeal()` checks status
 2. `claim.create_appeal(reason, user)` creates a new claim:
    - Copies all items and metadata
@@ -1140,6 +1165,7 @@ Integrates with Safaricom's Daraja API for M-Pesa payments.
 ```
 
 ### Key Features
+
 - Phone number normalization (07xxx → 254xxx)
 - Sandbox and production environments
 - Callback URL configured in settings
@@ -1199,6 +1225,7 @@ GET /api/billing/reports/daily-collection/?date=2026-03-22
 ```
 
 Returns:
+
 - `total_collections` — Sum of completed payments for the day
 - `by_payment_method` — Breakdown: `{ "cash": 15000.00, "mpesa": 8500.00 }`
 - `invoice_count` — Number of invoices with payments
@@ -1212,6 +1239,7 @@ GET /api/billing/reports/revenue-summary/?start_date=2026-03-01&end_date=2026-03
 ```
 
 Returns:
+
 - `total_revenue` — Completed payments in period
 - `by_payment_method` — Method breakdown
 - `by_category` — Revenue per service category with count
@@ -1224,6 +1252,7 @@ GET /api/billing/reports/outstanding-balances/
 ```
 
 Returns list of unpaid invoices sorted by days overdue:
+
 - Invoice number, patient name/MRN, dates, amounts, status
 - `days_overdue` calculated from `due_date`
 
@@ -1301,6 +1330,7 @@ Every API response is validated with Zod schemas (`lib/schemas/billing.schema.ts
 Case-insensitive enum handling: backend sends lowercase (`"pending"`), frontend normalizes to uppercase (`"PENDING"`) via `caseInsensitiveEnum()` transformer.
 
 Key schemas:
+
 - `InvoiceSchema` — Full invoice with nested `items`, proforma fields, QR code
 - `PaymentSchema` — Payment with method/status enums
 - `ReceiptSchema` — Receipt with line items, QR code, payment point info
@@ -1336,12 +1366,14 @@ Entity types are derived from Zod schemas (`z.infer<>`). Input/request types are
 ### 10.5 Key Components
 
 **BillingDashboard** — Top-level view with:
+
 - Revenue stats (today, week, month)
 - Outstanding balance summary
 - Recent invoices table
 - Payment method distribution
 
 **InvoiceDetail** — Full invoice management:
+
 - Summary bar (patient, MRN, status, amounts)
 - Line items table with add/remove
 - Payment history
@@ -1350,17 +1382,20 @@ Entity types are derived from Zod schemas (`z.infer<>`). Input/request types are
 - QR code for verification
 
 **PaymentForm** — Multi-method payment recording:
+
 - Cash, Card, Bank Transfer: immediate processing
 - M-Pesa: triggers STK Push via `MpesaPaymentDialog`
 - Payment point selection (matches method)
 
 **MpesaPaymentDialog** — Real-time M-Pesa tracking:
+
 - Shows STK Push status
 - Polls `query/` endpoint for updates
 - Auto-closes on success
 - Displays failure reason on error
 
 **SHAClaimForm** — Claim submission:
+
 - Eligibility verification banner
 - Diagnosis selection (ICD-10)
 - Map invoice items to SHA tariffs

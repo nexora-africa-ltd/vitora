@@ -9,6 +9,7 @@
 ## Summary
 
 The inpatient E2E tests are failing primarily due to:
+
 1. **Missing UI components** - Tests expect elements that don't exist in the current pages
 2. **API mocking issues** - Mock data not being applied correctly to some pages
 3. **Strict mode violations** - Multiple elements matching selectors (need `.first()`)
@@ -46,6 +47,7 @@ The inpatient E2E tests are failing primarily due to:
 ### ~~1. Bed Management (2 failures)~~ ✅ FIXED
 
 All Bed Management tests now pass after:
+
 - Fixed API mock for ward beds endpoint (`/api/inpatient/wards/*/beds/`)
 - Added `data-testid="bed-card"` to BedCard component
 - Added BedStatusDialog component for changing bed status
@@ -56,6 +58,7 @@ All Bed Management tests now pass after:
 ### ~~2. Admission Workflow (4 failures)~~ ✅ FIXED
 
 All Admission Workflow tests now pass after:
+
 - Fixed function name typo (`handleAcceptRecommendationConfirm` → `handleApproveConfirm`)
 - Added `data-testid="approve-button"` to recommendation cards
 - Updated test selectors to use `.first()` for strict mode compliance
@@ -67,6 +70,7 @@ All Admission Workflow tests now pass after:
 ### ~~3. Ward Round Documentation (3 failures)~~ ✅ FIXED
 
 All Ward Round Documentation tests now pass after:
+
 - Fixed mock data to use `admission_status: 'ACTIVE'` instead of `status: 'ADMITTED'`
 - Fixed API mock route pattern to use regex that matches query strings
 - Added proper label `htmlFor="clinicalNotes"` for Clinical Notes field
@@ -78,6 +82,7 @@ All Ward Round Documentation tests now pass after:
 ### ~~4. Nursing Kardex (4 failures)~~ ✅ FIXED
 
 All Nursing Kardex tests now pass after:
+
 - Fixed API mock route pattern to use regex `/api/inpatient/kardex/` matching query strings
 - Added mock data fields: `nursing_problems`, `ward_name`, `bed_number`, `dietary_requirements`
 - Added visible summary section above tabs showing allergies, diet, risks, and shift notes
@@ -91,6 +96,7 @@ All Nursing Kardex tests now pass after:
 ### ~~5. Patient Transfer (2 failures)~~ ✅ FIXED
 
 All Patient Transfer tests now pass after:
+
 - Fixed API mock route pattern from `/transfer/` to `/transfers/` (plural)
 - Added transfer history section to transfer page using `useTransfers` hook
 - Updated test selectors to use `getByRole('link')` for Transfer link (not button)
@@ -104,6 +110,7 @@ All Patient Transfer tests now pass after:
 ### ~~6. Discharge Workflow (4 failures)~~ ✅ FIXED
 
 All Discharge Workflow tests now pass after:
+
 - Added Length of Stay (LOS) calculation using `useMemo` and displaying in Admission Summary
 - Added Department Clearances section with checkboxes for Billing, Pharmacy, and Nursing
 - Added proper form labels with `htmlFor` attributes for accessibility
@@ -119,6 +126,7 @@ All Discharge Workflow tests now pass after:
 ### ~~7. Bed Occupancy Dashboard (4 failures)~~ ✅ FIXED
 
 All Bed Occupancy Dashboard tests now pass after:
+
 - Updated test selectors to match actual page data (60 total beds, 50% occupancy)
 - Used `.first()` for elements appearing multiple times (50% shows in multiple ward cards)
 - Used `{ exact: true }` for numeric values to avoid partial matches
@@ -130,6 +138,7 @@ All Bed Occupancy Dashboard tests now pass after:
 ### ~~8. Shift Handover (2 failures)~~ ✅ FIXED
 
 All Shift Handover tests now pass after:
+
 - Created `/admissions/handover/page.tsx` with pending handovers list and "Pending Handovers" alert
 - Created `/admissions/handover/new/page.tsx` with handover form (ward, shifts, summary, critical info)
 - Updated test selectors to use `getByRole('button')` for Radix Select (not combobox)
@@ -142,18 +151,21 @@ All Shift Handover tests now pass after:
 ## Implementation Priority
 
 ### High Priority (Core Workflows)
+
 1. **Admission Workflow** - Fix selectors + add approve button
 2. **Discharge Workflow** - Add discharge button + complete form
 3. **Patient Transfer** - Add transfer button + history display
 
 ### Medium Priority (Documentation)
-4. **Ward Round Documentation** - Create new ward round page + form
-5. **Nursing Kardex** - Add shift notes + risk assessments
+
+1. **Ward Round Documentation** - Create new ward round page + form
+2. **Nursing Kardex** - Add shift notes + risk assessments
 
 ### Low Priority (Dashboard/Reports)
-6. **Bed Occupancy Dashboard** - Fix selectors + add refresh
-7. **Shift Handover** - Create handover pages (new feature)
-8. **Bed Management** - Fix tab selectors + bed status change
+
+1. **Bed Occupancy Dashboard** - Fix selectors + add refresh
+2. **Shift Handover** - Create handover pages (new feature)
+3. **Bed Management** - Fix tab selectors + bed status change
 
 ---
 

@@ -7,6 +7,7 @@ Supported inputs: source text from FOM20/MIP/PMS/SOP/001 and current implementat
 # ATR Form Parity Checklist (FOM20/MIP/PMS/SOP/001)
 
 Status legend:
+
 - `exact`: implemented with matching meaning
 - `partial`: implemented but not identical in UX/data semantics
 - `missing`: not implemented

@@ -74,6 +74,7 @@ TibaBot API: POST /{endpoint}             strips PII
 ```
 
 **Rationale:**
+
 - Keep the API key server-side (Kenya DPA 2019 compliance)
 - Log all AI interactions in `AuditLog` (7-year retention)
 - Rate-limit at the facility level, not per browser tab
@@ -157,6 +158,7 @@ Clinician confirms/rejects each suggestion
 ```
 
 **Files to create/modify:**
+
 - Backend: `hmis/apps/ai/views.py` — `ICD10SuggestView` ✅
 - Backend: `hmis/apps/ai/client.py` — `TibaBotClient` ✅
 - Backend: `hmis/apps/ai/sanitizer.py` — PII stripping ✅
@@ -255,6 +257,7 @@ When the clinician is on an encounter page (`/encounters/[id]` or `/encounters/[
 **How it complements CDS**: The existing CDS engine fires binary threshold alerts ("SpO2 < 95%"). The widget's Clinical Assist mode provides *contextual reasoning* ("Given this patient's COPD history, SpO2 of 92% with tachypnea suggests acute exacerbation — consider nebulized salbutamol per MOH Protocol 4.2"). They serve different cognitive needs — CDS alerts *what*, TibaBot explains *why* and *what to do*.
 
 **What the widget does NOT replace:**
+
 - Inline CDS alerts panel (Tiers 1–3 remain encounter-embedded)
 - ICD-10 suggestions in the diagnosis form (Phase 1 — those stay inline in the form)
 - Condition/ICU predictor results (Phases 4–5 — those stay in their respective pages)
@@ -262,12 +265,14 @@ When the clinician is on an encounter page (`/encounters/[id]` or `/encounters/[
 **Access control**: Restricted to authenticated clinicians only. Hidden for non-clinical roles. Gated by `NEXT_PUBLIC_ENABLE_AI` feature flag (component not rendered when off), `TIBABOT_ENABLED` backend flag (returns 404 when off), and `ai.use_clinical_chat` permission.
 
 **Why Phase 2 (not later):**
+
 1. **Eliminates duplicate UI** — no separate `ai-clinical-assistant.tsx` sidebar; the widget handles Clinical Assist as a mode
 2. **Foundational infrastructure** — widget's context provider, SSE streaming, and chat panel become reusable for Phases 3–4 (e.g., slash commands: `/predict-risk`)
 3. **Highest visibility feature** — the widget is the "face" of TibaBot; deploying early maximizes adoption and feedback
 4. **Low risk** — advisory only, no clinical automation, permission-gated
 
 **Files created/modified:**
+
 - Backend: `hmis/apps/ai/views.py` — `ClinicalChatView`, `ClinicalAssistView`, `ClinicalChatSessionListView`, `ClinicalChatSessionDetailView` ✅
 - Backend: `hmis/apps/ai/serializers.py` — `ClinicalChatRequestSerializer`, `ClinicalAssistRequestSerializer`, `AIPageContextSerializer`, response serializers ✅
 - Backend: `hmis/apps/ai/models.py` — `ChatSession`, `ChatMessage` ✅
@@ -290,6 +295,7 @@ When the clinician is on an encounter page (`/encounters/[id]` or `/encounters/[
 - Frontend: `lib/context/index.ts` — export `AIChatProvider`, `useAIChatContext`, `useOptionalAIChatContext` ✅
 
 **Schema alignment audit** (March 3, 2026):
+
 - Phase 1 (`icd10-suggest`, `status`): ✅ Frontend types, Zod schemas, and API URLs are **perfectly aligned** with backend serializers and URL routes
 - Phase 2 (`clinical/chat`, `clinical/assist`, `clinical/chat/sessions`, `clinical/chat/session/{id}`): ✅ Frontend types and Zod schemas are **aligned** with backend serializers and URL routes
 - `AIChatMessage.isStreaming` is a frontend-only field (client-side UI state), correctly marked as `z.boolean().optional()` in the Zod schema so it won't break when the backend omits it
@@ -307,6 +313,7 @@ When the clinician is on an encounter page (`/encounters/[id]` or `/encounters/[
 **What**: During triage, submit patient features (age, gender, vitals, chief complaint, clinical assessment) to flag high-risk patients early. Display primary condition with confidence score, risk factors, differential conditions, and recommendations.
 
 **Files created/modified:**
+
 - Backend: `hmis/apps/ai/views.py` — `ConditionPredictView` (auth, PII sanitization, context enrichment, audit logging, graceful degradation) ✅
 - Backend: `hmis/apps/ai/client.py` — `TibaBotClient.predict_condition()` ✅
 - Backend: `hmis/apps/ai/serializers.py` — `ConditionPredictRequestSerializer`, `ConditionPredictPatientFeaturesSerializer`, `ConditionPredictResponseSerializer`, `ConditionRiskFactorSerializer`, `DifferentialConditionSerializer` ✅
@@ -346,6 +353,7 @@ When the clinician is on an encounter page (`/encounters/[id]` or `/encounters/[
 ```
 
 **Files created/modified:**
+
 - Backend: `hmis/apps/ai/serializers.py` — `ICUPredictRequestSerializer`, `ICUPredictPatientDataSerializer`, `ICUPredictResponseSerializer`, `SOFAScoreBreakdownSerializer`, `ICUCriticalAlertSerializer`, `ICUEscalationSerializer` ✅
 - Backend: `hmis/apps/ai/views.py` — `ICUPredictView` (auth, PII sanitization, context enrichment, audit logging, graceful degradation) ✅
 - Backend: `hmis/apps/ai/client.py` — `TibaBotClient.predict_icu()`, `TibaBotClient.predict_icu_risk_stratify()` ✅
@@ -499,6 +507,7 @@ Before sending any data to TibaBot, the `sanitizer.py` module strips:
 | Emergency contacts | **Strip** — never sent |
 
 **Allowed fields** (clinical context only):
+
 - Age (derived), sex/gender
 - Vital signs (temperature, pulse, BP, SpO2, RR, weight, height)
 - Medication names (generic names only)

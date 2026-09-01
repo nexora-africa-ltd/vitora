@@ -12,6 +12,7 @@
 This sprint delivers a comprehensive Triage Module MVP for Vitora HMIS, enabling emergency department and outpatient triage workflows. The module implements the Kenya Emergency Triage Assessment (KETA) 5-level scale with rules-based decision support, priority queue management, and configurable vital thresholds. This addresses critical patient flow management needs for Kenyan healthcare facilities.
 
 ### Business Value
+
 - **Faster patient prioritization**: Structured triage reduces assessment time to <5 minutes
 - **Improved patient safety**: Critical vital alerts prevent missed emergencies
 - **Kenya compliance**: KETA scale aligns with MoH emergency triage standards
@@ -46,6 +47,7 @@ This sprint delivers a comprehensive Triage Module MVP for Vitora HMIS, enabling
 **Purpose**: Core triage assessment capturing patient arrival, clinical assessment, KETA categorization, and routing decisions. Links to Encounter to maintain clinical context.
 
 **Fields**:
+
 ```python
 class TriageAssessment(TimeStampedModel):
     """
@@ -227,6 +229,7 @@ class TriageAssessment(TimeStampedModel):
 ```
 
 **Test Coverage** (25 tests):
+
 - [ ] Test model creation with valid data
 - [ ] Test encounter one-to-one relationship
 - [ ] Test chief_complaint_category choices validation
@@ -262,6 +265,7 @@ class TriageAssessment(TimeStampedModel):
 **Purpose**: Configurable vital sign thresholds for critical and warning alerts. Allows facility-specific customization while providing sensible defaults.
 
 **Fields**:
+
 ```python
 class TriageVitalThreshold(TimeStampedModel):
     """
@@ -350,6 +354,7 @@ class TriageVitalThreshold(TimeStampedModel):
 ```
 
 **Test Coverage** (15 tests):
+
 - [ ] Test model creation with valid data
 - [ ] Test vital_type unique constraint
 - [ ] Test vital_type choices validation
@@ -375,6 +380,7 @@ class TriageVitalThreshold(TimeStampedModel):
 **Purpose**: Active queue entry for patients awaiting care. Automatically sorted by triage priority and arrival time. Removed when patient completes care pathway.
 
 **Fields**:
+
 ```python
 class TriageQueue(TimeStampedModel):
     """
@@ -446,6 +452,7 @@ class TriageQueue(TimeStampedModel):
 ```
 
 **Test Coverage** (20 tests):
+
 - [ ] Test model creation with valid data
 - [ ] Test triage_assessment one-to-one relationship
 - [ ] Test status default is WAITING
@@ -476,6 +483,7 @@ class TriageQueue(TimeStampedModel):
 **Purpose**: Business logic for calculating triage category based on vital signs, symptoms, and clinical indicators. Implements KETA (Kenya Emergency Triage Assessment) rules.
 
 **Implementation**:
+
 ```python
 class TriageCategoryCalculator:
     """
@@ -535,6 +543,7 @@ class TriageCategoryCalculator:
 ```
 
 **Test Coverage** (20 tests):
+
 - [ ] Test calculator initialization with defaults
 - [ ] Test calculator initialization with custom thresholds
 - [ ] Test RED for unresponsive (AVPU=U)
@@ -581,6 +590,7 @@ class TriageCategoryCalculator:
 | `/api/triage/reports/volume/` | GET | Volume by category | Yes |
 
 **API Test Coverage** (30 tests):
+
 - [ ] Test authentication required on all endpoints
 - [ ] Test `perform_triage` permission for create/update
 - [ ] Test `view_triage_queue` permission for queue endpoints
@@ -696,6 +706,7 @@ class TriageCategoryCalculationSerializer(serializers.Serializer):
 ## Database Migrations
 
 ### Migration 0001: Create Triage Models
+
 ```python
 # hmis/apps/triage/migrations/0001_initial.py
 
@@ -711,6 +722,7 @@ class TriageCategoryCalculationSerializer(serializers.Serializer):
 ```
 
 ### Migration 0002: Load Default Thresholds
+
 ```python
 # hmis/apps/triage/migrations/0002_load_default_thresholds.py
 
@@ -723,26 +735,31 @@ class TriageCategoryCalculationSerializer(serializers.Serializer):
 ## Integration Points
 
 ### 1. Encounters Integration
+
 - **Module**: `hmis/apps/encounters/`
 - **Description**: TriageAssessment links to Encounter via OneToOne relationship. Vitals from encounter are used for triage calculations.
 - **Dependencies**: Encounter must exist before triage assessment can be created.
 
 ### 2. Patients Integration
+
 - **Module**: `hmis/apps/patients/`
 - **Description**: Patient allergies are snapshotted into triage assessment. Patient demographics displayed in queue.
 - **Dependencies**: Patient record for allergies lookup.
 
 ### 3. Inpatient Integration (Track D)
+
 - **Module**: `hmis/apps/inpatient/`
 - **Description**: Triage can check bed availability for ER admissions. Assigned_area can route to wards.
 - **Dependencies**: Ward and Bed models from Track D.
 
 ### 4. Audit Logging
+
 - **Module**: `hmis/apps/core/`
 - **Description**: All triage actions logged via AuditLog. Category overrides are specially flagged.
 - **Dependencies**: AuditLog model, audit logging utilities.
 
 ### 5. RBAC Integration (Sprint 1.1-1.2 Track C)
+
 - **Module**: `hmis/apps/core/permissions.py`
 - **Description**: Triage permissions integrated with role system. Triage Nurse role gets perform_triage permission.
 - **Dependencies**: Role, StaffProfile models.
@@ -787,30 +804,35 @@ TRIAGE_TARGET_WAIT_TIMES = {
 ## UI Components
 
 ### 1. Triage Assessment Form
+
 - **Location**: `web-app/components/triage/TriageAssessmentForm.tsx`
 - **Description**: Form for creating/editing triage assessments with vitals capture, AVPU selector, pain scale, and chief complaint dropdown.
 - **Props**: `encounterId`, `patientId`, `onSuccess`, `onCancel`
 - **Dependencies**: shadcn/ui Form, Select, Input, Button components
 
 ### 2. Triage Category Badge
+
 - **Location**: `web-app/components/triage/TriageCategoryBadge.tsx`
 - **Description**: Color-coded badge displaying triage category (RED/ORANGE/YELLOW/GREEN/BLUE)
 - **Props**: `category`, `size`
 - **Dependencies**: shadcn/ui Badge component
 
 ### 3. Triage Queue Dashboard
+
 - **Location**: `web-app/components/triage/TriageQueueDashboard.tsx`
 - **Description**: Real-time queue display with patient cards sorted by priority. Shows wait time, category, assigned area.
 - **Props**: `areaFilter`, `refreshInterval`
 - **Dependencies**: TriageCategoryBadge, PatientCard components
 
 ### 4. Vital Alerts Panel
+
 - **Location**: `web-app/components/triage/VitalAlertsPanel.tsx`
 - **Description**: Displays critical and warning alerts for current patient's vitals
 - **Props**: `alerts`, `vitals`
 - **Dependencies**: Alert, AlertDescription components
 
 ### 5. Wait Time Statistics Card
+
 - **Location**: `web-app/components/triage/WaitTimeStatsCard.tsx`
 - **Description**: Dashboard card showing average wait times by category
 - **Props**: `dateRange`
@@ -1058,6 +1080,7 @@ class TestTriageAPI:
 ## Dependencies
 
 ### Internal Dependencies
+
 - `hmis.apps.encounters` - Encounter model for triage linkage
 - `hmis.apps.patients` - Patient model for demographics and allergies
 - `hmis.apps.core` - AuditLog, TimeStampedModel, SyncQueue
@@ -1065,12 +1088,14 @@ class TestTriageAPI:
 - `hmis.apps.inpatient` (Track D) - Bed availability (optional integration)
 
 ### External Dependencies
+
 - Django 5.x
 - Django REST Framework
 - pytest, pytest-django
 - Factory Boy (for test fixtures)
 
 ### Blocking Dependencies
+
 - [ ] Sprint 1.1-1.2 Track A: Encounter model with vitals ✅ (completed)
 - [ ] Sprint 1.1-1.2 Track C: RBAC foundation (in progress)
 - [ ] Django migrations framework
@@ -1146,6 +1171,7 @@ class TestTriageAPI:
 ## Appendix B: State Machine Diagrams
 
 ### Triage Queue Status Transitions
+
 ```
                     ┌──────────────────────┐
                     │                      │
@@ -1159,6 +1185,7 @@ WAITING ──► CALLED ──► WITH_CLINICIAN ──► COMPLETED
 ```
 
 ### KETA Category Priority
+
 ```
 RED (Immediate)        ◄── Highest Priority
     │
@@ -1267,6 +1294,7 @@ def create_triage_assessment(db, sample_patient, test_user):
 ## Appendix D: API Request/Response Examples
 
 ### Create Triage Assessment
+
 ```http
 POST /api/triage/
 Content-Type: application/json
@@ -1288,6 +1316,7 @@ Authorization: Bearer <token>
 ```
 
 **Response** (201 Created):
+
 ```json
 {
     "id": 1,
@@ -1331,12 +1360,14 @@ Authorization: Bearer <token>
 ```
 
 ### Get Triage Queue
+
 ```http
 GET /api/triage/queue/?assigned_area=ER_ACUTE
 Authorization: Bearer <token>
 ```
 
 **Response** (200 OK):
+
 ```json
 [
     {
@@ -1375,6 +1406,7 @@ Authorization: Bearer <token>
 ```
 
 ### Calculate Category (Decision Support)
+
 ```http
 POST /api/triage/calculate-category/
 Content-Type: application/json
@@ -1393,6 +1425,7 @@ Authorization: Bearer <token>
 ```
 
 **Response** (200 OK):
+
 ```json
 {
     "suggested_category": "ORANGE",
@@ -1408,12 +1441,14 @@ Authorization: Bearer <token>
 ```
 
 ### Wait Time Report
+
 ```http
 GET /api/triage/reports/wait-times/?date_from=2026-05-01&date_to=2026-05-15
 Authorization: Bearer <token>
 ```
 
 **Response** (200 OK):
+
 ```json
 {
     "period": {

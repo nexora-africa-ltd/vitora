@@ -35,15 +35,18 @@ features/
 ## Tags Reference
 
 ### Module Tags
+
 - \`@patients\` - Patient module scenarios
 - \`@pharmacy\` - Pharmacy module scenarios
 - \`@triage\` - Triage module scenarios
 
 ### Priority Tags
+
 - \`@smoke\` - Critical path scenarios (run first, ~50 scenarios)
 - \`@regression\` - Full regression suite
 
 ### Functional Tags
+
 - \`@offline\` - Offline functionality
 - \`@sync\` - Data synchronization
 - \`@validation\` - Input validation
@@ -68,19 +71,25 @@ We use a **hybrid testing approach** combining multiple tools for different test
 ## 🚀 Quick Start
 
 \`\`\`bash
+
 # Validate all features (dry-run - no execution)
+
 npm run bdd:dry-run
 
 # Run E2E tests with Playwright-BDD
+
 npm run bdd:e2e
 
 # Run smoke tests only
+
 npm run bdd:e2e:smoke
 
 # Run integration tests with Jest-Cucumber
+
 npm run bdd:integration
 
 # Run by module
+
 npm run bdd:patients
 npm run bdd:pharmacy
 npm run bdd:triage
@@ -102,6 +111,7 @@ npm run bdd:triage
 ## Writing Features
 
 ### Gherkin Syntax
+
 \`\`\`gherkin
 Feature: Patient Registration
   As a receptionist
@@ -121,6 +131,7 @@ Feature: Patient Registration
 \`\`\`
 
 ### Step Definitions
+
 \`\`\`typescript
 import { Given, When, Then } from '@cucumber/cucumber';
 

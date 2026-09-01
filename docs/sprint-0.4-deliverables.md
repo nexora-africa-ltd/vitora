@@ -28,9 +28,11 @@ Sprint 0.4 successfully implemented the security baseline for Vitora HMIS, inclu
 ## Task Completion Status
 
 ### Task 1: Write Authentication Tests (TDD)
+
 **Status**: ✅ COMPLETED
 
 Created `tests/test_authentication.py` with 16 tests covering:
+
 - Token obtain (valid/invalid credentials)
 - Token refresh (valid/invalid/expired tokens)
 - Token verify
@@ -39,9 +41,11 @@ Created `tests/test_authentication.py` with 16 tests covering:
 - Password security (complexity requirements)
 
 ### Task 2: Write Authorization Tests (TDD)
+
 **Status**: ✅ COMPLETED
 
 Created `tests/test_authorization.py` with 17 tests covering:
+
 - Role-based access control (doctor, nurse, admin roles)
 - Permission groups
 - Sensitive data access controls
@@ -50,9 +54,11 @@ Created `tests/test_authorization.py` with 17 tests covering:
 - API permission enforcement
 
 ### Task 3: Write Audit Log Tests (TDD)
+
 **Status**: ✅ COMPLETED
 
 Created `tests/test_audit_log.py` with 21 tests covering:
+
 - AuditLog model creation
 - Patient CRUD audit logging
 - Authentication audit logging (login success/failure)
@@ -61,9 +67,11 @@ Created `tests/test_audit_log.py` with 21 tests covering:
 - Kenya DPA compliance (7-year retention)
 
 ### Task 4: Implement JWT Authentication
+
 **Status**: ✅ COMPLETED
 
 Implemented `djangorestframework-simplejwt` with:
+
 - 30-minute access token lifetime
 - 1-day refresh token lifetime
 - HS256 algorithm
@@ -71,14 +79,17 @@ Implemented `djangorestframework-simplejwt` with:
 - Custom `AuditedTokenObtainPairView` that fires Django signals for login audit logging
 
 **Endpoints**:
+
 - `POST /api/token/` - Obtain token pair
 - `POST /api/token/refresh/` - Refresh access token
 - `POST /api/token/verify/` - Verify token validity
 
 ### Task 5: Implement AuditLog Model
+
 **Status**: ✅ COMPLETED
 
 Created `hmis/apps/core/` app with:
+
 - `AuditLog` model with fields:
   - `user` - User who performed action
   - `action` - Action type (patient_view, patient_create, etc.)
@@ -94,9 +105,11 @@ Created `hmis/apps/core/` app with:
 - 7-year retention policy per Kenya DPA
 
 ### Task 6: Implement SensitiveAccessPermission
+
 **Status**: ✅ COMPLETED
 
 Created permission class in `hmis/apps/core/permissions.py`:
+
 - Checks for `patients.view_sensitive_patient` permission
 - Filters queryset to hide sensitive patients from unauthorized users
 - Returns 404 (not 403) for security by obscurity
@@ -104,9 +117,11 @@ Created permission class in `hmis/apps/core/permissions.py`:
 - Helper function `get_client_ip()` for IP extraction from requests
 
 ### Task 7: Update Views with Audit Logging
+
 **Status**: ✅ COMPLETED
 
 Updated `PatientViewSet` and `EncounterViewSet`:
+
 - Added `IsAuthenticated` permission requirement
 - Added `SensitiveAccessPermission` to `PatientViewSet`
 - Filter sensitive patients in `get_queryset()`
@@ -115,18 +130,22 @@ Updated `PatientViewSet` and `EncounterViewSet`:
 - Track IP address and user agent
 
 ### Task 8: Update Existing Tests for Auth
+
 **Status**: ✅ COMPLETED
 
 Updated test files to work with authentication:
+
 - Added `auth_user` fixture to `conftest.py`
 - Added `auth_client` fixture (authenticated APIClient)
 - Updated all 41 existing tests to use `auth_client` instead of `api_client`
 - All tests now authenticate before making requests
 
 ### Task 9: Create DPIA Documentation
+
 **Status**: ✅ COMPLETED
 
 Created `docs/dpia.md` with comprehensive Data Protection Impact Assessment:
+
 - Processing activity descriptions
 - Categories of personal data
 - Data subject rights implementation
@@ -137,9 +156,11 @@ Created `docs/dpia.md` with comprehensive Data Protection Impact Assessment:
 - Approval workflow
 
 ### Task 10: Run Bandit Security Scans
+
 **Status**: ✅ COMPLETED
 
 Executed Bandit security scan:
+
 - **Production code (`hmis/`)**: Zero issues found
 - **Test code**: Expected findings only (hardcoded test passwords, assert statements)
 - Created `docs/security-scan-report.md` documenting findings
@@ -228,11 +249,13 @@ TOTAL                                      617     87    114     17  84.40%
 ### Bandit Scan Summary
 
 **Production Code (`hmis/`)**: ✅ **CLEAN**
+
 - Files scanned: 38
 - Lines of code: 1,930
 - Issues found: 0 (Zero)
 
 **Test Code (`tests/`)**: ⚠️ **Expected Findings**
+
 - Hardcoded passwords in test fixtures (acceptable)
 - Assert statements (standard pytest practice)
 

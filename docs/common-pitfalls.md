@@ -21,11 +21,13 @@
 ### DHA Practitioner Search 404 Despite Successful API Call
 
 **Symptoms:**
+
 - Backend logs show successful external DHA API call (Status 200)
 - Valid practitioner data is returned from `https://uat.dha.go.ke/v1/practitioner-search`
 - But internal endpoint returns 404 "No practitioner found"
 
 **Example Log Output:**
+
 ```
 INFO  DHA Practitioner Search API Response:
   Status Code: 200
@@ -70,11 +72,13 @@ else:
 ### Frontend Calling Wrong Backend URL
 
 **Symptoms:**
+
 - Backend has the endpoint working (verified via curl)
 - Frontend requests return 404
 - Server logs show requests to a different URL than expected
 
 **Example:**
+
 ```
 # Frontend was calling:
 /api/billing/dha/practitioner-search/
@@ -87,7 +91,9 @@ else:
 URL configuration drift between frontend and backend. The backend has multiple URL patterns (`billing/urls.py` and `sha_urls.py`) and the frontend was using a legacy or incorrect path.
 
 **Debugging Steps:**
+
 1. Check Django URL configuration:
+
    ```bash
    cd backend && DJANGO_SETTINGS_MODULE=hmis.settings.development \
      poetry run python -c "
@@ -98,6 +104,7 @@ URL configuration drift between frontend and backend. The backend has multiple U
    ```
 
 2. Verify the actual registered URL patterns in `hmis/urls.py`:
+
    ```python
    path("api/sha/", include("hmis.apps.billing.sha_urls", namespace="sha")),
    path("api/billing/", include("hmis.apps.billing.urls", namespace="billing")),
@@ -124,6 +131,7 @@ const response = await apiClient.get(`/api/sha/practitioner/validate/?${queryStr
 ### JWT Token Expiry Issues
 
 **Symptoms:**
+
 - API calls work initially then start failing with 401
 - Works in tests but fails in manual testing
 - HIE (Health Information Exchange) tokens expire faster than expected
@@ -132,6 +140,7 @@ const response = await apiClient.get(`/api/sha/practitioner/validate/?${queryStr
 External APIs like Kenya's DHA/SHA have short-lived tokens (often 20 seconds for HIE auth tokens). If there's network latency or debugging pauses, the token expires mid-request.
 
 **Example - SHA HIE Auth Token:**
+
 ```python
 # Token obtained here
 INFO sha_auth Fetching new SHA authentication token
@@ -142,8 +151,10 @@ INFO dha_search DHA Practitioner Search API Request...
 ```
 
 **Solution:**
+
 1. The `SHAAuthService` already implements token caching with expiry tracking
 2. For manual testing, always obtain a fresh token immediately before use:
+
    ```bash
    TOKEN=$(curl -s -X POST http://127.0.0.1:9088/api/token/ \
      -H "Content-Type: application/json" \
@@ -155,6 +166,7 @@ INFO dha_search DHA Practitioner Search API Request...
 3. For integration tests, mock the external API calls rather than relying on live tokens
 
 **Configuration:** JWT lifetimes are set in `backend/hmis/settings/base.py`:
+
 ```python
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),
@@ -170,17 +182,22 @@ SIMPLE_JWT = {
 ### Migration Dependency Conflicts
 
 **Symptoms:**
+
 - `makemigrations` creates circular dependencies
 - `migrate` fails with "relation already exists" errors
 - Tests fail with database schema mismatches
 
 **Solution:**
+
 1. Check migration dependencies carefully
 2. Use `--fake-initial` for initial migrations on existing tables:
+
    ```bash
    python manage.py migrate --fake-initial
    ```
+
 3. For circular dependencies, use string references in ForeignKey:
+
    ```python
    # Instead of importing the model directly
    patient = models.ForeignKey('patients.Patient', on_delete=models.CASCADE)
@@ -193,6 +210,7 @@ SIMPLE_JWT = {
 ### Test Fixtures Not Found
 
 **Symptoms:**
+
 - `pytest` errors with "fixture 'xyz' not found"
 - Tests pass locally but fail in CI
 
@@ -201,6 +219,7 @@ Fixtures defined in `conftest.py` are scoped to their directory. If a test file 
 
 **Solution:**
 Ensure `conftest.py` is in the tests root:
+
 ```
 backend/tests/
 ├── conftest.py          # Main fixtures: authenticated_client, sample_patient, etc.
@@ -210,6 +229,7 @@ backend/tests/
 ```
 
 **Common Fixtures Available:**
+
 ```python
 # Authentication
 api_client              # Unauthenticated DRF APIClient
@@ -232,6 +252,7 @@ sample_encounter        # Encounter instance
 ## Quick Debugging Commands
 
 ### Check Django URL Configuration
+
 ```bash
 cd backend && DJANGO_SETTINGS_MODULE=hmis.settings.development \
   poetry run python -c "
@@ -243,6 +264,7 @@ for pattern in get_resolver().url_patterns:
 ```
 
 ### Test API Endpoint with Authentication
+
 ```bash
 cd backend && \
 TOKEN=$(curl -s -X POST http://127.0.0.1:9088/api/token/ \
@@ -253,12 +275,14 @@ curl -s "http://127.0.0.1:9088/api/YOUR_ENDPOINT/" \
 ```
 
 ### View Recent Git Changes
+
 ```bash
 git log --oneline -10
 git diff HEAD~1
 ```
 
 ### Run Specific Test File with Verbose Output
+
 ```bash
 cd backend && poetry run pytest tests/path/to/test_file.py -v --tb=short -s
 ```

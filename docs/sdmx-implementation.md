@@ -13,6 +13,7 @@
 Vitora HMIS now supports **SDMX-ML (Statistical Data and Metadata eXchange)** export for aggregate health statistics. This enables interoperability with national health information systems, international organizations (WHO, UNICEF), and statistical offices that consume SDMX-formatted data.
 
 SDMX-ML export is available for:
+
 - **Quarterly Reports** — facility clinical statistics
 - **Annual Reports** — yearly aggregates
 - **IDSR Weekly Reports** — disease surveillance data

@@ -49,6 +49,7 @@
 **Status**: All 6 strict mode violations fixed in alerts tests.
 
 **Changes Made**:
+
 - Scoped selectors to `alert-list` container to avoid matching widget duplicates
 - Used `.first()` where appropriate for multiple matching elements
 - Fixed batch link selector to use role with specific name pattern
@@ -68,9 +69,11 @@
 **Status**: Not implemented
 
 **Affected Test Files**:
+
 - `reports.spec.ts:46-545` (all tests)
 
 **Required Components**:
+
 ```
 web-app/app/(dashboard)/pharmacy/reports/
 ├── page.tsx                    # Reports landing page
@@ -87,6 +90,7 @@ web-app/components/pharmacy/
 ```
 
 **Recommended Approach**:
+
 1. Create reports page with tab navigation
 2. Implement each report type as separate component
 3. Add date range selectors and filters
@@ -100,6 +104,7 @@ web-app/components/pharmacy/
 **Status**: Partially implemented (DispenseDialog exists, workflow incomplete)
 
 **Missing Features**:
+
 - Direct dispensing (OTC/Emergency)
 - Controlled drug verification
 - Dispensing returns
@@ -108,6 +113,7 @@ web-app/components/pharmacy/
 - Dispensing history filters
 
 **Required Components**:
+
 ```
 web-app/components/pharmacy/dispensing/
 ├── dispense-dialog.tsx         ✅ Exists
@@ -119,6 +125,7 @@ web-app/components/pharmacy/dispensing/
 ```
 
 **Recommended Approach**:
+
 1. Complete FEFO batch selection in existing DispenseDialog
 2. Add direct dispensing form for OTC drugs
 3. Implement controlled drug verification workflow
@@ -132,6 +139,7 @@ web-app/components/pharmacy/dispensing/
 **Status**: List view works, create/edit incomplete
 
 **Missing Features**:
+
 - Create prescription form
 - Add/remove prescription items
 - Cancel prescription workflow
@@ -139,6 +147,7 @@ web-app/components/pharmacy/dispensing/
 - Detail view expansion
 
 **Required Components**:
+
 ```
 web-app/components/pharmacy/
 ├── prescriptions-table.tsx         ✅ Exists
@@ -150,6 +159,7 @@ web-app/components/pharmacy/
 ```
 
 **Recommended Approach**:
+
 1. Add prescription detail dialog with expandable items
 2. Create prescription form with multi-item support
 3. Implement cancel workflow with reason capture
@@ -162,18 +172,21 @@ web-app/components/pharmacy/
 **Status**: List works, some features missing
 
 **Missing Features**:
+
 - Receive stock form validation (duplicate batch check)
 - Batch detail view (pricing, received by)
 - Location tracking/editing
 - Expiring stock highlighting
 
 **Affected Tests**:
+
 - `inventory.spec.ts:328` - receive stock with valid data
 - `inventory.spec.ts:348` - prevent duplicate batch numbers
 - `inventory.spec.ts:388-418` - batch details
 - `inventory.spec.ts:533-548` - location tracking
 
 **Recommended Approach**:
+
 1. Add duplicate batch validation in receive stock form
 2. Enhance BatchDetailDialog with all fields
 3. Add location field to stock table and edit capability
@@ -186,6 +199,7 @@ web-app/components/pharmacy/
 **Issue**: Dashboard summary widgets not rendering expected data.
 
 **Affected Tests**:
+
 - `reports.spec.ts:517` - stock level summary widget
 - `reports.spec.ts:525` - low stock count
 - `reports.spec.ts:529` - expiring soon count
@@ -230,6 +244,7 @@ Add dashboard summary cards to pharmacy page:
 **Issue**: Test selectors don't match actual component structure.
 
 **Examples**:
+
 ```typescript
 // Test expects combobox
 page.getByRole('combobox', { name: /severity/i })

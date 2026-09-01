@@ -4,6 +4,7 @@ _Version: `1.0`_
 Shared Health Record (SHR) Service APIs
 
 **Servers:**
+
 - `https://ilm-dev.dha.go.ke/uat-middleware`
 
 ## Table of Contents
@@ -33,6 +34,7 @@ _Tags: `Clinical`_
 **Responses:**
 **Response `200`** — OK
 _Content-Type: `application/json`_
+
 ```json
 [
   {
@@ -45,6 +47,7 @@ _Content-Type: `application/json`_
 
 **Response `500`** — Internal Server Error
 _Content-Type: `application/json`_
+
 ```json
 {
   "error": "string",
@@ -75,6 +78,7 @@ _Tags: `Clinical`_
 **Responses:**
 **Response `200`** — OK
 _Content-Type: `application/json`_
+
 ```json
 {
   "allergyintolerance": [],
@@ -106,6 +110,7 @@ FHIR AllergyIntolerance resource
 _Required._
 
 _Content-Type: `application/json`_
+
 ```json
 {
   "asserter": {
@@ -423,7 +428,7 @@ _Tags: `Clinical`_
 
 | Name | In | Type | Required | Description |
 |---|---|---|---|---|
-| `id` | path | `string` |  *(required)* | AllergyIntolerance ID |
+| `id` | path | `string` |  _(required)_ | AllergyIntolerance ID |
 
 **Responses:**
 **Response `200`** — OK
@@ -450,7 +455,7 @@ _Tags: `Clinical`_
 
 | Name | In | Type | Required | Description |
 |---|---|---|---|---|
-| `id` | path | `string` |  *(required)* | AllergyIntolerance ID |
+| `id` | path | `string` |  _(required)_ | AllergyIntolerance ID |
 
 **Request Body:**
 FHIR Allergyintolerance resource
@@ -482,13 +487,14 @@ _Tags: `Clinical`_
 
 | Name | In | Type | Required | Description |
 |---|---|---|---|---|
-| `id` | path | `string` |  *(required)* | AllergyIntolerance ID |
+| `id` | path | `string` |  _(required)_ | AllergyIntolerance ID |
 
 **Request Body:**
 FHIR Parameters resource containing patch operations
 _Required._
 
 _Content-Type: `application/json`_
+
 ```json
 {
   "id": "string",
@@ -568,6 +574,7 @@ _Tags: `Clinical`_
 **Responses:**
 **Response `200`** — OK
 _Content-Type: `application/json`_
+
 ```json
 {
   "appointments": [],
@@ -599,6 +606,7 @@ FHIR Appointment resource
 _Required._
 
 _Content-Type: `application/json`_
+
 ```json
 {
   "basedOn": [],
@@ -665,7 +673,7 @@ _Tags: `Clinical`_
 
 | Name | In | Type | Required | Description |
 |---|---|---|---|---|
-| `id` | path | `string` |  *(required)* | Appointment ID |
+| `id` | path | `string` |  _(required)_ | Appointment ID |
 
 **Responses:**
 **Response `200`** — OK
@@ -692,7 +700,7 @@ _Tags: `Clinical`_
 
 | Name | In | Type | Required | Description |
 |---|---|---|---|---|
-| `id` | path | `string` |  *(required)* | Appointment ID |
+| `id` | path | `string` |  _(required)_ | Appointment ID |
 
 **Request Body:**
 Updated FHIR Appointment resource
@@ -725,7 +733,7 @@ _Tags: `Clinical`_
 
 | Name | In | Type | Required | Description |
 |---|---|---|---|---|
-| `id` | path | `string` |  *(required)* | Appointment ID |
+| `id` | path | `string` |  _(required)_ | Appointment ID |
 
 **Responses:**
 **Response `204`** — Appointment deleted successfully
@@ -751,7 +759,7 @@ _Tags: `Clinical`_
 
 | Name | In | Type | Required | Description |
 |---|---|---|---|---|
-| `id` | path | `string` |  *(required)* | Appointment ID |
+| `id` | path | `string` |  _(required)_ | Appointment ID |
 
 **Request Body:**
 
@@ -809,6 +817,7 @@ _Tags: `Clinical`_
 **Responses:**
 **Response `200`** — OK
 _Content-Type: `application/json`_
+
 ```json
 {
   "bundle_id": "string",
@@ -839,7 +848,7 @@ _Tags: `Clinical`_
 
 | Name | In | Type | Required | Description |
 |---|---|---|---|---|
-| `id` | path | `string` |  *(required)* | Condition ID |
+| `id` | path | `string` |  _(required)_ | Condition ID |
 
 **Responses:**
 **Response `200`** — OK
@@ -886,7 +895,7 @@ _Tags: `Clinical`_
 
 | Name | In | Type | Required | Description |
 |---|---|---|---|---|
-| `id` | path | `string` |  *(required)* | Condition ID |
+| `id` | path | `string` |  _(required)_ | Condition ID |
 
 **Request Body:**
 FHIR Parameters for patch operation
@@ -940,6 +949,7 @@ _Tags: `Clinical`_
 **Responses:**
 **Response `200`** — OK
 _Content-Type: `application/json`_
+
 ```json
 {
   "bundle_id": "string",
@@ -971,6 +981,7 @@ FHIR DiagnosticReport resource
 _Required._
 
 _Content-Type: `application/json`_
+
 ```json
 {
   "basedOn": [],
@@ -1030,7 +1041,7 @@ _Tags: `Clinical`_
 
 | Name | In | Type | Required | Description |
 |---|---|---|---|---|
-| `id` | path | `string` |  *(required)* | DiagnosticReport ID |
+| `id` | path | `string` |  _(required)_ | DiagnosticReport ID |
 
 **Responses:**
 **Response `200`** — OK
@@ -1057,7 +1068,7 @@ _Tags: `Clinical`_
 
 | Name | In | Type | Required | Description |
 |---|---|---|---|---|
-| `id` | path | `string` |  *(required)* | DiagnosticReport ID |
+| `id` | path | `string` |  _(required)_ | DiagnosticReport ID |
 
 **Request Body:**
 Updated FHIR DiagnosticReport resource
@@ -1090,7 +1101,7 @@ _Tags: `Clinical`_
 
 | Name | In | Type | Required | Description |
 |---|---|---|---|---|
-| `id` | path | `string` |  *(required)* | DiagnosticReport ID |
+| `id` | path | `string` |  _(required)_ | DiagnosticReport ID |
 
 **Responses:**
 **Response `204`** — DiagnosticReport deleted successfully
@@ -1128,6 +1139,7 @@ _Tags: `Clinical`_
 **Responses:**
 **Response `200`** — OK
 _Content-Type: `application/json`_
+
 ```json
 {
   "bundle_id": "string",
@@ -1159,6 +1171,7 @@ FHIR Encounter resource
 _Required._
 
 _Content-Type: `application/json`_
+
 ```json
 {
   "account": [],
@@ -1251,7 +1264,7 @@ _Tags: `Clinical`_
 
 | Name | In | Type | Required | Description |
 |---|---|---|---|---|
-| `id` | path | `string` |  *(required)* | Encounter ID |
+| `id` | path | `string` |  _(required)_ | Encounter ID |
 
 **Responses:**
 **Response `200`** — OK
@@ -1278,7 +1291,7 @@ _Tags: `Clinical`_
 
 | Name | In | Type | Required | Description |
 |---|---|---|---|---|
-| `id` | path | `string` |  *(required)* | Encounter ID |
+| `id` | path | `string` |  _(required)_ | Encounter ID |
 
 **Request Body:**
 FHIR Encounter resource
@@ -1311,7 +1324,7 @@ _Tags: `Clinical`_
 
 | Name | In | Type | Required | Description |
 |---|---|---|---|---|
-| `id` | path | `string` |  *(required)* | Encounter ID |
+| `id` | path | `string` |  _(required)_ | Encounter ID |
 
 **Responses:**
 **Response `204`** — No Content
@@ -1357,6 +1370,7 @@ _Tags: `Clinical`_
 **Responses:**
 **Response `200`** — OK
 _Content-Type: `application/json`_
+
 ```json
 {
   "bundle_id": "string",
@@ -1388,6 +1402,7 @@ FHIR EpisodeOfCare resource
 _Required._
 
 _Content-Type: `application/json`_
+
 ```json
 {
   "account": [],
@@ -1446,7 +1461,7 @@ _Tags: `Clinical`_
 
 | Name | In | Type | Required | Description |
 |---|---|---|---|---|
-| `id` | path | `string` |  *(required)* | Episode of Care ID |
+| `id` | path | `string` |  _(required)_ | Episode of Care ID |
 
 **Responses:**
 **Response `200`** — OK
@@ -1473,7 +1488,7 @@ _Tags: `Clinical`_
 
 | Name | In | Type | Required | Description |
 |---|---|---|---|---|
-| `id` | path | `string` |  *(required)* | Episode of Care ID |
+| `id` | path | `string` |  _(required)_ | Episode of Care ID |
 
 **Request Body:**
 Updated FHIR EpisodeOfCare resource
@@ -1506,7 +1521,7 @@ _Tags: `Clinical`_
 
 | Name | In | Type | Required | Description |
 |---|---|---|---|---|
-| `id` | path | `string` |  *(required)* | Episode of Care ID |
+| `id` | path | `string` |  _(required)_ | Episode of Care ID |
 
 **Responses:**
 **Response `204`** — Episode of Care deleted successfully
@@ -1533,13 +1548,14 @@ _Tags: `Clinical`_
 
 | Name | In | Type | Required | Description |
 |---|---|---|---|---|
-| `q` | query | `string` |  *(required)* | Search query |
+| `q` | query | `string` |  _(required)_ | Search query |
 | `limit` | query | `integer` |  | Maximum results (default: 10, max: 50) |
 | `offset` | query | `integer` |  | Pagination offset (default: 0) |
 
 **Responses:**
 **Response `200`** — OK
 _Content-Type: `application/json`_
+
 ```json
 []
 ```
@@ -1574,6 +1590,7 @@ _Tags: `Clinical`_
 **Responses:**
 **Response `200`** — OK
 _Content-Type: `application/json`_
+
 ```json
 {
   "bundle_id": "string",
@@ -1605,6 +1622,7 @@ FHIR Medication resource
 _Required._
 
 _Content-Type: `application/json`_
+
 ```json
 {
   "batch": {
@@ -1659,7 +1677,7 @@ _Tags: `Clinical`_
 
 | Name | In | Type | Required | Description |
 |---|---|---|---|---|
-| `id` | path | `string` |  *(required)* | Medication ID |
+| `id` | path | `string` |  _(required)_ | Medication ID |
 
 **Responses:**
 **Response `200`** — OK
@@ -1686,7 +1704,7 @@ _Tags: `Clinical`_
 
 | Name | In | Type | Required | Description |
 |---|---|---|---|---|
-| `id` | path | `string` |  *(required)* | Medication ID |
+| `id` | path | `string` |  _(required)_ | Medication ID |
 
 **Request Body:**
 FHIR Medication resource
@@ -1719,7 +1737,7 @@ _Tags: `Clinical`_
 
 | Name | In | Type | Required | Description |
 |---|---|---|---|---|
-| `id` | path | `string` |  *(required)* | Medication ID |
+| `id` | path | `string` |  _(required)_ | Medication ID |
 
 **Responses:**
 **Response `204`** — Medication deleted successfully
@@ -1766,6 +1784,7 @@ _Tags: `Clinical`_
 **Responses:**
 **Response `200`** — OK
 _Content-Type: `application/json`_
+
 ```json
 {
   "bundle_id": "string",
@@ -1797,6 +1816,7 @@ FHIR Observation resource
 _Required._
 
 _Content-Type: `application/json`_
+
 ```json
 {
   "basedOn": [],
@@ -1876,7 +1896,7 @@ _Tags: `Clinical`_
 
 | Name | In | Type | Required | Description |
 |---|---|---|---|---|
-| `id` | path | `string` |  *(required)* | Observation ID |
+| `id` | path | `string` |  _(required)_ | Observation ID |
 
 **Responses:**
 **Response `200`** — OK
@@ -1903,7 +1923,7 @@ _Tags: `Clinical`_
 
 | Name | In | Type | Required | Description |
 |---|---|---|---|---|
-| `id` | path | `string` |  *(required)* | Observation ID |
+| `id` | path | `string` |  _(required)_ | Observation ID |
 
 **Request Body:**
 Updated FHIR Observation resource
@@ -1936,7 +1956,7 @@ _Tags: `Clinical`_
 
 | Name | In | Type | Required | Description |
 |---|---|---|---|---|
-| `id` | path | `string` |  *(required)* | Observation ID |
+| `id` | path | `string` |  _(required)_ | Observation ID |
 
 **Responses:**
 **Response `204`** — Observation deleted successfully
@@ -1962,7 +1982,7 @@ _Tags: `Clinical`_
 
 | Name | In | Type | Required | Description |
 |---|---|---|---|---|
-| `id` | path | `string` |  *(required)* | Observation ID |
+| `id` | path | `string` |  _(required)_ | Observation ID |
 
 **Request Body:**
 FHIR Parameters for patch operation
@@ -2022,6 +2042,7 @@ _Tags: `Clinical`_
 **Responses:**
 **Response `200`** — OK
 _Content-Type: `application/json`_
+
 ```json
 {
   "bundle_id": "string",
@@ -2053,6 +2074,7 @@ FHIR Organization resource
 _Required._
 
 _Content-Type: `application/json`_
+
 ```json
 {
   "active": false,
@@ -2108,7 +2130,7 @@ _Tags: `Clinical`_
 
 | Name | In | Type | Required | Description |
 |---|---|---|---|---|
-| `id` | path | `string` |  *(required)* | Organization ID |
+| `id` | path | `string` |  _(required)_ | Organization ID |
 
 **Responses:**
 **Response `200`** — OK
@@ -2135,7 +2157,7 @@ _Tags: `Clinical`_
 
 | Name | In | Type | Required | Description |
 |---|---|---|---|---|
-| `id` | path | `string` |  *(required)* | Organization ID |
+| `id` | path | `string` |  _(required)_ | Organization ID |
 
 **Request Body:**
 Updated FHIR Organization resource
@@ -2168,7 +2190,7 @@ _Tags: `Clinical`_
 
 | Name | In | Type | Required | Description |
 |---|---|---|---|---|
-| `id` | path | `string` |  *(required)* | Organization ID |
+| `id` | path | `string` |  _(required)_ | Organization ID |
 
 **Responses:**
 **Response `204`** — Organization deleted successfully
@@ -2220,6 +2242,7 @@ _Tags: `Clinical`_
 **Responses:**
 **Response `200`** — OK
 _Content-Type: `application/json`_
+
 ```json
 {
   "bundle_id": "string",
@@ -2251,6 +2274,7 @@ FHIR Patient resource
 _Required._
 
 _Content-Type: `application/json`_
+
 ```json
 {
   "active": false,
@@ -2326,7 +2350,7 @@ _Tags: `Clinical`_
 
 | Name | In | Type | Required | Description |
 |---|---|---|---|---|
-| `id` | path | `string` |  *(required)* | Patient ID |
+| `id` | path | `string` |  _(required)_ | Patient ID |
 
 **Responses:**
 **Response `200`** — OK
@@ -2353,7 +2377,7 @@ _Tags: `Clinical`_
 
 | Name | In | Type | Required | Description |
 |---|---|---|---|---|
-| `id` | path | `string` |  *(required)* | Patient ID |
+| `id` | path | `string` |  _(required)_ | Patient ID |
 
 **Request Body:**
 Updated FHIR Patient resource
@@ -2386,7 +2410,7 @@ _Tags: `Clinical`_
 
 | Name | In | Type | Required | Description |
 |---|---|---|---|---|
-| `id` | path | `string` |  *(required)* | Patient ID |
+| `id` | path | `string` |  _(required)_ | Patient ID |
 
 **Responses:**
 **Response `204`** — Patient deleted successfully
@@ -2415,7 +2439,7 @@ _Security: `BearerAuth`_
 
 | Name | In | Type | Required | Description |
 |---|---|---|---|---|
-| `patientId` | path | `string` |  *(required)* | FHIR Patient ID |
+| `patientId` | path | `string` |  _(required)_ | FHIR Patient ID |
 | `cursor` | query | `string` |  | ISO timestamp for cursor-based pagination |
 | `encounterId` | query | `string` |  | Filter to specific encounter (Acute/ICU view) |
 | `grouping` | query | `string` |  | Time bucket interval |
@@ -2425,6 +2449,7 @@ _Security: `BearerAuth`_
 **Responses:**
 **Response `200`** — Flowsheet data retrieved successfully
 _Content-Type: `application/json`_
+
 ```json
 {
   "columns": [
@@ -2491,6 +2516,7 @@ _Tags: `Clinical`_
 **Responses:**
 **Response `200`** — OK
 _Content-Type: `application/json`_
+
 ```json
 {
   "bundle_id": "string",
@@ -2522,6 +2548,7 @@ FHIR Practitioner resource
 _Required._
 
 _Content-Type: `application/json`_
+
 ```json
 {
   "active": false,
@@ -2575,7 +2602,7 @@ _Tags: `Clinical`_
 
 | Name | In | Type | Required | Description |
 |---|---|---|---|---|
-| `id` | path | `string` |  *(required)* | Practitioner ID |
+| `id` | path | `string` |  _(required)_ | Practitioner ID |
 
 **Responses:**
 **Response `200`** — OK
@@ -2602,7 +2629,7 @@ _Tags: `Clinical`_
 
 | Name | In | Type | Required | Description |
 |---|---|---|---|---|
-| `id` | path | `string` |  *(required)* | Practitioner ID |
+| `id` | path | `string` |  _(required)_ | Practitioner ID |
 
 **Request Body:**
 Updated FHIR Practitioner resource
@@ -2635,7 +2662,7 @@ _Tags: `Clinical`_
 
 | Name | In | Type | Required | Description |
 |---|---|---|---|---|
-| `id` | path | `string` |  *(required)* | Practitioner ID |
+| `id` | path | `string` |  _(required)_ | Practitioner ID |
 
 **Responses:**
 **Response `204`** — Practitioner deleted successfully
@@ -2682,6 +2709,7 @@ _Tags: `Clinical`_
 **Responses:**
 **Response `200`** — OK
 _Content-Type: `application/json`_
+
 ```json
 {
   "bundle_id": "string",
@@ -2713,6 +2741,7 @@ FHIR Procedure resource
 _Required._
 
 _Content-Type: `application/json`_
+
 ```json
 {
   "basedOn": [],
@@ -2786,7 +2815,7 @@ _Tags: `Clinical`_
 
 | Name | In | Type | Required | Description |
 |---|---|---|---|---|
-| `id` | path | `string` |  *(required)* | Procedure ID |
+| `id` | path | `string` |  _(required)_ | Procedure ID |
 
 **Responses:**
 **Response `200`** — OK
@@ -2813,7 +2842,7 @@ _Tags: `Clinical`_
 
 | Name | In | Type | Required | Description |
 |---|---|---|---|---|
-| `id` | path | `string` |  *(required)* | Procedure ID |
+| `id` | path | `string` |  _(required)_ | Procedure ID |
 
 **Request Body:**
 Updated FHIR Procedure resource
@@ -2846,7 +2875,7 @@ _Tags: `Clinical`_
 
 | Name | In | Type | Required | Description |
 |---|---|---|---|---|
-| `id` | path | `string` |  *(required)* | Procedure ID |
+| `id` | path | `string` |  _(required)_ | Procedure ID |
 
 **Responses:**
 **Response `204`** — Procedure deleted successfully
@@ -2889,6 +2918,7 @@ _Tags: `Clinical`_
 **Responses:**
 **Response `200`** — OK
 _Content-Type: `application/json`_
+
 ```json
 {
   "bundle_id": "string",
@@ -2920,6 +2950,7 @@ FHIRQuestionnaireResponsePayload resource
 _Required._
 
 _Content-Type: `application/json`_
+
 ```json
 {
   "questionnaire_id": "string"
@@ -2952,7 +2983,7 @@ _Tags: `Clinical`_
 
 | Name | In | Type | Required | Description |
 |---|---|---|---|---|
-| `id` | query | `string` |  *(required)* | ValueSet ID to expand (e.g., ICD11Codes) |
+| `id` | query | `string` |  _(required)_ | ValueSet ID to expand (e.g., ICD11Codes) |
 | `filter` | query | `string` |  | Filter/search term within the ValueSet |
 | `count` | query | `integer` |  | Maximum results (default: 100) |
 | `offset` | query | `integer` |  | Pagination offset (default: 0) |
@@ -2960,6 +2991,7 @@ _Tags: `Clinical`_
 **Responses:**
 **Response `200`** — OK
 _Content-Type: `application/json`_
+
 ```json
 []
 ```
@@ -3012,7 +3044,7 @@ _Tags: `Clinical`_
 
 | Name | In | Type | Required | Description |
 |---|---|---|---|---|
-| `q` | query | `string` |  *(required)* | Search query (name or ID, min 2 characters) |
+| `q` | query | `string` |  _(required)_ | Search query (name or ID, min 2 characters) |
 | `limit` | query | `integer` |  | Maximum results (default: 10, max: 50) |
 | `offset` | query | `integer` |  | Pagination offset (default: 0) |
 | `source` | query | `string` |  | Filter by source: local, hl7, all (default: all) |
@@ -3020,6 +3052,7 @@ _Tags: `Clinical`_
 **Responses:**
 **Response `200`** — OK
 _Content-Type: `application/json`_
+
 ```json
 {
   "has_more": false,
@@ -3058,7 +3091,7 @@ _Tags: `Clinical`_
 
 | Name | In | Type | Required | Description |
 |---|---|---|---|---|
-| `id` | path | `string` |  *(required)* | ValueSet ID |
+| `id` | path | `string` |  _(required)_ | ValueSet ID |
 
 **Responses:**
 **Response `200`** — OK
@@ -3085,11 +3118,12 @@ _Tags: `Clinical`_
 
 | Name | In | Type | Required | Description |
 |---|---|---|---|---|
-| `id` | path | `string` |  *(required)* | Encounter ID |
+| `id` | path | `string` |  _(required)_ | Encounter ID |
 
 **Responses:**
 **Response `200`** — OK
 _Content-Type: `application/json`_
+
 ```json
 {
   "allergies": [],
@@ -3153,13 +3187,14 @@ _Tags: `Clinical`_
 
 | Name | In | Type | Required | Description |
 |---|---|---|---|---|
-| `q` | query | `string` |  *(required)* | Search query |
+| `q` | query | `string` |  _(required)_ | Search query |
 | `limit` | query | `integer` |  | Maximum results (default: 10, max: 50) |
 | `offset` | query | `integer` |  | Pagination offset (default: 0) |
 
 **Responses:**
 **Response `200`** — OK
 _Content-Type: `application/json`_
+
 ```json
 []
 ```
@@ -3185,6 +3220,7 @@ Order code and patient context
 _Required._
 
 _Content-Type: `application/json`_
+
 ```json
 {
   "order_code": {
@@ -3208,6 +3244,7 @@ _Content-Type: `application/json`_
 **Responses:**
 **Response `200`** — OK
 _Content-Type: `application/json`_
+
 ```json
 {
   "parameters": [
@@ -3257,6 +3294,7 @@ _Tags: `Clinical`_
 **Responses:**
 **Response `200`** — OK
 _Content-Type: `application/json`_
+
 ```json
 []
 ```
@@ -3331,7 +3369,7 @@ _Tags: `Clinical`_
 
 | Name | In | Type | Required | Description |
 |---|---|---|---|---|
-| `id` | path | `string` |  *(required)* | MedicationRequest ID |
+| `id` | path | `string` |  _(required)_ | MedicationRequest ID |
 
 **Request Body:**
 FHIR Parameters
@@ -3361,8 +3399,8 @@ _Tags: `Clinical`_
 
 | Name | In | Type | Required | Description |
 |---|---|---|---|---|
-| `org` | path | `string` |  *(required)* | OCL organization ID |
-| `collection` | path | `string` |  *(required)* | OCL collection ID |
+| `org` | path | `string` |  _(required)_ | OCL organization ID |
+| `collection` | path | `string` |  _(required)_ | OCL collection ID |
 | `q` | query | `string` |  | Search query (optional - returns all if empty). Maps to OCL 'q' param. |
 | `limit` | query | `integer` |  | Maximum results (default: 25, max: 100). Maps to OCL 'limit'. |
 | `offset` | query | `integer` |  | Pagination offset (default: 0). Maps to OCL 'offset'. |
@@ -3371,6 +3409,7 @@ _Tags: `Clinical`_
 **Responses:**
 **Response `200`** — OK
 _Content-Type: `application/json`_
+
 ```json
 []
 ```
@@ -3393,8 +3432,8 @@ _Tags: `Clinical`_
 
 | Name | In | Type | Required | Description |
 |---|---|---|---|---|
-| `org` | path | `string` |  *(required)* | OCL organization ID |
-| `source` | path | `string` |  *(required)* | OCL source ID |
+| `org` | path | `string` |  _(required)_ | OCL organization ID |
+| `source` | path | `string` |  _(required)_ | OCL source ID |
 | `q` | query | `string` |  | Search query (optional - returns all if empty). |
 | `page` | query | `integer` |  | Page number (default: 1). |
 | `limit` | query | `integer` |  | Maximum results (default: 25, max: 100). |
@@ -3403,6 +3442,7 @@ _Tags: `Clinical`_
 **Responses:**
 **Response `200`** — OK
 _Content-Type: `application/json`_
+
 ```json
 []
 ```
@@ -3426,6 +3466,7 @@ BulkFHIRQuestionnaireResponsePayload resource
 _Required._
 
 _Content-Type: `application/json`_
+
 ```json
 {
   "questionnaire_responses": []
@@ -3468,6 +3509,7 @@ _Tags: `Clinical`_
 **Responses:**
 **Response `200`** — OK
 _Content-Type: `application/json`_
+
 ```json
 {
   "bundle_id": "string",
@@ -3522,7 +3564,7 @@ _Tags: `Clinical`_
 
 | Name | In | Type | Required | Description |
 |---|---|---|---|---|
-| `id` | path | `string` |  *(required)* | ServiceRequest ID |
+| `id` | path | `string` |  _(required)_ | ServiceRequest ID |
 
 **Responses:**
 **Response `200`** — OK
@@ -3549,7 +3591,7 @@ _Tags: `Clinical`_
 
 | Name | In | Type | Required | Description |
 |---|---|---|---|---|
-| `id` | path | `string` |  *(required)* | ServiceRequest ID |
+| `id` | path | `string` |  _(required)_ | ServiceRequest ID |
 
 **Request Body:**
 Updated FHIR ServiceRequest resource
@@ -3579,7 +3621,7 @@ _Tags: `Clinical`_
 
 | Name | In | Type | Required | Description |
 |---|---|---|---|---|
-| `id` | path | `string` |  *(required)* | ServiceRequest ID |
+| `id` | path | `string` |  _(required)_ | ServiceRequest ID |
 
 **Responses:**
 **Response `204`** — ServiceRequest deleted successfully
@@ -3602,7 +3644,7 @@ _Tags: `Clinical`_
 
 | Name | In | Type | Required | Description |
 |---|---|---|---|---|
-| `id` | path | `string` |  *(required)* | ServiceRequest ID |
+| `id` | path | `string` |  _(required)_ | ServiceRequest ID |
 
 **Request Body:**
 
@@ -3630,7 +3672,7 @@ _Tags: `Clinical - Documents`_
 
 | Name | In | Type | Required | Description |
 |---|---|---|---|---|
-| `id` | path | `string` |  *(required)* | Bundle ID |
+| `id` | path | `string` |  _(required)_ | Bundle ID |
 
 **Responses:**
 **Response `200`** — OK
@@ -3659,11 +3701,12 @@ _Tags: `Clinical - Documents`_
 
 | Name | In | Type | Required | Description |
 |---|---|---|---|---|
-| `id` | path | `string` |  *(required)* | Bundle ID |
+| `id` | path | `string` |  _(required)_ | Bundle ID |
 
 **Responses:**
 **Response `200`** — PDF document
 _Content-Type: `application/pdf`_
+
 ```json
 "string"
 ```
@@ -3688,11 +3731,12 @@ _Tags: `Clinical - Documents`_
 
 | Name | In | Type | Required | Description |
 |---|---|---|---|---|
-| `id` | path | `string` |  *(required)* | Bundle ID |
+| `id` | path | `string` |  _(required)_ | Bundle ID |
 
 **Responses:**
 **Response `200`** — OK
 _Content-Type: `application/json`_
+
 ```json
 {
   "author": {
@@ -3765,6 +3809,7 @@ _Tags: `Clinical - Documents`_
 **Responses:**
 **Response `200`** — OK
 _Content-Type: `application/json`_
+
 ```json
 {
   "bundle_id": "string",
@@ -3795,7 +3840,7 @@ _Tags: `Clinical - Documents`_
 
 | Name | In | Type | Required | Description |
 |---|---|---|---|---|
-| `id` | path | `string` |  *(required)* | DocumentReference ID |
+| `id` | path | `string` |  _(required)_ | DocumentReference ID |
 
 **Responses:**
 **Response `200`** — OK
@@ -3828,6 +3873,7 @@ _Tags: `Clinical - Documents`_
 **Responses:**
 **Response `200`** — OK
 _Content-Type: `application/json`_
+
 ```json
 {
   "download_url": "string",
@@ -3855,7 +3901,7 @@ _Tags: `Clinical - Documents`_
 
 | Name | In | Type | Required | Description |
 |---|---|---|---|---|
-| `id` | path | `string` |  *(required)* | Questionnaire ID |
+| `id` | path | `string` |  _(required)_ | Questionnaire ID |
 
 **Responses:**
 **Response `200`** — OK
@@ -3907,7 +3953,7 @@ _Tags: `Clinical - Documents`_
 
 | Name | In | Type | Required | Description |
 |---|---|---|---|---|
-| `id` | path | `string` |  *(required)* | QuestionnaireResponse ID |
+| `id` | path | `string` |  _(required)_ | QuestionnaireResponse ID |
 
 **Request Body:**
 Updated FHIR QuestionnaireResponse resource
@@ -3940,7 +3986,7 @@ _Tags: `Clinical - Documents`_
 
 | Name | In | Type | Required | Description |
 |---|---|---|---|---|
-| `id` | path | `string` |  *(required)* | QuestionnaireResponse ID |
+| `id` | path | `string` |  _(required)_ | QuestionnaireResponse ID |
 
 **Responses:**
 **Response `201`** — Created
@@ -3970,7 +4016,7 @@ _Tags: `Clinical - Documents`_
 
 | Name | In | Type | Required | Description |
 |---|---|---|---|---|
-| `id` | path | `string` |  *(required)* | QuestionnaireResponse ID |
+| `id` | path | `string` |  _(required)_ | QuestionnaireResponse ID |
 
 **Responses:**
 **Response `200`** — OK

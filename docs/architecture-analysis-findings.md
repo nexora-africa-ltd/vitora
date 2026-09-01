@@ -7,6 +7,7 @@
 ---
 
 ## Table of Contents
+
 1. [A) Encounter Draft vs Complete Status](#a-encounter-draft-vs-complete-status)
 2. [B) Status Badges for Encounters](#b-status-badges-for-encounters)
 3. [C) Web Frontend Development Timing](#c-web-frontend-development-timing)
@@ -72,6 +73,7 @@ class Encounter(models.Model):
 ```
 
 **Clinical workflow justification**:
+
 - Clinicians often start documenting before all information is available
 - Draft encounters shouldn't appear in official reports
 - Completed encounters should be immutable (with proper audit trails for corrections)
@@ -86,6 +88,7 @@ class Encounter(models.Model):
 **Finding: NO status badges currently implemented**
 
 The current UI in [desktop-app/src/renderer/encounter-timeline.js](desktop-app/src/renderer/encounter-timeline.js) only shows:
+
 - Encounter type labels (OPD, EMERGENCY, INPATIENT, etc.)
 - Critical vital alerts (using `has_critical_vitals`)
 
@@ -117,6 +120,7 @@ const ENCOUNTER_TYPE_LABELS = {
 | Critical | Red (pulsing) | ⚠️ | Critical vitals (existing) |
 
 **Implementation suggestion**:
+
 ```javascript
 const ENCOUNTER_STATUS_BADGES = {
   DRAFT: { label: 'Draft', cssClass: 'badge-draft', icon: '📝' },
@@ -147,48 +151,60 @@ const ENCOUNTER_STATUS_BADGES = {
 ### Analysis: Challenges You Might Face
 
 #### 1. Resource Contention (HIGH RISK)
+
 **Challenge**: Phase 1 already has two parallel tracks:
+
 - Track A: Desktop Encounter Management
 - Track B: Mobile App Foundation
 
 Adding a third track (Web Frontend) requires:
+
 - Additional frontend engineer(s)
 - Shared API development time
 - More QA effort
 
 **Mitigation**:
+
 - Start with read-only dashboard (simpler scope)
 - Use shared component library between desktop and web
 - Consider hiring/contracting additional frontend resource
 
 #### 2. API Stability (MEDIUM RISK)
+
 **Challenge**: APIs are still evolving during Phase 1. Web frontend may need frequent updates.
 
 **Mitigation**:
+
 - Use API versioning from the start
 - Web frontend should use same API as desktop/mobile (already planned)
 - TypeScript types generated from OpenAPI schema
 
 #### 3. Scope Creep (HIGH RISK)
+
 **Challenge**: Stakeholders seeing a web interface may request features not in scope.
 
 **Mitigation**:
+
 - Clearly define web frontend as "view-only" for Phase 1
 - Feature parity roadmap showing what's coming
 - Regular demos with scope reminders
 
 #### 4. Deployment Complexity (MEDIUM RISK)
+
 **Challenge**: Web frontend requires hosting infrastructure earlier than planned.
 
 **Mitigation**:
+
 - Use Vercel/Netlify for initial deployment (free tier)
 - Can be static site with API calls to demo server
 - No need for production-grade infrastructure initially
 
 #### 5. Testing Overhead (MEDIUM RISK)
+
 **Challenge**: Three platforms to test (Desktop + Mobile + Web)
 
 **Mitigation**:
+
 - Shared E2E test patterns
 - API-level testing covers all platforms
 - Component testing with React Testing Library (shared)
@@ -205,6 +221,7 @@ Adding a third track (Web Frontend) requires:
 | 1.9-1.10 | Integration testing, feedback collection |
 
 **Stakeholder benefits**:
+
 - ✅ Real-time feedback on UI/UX
 - ✅ Accessible from any device (no installation)
 - ✅ Shareable links for specific patients/reports
@@ -219,6 +236,7 @@ Adding a third track (Web Frontend) requires:
 **Finding: NO lab/investigations module currently implemented**
 
 Explicitly excluded from MVP ([docs/mvp-scope-acceptance-criteria.md#L130](docs/mvp-scope-acceptance-criteria.md#L130)):
+
 ```markdown
 - ❌ Lab results module
 - ❌ DICOM/Imaging
@@ -227,11 +245,13 @@ Explicitly excluded from MVP ([docs/mvp-scope-acceptance-criteria.md#L130](docs/
 ### Future Provisions
 
 #### Lab Module
+
 - Mentioned for "Phase 2+" in [docs/sprint-0.1-deliverables.md#L218](docs/sprint-0.1-deliverables.md#L218)
 - FHIR Observation resources planned for lab results
 - LOINC codes planned for lab observations
 
 #### Imaging/Radiology
+
 - **Phase 3, Sprint 3.4-3.6** (Weeks 7-12, ~Jun 2027):
   - DICOM image ingestion
   - Web-based DICOM viewer
@@ -243,6 +263,7 @@ Explicitly excluded from MVP ([docs/mvp-scope-acceptance-criteria.md#L130](docs/
 **Finding: NO provision for in-house vs external lab workflow**
 
 Your requirement for:
+
 - **In-house**: Order → Lab receives → Results → Auto-populate encounter
 - **External**: Order → Generate requisition form (PDF) → Manual result entry
 

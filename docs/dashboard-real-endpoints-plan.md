@@ -7,6 +7,7 @@
 ## Implementation Summary
 
 ### ✅ All Phases Complete
+
 | Phase | Endpoint | Status |
 |-------|----------|--------|
 | 1 | `/api/core/dashboard/patient-volume/` | ✅ Complete (22 tests) |
@@ -15,6 +16,7 @@
 | 4 | Frontend Integration | ✅ Complete |
 
 ### ✅ All Endpoints Implemented (Real Data)
+
 | Endpoint | Location | Data |
 |----------|----------|------|
 | `/api/core/dashboard/stats/` | `backend/hmis/apps/core/dashboard_views.py` | KPIs (patients, encounters, pharmacy, lab, triage, billing, alerts) |
@@ -23,6 +25,7 @@
 | `/api/core/dashboard/activity-feed/` | `backend/hmis/apps/core/dashboard_views.py` | Real-time activity feed from ActivityFeed model |
 
 ### ✅ No More Mock Data
+
 | Data | Frontend Location | Status |
 |------|-------------------|--------|
 |------|-------------------|----------------|
@@ -35,14 +38,17 @@
 ## Phase 1: Patient Volume History API
 
 ### Backend Endpoint
+
 **Route**: `GET /api/core/dashboard/patient-volume/`
 
 **Query Parameters**:
+
 - `start_date` (required): YYYY-MM-DD
 - `end_date` (required): YYYY-MM-DD
 - `granularity` (optional): `day` | `week` | `month` (default: `day`)
 
 **Response Schema**:
+
 ```python
 {
     "date_range": {"start": "2026-01-01", "end": "2026-01-07"},
@@ -147,6 +153,7 @@ export function usePatientVolumeHistory(filter?: DateRangeFilter) {
 ```
 
 ### TDD Tests Required
+
 - [x] `test_patient_volume_requires_authentication`
 - [x] `test_patient_volume_requires_date_params`
 - [x] `test_patient_volume_returns_daily_breakdown`
@@ -158,14 +165,17 @@ export function usePatientVolumeHistory(filter?: DateRangeFilter) {
 ## Phase 2: Revenue Breakdown API
 
 ### Backend Endpoint
+
 **Route**: `GET /api/core/dashboard/revenue-breakdown/`
 
 **Query Parameters**:
+
 - `start_date` (required): YYYY-MM-DD
 - `end_date` (required): YYYY-MM-DD
 - `group_by` (optional): `department` | `service_type` | `payment_method`
 
 **Response Schema**:
+
 ```python
 {
     "date_range": {"start": "2026-01-01", "end": "2026-01-07"},
@@ -241,6 +251,7 @@ def revenue_breakdown(request):
 ```
 
 ### TDD Tests Required
+
 - [x] `test_revenue_breakdown_requires_authentication`
 - [x] `test_revenue_breakdown_aggregates_by_department`
 - [x] `test_revenue_breakdown_calculates_percentages`
@@ -251,14 +262,17 @@ def revenue_breakdown(request):
 ## Phase 3: Activity Feed API
 
 ### Backend Endpoint
+
 **Route**: `GET /api/core/dashboard/activity-feed/`
 
 **Query Parameters**:
+
 - `limit` (optional): Number of items (default: 20, max: 100)
 - `offset` (optional): Pagination offset
 - `types` (optional): Comma-separated activity types filter
 
 **Response Schema**:
+
 ```python
 {
     "count": 150,
@@ -289,6 +303,7 @@ def revenue_breakdown(request):
 ### Backend Implementation Options
 
 **Option A: Use Existing AuditLog**
+
 ```python
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
@@ -334,6 +349,7 @@ def activity_feed(request):
 ```
 
 **Option B: Dedicated Activity Model** (More flexible, better for notifications)
+
 ```python
 # hmis/apps/core/models.py
 class ActivityFeed(models.Model):
@@ -366,9 +382,11 @@ class ActivityFeed(models.Model):
 ```
 
 ### Recommendation
+
 Use **Option A (AuditLog)** first since it already exists and captures all CRUD operations. Migrate to Option B later if needed for notifications/subscriptions.
 
 ### TDD Tests Required
+
 - [x] `test_activity_feed_requires_authentication`
 - [x] `test_activity_feed_returns_recent_first`
 - [x] `test_activity_feed_respects_limit`
@@ -380,6 +398,7 @@ Use **Option A (AuditLog)** first since it already exists and captures all CRUD 
 ## Phase 4: Frontend Integration
 
 ### Update Type Definitions
+
 **File**: `web-app/lib/types/dashboard.ts`
 
 ```typescript
@@ -417,6 +436,7 @@ export interface RecentActivity {
 ```
 
 ### Update Hooks
+
 **File**: `web-app/lib/hooks/use-dashboard-metrics.ts`
 
 ```typescript
@@ -486,6 +506,7 @@ urlpatterns = [
 ## Testing Checklist
 
 ### Backend Tests
+
 - [x] Unit tests for each helper function
 - [x] Integration tests for each endpoint
 - [x] Permission tests (authentication required)
@@ -495,6 +516,7 @@ urlpatterns = [
 **Backend Test Summary**: 104 tests passing (22 patient-volume + 26 revenue + 32 activity + 24 stats)
 
 ### Frontend Tests
+
 - [x] Hook tests with MSW mocks
 - [x] Error handling (API failures)
 - [x] Loading states

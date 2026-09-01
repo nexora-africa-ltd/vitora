@@ -131,6 +131,7 @@ GET /api/core/features/check/?name=smart_autopopulate  # Check one flag
 ```
 
 Response:
+
 ```json
 {
   "name": "smart_autopopulate",
@@ -304,6 +305,7 @@ POST /api/ai/autopopulate/
 ```
 
 **Logic:**
+
 1. Sends chief complaint to TibaBot for ICD-10 suggestions
 2. If top suggestion confidence ≥ 0.85, adds it as a `primary_diagnosis` field suggestion
 3. Builds a clinical assist prompt from all encounter context
@@ -337,10 +339,12 @@ import { SmartSuggestion } from '@/components/shared/smart-suggestion';
 ```
 
 **Variants:**
+
 - `inline` — Compact row with Accept/Reject icons, shown adjacent to a form field
 - `banner` — Prominent card for workflow-level suggestions (e.g., "Escalate to Emergency")
 
 **Confidence indicator:**
+
 - ≥ 80%: Green badge
 - 50–79%: Yellow badge
 - < 50%: Gray badge
@@ -362,6 +366,7 @@ import { SmartSuggestionBatch } from '@/components/shared/smart-suggestion-batch
 ```
 
 Features:
+
 - Per-field Accept/Reject toggles
 - "Select All" / "Deselect All" toggle
 - Confidence indicators per suggestion

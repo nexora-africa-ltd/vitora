@@ -71,7 +71,8 @@ This document describes the Continuous Integration and Continuous Deployment (CI
 **Runs On**: Ubuntu Latest
 **Python Version**: 3.12
 
-#### Steps:
+#### Steps
+
 1. **Checkout code**: Pull latest code from repository
 2. **Setup Python**: Install Python 3.12
 3. **Cache dependencies**: Cache Poetry dependencies for faster builds
@@ -89,7 +90,8 @@ This document describes the Continuous Integration and Continuous Deployment (CI
 9. **Upload coverage**: Send coverage data to Codecov
 10. **Run mypy**: Type checking (informational)
 
-#### Quality Gates:
+#### Quality Gates
+
 - ✅ Ruff linting passes with no errors
 - ✅ Black formatting check passes
 - ✅ All tests pass
@@ -100,7 +102,8 @@ This document describes the Continuous Integration and Continuous Deployment (CI
 **Job Name**: `security-scan`
 **Runs On**: Ubuntu Latest
 
-#### Steps:
+#### Steps
+
 1. **Checkout code**: Pull latest code
 2. **Setup Python**: Install Python 3.12
 3. **Install Bandit**: Install security linter
@@ -112,7 +115,8 @@ This document describes the Continuous Integration and Continuous Deployment (CI
    - Upload to GitHub Security tab
 6. **Upload reports**: Save security reports as artifacts
 
-#### Quality Gates:
+#### Quality Gates
+
 - ⚠️ No critical security vulnerabilities (blocking)
 - ⚠️ High-severity issues reviewed (non-blocking in Phase 0)
 
@@ -122,7 +126,8 @@ This document describes the Continuous Integration and Continuous Deployment (CI
 **Runs On**: Ubuntu Latest
 **Node Version**: 20.x
 
-#### Steps:
+#### Steps
+
 1. **Checkout code**: Pull latest code
 2. **Setup Node.js**: Install Node 20.x
 3. **Cache dependencies**: Cache npm modules
@@ -132,7 +137,8 @@ This document describes the Continuous Integration and Continuous Deployment (CI
 7. **Install desktop dependencies**: Install Electron dependencies
 8. **Build desktop app**: Verify Electron app builds successfully
 
-#### Quality Gates:
+#### Quality Gates
+
 - ✅ ESLint passes with no errors
 - ✅ All frontend tests pass
 - ✅ Desktop app builds successfully
@@ -142,14 +148,16 @@ This document describes the Continuous Integration and Continuous Deployment (CI
 **Job Name**: `documentation-check`
 **Runs On**: Ubuntu Latest
 
-#### Steps:
+#### Steps
+
 1. **Checkout code**: Pull latest code
 2. **Check README**: Verify README.md exists (required)
 3. **Check ROADMAP**: Verify ROADMAP.md exists
 4. **Check docs directory**: Verify docs/ structure
 5. **Markdown lint**: Run markdownlint on all .md files
 
-#### Quality Gates:
+#### Quality Gates
+
 - ✅ README.md exists
 - ⚠️ ROADMAP.md exists (warning if missing)
 - ⚠️ docs/ directory exists
@@ -160,12 +168,14 @@ This document describes the Continuous Integration and Continuous Deployment (CI
 **Runs On**: Ubuntu Latest
 **Depends On**: backend-tests, frontend-tests
 
-#### Steps:
+#### Steps
+
 1. **Checkout code**: Pull latest code
 2. **Validate structure**: Check for expected directories
 3. **Scan for TODOs**: Find TODO/FIXME comments (informational)
 
-#### Quality Gates:
+#### Quality Gates
+
 - ✅ Project structure valid
 - ℹ️ TODO/FIXME count (informational)
 
@@ -175,11 +185,13 @@ This document describes the Continuous Integration and Continuous Deployment (CI
 **Runs On**: Ubuntu Latest
 **Depends On**: backend-tests, frontend-tests
 
-#### Steps:
+#### Steps
+
 1. **Download artifacts**: Collect coverage reports
 2. **Generate summary**: Display coverage statistics
 
-#### Quality Gates:
+#### Quality Gates
+
 - ℹ️ Coverage summary displayed
 - ✅ Backend coverage ≥80%
 - ✅ Frontend coverage ≥80%
@@ -190,12 +202,14 @@ This document describes the Continuous Integration and Continuous Deployment (CI
 **Runs On**: Ubuntu Latest
 **Depends On**: All previous jobs
 
-#### Steps:
+#### Steps
+
 1. **Check all job statuses**: Verify all quality checks passed
 2. **Evaluate gate**: Pass/fail based on criteria
 3. **Report status**: Display final gate status
 
-#### Quality Gates:
+#### Quality Gates
+
 - ✅ Backend tests passed
 - ✅ Security scan passed (or warnings only)
 - ✅ Frontend tests passed
@@ -207,30 +221,35 @@ This document describes the Continuous Integration and Continuous Deployment (CI
 
 ## Security Workflow
 
-### Jobs:
+### Jobs
 
 #### 1. Dependency Vulnerability Scan
+
 - **Tool**: Safety (Python), npm audit (Node.js)
 - **Purpose**: Check for known vulnerabilities in dependencies
 - **Frequency**: On push, PR, daily at 2 AM UTC
 
 #### 2. CodeQL Analysis
+
 - **Tool**: GitHub CodeQL
 - **Languages**: Python, JavaScript/TypeScript
 - **Purpose**: Static code analysis for security vulnerabilities
 - **Queries**: Security-extended query suite
 
 #### 3. Secret Scanning
+
 - **Tools**: TruffleHog, Gitleaks
 - **Purpose**: Detect hardcoded secrets, API keys, passwords
 - **Frequency**: On push, PR
 
 #### 4. OWASP Dependency Check
+
 - **Tool**: OWASP Dependency-Check
 - **Purpose**: Identify known vulnerabilities in dependencies
 - **Output**: HTML report (artifact)
 
 #### 5. License Compliance Check
+
 - **Tools**: licensecheck (Python), license-checker (Node.js)
 - **Purpose**: Verify license compatibility
 - **Output**: Summary report
@@ -296,6 +315,7 @@ Both workflows support manual dispatch via GitHub Actions UI.
 ## Branch Protection Rules
 
 ### Main Branch (`main`)
+
 - ✅ Require pull request reviews (1 approval)
 - ✅ Require status checks to pass before merging:
   - `backend-tests`
@@ -307,6 +327,7 @@ Both workflows support manual dispatch via GitHub Actions UI.
 - ✅ Restrict push access
 
 ### Develop Branch (`develop`)
+
 - ✅ Require pull request reviews (1 approval)
 - ✅ Require status checks to pass:
   - `backend-tests`
@@ -380,36 +401,46 @@ npm run build
 ### Common Issues
 
 #### 1. Coverage Below 80%
+
 **Problem**: `pytest` fails with "coverage below 80%"
 **Solution**:
+
 - Write more tests for uncovered code
 - Check `coverage.xml` for uncovered lines
 - Focus on critical paths first
 
 #### 2. Ruff Errors
+
 **Problem**: Ruff linting fails
 **Solution**:
+
 ```bash
 poetry run ruff check . --fix
 ```
 
 #### 3. Black Formatting
+
 **Problem**: Black check fails
 **Solution**:
+
 ```bash
 poetry run black .
 ```
 
 #### 4. Security Issues
+
 **Problem**: Bandit reports security vulnerabilities
 **Solution**:
+
 - Review Bandit report
 - Fix or add `# nosec` comment with justification
 - Never ignore critical security issues
 
 #### 5. Pipeline Timeout
+
 **Problem**: Pipeline takes > 10 minutes
 **Solution**:
+
 - Check for hanging tests
 - Optimize slow tests
 - Use caching effectively
@@ -428,6 +459,7 @@ poetry run black .
 ### Expected Behavior
 
 In Phase 0, the pipeline will:
+
 - ✅ Pass even with no code (infrastructure validation)
 - ⏭️ Skip tests for non-existent components
 - ✅ Validate project structure
@@ -435,6 +467,7 @@ In Phase 0, the pipeline will:
 - ✅ Run security scans on configs
 
 As code is added (Sprint 0.2+):
+
 - Tests will start executing
 - Coverage requirements will be enforced
 - Quality gates will become stricter
@@ -446,18 +479,21 @@ As code is added (Sprint 0.2+):
 ### Planned Enhancements
 
 #### Phase 1
+
 - [ ] Add E2E tests with Playwright
 - [ ] Performance testing
 - [ ] Visual regression testing
 - [ ] Mobile app CI/CD
 
 #### Phase 2
+
 - [ ] Deployment pipelines (staging/production)
 - [ ] Database migration testing
 - [ ] Load testing
 - [ ] Automated rollback
 
 #### Phase 3
+
 - [ ] Multi-environment deployments
 - [ ] Canary deployments
 - [ ] A/B testing infrastructure
@@ -482,6 +518,7 @@ Track these metrics monthly:
 ### Dashboard
 
 View pipeline metrics at:
+
 - GitHub Actions Insights
 - Codecov dashboard (when integrated)
 - GitHub Security tab
@@ -511,6 +548,7 @@ View pipeline metrics at:
 ### TDD Compliance
 
 The CI/CD pipeline enforces TDD practices:
+
 - ✅ Test coverage ≥80% required
 - ✅ All tests must pass
 - ✅ No code merges without tests
@@ -518,6 +556,7 @@ The CI/CD pipeline enforces TDD practices:
 ### Security Compliance
 
 The pipeline enforces security standards:
+
 - ✅ No hardcoded secrets
 - ✅ Dependency vulnerability scanning
 - ✅ Static code analysis
@@ -526,6 +565,7 @@ The pipeline enforces security standards:
 ### Kenya Data Protection Act
 
 Security scans help ensure:
+
 - ✅ No data leaks in code
 - ✅ No exposed credentials
 - ✅ Secure coding practices
@@ -544,6 +584,7 @@ Security scans help ensure:
 ### B. Required Secrets
 
 None required for Phase 0. Future phases may need:
+
 - `CODECOV_TOKEN` (for Codecov integration)
 - `AWS_ACCESS_KEY_ID` (for deployments)
 - `AWS_SECRET_ACCESS_KEY` (for deployments)

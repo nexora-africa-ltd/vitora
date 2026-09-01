@@ -255,6 +255,7 @@ ORDERED → CONSENT_PENDING → SCHEDULED → READY → IN_PROGRESS → COMPLETE
 | `cancel(user, reason)` | → CANCELLED | Sets cancelled_by/at/reason |
 
 **Properties**:
+
 - `can_perform() → (bool, str)` — Checks status + consent validity
 - `is_overdue → bool` — True if scheduled_date is past and not completed/cancelled
 
@@ -294,6 +295,7 @@ Informed consent record. OneToOne with ProcedureOrder.
 **Methods**: `is_valid()`, `sign(user)`, `decline(reason)`, `withdraw(reason)`.
 
 **Validation** (`is_valid()` checks):
+
 1. Status must be SIGNED
 2. `procedure_explained` and `risks_explained` must both be True
 3. If `guardian_consent_required` → `signed_by_guardian` must be True
@@ -330,6 +332,7 @@ Records the actual performance of a procedure. OneToOne with ProcedureOrder. Cre
 | `notes` | TextField | |
 
 **Methods**:
+
 - `complete(status, outcome)` — Sets `ended_at`, auto-calculates duration, calls `order.complete()`, triggers auto-billing
 - `abandon(reason)` — Sets ABANDONED status, cancels parent order
 
@@ -743,6 +746,7 @@ python manage.py seed_procedure_catalog --link-billing
 | `--link-billing` | Create billing.Service records and link to catalog |
 
 **Facility Resolution** (priority order):
+
 1. Explicit `--facility` MFL code
 2. Demo HQ facility (`mfl_code=DEMO-HQ-001`)
 3. First active facility in the database
@@ -750,6 +754,7 @@ python manage.py seed_procedure_catalog --link-billing
 **Backfill Behavior**: If a catalog entry already exists (by code), the command backfills `organization` and `facility` if they're missing.
 
 **Billing Linkage** (`--link-billing`):
+
 - Creates a `billing.ServiceCategory` with code `PROC` if it doesn't exist
 - For each catalog entry without a `billing_service`:
   - Checks for existing `billing.Service` with the same code
@@ -804,20 +809,24 @@ python manage.py seed_service_catalog
 ### 8.2 Order Detail Page — 4 Tabs
 
 **Overview Tab**:
+
 - Procedure details card (name, code, category, risk, fee, duration, consent required)
 - Order information card (priority, indication, notes, body site, location)
 - Cancellation card (if cancelled)
 
 **Consent Tab** (3 states):
+
 - Consent not required → informational message
 - No consent yet → "Obtain Consent" button → opens Create Consent dialog
 - Consent exists → ConsentCard with 4-checkbox status, Sign/Decline buttons
 
 **Perform Tab**:
+
 - Before start → "Start Procedure" button
 - During/after → PerformanceCard (start/end time, duration timer, performer, anesthesia, technique, specimens, outcome, complications)
 
 **Outcomes Tab**:
+
 - "Add Outcome Assessment" button (visible when order is COMPLETED)
 - Inline form: assessment date, outcome status (8 options), findings, notes, next follow-up
 - Timeline of outcome cards
@@ -920,6 +929,7 @@ The system matches procedure categories to clinic types using a two-tier approac
 `PROCEDURE`, `SURGICAL`, `OT`, `DRESSING`, `INJECTION`
 
 **Two functions** serve different use cases:
+
 - `getClinicTypesForCategory(category)` — Returns specific + generic types (used by manual "Add room..." dropdown)
 - `getBestFitClinicTypes(category)` — Returns *only* specific types if available, else generic fallback (used by Auto-Assign)
 
@@ -928,6 +938,7 @@ The system matches procedure categories to clinic types using a two-tier approac
 Bulk admin page for managing which clinics are assigned to which procedures.
 
 **Features**:
+
 - Server-side paginated list (20 per page) with search and category filter
 - Per-row clinic badges with add/remove controls
 - Inline undo and per-row save buttons
@@ -941,6 +952,7 @@ Bulk admin page for managing which clinics are assigned to which procedures.
 #### Procedure Form Clinic Picker
 
 The create/edit form (`procedure-form.tsx`) includes a "Procedure Rooms" card:
+
 - Fetches active clinics filtered by the category-aware `getClinicTypesForCategory()`
 - Shows assigned clinics as removable badges
 - "Add a procedure room..." dropdown showing only compatible clinics
@@ -1005,6 +1017,7 @@ poetry run pytest tests/procedures/test_procedure_api.py -k "workflow" -v --no-c
 ### 10.3 Key Test Scenarios
 
 **API Tests** (`test_procedure_api.py`):
+
 - Catalog CRUD (list, create, filter by category, unauthenticated rejection)
 - Order CRUD (create, list, retrieve, auto-set ordered_by, missing indication rejection)
 - Workflow: schedule → start → complete (happy path)
@@ -1017,6 +1030,7 @@ poetry run pytest tests/procedures/test_procedure_api.py -k "workflow" -v --no-c
 - Dashboard: stats, unauthenticated rejection
 
 **Model Tests** (`test_procedure_models.py`):
+
 - Order number auto-generation (PROC-YYYYMMDD-XXXX)
 - State transitions: request_consent, schedule, mark_ready, start_procedure, complete, cancel
 - `can_perform()` validation (consent check)
@@ -1026,6 +1040,7 @@ poetry run pytest tests/procedures/test_procedure_api.py -k "workflow" -v --no-c
 - Consent `is_valid()` checks
 
 **Billing Tests** (`test_procedure_billing.py`):
+
 - Auto-billing on procedure completion
 - Price resolution: billing_service → code match → base_fee
 - Invoice item creation
@@ -1074,10 +1089,13 @@ python manage.py seed_procedure_catalog  # Backfills org/facility
 **Symptom**: Completing a procedure doesn't create an invoice item.
 
 **Check**:
+
 1. Is `billing_service` linked on the catalog entry?
+
    ```bash
    python manage.py shell -c "from hmis.apps.procedures.models import ProcedureCatalog; print(ProcedureCatalog.objects.filter(billing_service__isnull=True).count())"
    ```
+
 2. Does a `billing.Service` exist with the procedure code?
 3. Does the catalog entry have a `base_fee`?
 
@@ -1090,6 +1108,7 @@ python manage.py seed_procedure_catalog  # Backfills org/facility
 **Cause**: Orders are tenant-scoped by `facility`. The logged-in user must be at the same facility where orders were created.
 
 **Check**: Verify the user's facility assignment:
+
 ```bash
 python manage.py shell -c "
 from django.contrib.auth import get_user_model

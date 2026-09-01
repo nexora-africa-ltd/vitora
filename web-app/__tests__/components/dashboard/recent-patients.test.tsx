@@ -22,6 +22,7 @@ jest.mock('next/link', () => {
 import { usePatients } from '@/lib/hooks/use-patients';
 
 const mockUsePatients = usePatients as jest.MockedFunction<typeof usePatients>;
+type UsePatientsResult = ReturnType<typeof usePatients>;
 
 describe('RecentPatients Component', () => {
   beforeEach(() => {
@@ -33,7 +34,7 @@ describe('RecentPatients Component', () => {
       data: undefined,
       isLoading: true,
       error: null,
-    } as any);
+    } as UsePatientsResult);
 
     const { container } = render(<RecentPatients />);
 
@@ -47,7 +48,7 @@ describe('RecentPatients Component', () => {
       data: { results: [], count: 0 },
       isLoading: false,
       error: null,
-    } as any);
+    } as UsePatientsResult);
 
     render(<RecentPatients />);
 
@@ -65,7 +66,7 @@ describe('RecentPatients Component', () => {
       },
       isLoading: false,
       error: null,
-    } as any);
+    } as UsePatientsResult);
 
     render(<RecentPatients />);
 
@@ -83,7 +84,7 @@ describe('RecentPatients Component', () => {
       },
       isLoading: false,
       error: null,
-    } as any);
+    } as UsePatientsResult);
 
     render(<RecentPatients />);
 
@@ -100,7 +101,7 @@ describe('RecentPatients Component', () => {
       },
       isLoading: false,
       error: null,
-    } as any);
+    } as UsePatientsResult);
 
     render(<RecentPatients />);
 
@@ -113,7 +114,7 @@ describe('RecentPatients Component', () => {
       data: { results: [], count: 0 },
       isLoading: false,
       error: null,
-    } as any);
+    } as UsePatientsResult);
 
     render(<RecentPatients />);
 
@@ -130,7 +131,7 @@ describe('RecentPatients Component', () => {
       },
       isLoading: false,
       error: null,
-    } as any);
+    } as UsePatientsResult);
 
     const { container } = render(<RecentPatients />);
 

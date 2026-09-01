@@ -8,6 +8,7 @@ Branch context: `develop`
 **External PACS = system-of-record for DICOM objects (pixel data + canonical retrieval).**
 
 **Vitora HMIS = workflow layer**:
+
 - indexes studies/series/instances for search + worklists
 - links studies to patients/encounters/imaging orders
 - provides viewer access via authenticated proxy (so we can audit + enforce RBAC)
@@ -30,12 +31,14 @@ This is the recommended default because PACS is purpose-built for storage/confor
 - Audit: Upload/retrieve/delete are audit-logged.
 
 ### Evidence (code locations)
+
 - Local filesystem PACS service: `PACSStorageService` in `backend/hmis/apps/imaging/services/pacs.py`
 - DICOM models include `DICOMInstance.file_path` (local path) in `backend/hmis/apps/imaging/models.py`
 - Upload + retrieve endpoints in `backend/hmis/apps/imaging/views.py`
 - Web viewer uses Vitora endpoints (`/api/imaging/dicom/{sop}/`) in `web-app/lib/api/imaging.ts`
 
 ### Conclusion vs target
+
 - **Not conforming** to “external PACS is system-of-record”.
 - Today, Vitora is both the archive and the workflow layer.
 
@@ -44,31 +47,37 @@ This is the recommended default because PACS is purpose-built for storage/confor
 ## Conformance Checklist (Use for Reviews)
 
 ### A. Storage of record
+
 - [ ] DICOM pixel data stored in external PACS (not Vitora filesystem)
 - [ ] Vitora DB stores PACS references (UIDs + PACS identifier), not local file paths
 - [ ] Retention policies enforced at PACS (or object store) level
 
 ### B. Retrieval
+
 - [ ] Viewer retrieval uses PACS DICOMweb (WADO-RS/WADO-URI) or a Vitora proxy that fetches from PACS
 - [ ] All image access is authenticated + authorized (RBAC) and **audited**
 - [ ] Vitora does not require direct filesystem access to DICOM pixels in production
 
 ### C. Ingest
+
 - [ ] Modality / uploader stores via PACS ingest path (e.g., STOW-RS or PACS-native)
 - [ ] Vitora indexes studies after PACS ingest (webhook/event or polling)
 - [ ] Vitora can reconcile/attach to imaging orders using accession/order numbers
 
 ### D. Clinical workflow
+
 - [ ] Study appears in worklist quickly with correct patient/order linkage state
 - [ ] Reporting + verification events notify ordering clinician (WebSocket + persisted status)
 - [ ] Sensitive patient rules propagate to imaging access (restricted viewing)
 
 ### E. Security & audit (Kenya DPA context)
+
 - [ ] Audit logs include: user, action, resource identifiers, timestamp, IP, purpose (where applicable)
 - [ ] Minimal data in logs; no pixel data; no excessive PHI in event payloads
 - [ ] Access to studies is least-privilege
 
 ### F. Operational
+
 - [ ] PACS connectivity is configurable (env vars) and can be swapped per site
 - [ ] Fallback mode exists for dev/testing (local PACS-lite) without changing client code
 
@@ -92,6 +101,7 @@ This plan keeps existing functionality working while introducing the external-PA
 Goal: preserve current local filesystem behavior but create a seam for external PACS.
 
 **Backend changes**
+
 - Introduce an interface-like service boundary (Python protocol or base class), e.g.:
   - `PACSBackend.store(...)`
   - `PACSBackend.get_instance_stream(...)` OR `get_wado_url(...)`
@@ -101,6 +111,7 @@ Goal: preserve current local filesystem behavior but create a seam for external 
   - `PACS_MODE=local|external` (default `local` for now)
 
 **Outcome**
+
 - No API changes for clients.
 - Internal code chooses a backend based on settings.
 
@@ -109,6 +120,7 @@ Goal: preserve current local filesystem behavior but create a seam for external 
 Goal: keep Vitora as the **auth+audit gateway** while pixels live in PACS.
 
 **Backend changes**
+
 - Add settings/env vars:
   - `PACS_MODE=external`
   - `PACS_DICOMWEB_BASE_URL=https://...` (Orthanc/dcm4chee)
@@ -123,6 +135,7 @@ Goal: keep Vitora as the **auth+audit gateway** while pixels live in PACS.
 - Keep audit event parity (`dicom_retrieve`).
 
 **Outcome**
+
 - Viewer continues using the same URL (`/api/imaging/dicom/{sop}/`) but data comes from PACS.
 
 ### Phase 2 — Index-only storage in Vitora (stop relying on local file_path)
@@ -130,6 +143,7 @@ Goal: keep Vitora as the **auth+audit gateway** while pixels live in PACS.
 Goal: Vitora DB becomes a metadata index + linkage store.
 
 **Backend changes**
+
 - Evolve `DICOMInstance.file_path` usage:
   - keep field temporarily for backwards compatibility
   - introduce new fields (example):
@@ -139,6 +153,7 @@ Goal: Vitora DB becomes a metadata index + linkage store.
 - Retrieval path uses SOP UID + PACS config rather than local file_path.
 
 **Outcome**
+
 - Existing studies can still be served locally (migration period).
 - New studies reference PACS as source.
 
@@ -147,6 +162,7 @@ Goal: Vitora DB becomes a metadata index + linkage store.
 Goal: Upload no longer stores pixels in Vitora.
 
 **Backend changes**
+
 - Replace/augment `/api/imaging/studies/upload/`:
   - Option A: Vitora forwards multipart uploads to PACS STOW-RS
   - Option B: Client uploads directly to PACS; Vitora only indexes afterwards
@@ -158,6 +174,7 @@ Goal: Upload no longer stores pixels in Vitora.
   - or polling job (Celery) if webhooks aren’t available
 
 **Outcome**
+
 - “External PACS is system-of-record” is fully achieved.
 
 ---
@@ -165,6 +182,7 @@ Goal: Upload no longer stores pixels in Vitora.
 ## Minimal API Contract to Keep Stable
 
 To avoid reworking the web viewer repeatedly, keep these stable:
+
 - `GET /api/imaging/studies/` (worklist)
 - `GET /api/imaging/studies/{study_uid}/` (detail)
 - `GET /api/imaging/studies/{study_uid}/instances/` (instance list)
@@ -186,6 +204,7 @@ Upload can evolve (Phase 3) without breaking viewer.
 ## Recommendation
 
 If you want the highest-value setup with minimal churn:
+
 1) Do Phase 0 + Phase 1 first (proxy retrieval from external PACS).
 2) Then gradually migrate uploads to PACS (Phase 3).
 

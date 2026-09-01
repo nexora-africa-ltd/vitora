@@ -281,6 +281,7 @@ If `NEXT_PUBLIC_POWERSYNC_URL` is set but the connection fails (e.g., JWT errors
 ## Adding a New Table to PowerSync
 
 1. **Backend**: Add the table to the publication in Neon SQL Editor:
+
    ```sql
    ALTER PUBLICATION powersync ADD TABLE app_modelname;
    ```

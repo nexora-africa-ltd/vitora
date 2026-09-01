@@ -43,6 +43,7 @@
 ### Encryption
 
 All backups are encrypted using GPG with AES-256 symmetric encryption. The encryption key is:
+
 - Stored in HashiCorp Vault (production)
 - Environment variable `BACKUP_ENCRYPTION_KEY` (staging)
 - Rotated annually
@@ -55,6 +56,7 @@ All backups are encrypted using GPG with AES-256 symmetric encryption. The encry
 ### Scenario 1: Database Corruption
 
 **Symptoms:**
+
 - Application errors referencing database integrity
 - PostgreSQL logs showing corruption errors
 - Inconsistent query results
@@ -62,6 +64,7 @@ All backups are encrypted using GPG with AES-256 symmetric encryption. The encry
 **Recovery Steps:**
 
 1. **Assess Impact**
+
    ```bash
    # Check PostgreSQL logs
    tail -100 /var/log/postgresql/postgresql-15-main.log
@@ -71,6 +74,7 @@ All backups are encrypted using GPG with AES-256 symmetric encryption. The encry
    ```
 
 2. **Stop Application**
+
    ```bash
    # On Render: Use dashboard or CLI
    render services suspend vitora-api
@@ -80,12 +84,14 @@ All backups are encrypted using GPG with AES-256 symmetric encryption. The encry
    ```
 
 3. **Create Current State Backup (if possible)**
+
    ```bash
    cd /path/to/backend/scripts
    ./backup.sh --env production --db-only 2>&1 | tee /tmp/emergency-backup.log
    ```
 
 4. **Restore from Last Known Good Backup**
+
    ```bash
    # List available backups
    ./restore.sh --list
@@ -98,12 +104,14 @@ All backups are encrypted using GPG with AES-256 symmetric encryption. The encry
    ```
 
 5. **Apply Transaction Logs (if available)**
+
    ```bash
    # For PostgreSQL WAL recovery
    pg_restore --target-time="2026-02-22 14:00:00" ...
    ```
 
 6. **Verify Data Integrity**
+
    ```bash
    # Run Django checks
    cd /path/to/backend
@@ -112,6 +120,7 @@ All backups are encrypted using GPG with AES-256 symmetric encryption. The encry
    ```
 
 7. **Restart Application**
+
    ```bash
    render services resume vitora-api
    # Or: systemctl start vitora-api
@@ -129,6 +138,7 @@ All backups are encrypted using GPG with AES-256 symmetric encryption. The encry
 ### Scenario 2: Complete Server Loss (Render)
 
 **Symptoms:**
+
 - Service unreachable
 - Render dashboard shows service deleted/unavailable
 - DNS resolution fails
@@ -136,16 +146,18 @@ All backups are encrypted using GPG with AES-256 symmetric encryption. The encry
 **Recovery Steps:**
 
 1. **Confirm Outage**
+
    ```bash
    curl -I https://vitora-api.onrender.com/api/health/
    # Should return 502/503 or connection refused
    ```
 
 2. **Check Render Status**
-   - Visit: https://status.render.com
+   - Visit: <https://status.render.com>
    - Contact Render support if platform-wide issue
 
 3. **Deploy New Instance from Blueprint**
+
    ```bash
    # Option A: Render Dashboard
    # 1. Go to render.com/dashboard
@@ -158,6 +170,7 @@ All backups are encrypted using GPG with AES-256 symmetric encryption. The encry
    ```
 
 4. **Restore Database**
+
    ```bash
    # Get new DATABASE_URL from Render dashboard
    export DATABASE_URL="postgres://..."
@@ -168,17 +181,20 @@ All backups are encrypted using GPG with AES-256 symmetric encryption. The encry
    ```
 
 5. **Update DNS (if custom domain)**
+
    ```bash
    # Update A/CNAME records to point to new Render service
    # TTL should be low (300s) for faster propagation
    ```
 
 6. **Restore Media Files**
+
    ```bash
    aws s3 sync s3://vitora-backups/media/ /path/to/backend/media/
    ```
 
 7. **Verify Deployment**
+
    ```bash
    curl https://vitora-api.onrender.com/api/health/
    # Should return {"status": "healthy"}
@@ -191,6 +207,7 @@ All backups are encrypted using GPG with AES-256 symmetric encryption. The encry
 ### Scenario 3: Ransomware/Security Breach
 
 **Symptoms:**
+
 - Encrypted files with ransom notes
 - Unauthorized data access in audit logs
 - Unusual API activity
@@ -198,6 +215,7 @@ All backups are encrypted using GPG with AES-256 symmetric encryption. The encry
 **Recovery Steps:**
 
 1. **ISOLATE IMMEDIATELY**
+
    ```bash
    # Suspend all services
    render services suspend vitora-api
@@ -208,6 +226,7 @@ All backups are encrypted using GPG with AES-256 symmetric encryption. The encry
    ```
 
 2. **Preserve Evidence**
+
    ```bash
    # Create forensic snapshot
    ./backup.sh --env production --full-state
@@ -223,6 +242,7 @@ All backups are encrypted using GPG with AES-256 symmetric encryption. The encry
    - SHA (if claims data affected)
 
 4. **Determine Clean Recovery Point**
+
    ```bash
    # Review backup manifests for pre-breach backup
    ls -la /var/backups/vitora/*_manifest.json
@@ -232,6 +252,7 @@ All backups are encrypted using GPG with AES-256 symmetric encryption. The encry
    ```
 
 5. **Deploy Fresh Environment**
+
    ```bash
    # Create new infrastructure with rotated credentials
    render blueprint launch --name vitora-clean --repo nexora-africa-ltd/vitora
@@ -242,12 +263,14 @@ All backups are encrypted using GPG with AES-256 symmetric encryption. The encry
    ```
 
 6. **Restore from Pre-Breach Backup**
+
    ```bash
    ./restore.sh --verify /path/to/pre_breach_backup.gpg
    ./restore.sh /path/to/pre_breach_backup.gpg
    ```
 
 7. **Re-encrypt All Sensitive Data**
+
    ```bash
    python manage.py rotate_encryption_keys
    ```
@@ -265,6 +288,7 @@ All backups are encrypted using GPG with AES-256 symmetric encryption. The encry
 ### Scenario 4: Region-Wide Outage
 
 **Symptoms:**
+
 - Multiple services unavailable
 - Cloud provider status page shows regional issues
 - Geographic-specific DNS failures
@@ -276,6 +300,7 @@ All backups are encrypted using GPG with AES-256 symmetric encryption. The encry
    - Verify from multiple geographic locations
 
 2. **Activate Secondary Region (if configured)**
+
    ```bash
    # Update DNS to point to secondary region
    # Secondary region should have:
@@ -404,16 +429,16 @@ After any recovery, complete this checklist:
 
 | Vendor | Support Channel | SLA |
 |--------|-----------------|-----|
-| Render | support@render.com | 4 hours (paid plans) |
-| Wasabi | support@wasabi.com | 24 hours |
+| Render | <support@render.com> | 4 hours (paid plans) |
+| Wasabi | <support@wasabi.com> | 24 hours |
 | PostgreSQL | community forums | Best effort |
 
 ### Regulatory Notifications
 
 | Entity | Contact | Requirement |
 |--------|---------|-------------|
-| ODPC | compliance@odpc.go.ke | 72 hours (data breach) |
-| MOH | ehealth@health.go.ke | Per incident severity |
+| ODPC | <compliance@odpc.go.ke> | 72 hours (data breach) |
+| MOH | <ehealth@health.go.ke> | Per incident severity |
 
 ---
 

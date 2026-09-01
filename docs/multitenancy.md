@@ -142,6 +142,7 @@ class Organization(TimeStampedModel):
 **Subscription Tiers**: `FREE`, `BASIC`, `PROFESSIONAL`, `ENTERPRISE`
 
 **Properties**:
+
 - `facility_count` → number of child facilities
 - `staff_count` → number of staff in the org
 - `can_add_facility()` → checks against `max_facilities`
@@ -196,10 +197,12 @@ class Facility(TimeStampedModel):
 **Ownership Types**: `GOK`, `FBO`, `NGO`, `PRIVATE`
 
 **Properties**:
+
 - `modules` → `dict[str, bool]` of all capability flags
 - `enabled_module_names` → `list[str]` of enabled module names
 
 **Class Methods**:
+
 - `default_modules_for_level(level)` → returns sensible module defaults per KEPH level
 
 ### 4.2 Abstract Mixins
@@ -571,6 +574,7 @@ DELETE /api/core/facilities/{id}/             # Delete facility (admin only)
 ```
 
 **Query Parameters** (Facilities):
+
 - `level` — KEPH level (1–6)
 - `ownership` — GOK, FBO, NGO, PRIVATE
 - `county` — County ID
@@ -832,6 +836,7 @@ poetry run pytest tests/core/test_staff_facility.py -v --no-cov
 | `ENTERPRISE` | Unlimited (`null`) | Unlimited (`null`) | Hospital groups |
 
 Limits are checked via:
+
 - `Organization.can_add_facility()` → `facility_count < max_facilities`
 - `Organization.can_add_user()` → `staff_count < max_users`
 

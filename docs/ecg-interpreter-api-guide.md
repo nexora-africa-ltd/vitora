@@ -44,6 +44,7 @@ Same as the core API — see [api-guide.md](api-guide.md#authentication). All en
 Accepts structured ECG parameters (intervals, morphology) or free-text findings. Returns structured interpretation with urgency level, differentials, and recommended actions.
 
 Supports two input modes:
+
 - **Structured**: Provide individual fields (heart rate, intervals, morphology)
 - **Free-text**: Provide machine-generated ECG report text via `raw_findings`
 

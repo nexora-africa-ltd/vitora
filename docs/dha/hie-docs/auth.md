@@ -4,6 +4,7 @@ _Version: `1.0.0`_
 API for user authentication and token management.
 
 **Servers:**
+
 - `https://ilm-dev.dha.go.ke/uat-middleware`
 
 ## Table of Contents
@@ -28,6 +29,7 @@ Tenant credentials
 _Required._
 
 _Content-Type: `application/x-www-form-urlencoded`_
+
 ```json
 {
   "client_id": "string",
@@ -38,6 +40,7 @@ _Content-Type: `application/x-www-form-urlencoded`_
 **Responses:**
 **Response `201`** — Created
 _Content-Type: `application/json`_
+
 ```json
 {
   "access_token": "string",
@@ -48,6 +51,7 @@ _Content-Type: `application/json`_
 
 **Response `400`** — Bad Request
 _Content-Type: `application/json`_
+
 ```json
 {
   "error": "string",

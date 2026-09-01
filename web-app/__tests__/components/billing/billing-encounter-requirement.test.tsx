@@ -63,10 +63,12 @@ import {
   mockPatient,
   mockEncounter,
 } from '../../fixtures/patient-shell-fixtures';
+import type { InvoiceCreateData } from '@/lib/types/billing';
 
 const mockPatientsApi = patientsApi as jest.Mocked<typeof patientsApi>;
 const mockEncountersApi = encountersApi as jest.Mocked<typeof encountersApi>;
 const mockBillingApi = billingApi as jest.Mocked<typeof billingApi>;
+type CreateInvoicePayload = Parameters<typeof mockBillingApi.createInvoice>[0];
 
 // Helper to create QueryClient wrapper
 function createWrapper() {
@@ -94,7 +96,7 @@ describe('Billing Encounter Requirement', () => {
     jest.clearAllMocks();
     mockPatientsApi.getPatient.mockResolvedValue(mockPatient);
     mockEncountersApi.get.mockResolvedValue(mockEncounter);
-    mockBillingApi.createInvoice.mockResolvedValue({ id: 1, invoice_number: 'INV-001' } as any);
+    mockBillingApi.createInvoice.mockResolvedValue({ id: 1, invoice_number: 'INV-001' } as ReturnType<typeof mockBillingApi.createInvoice> extends Promise<infer T> ? T : never);
   });
 
   // ===========================================================================
@@ -104,10 +106,10 @@ describe('Billing Encounter Requirement', () => {
     it('should require encounter_id when creating an invoice', async () => {
       // Try to create invoice without encounter
       const invoiceData = {
-        patient_id: mockPatient.id,
+        patient: mockPatient.id,
         // encounter_id: missing!
-        items: [{ description: 'Consultation', amount: 500 }],
-      };
+        due_date: '2026-01-01',
+      } satisfies InvoiceCreateData;
 
       // API should reject invoice without encounter
       mockBillingApi.createInvoice.mockRejectedValueOnce(
@@ -115,18 +117,18 @@ describe('Billing Encounter Requirement', () => {
       );
 
       await expect(
-        mockBillingApi.createInvoice(invoiceData as any)
+        mockBillingApi.createInvoice(invoiceData as CreateInvoicePayload)
       ).rejects.toThrow('Encounter is required');
     });
 
     it('should accept invoice with valid encounter_id', async () => {
       const invoiceData = {
-        patient_id: mockPatient.id,
-        encounter_id: mockEncounter.id,
-        items: [{ description: 'Consultation', amount: 500 }],
-      };
+        patient: mockPatient.id,
+        encounter: mockEncounter.id,
+        due_date: '2026-01-01',
+      } satisfies InvoiceCreateData;
 
-      const result = await mockBillingApi.createInvoice(invoiceData as any);
+      const result = await mockBillingApi.createInvoice(invoiceData as CreateInvoicePayload);
       expect(result.invoice_number).toBe('INV-001');
     });
   });

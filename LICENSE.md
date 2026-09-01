@@ -58,11 +58,11 @@ TRADE SECRETS
 The Software contains trade secrets and confidential know-how of Nexora
 Consulting Ltd, including but not limited to:
 
-  - Clinical decision support rule sets and scoring algorithms
-  - Payer adjudication logic and claims preparation heuristics
-  - Multi-tenant isolation patterns and data scoping strategies
-  - Synchronization conflict-resolution protocols
-  - License enforcement and hub-attestation mechanisms
+- Clinical decision support rule sets and scoring algorithms
+- Payer adjudication logic and claims preparation heuristics
+- Multi-tenant isolation patterns and data scoping strategies
+- Synchronization conflict-resolution protocols
+- License enforcement and hub-attestation mechanisms
 
 Recipients are obligated to maintain the confidentiality of these trade
 secrets and to use them only as expressly authorized in writing.
@@ -101,7 +101,7 @@ CONTACT
 
 For licensing inquiries:
   Nexora Consulting Ltd
-  Email: legal@nexora.africa
-  Web:   https://nexora.africa
+  Email: <legal@nexora.africa>
+  Web:   <https://nexora.africa>
 
 Last updated: 2026-06-14

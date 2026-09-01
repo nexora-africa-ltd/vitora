@@ -616,6 +616,7 @@ CLINICAL EXAMINATION
 CLINICAL NOTES ENTRY
 
 ```
+
 ┌─────────────────────────────────────────────────────────────────┐
 │                    CLINICAL NOTES SECTION                        │
 ├─────────────────────────────────────────────────────────────────┤
@@ -652,11 +653,13 @@ CLINICAL NOTES ENTRY
 │  Social History:      [Non-smoker, occasional alcohol          ]│
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
+
 ```
 
 **Step 4: Diagnosis Entry**
 
 ```
+
 DIAGNOSIS WORKFLOW
         │
         ▼
@@ -687,11 +690,13 @@ DIAGNOSIS RECORDED IN ENCOUNTER
     {"icd10_code": "R50.9", "description": "Fever, unspecified", "is_primary": false}
   ]
 }
+
 ```
 
 **Step 5: Treatment Plan & Orders**
 
 ```
+
 TREATMENT PLAN WORKFLOW
         │
         ▼
@@ -717,9 +722,11 @@ TEMPLATE SELECTED: "Uncomplicated Malaria (Adult)"
         │
         ▼
 FINALIZE ORDERS
+
 ```
 
 ```
+
 ┌─────────────────────────────────────────────────────────────────┐
 │                      ORDERS & PRESCRIPTIONS                      │
 ├─────────────────────────────────────────────────────────────────┤
@@ -759,11 +766,13 @@ FINALIZE ORDERS
 │  [Save as Draft] [Submit Orders] [Print Summary]                │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
+
 ```
 
 **Order Submission Logic:**
 
 ```
+
 SUBMIT ORDERS
         │
         ▼
@@ -795,6 +804,7 @@ NOTIFICATIONS DISPATCHED
         ├── Lab receives notification: "New lab order for MRN-20260103-0042"
         │
         └── Pharmacy receives notification: "Prescription pending for MRN-20260103-0042"
+
 ```
 
 ---
@@ -804,6 +814,7 @@ NOTIFICATIONS DISPATCHED
 ### 5.1 Lab Order Reception
 
 ```
+
 LAB TECHNICIAN WORKFLOW
         │
         ▼
@@ -825,11 +836,13 @@ SELECT ORDER TO PROCESS
             ├── Ordering clinician: Dr. Ochieng
             ├── Clinical indication: Suspected malaria
             └── Special instructions: (none)
+
 ```
 
 ### 5.2 Sample Collection & Processing
 
 ```
+
 SAMPLE COLLECTION
         │
         ▼
@@ -864,11 +877,13 @@ PROCESS SAMPLE
         │
         ▼
 ENTER RESULTS
+
 ```
 
 ### 5.3 Results Entry & Verification
 
 ```
+
 ┌─────────────────────────────────────────────────────────────────┐
 │                    LAB RESULTS ENTRY                             │
 ├─────────────────────────────────────────────────────────────────┤
@@ -908,11 +923,13 @@ ENTER RESULTS
 │  [Save Draft] [Submit for Verification]                         │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
+
 ```
 
 **Two-Step Verification Process:**
 
 ```
+
 STEP 1: LAB TECH ENTERS RESULTS
         │
         ├── Status: "PENDING_VERIFICATION"
@@ -949,6 +966,7 @@ IF REJECTED:
         ├── Rejection reason documented
         │
         └── Lab tech notified to re-enter or re-test
+
 ```
 
 ---
@@ -958,6 +976,7 @@ IF REJECTED:
 ### 6.1 Prescription Queue
 
 ```
+
 PHARMACIST WORKFLOW
         │
         ▼
@@ -976,11 +995,13 @@ VIEW PRESCRIPTION QUEUE
 SELECT PRESCRIPTION TO DISPENSE
         │
         └── Full prescription details displayed
+
 ```
 
 ### 6.2 Dispensing Process
 
 ```
+
 ┌─────────────────────────────────────────────────────────────────┐
 │                    DISPENSING SCREEN                             │
 ├─────────────────────────────────────────────────────────────────┤
@@ -1025,11 +1046,13 @@ SELECT PRESCRIPTION TO DISPENSE
 │  [Cancel] [Partial Dispense] [Dispense All]                     │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
+
 ```
 
 **Dispensing Submission:**
 
 ```
+
 DISPENSE ALL CLICKED
         │
         ▼
@@ -1063,11 +1086,13 @@ PATIENT COUNSELING
         │
         ▼
 PATIENT DIRECTED TO CASHIER
+
 ```
 
 ### 6.3 Stock Management
 
 ```
+
 STOCK ALERTS DASHBOARD
         │
         ├── LOW STOCK (Below reorder level)
@@ -1080,6 +1105,7 @@ STOCK ALERTS DASHBOARD
         │
         └── EXPIRED (Requires quarantine)
             └── Batch VIT-2023-001 Vitamin C: Expired Dec 2025
+
 ```
 
 ---
@@ -1089,6 +1115,7 @@ STOCK ALERTS DASHBOARD
 ### 7.1 Invoice Generation
 
 ```
+
 PATIENT ARRIVES AT CASHIER
         │
         ▼
@@ -1137,11 +1164,13 @@ RETRIEVE PATIENT BILL
 │  [Print Invoice] [Apply Discount] [Process Payment]             │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
+
 ```
 
 ### 7.2 Payment Processing
 
 ```
+
 PAYMENT WORKFLOW
         │
         ▼
@@ -1180,6 +1209,7 @@ PAYMENT RECORDED
 PRINT RECEIPT
         │
         └── Patient receives receipt and exits facility
+
 ```
 
 ---
@@ -1189,6 +1219,7 @@ PRINT RECEIPT
 ### 8.1 Admission Recommendation
 
 ```
+
 OPD CONSULTATION REVEALS NEED FOR ADMISSION
         │
         ▼
@@ -1207,11 +1238,13 @@ DOCTOR INITIATES ADMISSION RECOMMENDATION
 NOTIFICATION SENT TO RECEPTION
         │
         └── "Patient MRN-20260103-0042 recommended for admission by Dr. Ochieng"
+
 ```
 
 ### 8.2 Admission Processing
 
 ```
+
 RECEPTIONIST RECEIVES NOTIFICATION
         │
         ▼
@@ -1261,11 +1294,13 @@ ADMISSION RECORD CREATED
         ├── All OPD data preserved and linked
         │
         └── AuditLog: "patient_admitted"
+
 ```
 
 ### 8.3 Inpatient Care Flow
 
 ```
+
 DAILY WARD ROUNDS
         │
         ▼
@@ -1288,6 +1323,7 @@ FOR EACH INPATIENT:
         └── HANDOVER: Shift change notes
             ├── Outgoing nurse documents status
             └── Incoming nurse acknowledges
+
 ```
 
 ---
@@ -1297,6 +1333,7 @@ FOR EACH INPATIENT:
 ### 9.1 Discharge Planning
 
 ```
+
 PATIENT READY FOR DISCHARGE
         │
         ▼
@@ -1321,11 +1358,13 @@ DOCTOR INITIATES DISCHARGE
 DISCHARGE SUMMARY GENERATED
         │
         └── Printable document for patient
+
 ```
 
 ### 9.2 Financial Clearance
 
 ```
+
 BILLING RECONCILIATION
         │
         ├── All inpatient charges aggregated:
@@ -1345,11 +1384,13 @@ PAYMENT PROCESSED (Same as Section 7.2)
         │
         ▼
 FINANCIAL CLEARANCE GRANTED
+
 ```
 
 ### 9.3 Discharge Execution
 
 ```
+
 ALL CLEARANCES OBTAINED
         │
         ▼
@@ -1373,6 +1414,7 @@ PATIENT RECEIVES:
         ├── Follow-up appointment card
         │
         └── Emergency contact information
+
 ```
 
 ---
@@ -1382,6 +1424,7 @@ PATIENT RECEIVES:
 ### 10.1 Offline Operation
 
 ```
+
 INTERNET CONNECTIVITY LOST
         │
         ▼
@@ -1404,11 +1447,13 @@ SYNCQUEUE ENTRIES CREATED
   "created_at": "2026-01-03T14:30:00Z",
   "retry_count": 0
 }
+
 ```
 
 ### 10.2 Sync Process
 
 ```
+
 INTERNET CONNECTIVITY RESTORED
         │
         ▼
@@ -1439,11 +1484,13 @@ SYNC MANAGER PROCESSES QUEUE
             ├── Increment retry_count
             ├── Status: FAILED (after max retries)
             └── Alert user for manual intervention
+
 ```
 
 ### 10.3 Conflict Resolution
 
 ```
+
 CONFLICT DETECTED
         │
         ├── Same record modified offline AND on server
@@ -1466,6 +1513,7 @@ USER RESOLVES CONFLICT
         │   └── MANUAL: Merge specific fields
         │
         └── Mark conflict as resolved
+
 ```
 
 ---
@@ -1475,6 +1523,7 @@ USER RESOLVES CONFLICT
 ### 11.1 Authentication Flow
 
 ```
+
 USER LOGIN
         │
         ├── POST /api/token/
@@ -1499,11 +1548,13 @@ TOKEN MANAGEMENT
         ├── Refresh token: 24-hour expiry
         │
         └── Auto-refresh: 5 minutes before expiry
+
 ```
 
 ### 11.2 Authorization (RBAC)
 
 ```
+
 PERMISSION CHECK FOR EVERY REQUEST
         │
         ▼
@@ -1518,11 +1569,13 @@ CHECK USER PERMISSIONS
         ▼
 IF AUTHORIZED: Proceed
 IF UNAUTHORIZED: 403 Forbidden + AuditLog entry
+
 ```
 
 ### 11.3 Audit Logging
 
 ```
+
 EVERY SIGNIFICANT ACTION LOGGED
         │
         ├── User actions: login, logout, view, create, update, delete
@@ -1545,6 +1598,7 @@ AUDITLOG ENTRY
         │
         ▼
 RETENTION: 7 years (Kenya DPA 2019 compliance)
+
 ```
 
 ---
@@ -1554,6 +1608,7 @@ RETENTION: 7 years (Kenya DPA 2019 compliance)
 ### 12.1 SHA Claims Flow
 
 ```
+
 PATIENT WITH SHA INSURANCE
         │
         ▼
@@ -1585,11 +1640,13 @@ CLAIM SUBMITTED TO SHA
         ├── Status tracking: Submitted → Under Review → Approved/Rejected
         │
         └── Reimbursement received
+
 ```
 
 ### 12.2 KHIS/DHIS2 Reporting
 
 ```
+
 END OF REPORTING PERIOD (Monthly)
         │
         ▼
@@ -1619,6 +1676,7 @@ SUBMISSION TO DHIS2
 ACKNOWLEDGMENT RECEIVED
         │
         └── Submission logged and tracked
+
 ```
 
 ---

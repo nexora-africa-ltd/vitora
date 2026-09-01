@@ -51,6 +51,7 @@ LabResult ◄──────────────────────�
 ```
 
 **Issues** (as of 2026-02-14, before Phase L0):
+
 1. ~~`LabQueue` combines specimen tracking + processing workflow~~ ✅ Fixed: Specimen model extracted
 2. ~~Results attach to `LabOrderItem`, not specimens~~ ✅ Fixed: Results now link to Specimen
 3. ~~No explicit `Specimen` entity~~ ✅ Fixed: Specimen model added
@@ -131,6 +132,7 @@ DiagnosticReport (final output)
 **Goal**: Create explicit `Specimen` entity; migrate specimen fields from `LabQueue`.
 
 **Why this matters**:
+
 - Labs operate on samples, not orders
 - Multiple samples possible per order (not today, but real-world)
 - Results should trace to the physical sample
@@ -193,6 +195,7 @@ class Specimen(models.Model):
 ```
 
 **Migration strategy**:
+
 1. Create `Specimen` model
 2. Auto-create `Specimen` when `LabQueue` entry is created (signal)
 3. Copy existing `LabQueue.sample_id` → `Specimen.barcode`
@@ -201,6 +204,7 @@ class Specimen(models.Model):
 6. Eventually deprecate specimen fields on `LabQueue`
 
 **LabQueue becomes pure workflow**:
+
 ```python
 class LabQueue(models.Model):
     # Keep: queue_number, priority, queue_status, assigned_technician
@@ -215,6 +219,7 @@ class LabQueue(models.Model):
 **Risk**: Medium (data migration required) → **Outcome**: Successful
 
 **Implementation Notes**:
+
 - Migration `0012_add_specimen_model.py` creates Specimen model and backfills existing data
 - Signal `create_specimen_for_queue` auto-creates Specimen when LabQueue is created
 - `LabQueue._ensure_specimen()` handles lazy creation for existing queues
@@ -238,7 +243,9 @@ class LabQueue(models.Model):
 **Goal**: Results attach to specimens, not just order items.
 
 **Deliverables**:
+
 1. Add `specimen` FK to `LabResult`:
+
    ```python
    class LabResult(models.Model):
        order_item = models.OneToOneField(LabOrderItem, ...)  # Keep for now
@@ -257,6 +264,7 @@ class LabQueue(models.Model):
 **Risk**: Low (additive) → **Outcome**: Successful
 
 **Implementation Notes**:
+
 - `LabResult.specimen` FK added (nullable, PROTECT on delete)
 - Results auto-attach to specimen from queue entry on creation
 - TAT reporting now uses `specimen.collected_at` for accurate collection→release timing
@@ -270,6 +278,7 @@ class LabQueue(models.Model):
 **Goal**: Support technical validation (lab tech) + clinical sign-off (pathologist).
 
 **Deliverables**:
+
 ```python
 class ResultValidation(models.Model):
     """Validation/approval record for a lab result."""
@@ -296,6 +305,7 @@ class ResultValidation(models.Model):
 ```
 
 **Update workflow**:
+
 - Technical validation by lab tech
 - Clinical sign-off by pathologist (optional based on test complexity)
 - Result `verification_status` derived from validations
@@ -304,6 +314,7 @@ class ResultValidation(models.Model):
 **Risk**: Low → **Outcome**: Successful
 
 **Implementation Notes**:
+
 - `ResultValidation` model created with unique constraint per validation type per result
 - `TestCatalog.requires_clinical_signoff` field added to indicate which tests need pathologist review
 - `LabResult.verify()` updated to create validation records (backward compatible)
@@ -323,6 +334,7 @@ class ResultValidation(models.Model):
 **Goal**: Track raw instrument data and machine runs.
 
 **Deliverables**:
+
 ```python
 class Instrument(models.Model):
     """Laboratory analyzer/instrument registry."""
@@ -377,6 +389,7 @@ class AnalyzerRun(models.Model):
 ```
 
 **This enables**:
+
 - Audit trail: "Which machine produced this result?"
 - Error recovery: Re-parse raw messages if needed
 - Analytics: Machine performance, QC
@@ -385,6 +398,7 @@ class AnalyzerRun(models.Model):
 **Risk**: Low (additive, only needed when analyzers are connected) → **Outcome**: Successful
 
 **Implementation Notes**:
+
 - `Instrument` model created with support for HL7 MLLP, ASTM, FHIR, and Manual entry interface types
 - `AnalyzerRun` model tracks raw instrument data with status flow: RECEIVED → PARSED → APPLIED (or ERROR)
 - Helper methods: `mark_error()`, `mark_parsed()`, `mark_applied()` for status transitions
@@ -404,6 +418,7 @@ class AnalyzerRun(models.Model):
 **Goal**: Generate formal patient-facing lab reports.
 
 **Deliverables**:
+
 ```python
 class DiagnosticReport(models.Model):
     """Final patient-facing lab report."""
@@ -447,6 +462,7 @@ class DiagnosticReport(models.Model):
 **Risk**: Low → **Outcome**: Successful
 
 **Implementation Notes**:
+
 - `DiagnosticReport` model created with auto-generated report number (format: `RPT-YYYYMMDD-XXXX`)
 - Status workflow: DRAFT → PRELIMINARY → FINAL → AMENDED (or CANCELLED)
 - Methods: `finalize()`, `amend()`, `cancel()` with validation
@@ -511,6 +527,7 @@ vitora-backend/
 ```
 
 **Why**:
+
 - Transactional consistency with EMR (orders created in encounters)
 - Simpler deployment (single Django app)
 - Adequate for single-facility / small multi-facility
@@ -519,12 +536,14 @@ vitora-backend/
 ### Future: Separate Service (When?)
 
 Consider extraction when:
+
 - Multiple analyzers producing high-throughput messages
 - >10,000 tests/day sustained
 - Need for independent scaling
 - Multi-regional deployment with local LIS
 
 Extraction pattern:
+
 ```
 vitora-hmis (Django)
     │
@@ -560,6 +579,7 @@ Phase C (HL7/MLLP external exchange) dependencies:
 | Two-stage approval | `ResultValidation` (Phase L2) |
 
 **Recommended order**:
+
 1. Phase T0 (ExternalCodeMapping) — 2-4 hrs
 2. Phase L0 (Specimen model) — 8-16 hrs
 3. Phase L1 (Results → Specimens) — 4-8 hrs
@@ -580,6 +600,7 @@ Phase C (HL7/MLLP external exchange) dependencies:
 ### Rollback Strategy
 
 Each phase should be reversible:
+
 - Phase L0: `Specimen` can be deleted if signals disabled
 - Phase L1: `LabResult.specimen` is nullable; fallback to order_item
 - Phase L2: `ResultValidation` is separate table; existing verification untouched
@@ -605,4 +626,4 @@ Each phase should be reversible:
 - `docs/laboratory-reporting-proposal.md` — Phase C HL7/MLLP plan
 - `docs/terminology-strategy.md` — External code mapping strategy
 - `backend/hmis/apps/laboratory/models.py` — Current implementation
-- HL7 FHIR Laboratory Module: https://hl7.org/fhir/diagnostics-module.html
+- HL7 FHIR Laboratory Module: <https://hl7.org/fhir/diagnostics-module.html>

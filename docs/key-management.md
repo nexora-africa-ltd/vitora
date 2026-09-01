@@ -152,6 +152,7 @@ python manage.py kms status --json
 The local provider uses the `cryptography` library's Fernet implementation (AES-128-CBC + HMAC-SHA256).
 
 **Generating a key:**
+
 ```bash
 python manage.py kms generate-key
 # Or:
@@ -161,11 +162,13 @@ python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().d
 **Key format:** 32 bytes, base64-encoded (44 characters)
 
 **When to use:**
+
 - Development environments
 - Testing
 - Single-server deployments without cloud access
 
 **Limitations:**
+
 - No automatic key rotation
 - No HSM backing
 - Manual key management required
@@ -177,13 +180,15 @@ The Azure provider supports RSA-OAEP encryption with envelope encryption for lar
 **Setup:**
 
 1. Create an Azure Key Vault:
+
 ```bash
 az keyvault create --name vitora-hmis-kv \
   --resource-group your-rg \
   --location southafrica
 ```
 
-2. Create an RSA key:
+1. Create an RSA key:
+
 ```bash
 az keyvault key create --vault-name vitora-hmis-kv \
   --name vitora-hmis-key \
@@ -191,14 +196,16 @@ az keyvault key create --vault-name vitora-hmis-kv \
   --size 2048
 ```
 
-3. Configure automatic rotation policy:
+1. Configure automatic rotation policy:
+
 ```bash
 az keyvault key rotation-policy update --vault-name vitora-hmis-kv \
   --name vitora-hmis-key \
   --value @rotation-policy.json
 ```
 
-4. Grant access (Managed Identity recommended):
+1. Grant access (Managed Identity recommended):
+
 ```bash
 az keyvault set-policy --name vitora-hmis-kv \
   --object-id <managed-identity-object-id> \
@@ -206,6 +213,7 @@ az keyvault set-policy --name vitora-hmis-kv \
 ```
 
 **Installation:**
+
 ```bash
 poetry add azure-identity azure-keyvault-keys
 # Or with extras:
@@ -213,6 +221,7 @@ poetry install -E azure
 ```
 
 **Environment Variables:**
+
 ```bash
 KMS_PROVIDER=azure
 AZURE_KEY_VAULT_URL=https://vitora-hmis-kv.vault.azure.net
@@ -237,6 +246,7 @@ This ensures efficient encryption of large payloads while maintaining HSM protec
 ### Policy
 
 Per DHA compliance requirements:
+
 - **Minimum rotation period**: 365 days (annual)
 - **Recommended**: 90-180 days for sensitive healthcare data
 - **Audit logging**: All rotation events must be logged
@@ -314,6 +324,7 @@ class MyModel(models.Model):
 ```
 
 **Key rules:**
+
 - The DB column is always `*_encrypted` (`TextField`, never `CharField`)
 - The property name is the **logical name** (no suffix) — all code reads/writes via the property
 - Lazy-import `get_kms_provider` inside the getter/setter to avoid circular imports
@@ -452,11 +463,13 @@ class KeyNotFoundError(KMSError): ...
 ## Testing
 
 Run KMS tests:
+
 ```bash
 poetry run pytest tests/core/test_kms.py -v
 ```
 
 Test coverage includes:
+
 - Local provider encryption/decryption
 - Key rotation
 - Error handling
@@ -485,11 +498,13 @@ hmis/apps/core/management/commands/
 ## Changelog
 
 ### v1.1 (April 16, 2026)
+
 - Added encrypted fields inventory
 - Documented M-Pesa credential encryption (migration 0027)
 - Added "How to encrypt a new field" guide
 
 ### v1.0 (February 25, 2026)
+
 - Initial implementation
 - Local (Fernet) provider
 - Azure Key Vault provider with envelope encryption

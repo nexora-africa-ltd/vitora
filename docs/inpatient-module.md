@@ -169,6 +169,7 @@ Hospital wards with capacity, typing, and clinical equipment constraints.
 | `is_active` | BooleanField | Ward is operational |
 
 **Computed Properties:**
+
 - `available_beds` — count of beds with status `AVAILABLE`
 - `occupied_beds` — count of beds with status `OCCUPIED`
 - `occupancy_rate` — `occupied_beds / capacity * 100`
@@ -219,6 +220,7 @@ OPD/Emergency clinician's recommendation to admit a patient.
 | `status` | CharField | `PENDING`, `ACCEPTED`, `DECLINED`, `EXPIRED` |
 
 **Workflow Methods:**
+
 - `accept(user)` — sets status to `ACCEPTED`
 - `decline(user, reason)` — sets status to `DECLINED` with documented reason
 - `is_expired` — property checking if the recommendation has timed out
@@ -249,10 +251,12 @@ Core inpatient admission record linking patient to bed/ward.
 | `discharge_date` | DateTimeField (nullable) | Set on discharge |
 
 **Database Constraints:**
+
 - Unique active admission per patient: `UniqueConstraint(fields=["patient"], condition=Q(admission_status="ACTIVE"))`
 - Unique active bed assignment: `UniqueConstraint(fields=["bed"], condition=Q(admission_status="ACTIVE"))`
 
 **Computed Properties:**
+
 - `length_of_stay` — days from admission to now (or discharge date)
 
 ### 3.5 Discharge
@@ -359,6 +363,7 @@ Nursing care coordination hub (one per admission).
 | `special_instructions` | TextField | Additional care notes |
 
 **Related Models:**
+
 - `NursingCarePlanEntry` — ADPIE-structured nursing problems/interventions
 - `KardexShiftNote` — Per-shift nursing notes
 - `KardexHandoverNote` — Shift handover documentation
@@ -384,25 +389,35 @@ Follows the ADPIE nursing process matching Kenyan physical forms.
 ### 3.12 Clinical Observation Charts
 
 #### TemperatureReading
+
 Records temperature with automatic pyrexia/hypothermia flags.
+
 - **Properties:** `is_febrile` (>37.5°C), `is_hypothermic` (<35.0°C)
 
 #### FluidBalanceSheet (One per admission per day)
+
 Tracks intake and output with computed balance.
+
 - **Properties:** `total_intake_ml`, `total_output_ml`, `net_balance_ml` (with breakdowns by type)
 - **Entry types:** `INTRAVENOUS`, `ALIMENTARY`, `OTHER_INTAKE`, `VOMIT`, `STOOL`, `NASOGASTRIC`, `URINE`, `OTHER_OUTPUT`
 - **Constraint:** Unique `(admission, chart_date)`
 
 #### BPMonitoringReading
+
 Blood pressure readings with clinical interpretation.
+
 - **Properties:** `mean_arterial_pressure`, `bp_display`, `is_hypertensive`, `is_hypotensive`
 
 #### BloodTransfusionObservation
+
 Tracks blood product transfusions with timed observation entries and adverse reaction detection.
+
 - **Statuses:** `PENDING`, `IN_PROGRESS`, `COMPLETED`, `REACTION_STOPPED`
 
 #### MedicationAdministration
+
 Tracks individual medication doses given at the bedside.
+
 - **Statuses:** `SCHEDULED`, `ADMINISTERED`, `MISSED`, `HELD`, `REFUSED`
 - **Property:** `is_overdue` — flag for overdue scheduled doses
 
@@ -651,6 +666,7 @@ Daily intake/output monitoring with 8 entry types:
 **Output:** Urine, Vomit, Stool, Nasogastric, Other
 
 Computed properties provide running totals and net balance:
+
 - `total_intake_ml` = IV + Alimentary + Other
 - `total_output_ml` = Urine + Vomit + Stool + NG + Other
 - `net_balance_ml` = Intake - Output
@@ -736,6 +752,7 @@ GET /api/inpatient/admissions/{id}/clearance-status/
 ```
 
 **Response:**
+
 ```json
 {
   "billing": {
@@ -774,6 +791,7 @@ GET /api/inpatient/admissions/{id}/clearance-status/
 ### Resolving Blockers
 
 Each uncleared department in the UI includes a **"Resolve" link** that navigates to the relevant module:
+
 - Billing → `/billing/invoices?admission={id}`
 - Pharmacy → `/pharmacy/prescriptions?admission={id}`
 - Laboratory → `/laboratory/orders?admission={id}`
@@ -855,6 +873,7 @@ Override Detected → Alert Created → Broadcast (WS + Email)
 ### Required Permission
 
 Users need the `inpatient.receive_critical_alerts` permission to:
+
 - Receive alert emails
 - View the supervisor alerts dashboard
 - Acknowledge alerts
@@ -893,6 +912,7 @@ Users need the `inpatient.receive_critical_alerts` permission to:
 ### ICU Escalation Risk (TibaBot)
 
 The `ICURiskAssessmentPanel` component requests an AI prediction of ICU escalation risk based on:
+
 - Current vitals (from latest ward round)
 - Diagnosis and comorbidities
 - Lab results and trends
@@ -903,6 +923,7 @@ The `ICURiskAssessmentPanel` component requests an AI prediction of ICU escalati
 ### Discharge Readiness (TibaBot)
 
 The `DischargeReadinessPanel` evaluates clinical readiness for discharge:
+
 - Vital sign stability
 - Lab result trends
 - Medication completion
@@ -914,6 +935,7 @@ The `DischargeReadinessPanel` evaluates clinical readiness for discharge:
 ### AI-Generated Discharge Documents
 
 Clinicians can generate drafts via TibaBot:
+
 - **Discharge Summary:** Synthesizes ward round findings into a clinical narrative
 - **Patient Instructions:** Patient-friendly instructions in simple language
 
@@ -922,6 +944,7 @@ Both are generated as markdown and editable before final submission.
 ### CDS Safety Checks
 
 Before discharge submission (if AI enabled), the system evaluates:
+
 - Discharge medications against diagnoses for contraindications
 - Drug-drug interactions in the discharge medication list
 
@@ -1231,6 +1254,7 @@ POST /api/inpatient/wards/{id}/generate_beds/
 ### Bed status stuck on OCCUPIED after discharge
 
 The `Discharge.save()` method automatically calls `bed.mark_cleaning()`. If this didn't fire:
+
 - Check if the discharge was created outside the normal workflow
 - Manually update: `POST /api/inpatient/beds/{id}/mark_cleaning/`
 

@@ -100,6 +100,7 @@ app/(dashboard)/emergency/
 **Implementation**: `app/(dashboard)/emergency/page.tsx`
 
 **Features**:
+
 - [x] Zone summary cards with patient counts by category
 - [x] Critical patient ticker (RED patients with wait time)
 - [x] Quick navigation to zone views
@@ -108,6 +109,7 @@ app/(dashboard)/emergency/
 - [x] Pull-to-refresh on mobile
 
 **Wireframe**:
+
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
 │ 🚨 EMERGENCY DEPARTMENT                              [🔄 Live] [⚙️]    │
@@ -141,6 +143,7 @@ app/(dashboard)/emergency/
 **Location**: `components/emergency/critical-alert-banner.tsx`
 
 **Features**:
+
 - [x] Shows when any RED patient is in ER queue
 - [x] Displays on ER dashboard (sticky top)
 - [x] Links directly to patient in triage queue
@@ -149,6 +152,7 @@ app/(dashboard)/emergency/
 - [ ] Audio alert (configurable) - *deferred to Phase 4*
 
 **API Endpoint** (implemented):
+
 ```
 GET /api/triage/queue/critical/
 Response: {
@@ -165,6 +169,7 @@ Response: {
 ```
 
 **WebSocket Endpoint** (implemented):
+
 ```
 ws://localhost/ws/emergency/queue/
 
@@ -184,6 +189,7 @@ ws://localhost/ws/emergency/queue/
 **Implementation**: `lib/config/navigation.ts`
 
 Added to sidebar:
+
 ```tsx
 { label: 'Emergency', href: '/emergency', icon: Siren },
 ```
@@ -203,6 +209,7 @@ Added to sidebar:
 **Implementation**: `app/(dashboard)/emergency/[zone]/page.tsx`
 
 **Features**:
+
 - [x] Filtered queue for single zone only (uses `useTriageQueue({ area })` filter)
 - [x] Zone-specific header with capacity info and category breakdown
 - [x] Same actions as triage queue (call, mark with clinician, complete, LWBS)
@@ -214,6 +221,7 @@ Added to sidebar:
 - [x] Empty states for no patients and no filter matches
 
 **Zone Mapping** (implemented in `lib/config/emergency.ts`):
+
 ```typescript
 export const ROUTE_TO_ZONE: Record<string, AssignedArea> = {
   'resus': 'ER_RESUS',
@@ -231,6 +239,7 @@ export const ROUTE_TO_ZONE: Record<string, AssignedArea> = {
 **File**: `app/(dashboard)/emergency/layout.tsx`
 
 **Features**:
+
 - [x] Horizontal tabs for quick zone switching
 - [x] Badge counts per zone (from WebSocket or polling fallback)
 - [x] Highlight current zone with primary background
@@ -249,6 +258,7 @@ export const ROUTE_TO_ZONE: Record<string, AssignedArea> = {
 **Route**: `/emergency/bed-board`
 
 **Features**:
+
 - [x] Visual grid of all ER bays/beds organized by zone
 - [x] Color-coded by status (available, occupied, cleaning, out of service)
 - [x] Patient info on hover (tooltip) and click (detail dialog)
@@ -256,6 +266,7 @@ export const ROUTE_TO_ZONE: Record<string, AssignedArea> = {
 - [ ] Drag-and-drop patient assignment (stretch — deferred)
 
 **Backend** (`ERBed` model in `hmis/apps/triage/models.py`):
+
 - [x] New model: `ERBed` (separate from inpatient `Bed` — different workflow, zone-based)
 - [x] Fields: `zone`, `bed_number`, `status`, `current_patient`, `current_triage_assessment`, `notes`, `status_changed_at/by`
 - [x] State-transition methods: `assign_patient()`, `release()`, `mark_available()`, `mark_out_of_service()`
@@ -264,6 +275,7 @@ export const ROUTE_TO_ZONE: Record<string, AssignedArea> = {
 - [x] 34 tests (15 model + 19 API) — all passing
 
 **API Endpoints** (registered under `/api/triage/er-beds/`):
+
 - `GET  /api/triage/er-beds/` — List beds (paginated, filterable by zone/status)
 - `POST /api/triage/er-beds/` — Create bed
 - `GET  /api/triage/er-beds/{id}/` — Bed detail
@@ -274,6 +286,7 @@ export const ROUTE_TO_ZONE: Record<string, AssignedArea> = {
 - `GET  /api/triage/er-beds/board/` — Beds grouped by zone for grid display
 
 **Frontend**:
+
 - [x] Types & Zod schemas in `lib/types/triage.ts` and `lib/schemas/triage.schema.ts`
 - [x] API client methods with `parseResponse()` in `lib/api/triage.ts`
 - [x] React Query hooks: `useERBedBoard()`, `useERBedSummary()`, `useERBedActions()`
@@ -282,6 +295,7 @@ export const ROUTE_TO_ZONE: Record<string, AssignedArea> = {
 - [x] Tab in emergency layout for quick navigation
 
 **Wireframe**:
+
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
 │ 🛏️ ER BED BOARD                                     [🔄 Live] [Legend]  │
@@ -312,6 +326,7 @@ export const ROUTE_TO_ZONE: Record<string, AssignedArea> = {
 #### 4.1 Wait Time Breach Alerts ✅
 
 **Backend** (`WaitTimeBreach` model in `hmis/apps/triage/models.py`):
+
 - [x] Celery task `check_wait_time_breaches` scans queue every minute
 - [x] Generates breach alert when wait time exceeds KETA target:
   - RED: > 0 min (severity: CRITICAL)
@@ -324,12 +339,14 @@ export const ROUTE_TO_ZONE: Record<string, AssignedArea> = {
 - [x] No duplicate breaches for the same patient
 
 **API Endpoints** (registered under `/api/triage/breaches/`):
+
 - `GET  /api/triage/breaches/` — List breaches (paginated, filterable by severity/status/active_only)
 - `POST /api/triage/breaches/{id}/acknowledge/` — Acknowledge a breach with optional notes
 - `POST /api/triage/breaches/{id}/resolve/` — Resolve a breach
 - `GET  /api/triage/breaches/summary/` — Breach counts by severity
 
 **Frontend**:
+
 - [x] `WaitTimeBreachBanner` component on ER dashboard showing active breaches
 - [x] Severity-coded items with acknowledge action
 - [x] WebSocket push via `EmergencyAlertsProvider` for real-time breach notifications
@@ -344,12 +361,14 @@ export const ROUTE_TO_ZONE: Record<string, AssignedArea> = {
 #### 4.2 Escalation Actions ✅
 
 **Backend** (`Escalation` model in `hmis/apps/triage/models.py`):
+
 - [x] Escalation types: CHARGE_NURSE, ADDITIONAL_STAFF, SUPERVISOR
 - [x] Status workflow: PENDING → IN_PROGRESS → RESOLVED / DISMISSED
 - [x] State-transition methods: `mark_in_progress()`, `resolve()`, `dismiss()`
 - [x] Audit log entry on escalation creation
 
 **API Endpoints** (registered under `/api/triage/escalations/`):
+
 - `GET  /api/triage/escalations/` — List escalations (filterable by active_only/type)
 - `POST /api/triage/queue/{id}/escalate/` — Escalate a queue entry
 - `POST /api/triage/escalations/{id}/mark_in_progress/` — Mark escalation in progress
@@ -357,6 +376,7 @@ export const ROUTE_TO_ZONE: Record<string, AssignedArea> = {
 - `POST /api/triage/escalations/{id}/dismiss/` — Dismiss with reason
 
 **Frontend**:
+
 - [x] Self-contained `EscalationDialog` component with card-based type selection
 - [x] Escalate button on every patient card in zone queue (list & grid views)
 - [x] Internal mutation + toast notifications (parent just provides queueEntryId + onSuccess)
@@ -371,6 +391,7 @@ export const ROUTE_TO_ZONE: Record<string, AssignedArea> = {
 **Route**: `/emergency/metrics`
 
 **Metrics to Track**:
+
 - [ ] Door-to-triage time (arrival → triage complete)
 - [ ] Door-to-doctor time (arrival → first physician contact)
 - [ ] Average wait time by category
@@ -379,6 +400,7 @@ export const ROUTE_TO_ZONE: Record<string, AssignedArea> = {
 - [ ] Zone utilization rates
 
 **Visualizations**:
+
 - [ ] Line chart: hourly patient volume
 - [ ] Bar chart: avg wait time by category
 - [ ] Gauge: current occupancy vs capacity
@@ -391,6 +413,7 @@ export const ROUTE_TO_ZONE: Record<string, AssignedArea> = {
 **Estimated Effort**: 3-4 days
 
 **Features**:
+
 - [ ] Pre-arrival notification (ambulance en route)
 - [ ] Structured handoff form (MIST/SBAR format)
 - [ ] Ambulance service integration (Kenya 999/112)
@@ -597,6 +620,7 @@ Feature: Emergency Department Dashboard
 ### Files Created/Modified
 
 **Backend:**
+
 - `hmis/apps/triage/views.py` - Added `critical` and `zones_summary` actions to TriageQueueViewSet
 - `hmis/apps/triage/consumers.py` - **NEW** - WebSocket consumer for real-time ER updates
 - `hmis/apps/triage/routing.py` - **NEW** - WebSocket routing for `/ws/emergency/queue/`
@@ -605,6 +629,7 @@ Feature: Emergency Department Dashboard
 - `tests/test_asgi.py` - Updated to include emergency WebSocket pattern
 
 **Frontend:**
+
 - `app/(dashboard)/emergency/page.tsx` - **NEW** - ER Dashboard with zone cards
 - `components/emergency/critical-alert-banner.tsx` - **NEW** - Critical patient alert banner
 - `components/emergency/index.ts` - **NEW** - Module exports
@@ -627,6 +652,7 @@ Feature: Emergency Department Dashboard
 ### Phase 3 Files (March 4, 2026)
 
 **Backend:**
+
 - `hmis/apps/triage/models.py` - Added `ERBed` model with state-transition methods
 - `hmis/apps/triage/serializers.py` - Added 7 serializers (detail, list, create, assign, release, update-status, summary)
 - `hmis/apps/triage/views.py` - Added `ERBedViewSet` with custom actions (assign, release, update-status, summary, board)
@@ -636,6 +662,7 @@ Feature: Emergency Department Dashboard
 - `tests/test_er_bed_board.py` - **NEW** - 34 tests (15 model + 19 API)
 
 **Frontend:**
+
 - `lib/types/triage.ts` - Added `ERBed`, `ERBedStatus`, `ERZone`, `ERBedZoneSummary`, `ER_BED_STATUS_CONFIG`
 - `lib/schemas/triage.schema.ts` - Added Zod schemas for all ER bed types
 - `lib/api/triage.ts` - Added 8 API client methods with `parseResponse()`
@@ -649,6 +676,7 @@ Feature: Emergency Department Dashboard
 ### Phase 4 Files (March 4, 2026)
 
 **Backend:**
+
 - `hmis/apps/triage/models.py` - Added `WaitTimeBreach` and `Escalation` models with state-transition methods
 - `hmis/apps/triage/serializers.py` - Added breach/escalation serializers (list, detail, action serializers)
 - `hmis/apps/triage/views.py` - Added `WaitTimeBreachViewSet` and `EscalationViewSet` with custom actions
@@ -659,6 +687,7 @@ Feature: Emergency Department Dashboard
 - `tests/test_escalation_alerts.py` - **NEW** - 33 tests (5 model breach + 4 model escalation + 5 task + 3 auto-resolve + 7 breach API + 9 escalation API)
 
 **Frontend:**
+
 - `lib/types/triage.ts` - Added `BreachSeverity`, `BreachStatus`, `EscalationType`, `EscalationStatus`, config objects
 - `lib/schemas/triage.schema.ts` - Added `WaitTimeBreachSchema`, `EscalationSchema`, `BreachSummarySchema`
 - `lib/api/triage.ts` - Added 8 API client methods (breaches + escalations) with `parseResponse()`

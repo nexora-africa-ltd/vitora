@@ -29,11 +29,13 @@
 ### How Duplicate Triage is Currently Prevented
 
 1. **Database-level constraint**: `TriageAssessment` has a `OneToOneField` to `Encounter`:
+
    ```python
    encounter = models.OneToOneField(
        "encounters.Encounter", on_delete=models.CASCADE, related_name="triage_assessment"
    )
    ```
+
    A second POST for the same encounter fails with `IntegrityError` (HTTP 400).
 
 2. **Encounter `triage_status` field**: The `Encounter` model tracks `triage_status` (`PENDING`, `IN_PROGRESS`, `COMPLETED`, `BYPASSED`, `NOT_APPLICABLE`).
@@ -211,6 +213,7 @@ interface TriageAssessSession {
 ### Context
 
 When a patient arrives via specific modes (referral, ambulance, police), additional documentation is required for:
+
 - SHA claims validation
 - KHIS/DHIS2 reporting
 - Legal/medico-legal documentation

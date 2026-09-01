@@ -124,6 +124,7 @@ class Patient(models.Model):
 ```
 
 Fields needing search capability:
+
 - `Patient.identification_number` (patient lookup by ID)
 - `Patient.phone_number` (duplicate detection)
 - `SHAMember.national_id` (SHA eligibility)
@@ -210,6 +211,7 @@ New env var: `PII_HMAC_KEY` (separate from encryption key for defense in depth).
 `AuditLog.details` is a JSONField that may contain old/new values of PII fields (e.g., when a phone number is updated, both old and new values are logged).
 
 **Options**:
+
 1. **Encrypt the entire `details` JSONField** — Simple but prevents audit log queries.
 2. **Redact PII keys in details at write time** — Replace values with `"[REDACTED]"` for known PII field names.
 3. **Encrypt only PII values within the JSON** — Complex, fragile.

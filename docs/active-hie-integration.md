@@ -91,6 +91,7 @@ def lookup_and_register_patient_in_cr(self, patient_id: int) -> dict:
 ```
 
 **Flow**:
+
 1. Look up patient in CR using `ClientRegistryService.fetch_client()`
 2. If found → store `cr_number` and `cr_synced_at`
 3. If not found → register via `ClientRegistryService.register_client()`
@@ -122,6 +123,7 @@ class ADXExportService:
 ```
 
 **API Endpoint**:
+
 ```
 POST /api/surveillance/idsr-reports/{id}/export_adx/
 ```
@@ -165,6 +167,7 @@ HIE_ADX_ENABLED = os.getenv("HIE_ADX_ENABLED", "false").lower() == "true"
 ```
 
 **Default behavior**:
+
 - CR lookup/registration: **enabled** (safe — async, non-blocking)
 - SHR document push: **disabled** (requires opt-in per facility)
 - ADX format: **disabled** (JSON DataValueSet remains default)
@@ -214,6 +217,7 @@ PatientViewSet.perform_create()
 ### Patient Types
 
 `web-app/lib/types/patient.ts` and `mobile/lib/types/patient.ts`:
+
 ```typescript
 export interface Patient {
   // ...existing fields...
@@ -224,6 +228,7 @@ export interface Patient {
 ### Patient Schema
 
 `web-app/lib/schemas/patient.schema.ts`:
+
 ```typescript
 cr_synced_at: z.string().optional().nullable(),
 ```

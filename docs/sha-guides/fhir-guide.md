@@ -19,6 +19,7 @@ A typical outpatient visit bundle includes these essential FHIR resources:
 Additional resources may be included based on the specific clinical scenario and hospital needs.
 
 ## Sample FHIR Object
+
 ```json
 {
     "id": "Patient-Appointment-HLC-APP-xxxxxxxx-xxxx0-7707",
@@ -522,6 +523,7 @@ Additional resources may be included based on the specific clinical scenario and
     ],
 }
 ```
+
 ## Detailed Resource Implementation
 
 ### 1. Bundle Resource
@@ -541,6 +543,7 @@ The Bundle is the container for all resources related to the outpatient visit.
 - Ensure each resource has a unique ID within your system
 
 ### 2. Encounter Resource
+
 The Encounter represents the patient's visit to your facility.
 
 **Key Properties:**
@@ -561,6 +564,7 @@ The Encounter represents the patient's visit to your facility.
 - Link all other resources in the bundle to this encounter
 
 ### 3. Composition Resources
+
 Compositions represent clinical documents like SOAP notes, consultation reports, etc.
 
 **Key Properties:**
@@ -582,6 +586,7 @@ Compositions represent clinical documents like SOAP notes, consultation reports,
 - Multiple Compositions may be included for different aspects of care or from different providers
 
 ### 4. Observation Resources
+
 Observations record clinical findings, measurements, and test results.
 
 **Key Properties:**
@@ -603,6 +608,7 @@ Observations record clinical findings, measurements, and test results.
 - Include normal ranges when relevant
 
 ### 5. MedicationRequest Resources
+
 MedicationRequests represent prescriptions and medication orders.
 
 **Key Properties:**
@@ -624,9 +630,11 @@ MedicationRequests represent prescriptions and medication orders.
 - Include patient instructions in plain language
 
 ## Additional Resources for Outpatient Bundles
+
 While the core resources described above form the foundation of an outpatient visit bundle, additional resources may be necessary depending on the specific clinical scenario:
 
 ### Sample Bundle Structure
+
 ├── Encounter (outpatient visit)
 ├── Composition (SOAP note)
 ├── Observation (vital signs)

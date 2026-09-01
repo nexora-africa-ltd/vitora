@@ -129,6 +129,7 @@ Today, hubs operate in complete isolation from the cloud:
 ### Changes to `POST /api/licensing/activate/` Response
 
 Current response:
+
 ```json
 {
   "license_token": "<license_jwt>",
@@ -138,6 +139,7 @@ Current response:
 ```
 
 New response (expanded):
+
 ```json
 {
   "license_token": "<license_jwt>",
@@ -179,6 +181,7 @@ New response (expanded):
 ### Changes to Installer Scripts
 
 The installer becomes simpler — only needs:
+
 1. Activation code (entered by operator)
 2. Admin credentials (username + password for local superuser)
 
@@ -258,6 +261,7 @@ Facility.objects.update_or_create(
 The existing setup wizard (`/setup` in the Next.js sidecar) changes from "create org + facility + admin" to:
 
 **New steps:**
+
 1. **Activation** — enter code, call activate endpoint, receive org/facility info
 2. **Confirm** — display org + facility info (read-only), confirm this is correct
 3. **Admin Account** — create local superuser (username, email, password)
@@ -580,6 +584,7 @@ For hubs already deployed with the old manual-ID flow:
 4. On next restart, hub begins syncing
 
 Management command for one-time migration (implemented):
+
 ```bash
 python manage.py migrate_to_activation --hub-id="reception-hub-1" --license-token="<jwt>"
 # Verifies token via check-in, writes SYNC_SERVER_URL + LICENSE_TOKEN to .env

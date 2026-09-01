@@ -27,6 +27,7 @@
 ## Introduction
 
 This document establishes coding standards for Vitora HMIS to ensure:
+
 - **Consistency**: Code looks like it was written by a single developer
 - **Quality**: High standards for maintainability and reliability
 - **Security**: Adherence to security best practices
@@ -36,6 +37,7 @@ This document establishes coding standards for Vitora HMIS to ensure:
 ### Scope
 
 These standards apply to:
+
 - All backend code (Python/Django)
 - All frontend code (JavaScript/TypeScript/React)
 - All database migrations and schemas
@@ -46,6 +48,7 @@ These standards apply to:
 ### Enforcement
 
 Standards are enforced through:
+
 - **Automated Tools**: Ruff, Black, ESLint (CI/CD)
 - **Code Reviews**: Mandatory review before merge
 - **CI/CD Pipeline**: Blocks merge if standards violated
@@ -61,12 +64,14 @@ Standards are enforced through:
 > — Harold Abelson
 
 **Guidelines**:
+
 - Write self-documenting code with clear variable names
 - Add comments only when code cannot be self-explanatory
 - Optimize for readability over cleverness
 - Consider the next developer (often yourself in 6 months)
 
 **Example**:
+
 ```python
 # ❌ Bad - Unclear intent
 def proc_pt(p, t):
@@ -92,12 +97,14 @@ def count_patients_registered_after_date(patients_queryset, cutoff_date):
 ### 2. DRY (Don't Repeat Yourself)
 
 **Guidelines**:
+
 - Extract repeated code into functions/classes
 - Use inheritance and composition appropriately
 - Create reusable utilities for common operations
 - But: Don't over-abstract (wait for 3rd repetition)
 
 **Example**:
+
 ```python
 # ❌ Bad - Repeated validation logic
 def create_patient(data):
@@ -172,6 +179,7 @@ def update_patient(patient, data):
 **Line Length**: 100 characters (Black default)
 
 **Imports**: Organized by isort
+
 ```python
 # Standard library
 import os
@@ -189,6 +197,7 @@ from hmis.utils import generate_mrn
 ```
 
 **String Quotes**: Double quotes (Black default)
+
 ```python
 # ✅ Good
 name = "John Doe"
@@ -202,6 +211,7 @@ message = "Patient {name} registered"
 ### Naming Conventions
 
 **Variables and Functions**: `snake_case`
+
 ```python
 patient_count = 10
 def calculate_patient_age(date_of_birth):
@@ -209,6 +219,7 @@ def calculate_patient_age(date_of_birth):
 ```
 
 **Classes**: `PascalCase`
+
 ```python
 class Patient(models.Model):
     ...
@@ -218,6 +229,7 @@ class PatientSerializer(serializers.ModelSerializer):
 ```
 
 **Constants**: `UPPER_SNAKE_CASE`
+
 ```python
 MAX_RETRY_ATTEMPTS = 3
 DEFAULT_TIMEOUT_SECONDS = 30
@@ -225,6 +237,7 @@ MRN_PREFIX = "KE"
 ```
 
 **Private Methods**: Leading underscore
+
 ```python
 class Patient(models.Model):
     def save(self, *args, **kwargs):
@@ -267,6 +280,7 @@ def parse_patient_data(raw_data: Dict[str, Any]) -> Patient:
 ### Django Models
 
 **Guidelines**:
+
 - Always define `__str__()` method
 - Use `related_name` for foreign keys
 - Add `db_index=True` for frequently queried fields
@@ -562,6 +576,7 @@ logger.error(
 **Tool**: ESLint + Prettier
 
 **File Organization**:
+
 ```
 src/
 ├── components/
@@ -762,6 +777,7 @@ export function usePatients() {
 ### Migration Files
 
 **Guidelines**:
+
 - One logical change per migration
 - Always test migrations on production-like data
 - Include both `migrate` and `rollback` operations
@@ -847,6 +863,7 @@ active_patients = Patient.objects.filter(is_active=True)
 ### Indexing Strategy
 
 **Add indexes for**:
+
 - Foreign keys (automatic in PostgreSQL)
 - Fields used in WHERE clauses
 - Fields used in ORDER BY
@@ -871,6 +888,7 @@ class Patient(models.Model):
 ### RESTful Principles
 
 **Endpoint Structure**:
+
 ```
 GET    /api/v1/patients/              # List patients
 POST   /api/v1/patients/              # Create patient
@@ -887,6 +905,7 @@ POST   /api/v1/patients/{id}/archive/ # Custom action
 ### Response Format
 
 **Success**:
+
 ```json
 {
   "id": 123,
@@ -902,6 +921,7 @@ POST   /api/v1/patients/{id}/archive/ # Custom action
 ```
 
 **Error**:
+
 ```json
 {
   "error": {
@@ -916,6 +936,7 @@ POST   /api/v1/patients/{id}/archive/ # Custom action
 ```
 
 **List** (with pagination):
+
 ```json
 {
   "count": 150,
@@ -931,6 +952,7 @@ POST   /api/v1/patients/{id}/archive/ # Custom action
 ### HTTP Status Codes
 
 Use appropriate status codes:
+
 - `200 OK`: Successful GET, PUT, PATCH
 - `201 Created`: Successful POST
 - `204 No Content`: Successful DELETE
@@ -1089,6 +1111,7 @@ class Patient(models.Model):
 ### Code Comments
 
 **When to comment**:
+
 - Complex algorithms
 - Non-obvious business logic
 - Temporary workarounds (with TODO)
@@ -1096,6 +1119,7 @@ class Patient(models.Model):
 - Performance optimizations
 
 **When NOT to comment**:
+
 - Self-explanatory code
 - Restating code in English
 
@@ -1206,16 +1230,20 @@ patients = Patient.objects.filter(last_name__icontains="Doe")
 ```
 
 ## API Endpoints
+
 - `GET /api/v1/patients/` - List patients
 - `POST /api/v1/patients/` - Create patient
 - `GET /api/v1/patients/{id}/` - Get patient details
 
 ## Tests
+
 Run tests: `pytest tests/models/test_patient.py`
 
 ## Dependencies
+
 - Django 5.0+
 - djangorestframework 3.14+
+
 ```
 
 ---
@@ -1237,6 +1265,7 @@ Run tests: `pytest tests/models/test_patient.py`
 
 **Examples**:
 ```
+
 feat(patient): Add consent tracking model
 
 - Add PatientConsent model with consent types
@@ -1262,6 +1291,7 @@ docs(api): Update patient API documentation
 - Add OpenAPI schema for patient endpoints
 - Include usage examples
 - Document error codes
+
 ```
 
 ### Branch Naming
@@ -1317,6 +1347,7 @@ Relates to #456
 ### Before Requesting Review
 
 **Author checklist**:
+
 - [ ] All tests pass locally (`make test`)
 - [ ] Code coverage ≥80% (`make coverage`)
 - [ ] Linters pass (`make lint`)
@@ -1332,6 +1363,7 @@ Relates to #456
 ### Review Guidelines
 
 **Reviewers should check**:
+
 - [ ] **Functionality**: Does code do what it claims?
 - [ ] **Tests**: Are there tests? Do they test the right things?
 - [ ] **Coverage**: Is coverage ≥80%?
@@ -1346,6 +1378,7 @@ Relates to #456
 ### Review Comments
 
 **Be constructive**:
+
 ```markdown
 # ❌ Bad
 This code is terrible.
@@ -1362,6 +1395,7 @@ patients = Patient.objects.select_related('facility').all()
 ```
 
 This would reduce database queries from 101 to 2 for 100 patients.
+
 ```
 
 ### Approval Criteria
@@ -1453,6 +1487,7 @@ indent_size = 2
 ### VS Code Settings
 
 **.vscode/settings.json**:
+
 ```json
 {
   "python.linting.enabled": true,
@@ -1472,6 +1507,7 @@ indent_size = 2
 ### Pre-Commit Hooks
 
 **.pre-commit-config.yaml**:
+
 ```yaml
 repos:
   - repo: https://github.com/psf/black
@@ -1494,6 +1530,7 @@ repos:
 ### CI/CD Integration
 
 All tools run automatically in CI/CD pipeline:
+
 - PR opened → CI runs checks
 - Checks fail → PR blocked
 - Checks pass → PR ready for review
@@ -1508,6 +1545,7 @@ All tools run automatically in CI/CD pipeline:
 Sometimes standards may need to be temporarily violated (e.g., external library incompatibility).
 
 **Process**:
+
 1. Document reason in code comment
 2. Create GitHub issue to track
 3. Add `# noqa` or `# type: ignore` with reason
@@ -1515,6 +1553,7 @@ Sometimes standards may need to be temporarily violated (e.g., external library 
 5. Plan remediation
 
 **Example**:
+
 ```python
 # TODO(#456): Remove this once django-cryptography supports Django 5.0
 # Current workaround needed due to library limitation

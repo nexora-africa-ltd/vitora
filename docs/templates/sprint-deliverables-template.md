@@ -12,6 +12,7 @@
 [2-3 sentence description of what this sprint delivers and its business value]
 
 ### Business Value
+
 - [Key benefit 1]
 - [Key benefit 2]
 - [Key benefit 3]
@@ -42,6 +43,7 @@
 **Purpose**: [Brief description of what this component does]
 
 **Fields**:
+
 ```python
 class ModelName(TimeStampedModel):
     """Model docstring."""
@@ -74,6 +76,7 @@ class ModelName(TimeStampedModel):
 ```
 
 **Test Coverage** (X tests):
+
 - [ ] Test case 1: [Description]
 - [ ] Test case 2: [Description]
 - [ ] Test case 3: [Description]
@@ -89,11 +92,13 @@ class ModelName(TimeStampedModel):
 **Purpose**: [Brief description]
 
 **Fields**:
+
 ```python
 # Model definition here
 ```
 
 **Test Coverage** (X tests):
+
 - [ ] Test case 1
 - [ ] Test case 2
 
@@ -113,6 +118,7 @@ class ModelName(TimeStampedModel):
 | `/api/[resource]/{id}/[action]/` | POST | [Action description] | Yes |
 
 **API Test Coverage** (X tests):
+
 - [ ] Authentication required on all endpoints
 - [ ] Permission checks per endpoint
 - [ ] Pagination and filtering
@@ -125,6 +131,7 @@ class ModelName(TimeStampedModel):
 ## Database Migrations
 
 ### Migration XXXX: [Migration Name]
+
 ```python
 # hmis/apps/[app]/migrations/XXXX_[name].py
 
@@ -134,6 +141,7 @@ class ModelName(TimeStampedModel):
 ```
 
 ### Migration XXXX: [Migration Name]
+
 ```python
 # Description of changes
 ```
@@ -143,11 +151,13 @@ class ModelName(TimeStampedModel):
 ## Integration Points
 
 ### 1. [Integration Name]
+
 - **Module**: `hmis/apps/[app]/`
 - **Description**: [How this integrates with other parts of the system]
 - **Dependencies**: [List of dependencies]
 
 ### 2. [Integration Name]
+
 - **Module**: `hmis/apps/[app]/`
 - **Description**: [Description]
 - **Dependencies**: [Dependencies]
@@ -177,12 +187,14 @@ EXTERNAL_SERVICE_URL = 'https://example.com/api'
 <!-- For frontend-related sprints -->
 
 ### 1. [Component Name]
+
 - **Location**: `web-app/components/[path]/`
 - **Description**: [What this component does]
 - **Props/Inputs**: [List of props]
 - **Dependencies**: [UI library components used]
 
 ### 2. [Component Name]
+
 - **Location**: `web-app/components/[path]/`
 - **Description**: [Description]
 
@@ -254,10 +266,12 @@ class Test[Feature]:
 ## Dependencies
 
 ### Internal Dependencies
+
 - `hmis.apps.[app]` - [Description]
 - `hmis.apps.core` - AuditLog, SyncQueue, TimeStampedModel
 
 ### External Dependencies
+
 - Django 5.x
 - Django REST Framework
 - [Other packages]
@@ -325,6 +339,7 @@ class Test[Feature]:
 ## Appendix B: State Machine Diagrams
 
 ### [Entity] Status Transitions
+
 ```
 STATE_A ──► STATE_B ──► STATE_C
     │           │
@@ -362,6 +377,7 @@ def [entity]_data():
 ## Appendix D: API Request/Response Examples
 
 ### Create [Resource]
+
 ```http
 POST /api/[resource]/
 Content-Type: application/json
@@ -374,6 +390,7 @@ Authorization: Bearer <token>
 ```
 
 **Response** (201 Created):
+
 ```json
 {
     "id": 1,
@@ -385,12 +402,14 @@ Authorization: Bearer <token>
 ```
 
 ### List [Resources]
+
 ```http
 GET /api/[resource]/?page=1&status=active
 Authorization: Bearer <token>
 ```
 
 **Response** (200 OK):
+
 ```json
 {
     "count": 25,

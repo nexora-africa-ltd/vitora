@@ -3,6 +3,7 @@
 Date: 2026-07-26
 Project: Vitora HMIS (`backend/hmis`, `web-app`)
 Reference docs reviewed:
+
 - `https://hie-docs.dha.go.ke/eclaims/eligibility`
 - `https://hie-docs.dha.go.ke/eclaims/preauths`
 - `docs/sha-guides/eligibility.md`

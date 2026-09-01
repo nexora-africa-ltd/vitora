@@ -29,9 +29,9 @@ Base URLs:
 
 # Authentication
 
-- HTTP Authentication, scheme: basic
+* HTTP Authentication, scheme: basic
 
-- HTTP Authentication, scheme: bearer
+* HTTP Authentication, scheme: bearer
 
 # Kenya Digital Superhighway/Authorization
 
@@ -42,9 +42,11 @@ GET /v1/hie-auth
 ## Generate JWT Token
 
 ### Description
+
 This endpoint is used to generate a JSON Web Token (JWT) for authentication and authorization. The generated token must be included in the `Authorization` header of subsequent API requests to access protected resources. The token expires after **20 seconds**, requiring frequent renewal for continuous access.
 
 ### Endpoint
+
 `GET {{base_url}}/v1/hie-auth?key={{consumer_key}}`
 
 ### Endpoint Variables for `/v1/hie-auth`
@@ -55,7 +57,9 @@ This endpoint is used to generate a JSON Web Token (JWT) for authentication and 
 | `{{consumer_key}}` | The unique API key provided in afyalinkto the consumer for authentication. | `abc123xyz`                           |
 
 ## Request
+
 #### Query Parameters
+
 This endpoint requires the `consumer_key` as a query parameter, which can be obtained from the credentials section on your  AfyaLink dashboard.
 
 | Parameter        | Type   | Required | Description |
@@ -63,7 +67,9 @@ This endpoint requires the `consumer_key` as a query parameter, which can be obt
 | `{{consumer_key}}`   | string | ✅ Yes  | This is the Consumer key provided by afyalink  e.g 78IHL9593e |
 
 ### Authorization
+
 #### Headers
+
 The request must include an `Authorization` header with **Basic Authentication**. This header should contain a **Base64-encoded** string of the username and password in the format:
 
 | Key           | Value          | Description                        |
@@ -75,6 +81,7 @@ The request must include an `Authorization` header with **Basic Authentication**
 ### Response
 
 #### Success (200 OK)
+
 A successful request returns a JSON response containing the generated JWT token .
 
 ```json
@@ -113,9 +120,11 @@ PUT /v1/hie-auth
 # Update CR Client
 
 ## Description
+
 This endpoint allows updating patient details after the initial registration. It enables modifications to fields such as demographic information, contact details, or other patient-related data. Only authorized users with valid credentials can perform updates.
 
 ## Endpoint
+
 **Method:** `PUT`
 **URL:** `{{base_url}}/v1/hie-auth`
 
@@ -126,8 +135,11 @@ This endpoint allows updating patient details after the initial registration. It
 ## Request
 
 ### Authorization
+
 This request requires **Basic Authentication**. Ensure you provide the correct credentials from the **Kenya Digital Superhighway** and include a valid JWT token generated from the **Generate JWT Token** endpoint in the request headers.
+
 ### Headers
+
 The request must include an authentication token obtained from the **Generate JWT Token** endpoint.
 
 | Header Key       | Value Format      | Required | Description |
@@ -136,9 +148,11 @@ The request must include an authentication token obtained from the **Generate JW
 | `Content-Type`  | `application/json`   | ✅ Yes  | Specifies that the request body is in JSON format. |ent-Type: application/json
 
 ### Request Body
+
 The request body must be in JSON format and should contain the updated patient details.
 
 #### Example Request Body
+
 ```json
 {
   "patient_id": "12345",
@@ -167,7 +181,9 @@ The request body must be in JSON format and should contain the updated patient d
 }
 
 ```
+
 ## Example cURL
+
 ```sh
 curl -X PUT "{{base_url}}/v1/hie-auth" \
 -H "Content-Type: application/json" \
@@ -200,7 +216,8 @@ curl -X PUT "{{base_url}}/v1/hie-auth" \
 ```
 
 ## Example Response
-###Success (200)✅
+
+### Success (200)✅
 
 ```json
 {
@@ -235,10 +252,12 @@ curl -X PUT "{{base_url}}/v1/hie-auth" \
 GET /v3/client-registry/fetch-client
 
 ## Fetch Client Information
+
 Endpoint to fetch  client details by providing identification details.
 This endpoint makes a GET request to fetch client information from the client registry based on the provided identification type, identification number, and agent.
 
 ## Endpoint
+
 **Method:** `GET`
 **URL:** `{{base_url}}/v3/client-registry/fetch-client?identification_type={{identification_type}}&identification_number={{identification_number}}&agent={{agent}}`
 
@@ -252,6 +271,7 @@ This endpoint makes a GET request to fetch client information from the client re
 | `agent`                | The agent through which the client information is being fetched.                  | `SAFARICOM-CONSORTIUM-SANDBOX`  |
 
 ## Request
+
 ### Query parameters
 
 | Parameter       | Type   | Required | Description |
@@ -260,10 +280,13 @@ This endpoint makes a GET request to fetch client information from the client re
 | `identification_type`  |  string | ✅ Yes | `National ID`                    |
 | `identification_number`|  string | ✅ Yes | `12345678`                       |
 | `agent`                |  string | ✅ Yes| `SAFARICOM-CONSORTIUM-SANDBOX`  |
+
 ## Authorization
+
 This request requires **Basic Authentication**. Ensure you provide the correct credentials from the **Kenya Digital Superhighway** and include a valid JWT token generated from the **Generate JWT Token** endpoint in the request headers.
 
 ### Headers
+
 The request must include an authentication token obtained from the **Generate JWT Token** endpoint.
 
 | Header Key       | Value Format      | Required | Description |
@@ -373,9 +396,11 @@ GET /v1/facility-search
 # Search Organization
 
 ## Description
+
 This endpoint allows users to search for healthcare organizations (facilities) based on various criteria. It returns a list of matching facilities along with relevant details such as name, location, and contact information.
 
 ## Endpoint
+
 **Method:** `GET`
 **URL:** `{{base_url}}/v1/facility-search?facility_code={{facility_code}}`
 
@@ -393,7 +418,9 @@ This endpoint allows users to search for healthcare organizations (facilities) b
 | `facility_code`        | string | ✅ Yes | Search by facility code e.g 24979 |
 
 ### Authorization
+
 ### Headers
+
 The request must include an authentication token obtained from the **Generate JWT Token** endpoint.
 
 | Header Key       | Value Format      | Required | Description |
@@ -402,6 +429,7 @@ The request must include an authentication token obtained from the **Generate JW
 | `Content-Type`  | `application/json`   | ✅ Yes  | Specifies that the request body is in JSON format. |
 
 ### Example Request
+
 ```sh
 curl -X GET "https://uat.dha.go.ke/v1/facility-search?facility_code=24979" \
      -H "Authorization: Bearer <jwt-token>" \
@@ -423,10 +451,6 @@ curl -X GET "https://uat.dha.go.ke/v1/facility-search?facility_code=24979" \
 }
 
 ```
-
-
-
-
 
 ### Params
 
@@ -455,10 +479,13 @@ curl -X GET "https://uat.dha.go.ke/v1/facility-search?facility_code=24979" \
 GET /v1/practitioner-search
 
 # Search Practitioner
+
 ## Description
+
 This endpoint allows users to search for healthcare practitioners (doctors) by their **National ID** . It retrieves key details about the practitioner, including their name, registration details, and specialization.
 
 ## Endpoint
+
 **Method:** `GET`
 **URL:** `{{base_url}}/v1/practitioner-search?identification_type=passport&identification_number=xxxxxxxx`
 
@@ -480,7 +507,9 @@ This endpoint allows users to search for healthcare practitioners (doctors) by t
 > **Note:** Both of the query parameters (`identification_number` or `identification_type`) must be provided.
 
 ### Authorization
+
 ### Headers
+
 The request must include an authentication token obtained from the **Generate JWT Token** endpoint.
 
 | Header Key       | Value Format         | Required | Description |
@@ -489,13 +518,15 @@ The request must include an authentication token obtained from the **Generate JW
 | `Content-Type`  | `application/json`   | ✅ Yes  | Specifies that the request body is in JSON format. |
 
 ## Example Request
+
 ```sh
 curl -X GET "https://uat.dha.go.ke/v1/practitioner-search?national-id=123456789" \
      -H "Authorization: Bearer <jwt-token>" \
      -H "Content-Type: application/json"
   ```
 
-##  Response
+## Response
+
 ```json{
     "message": {
         "registration_number": 40675898,
@@ -536,9 +567,11 @@ GET /v1/shr-med/claim-status
 # Fetch Claim Status
 
 ## Description
+
 This endpoint retrieves the status of a medical claim.
 
 ## Endpoint
+
 **Method:** `GET`
 **URL:** `https://uat.dha.go.ke/v1/shr-med/claim-status`
 {{base_url}}/v1/shr-med/claim-status?claim_id={{claim_id}}?bundle_id={{bundle_id}}
@@ -559,7 +592,9 @@ This endpoint retrieves the status of a medical claim.
 | `bundle_id`        | string | ✅ Yes | Search by the bundle_id e.g `86768e20-9148-4d9a-a5c2-346e67a69338` |
 
 ### Authorization
+
 ### Headers
+
 The request must include an authentication token obtained from the **Generate JWT Token** endpoint.
 
 | Header Key       | Value Format      | Required | Description |
@@ -568,6 +603,7 @@ The request must include an authentication token obtained from the **Generate JW
 | `Content-Type`  | `application/json`   | ✅ Yes  | Specifies that the request body is in JSON format. |ent-Type: application/json
 
 ## Example Request (cURL)
+
 ```bash
 curl -X GET "https://uat.dha.go.ke/v1/shr-med/claim-status" \
   -H "Authorization: Basic <base64_encoded_username:password>" \
@@ -576,6 +612,7 @@ curl -X GET "https://uat.dha.go.ke/v1/shr-med/claim-status" \
 ```
 
 ## Example Response (JSON)
+
 ```json
 {
     "message": "draft"
@@ -605,9 +642,11 @@ POST /v1/shr-med/bundle
 # Submit Claim
 
 ## Description
+
 This endpoint processes an SHR Mediator bundle containing patient, coverage, and claim information.
 
 ## Endpoint
+
 **Method:** `POST`
 **URL:** `{{base_url}}/v1/shr-med/post-bundle`
 
@@ -618,8 +657,11 @@ This endpoint processes an SHR Mediator bundle containing patient, coverage, and
 ## Request
 
 ### Authorization
+
 This request requires **Basic Authentication**. Ensure you provide the correct credentials from the **Kenya Digital Superhighway** and include a valid JWT token generated from the **Generate JWT Token** endpoint in the request headers.
+
 ### Headers
+
 The request must include an authentication token obtained from the **Generate JWT Token** endpoint.
 
 | Header Key       | Value Format      | Required | Description |
@@ -694,6 +736,7 @@ The request must include an authentication token obtained from the **Generate JW
 ```
 
 ## Example Request (cURL)
+
 ```bash
 curl -X POST "https://api-uat.tiberbu.health/v1/shr-med/post-bundle" \
   -H "Authorization: Basic <base64_encoded_username:password>" \
@@ -719,6 +762,7 @@ curl -X POST "https://api-uat.tiberbu.health/v1/shr-med/post-bundle" \
 ```
 
 ## Example Response (JSON)
+
 ```json
 {
     "message": {

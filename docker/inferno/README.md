@@ -55,10 +55,13 @@ python manage.py runserver 0.0.0.0:9088
 ### 4. Start Inferno
 
 \`\`\`bash
+
 # Start the patched Inferno UI
+
 ./docker/inferno/run-tests.sh --setup
 
 # Or seed data and prepare the repeatable local IPS smoke flow
+
 ./docker/inferno/run-tests.sh --smoke
 \`\`\`
 
@@ -68,7 +71,7 @@ When Inferno Core starts through this Compose file, it reapplies a small local I
 
 | Test Kit | URL | How to Start |
 |----------|-----|--------------|
-| Inferno UI | http://localhost:4567 | \`--setup\` or \`--smoke\` |
+| Inferno UI | <http://localhost:4567> | \`--setup\` or \`--smoke\` |
 
 ### 6. Configure Tests
 
@@ -76,10 +79,10 @@ When prompted in the Inferno UI, use these Vitora endpoints:
 
 | Setting | Value |
 |---------|-------|
-| FHIR Server URL | \`http://host.docker.internal:9088/fhir\` |
-| SMART Config | \`http://host.docker.internal:9088/.well-known/smart-configuration\` |
-| Authorization | \`http://host.docker.internal:9088/oauth/authorize/\` |
-| Token | \`http://host.docker.internal:9088/oauth/token/\` |
+| FHIR Server URL | \`<http://host.docker.internal:9088/fhir\`> |
+| SMART Config | \`<http://host.docker.internal:9088/.well-known/smart-configuration\`> |
+| Authorization | \`<http://host.docker.internal:9088/oauth/authorize/\`> |
+| Token | \`<http://host.docker.internal:9088/oauth/token/\`> |
 
 > **Note**: Use \`host.docker.internal\` when Inferno (in Docker) needs to reach Vitora (on host). On Linux, the Compose file must also provide \`host.docker.internal:host-gateway\`; this repo now does that for the Inferno container. For Snap-managed Docker hosts that show AppArmor signal denials when stopping Inferno, the Inferno service also runs with \`apparmor=unconfined\` to avoid the stop/kill deadlock.
 
@@ -125,7 +128,7 @@ Application.objects.create(
     client_secret='inferno-test-secret',
     client_type='confidential',
     authorization_grant_type='authorization-code',
-    redirect_uris='http://localhost:4567/custom/smart/redirect http://localhost:4568/custom/smart/redirect'
+    redirect_uris='<http://localhost:4567/custom/smart/redirect> <http://localhost:4568/custom/smart/redirect>'
 )
 \`\`\`
 
@@ -182,10 +185,13 @@ Tests OAuth2 authorization flows for FHIR applications:
 ### Inferno Won't Start
 
 \`\`\`bash
+
 # Check container logs
+
 docker compose -f docker/inferno/compose.yml logs -f
 
 # Restart services
+
 docker compose -f docker/inferno/compose.yml down -v
 docker compose -f docker/inferno/compose.yml up -d
 \`\`\`
@@ -228,18 +234,22 @@ sudo docker-compose -f docker/inferno/compose.yml up -d --force-recreate
 FHIR endpoints require JWT authentication:
 
 \`\`\`bash
+
 # Get token
-TOKEN=\$(curl -s -X POST http://localhost:9088/api/token/ \\
+
+TOKEN=\$(curl -s -X POST <http://localhost:9088/api/token/> \\
   -H "Content-Type: application/json" \\
   -d '{"username":"admin","password":"admin123"}' | jq -r '.access')
 
 # Use token
-curl -H "Authorization: Bearer \$TOKEN" http://localhost:9088/fhir/Patient/1
+
+curl -H "Authorization: Bearer \$TOKEN" <http://localhost:9088/fhir/Patient/1>
 \`\`\`
 
 ## Reporting
 
 After running tests, document results in:
+
 - [FHIR Compliance Report](../../docs/fhir-compliance-report.md)
 
 ## References

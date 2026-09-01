@@ -334,6 +334,7 @@ Add corresponding Zod schemas for all new types (Specimen, ResultValidation, Ins
 **Status**: ✅ Completed (2026-02-15)
 
 **Implementation Notes**:
+
 - Backend `SpecimenViewSet` added as read-only endpoint (lookup by barcode)
 - Nested endpoint `GET /api/lab/orders/{order_number}/specimens/` implemented
 - All API methods include Zod schema validation via `parseResponse()`
@@ -400,6 +401,7 @@ async getSampleRejectionReport(startDate: string, endDate: string): Promise<Samp
 **Status**: ✅ Completed (2026-02-15)
 
 **Implementation Notes**:
+
 - `LabQueue` now supports an optional nested `specimen?: Specimen | null`.
 - `LabQueueSchema` updated so `parseResponse()` preserves specimen data from `/api/lab/queue/`.
 - Queue UI now shows: specimen barcode (fallback to legacy `sample_id`), specimen status badge, collected timestamp, and storage location when present.
@@ -432,6 +434,7 @@ export interface LabQueue {
 **Status**: ✅ Completed (2026-02-15)
 
 **Implementation Notes**:
+
 - Created `validation-status-badge.tsx` with `ValidationStatusBadge` and `ValidationSummary` components
 - Created `result-validation-panel.tsx` with full validation workflow UI
 - Added React Query hooks: `useResultValidations`, `useCreateResultValidation`, `usePendingValidations`
@@ -445,6 +448,7 @@ export interface LabQueue {
 Location: `components/laboratory/result-validation-panel.tsx`
 
 Features:
+
 - Display validation history for a result
 - Show TECHNICAL vs CLINICAL validation badges
 - Allow authorized users to add validations
@@ -453,6 +457,7 @@ Features:
 #### 3.4.2 Update Result Entry/Verification
 
 Update `lab-results-entry.tsx`:
+
 - After result entry, show "Submit for Technical Review" button
 - After technical approval, show "Submit for Clinical Review"
 - Display validation status badges in result list
@@ -462,6 +467,7 @@ Update `lab-results-entry.tsx`:
 Route: `/laboratory/validations/page.tsx`
 
 Features:
+
 - Tab: "Technical Review" - results awaiting technical validation
 - Tab: "Clinical Review" - results awaiting clinical validation
 - Filter by test type, priority, date
@@ -476,6 +482,7 @@ Features:
 **Status**: ✅ Completed (2026-02-15)
 
 **Implementation Notes**:
+
 - Created `diagnostic-report-list.tsx` with status filters and search
 - Created `diagnostic-report-detail.tsx` with full report view, finalize/amend/cancel actions
 - Created `diagnostic-report-form.tsx` for report creation (conclusion, clinical info)
@@ -506,6 +513,7 @@ Features:
 #### 3.5.3 Add Report Generation to Order Detail
 
 In `lab-order-detail.tsx`:
+
 - ✅ "Generate Report" button (when all results verified)
 - ✅ Show linked diagnostic report if exists
 - ✅ Download PDF action
@@ -519,6 +527,7 @@ In `lab-order-detail.tsx`:
 **Status**: ✅ Completed (2026-03-06)
 
 **Implementation Notes**:
+
 - Created React Query hooks: `useLabTurnaroundReport`, `useLabWorkloadReport`, `useLabCriticalValuesReport`, `useLabSampleRejectionReport`
 - Created chart components: `lab-tat-chart.tsx`, `lab-workload-chart.tsx`, `lab-critical-values-card.tsx`, `lab-rejection-chart.tsx`
 - Created `lab-analytics-dashboard.tsx` container with date picker, KPI cards, and chart grid
@@ -533,6 +542,7 @@ In `lab-order-detail.tsx`:
 Route: `/laboratory/analytics/page.tsx`
 
 Features:
+
 - Date range picker (default: last 7 days)
 - TAT overview card with trend chart
 - Workload summary (tests/day, by technician)

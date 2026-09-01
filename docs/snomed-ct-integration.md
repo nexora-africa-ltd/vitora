@@ -21,6 +21,7 @@ SNOMED CT (Systematized Nomenclature of Medicine — Clinical Terms) has been in
 | **SNOMED CT** | FHIR interoperability, clinical precision | No (enhances) |
 
 SNOMED CT is the richest clinical terminology system available (350,000+ concepts). It provides:
+
 - Granular clinical findings that ICD-10/11 cannot express
 - Standard coding for FHIR Condition, AllergyIntolerance, and Procedure resources
 - Cross-border interoperability for international patient summaries (IPS)
@@ -111,6 +112,7 @@ class SNOMEDService:
 ```
 
 **Search strategy**:
+
 1. Try SNOMED International Snowstorm API (remote)
 2. Cache results locally in `SNOMEDConcept`
 3. Fall back to local cache if Snowstorm is unavailable
@@ -134,6 +136,7 @@ GET /api/encounters/snomed/search/?q={term}&semantic_tag={tag}&limit={n}
 | `limit` | No | Max results (default 20, max 50) |
 
 **Response**:
+
 ```json
 {
   "results": [
@@ -199,6 +202,7 @@ poetry run python manage.py seed_snomed_common
 ```
 
 Pre-populates ~500 frequently used clinical concepts for offline search. Covers:
+
 - Common disorders (hypertension, diabetes, malaria, etc.)
 - Clinical findings (fever, cough, headache, etc.)
 - Procedures (blood pressure measurement, X-ray, etc.)
@@ -210,6 +214,7 @@ Pre-populates ~500 frequently used clinical concepts for offline search. Covers:
 ### Types
 
 `web-app/lib/types/encounter.ts` and `mobile/lib/types/encounter.ts`:
+
 ```typescript
 export interface Diagnosis {
   // ...existing fields...
@@ -221,6 +226,7 @@ export interface Diagnosis {
 ### Schema
 
 `web-app/lib/schemas/encounter.schema.ts`:
+
 ```typescript
 export const DiagnosisSchema = z.object({
   // ...existing fields...

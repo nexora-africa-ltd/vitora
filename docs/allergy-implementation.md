@@ -161,6 +161,7 @@ POST /api/patients/123/allergies/
 ```
 
 **Response (201 Created)**:
+
 ```json
 {
   "id": 789,
@@ -200,6 +201,7 @@ GET /api/allergies/lookup/?q=penic&type=medication
 ```
 
 **Response**:
+
 ```json
 [
   {
@@ -233,6 +235,7 @@ POST /api/allergies/check-interactions/
 ```
 
 **Response**:
+
 ```json
 {
   "patient_id": 123,
@@ -266,6 +269,7 @@ When creating a prescription via `POST /api/pharmacy/prescriptions/`, the system
    - By drug name (substring match for generic names)
 
 2. **Block Phase**: If interactions found, request is rejected with `400 Bad Request`:
+
    ```json
    {
      "allergy_warnings": [
@@ -285,6 +289,7 @@ When creating a prescription via `POST /api/pharmacy/prescriptions/`, the system
    ```
 
 3. **Override Phase**: Prescriber can acknowledge and proceed:
+
    ```json
    POST /api/pharmacy/prescriptions/
    {
@@ -295,6 +300,7 @@ When creating a prescription via `POST /api/pharmacy/prescriptions/`, the system
    ```
 
 4. **Audit Phase**: Override is logged in `clinical_notes` field:
+
    ```
    [ALLERGY WARNING ACKNOWLEDGED BY PRESCRIBER]
    The following drug-allergy interactions were detected:
@@ -641,6 +647,7 @@ export interface AllergyUpdatePayload extends Partial<AllergyCreatePayload> {
 #### 4. Patient Allergies Tab (`components/patients/allergies/patient-allergies-tab.tsx`)
 
 Display allergies in patient detail page with:
+
 - List of allergies with severity badges
 - High-risk warning banner for severe/life-threatening allergies
 - Add new allergy button
@@ -737,6 +744,7 @@ export function PatientAllergiesTab({ patientId }: PatientAllergiesTabProps) {
 #### 5. Allergy Form Dialog (`components/patients/allergies/allergy-form-dialog.tsx`)
 
 Modal form for adding/editing allergies with:
+
 - Substance autocomplete (from lookup endpoint)
 - Severity and reaction type dropdowns
 - Date pickers for onset/last occurrence
@@ -745,6 +753,7 @@ Modal form for adding/editing allergies with:
 #### 6. Allergy List Item (`components/patients/allergies/allergy-list-item.tsx`)
 
 Individual allergy row with:
+
 - Severity color-coded badge
 - Substance name and reaction type
 - Actions: Edit, Resolve, Delete
@@ -752,6 +761,7 @@ Individual allergy row with:
 #### 7. Prescription Allergy Warning (`components/pharmacy/prescription-allergy-warning.tsx`)
 
 Modal shown when drug-allergy interaction detected:
+
 - Lists all conflicting allergies
 - Highlights high-risk interactions
 - Requires acknowledgment checkbox to proceed
@@ -949,6 +959,7 @@ All allergy operations are logged to `AuditLog`:
 ## Files Changed
 
 ### Backend
+
 - `hmis/apps/patients/models.py` — Added `Allergy` model
 - `hmis/apps/patients/serializers.py` — Added `AllergySerializer`, `AllergyListSerializer`, `allergy_summary` + `chronic_conditions_summary` computed fields on `PatientSerializer`
 - `hmis/apps/patients/views.py` — Added `AllergyViewSet`
@@ -962,6 +973,7 @@ All allergy operations are logged to `AuditLog`:
 - `tests/test_allergy.py` — 39 comprehensive tests
 
 ### Frontend (To Be Created)
+
 - `lib/api/allergies.ts` — API client
 - `lib/schemas/allergy.schema.ts` — Zod schemas
 - `lib/types/allergy.ts` — TypeScript types

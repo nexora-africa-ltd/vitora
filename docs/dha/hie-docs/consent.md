@@ -4,6 +4,7 @@ _Version: `1.0.0`_
 APIs for managing beneficiary consent through OTP or Biomentrics verification.
 
 **Servers:**
+
 - `https://ilm-dev.dha.go.ke/uat-middleware`
 
 ## Table of Contents
@@ -35,6 +36,7 @@ _Content-Type: `application/json`_
 **Responses:**
 **Response `200`** — Authorization created successfully
 _Content-Type: `application/json`_
+
 ```json
 {
   "authCode": "string",
@@ -96,6 +98,7 @@ _Content-Type: `application/json`_
 
 **Response `400`** — Bad Request - Missing or invalid fields
 _Content-Type: `application/json`_
+
 ```json
 {
   "error": "string",
@@ -124,6 +127,7 @@ OTP Request
 _Required._
 
 _Content-Type: `application/json`_
+
 ```json
 {
   "contact_id": "string",
@@ -137,6 +141,7 @@ _Content-Type: `application/json`_
 **Responses:**
 **Response `200`** — OTP sent successfully
 _Content-Type: `application/json`_
+
 ```json
 {
   "message": "string"
@@ -172,6 +177,7 @@ Add patient request input
 _Required._
 
 _Content-Type: `application/json`_
+
 ```json
 {
   "attachments": [
@@ -194,6 +200,7 @@ _Content-Type: `application/json`_
 **Responses:**
 **Response `200`** — OTP whitelist request created successfully
 _Content-Type: `application/json`_
+
 ```json
 {
   "attachments": [
@@ -240,12 +247,13 @@ _Security: `BearerAuth`_
 
 | Name | In | Type | Required | Description |
 |---|---|---|---|---|
-| `beneficiary_cr_id` | query | `string` |  *(required)* | Patient client registry number |
-| `guid` | query | `string` |  *(required)* | Unique GUID of the OTP whitelist request. |
+| `beneficiary_cr_id` | query | `string` |  _(required)_ | Patient client registry number |
+| `guid` | query | `string` |  _(required)_ | Unique GUID of the OTP whitelist request. |
 
 **Responses:**
 **Response `200`** — OK
 _Content-Type: `application/json`_
+
 ```json
 {
   "count": 0,
@@ -281,6 +289,7 @@ _Content-Type: `application/json`_
 
 **Response `400`** — Bad Request - Missing query parameters or invalid request input
 _Content-Type: `application/json`_
+
 ```json
 {
   "error": "string",
@@ -303,11 +312,12 @@ _Security: `BearerAuth`_
 
 | Name | In | Type | Required | Description |
 |---|---|---|---|---|
-| `patient_id` | query | `string` |  *(required)* | Patient's client registry ID |
+| `patient_id` | query | `string` |  _(required)_ | Patient's client registry ID |
 
 **Responses:**
 **Response `200`** — OK
 _Content-Type: `application/json`_
+
 ```json
 [
   {

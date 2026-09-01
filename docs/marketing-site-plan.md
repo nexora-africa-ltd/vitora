@@ -195,6 +195,7 @@ Duplicate the Vitora brand palette (originally from `vitora/web-app/app/globals.
 | **Error Red** | `#C62828` | Alerts, critical info |
 
 **Gradient**: Use a subtle burgundy-to-teal gradient for hero sections and CTAs:
+
 ```css
 background: linear-gradient(135deg, #3D000F 0%, #1A4D5C 100%);
 ```
@@ -213,6 +214,7 @@ background: linear-gradient(135deg, #3D000F 0%, #1A4D5C 100%);
 ### 3.3 Logo Assets
 
 Copy from `vitora/web-app/public/` into `vitora-marketing/public/images/`:
+
 - `logo.png` — main logo
 - `light-theme-logo.png` — for light backgrounds
 - `dark-theme-logo.png` — for dark backgrounds
@@ -431,11 +433,13 @@ export default config;
 ### Navigation Structure
 
 **Main Nav (Desktop)**:
+
 ```
 [Logo]  Features ▼   AI   Integrations   Developers   [Request Demo →]
 ```
 
 Features dropdown:
+
 ```
 ┌──────────────────────────────────────────┐
 │  Patient Management    Pharmacy          │
@@ -448,6 +452,7 @@ Features dropdown:
 **Mobile Nav**: Hamburger menu → full-screen overlay with all links.
 
 **Footer**:
+
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │  [Logo]                                                      │
@@ -608,6 +613,7 @@ Horizontal scrolling logo strip:
 #### Section 8: Testimonials / Social Proof
 
 > **Note**: Use placeholder testimonials until pilot data is available. Structure for:
+>
 > - Quote from a hospital administrator
 > - Quote from a clinician
 > - Quote from a county health director
@@ -666,6 +672,7 @@ Each feature page follows a consistent template:
 ```
 
 #### Patient Management (`/features/patient-management`)
+
 - Auto-MRN generation (`MRN-YYYYMMDD-XXXX`)
 - Kenya location hierarchy (47 counties cascading)
 - Emergency contacts with relationship tracking
@@ -675,6 +682,7 @@ Each feature page follows a consistent template:
 - Referral source tracking
 
 #### Clinical & Encounters (`/features/clinical`)
+
 - Encounter workflow: Draft → In Progress → Completed
 - Comprehensive vitals (temp, BP, pulse, RR, SpO2, weight, height)
 - Critical vital alerts (SpO2 < 95% hypoxemia)
@@ -684,6 +692,7 @@ Each feature page follows a consistent template:
 - Clinical document generation
 
 #### Pharmacy & Inventory (`/features/pharmacy`)
+
 - Drug catalog with SHA integration
 - FEFO (First Expiry, First Out) tracking
 - Prescription management
@@ -693,6 +702,7 @@ Each feature page follows a consistent template:
 - Drug interaction checking
 
 #### Laboratory (`/features/laboratory`)
+
 - Lab order placement (in-house + external referral)
 - Result entry with abnormal flagging
 - Queue management
@@ -701,6 +711,7 @@ Each feature page follows a consistent template:
 - LOINC code reference
 
 #### Billing & Insurance (`/features/billing`)
+
 - Invoice generation
 - Multi-payment: Cash, M-Pesa, Card, Insurance, SHA
 - Receipt generation
@@ -708,6 +719,7 @@ Each feature page follows a consistent template:
 - Financial reports
 
 #### Inpatient & Wards (`/features/inpatient`)
+
 - Ward types: Medical, Surgical, Pediatric, Maternity, ICU, Isolation
 - Bed management (Available, Occupied, Maintenance, Reserved)
 - Admission/discharge workflow
@@ -717,6 +729,7 @@ Each feature page follows a consistent template:
 - Real-time bed occupancy dashboard
 
 #### Triage (`/features/triage`)
+
 - KETA scale: RED, ORANGE, YELLOW, GREEN, BLUE
 - Priority-sorted waiting queues
 - Configurable vital thresholds per facility
@@ -946,6 +959,7 @@ MDX-powered blog for content marketing. Suggested initial posts:
 5. "Data Protection in Healthcare: Kenya DPA 2019 Compliance Guide"
 
 **Blog post template**:
+
 ```
 ---
 title: "Post Title"
@@ -964,6 +978,7 @@ Content in MDX...
 ### 5.11 Legal Pages (`/legal/privacy`, `/legal/terms`)
 
 Standard legal pages. Include:
+
 - Privacy Policy (Kenya DPA 2019 aligned)
 - Terms of Service
 - Cookie Policy
@@ -1108,6 +1123,7 @@ export async function checkHealth(): Promise<boolean> {
 ### 6.3 AI Demo on `/ai` Page
 
 Full-page TibaBot experience:
+
 - Larger chat interface (centered, 800px max-width)
 - Pre-populated quick action buttons: "Check symptoms", "Find ICD-10 code", "Drug interactions"
 - Risk level badge display
@@ -1186,6 +1202,7 @@ Create or capture these screenshots from the staging environment (`https://vitor
 ### 8.1 SEO Strategy
 
 **Target Keywords**:
+
 | Primary | Secondary |
 |---------|-----------|
 | Kenya HMIS | hospital management system Kenya |

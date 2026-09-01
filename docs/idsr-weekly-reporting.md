@@ -73,11 +73,13 @@ Per-disease breakdown within a weekly report.
 ## API Endpoints
 
 ### List Reports
+
 ```
 GET /api/surveillance/idsr/
 ```
 
 Query parameters:
+
 - `epi_year` - Filter by epidemiological year
 - `epi_week` - Filter by epidemiological week
 - `status` - Filter by status (DRAFT, PENDING_REVIEW, APPROVED, SUBMITTED, FAILED)
@@ -87,6 +89,7 @@ Query parameters:
 - `end_date` - Filter by week end date (lte)
 
 ### Retrieve Report
+
 ```
 GET /api/surveillance/idsr/{id}/
 ```
@@ -94,11 +97,13 @@ GET /api/surveillance/idsr/{id}/
 Returns full report with disease summaries.
 
 ### Generate Report
+
 ```
 POST /api/surveillance/idsr/generate/
 ```
 
 Body (optional):
+
 ```json
 {
   "epi_year": 2026,
@@ -109,11 +114,13 @@ Body (optional):
 If year/week not provided, generates report for the previous week.
 
 ### Approve Report
+
 ```
 POST /api/surveillance/idsr/{id}/approve/
 ```
 
 Body:
+
 ```json
 {
   "notes": "Reviewed and approved for submission"
@@ -121,6 +128,7 @@ Body:
 ```
 
 ### Submit to DHIS2
+
 ```
 POST /api/surveillance/idsr/{id}/submit_to_dhis2/
 ```
@@ -128,6 +136,7 @@ POST /api/surveillance/idsr/{id}/submit_to_dhis2/
 Submits an approved report to DHIS2. Report must be in APPROVED status.
 
 ### Preview DHIS2 Payload
+
 ```
 GET /api/surveillance/idsr/{id}/dhis2_preview/
 ```
@@ -135,11 +144,13 @@ GET /api/surveillance/idsr/{id}/dhis2_preview/
 Returns the DHIS2 DataValueSet payload without submitting.
 
 ### Dashboard Statistics
+
 ```
 GET /api/surveillance/idsr/dashboard/
 ```
 
 Returns:
+
 ```json
 {
   "current_week": {
@@ -171,6 +182,7 @@ Returns:
 **Schedule**: Sunday at midnight (Kenya time)
 
 **Configuration** (in `hmis/celery.py`):
+
 ```python
 "generate-idsr-weekly-report": {
     "task": "hmis.apps.surveillance.tasks.generate_idsr_weekly_report",
@@ -201,6 +213,7 @@ The module uses ISO 8601 week numbering:
 - A year can have 52 or 53 weeks
 
 Example for 2026:
+
 - W01 2026: Dec 29, 2025 – Jan 4, 2026
 - W08 2026: Feb 16, 2026 – Feb 22, 2026
 
@@ -280,6 +293,7 @@ The mapping system supports multiple environments:
 | `production` | Live | hiskenya.org (KHIS) |
 
 Set via environment variable:
+
 ```bash
 DHIS2_ENVIRONMENT=staging  # Options: local, staging, production
 ```
@@ -293,6 +307,7 @@ DHIS2_ENVIRONMENT=staging  # Options: local, staging, production
 Access: `http://localhost:9088/admin/surveillance/dhis2dataelementmapping/`
 
 **Features**:
+
 - List view with inline editing of UIDs
 - Filter by environment, disease category, indicator type
 - Bulk actions: Duplicate to production, Export as JSON
@@ -350,13 +365,15 @@ See **[DHIS2 Integration Validation Guide](dhis2-integration-validation-guide.md
 #### Step 1: Obtain KHIS Data Element UIDs
 
 **Option A: KHIS API Query**
+
 ```bash
 curl -u "$KHIS_USERNAME:$KHIS_PASSWORD" \
   "https://hiskenya.org/api/dataElements.json?filter=name:ilike:IDSR&fields=id,name,shortName&paging=false"
 ```
 
 **Option B: KHIS Maintenance UI**
-1. Login to https://hiskenya.org
+
+1. Login to <https://hiskenya.org>
 2. Navigate to **Maintenance → Data Elements**
 3. Search for "MOH 505" or "IDSR" indicators
 4. Export to CSV with UIDs
@@ -364,12 +381,14 @@ curl -u "$KHIS_USERNAME:$KHIS_PASSWORD" \
 #### Step 2: Add Production Mappings
 
 Via Django admin:
+
 1. Access `/admin/surveillance/dhis2dataelementmapping/`
 2. Duplicate staging mappings to production (bulk action)
 3. Update each UID with actual KHIS UID
 4. Activate mappings when verified
 
 Or via management command (bulk import):
+
 ```bash
 python manage.py import_khis_mappings --file khis_data_elements.csv
 ```
@@ -410,6 +429,7 @@ The following UI components are needed to complete the IDSR workflow:
 **Route**: `/surveillance/idsr`
 
 **Features**:
+
 - Table listing all IDSR reports with columns:
   - Week (e.g., "W08 2026")
   - Date Range
@@ -426,6 +446,7 @@ The following UI components are needed to complete the IDSR workflow:
 **Route**: `/surveillance/idsr/[id]`
 
 **Features**:
+
 - Report header: Week, facility, status, dates
 - Summary cards: Total Cases, Deaths, Lab Confirmed, Outbreak status
 - Disease breakdown table:
@@ -449,6 +470,7 @@ The following UI components are needed to complete the IDSR workflow:
 **Location**: Surveillance dashboard or main dashboard
 
 **Features**:
+
 - Current week status card
 - Trend chart: Cases by week (last 12 weeks)
 - Pending submissions count
@@ -460,6 +482,7 @@ The following UI components are needed to complete the IDSR workflow:
 **Trigger**: "Generate Report" button on list page
 
 **Features**:
+
 - Option to generate for:
   - Previous week (default)
   - Specific week (year/week picker)
@@ -472,6 +495,7 @@ The following UI components are needed to complete the IDSR workflow:
 **Trigger**: "Preview DHIS2 Payload" button on detail page
 
 **Features**:
+
 - JSON viewer showing the payload
 - Copy to clipboard button
 - "Submit Now" button
@@ -483,26 +507,31 @@ The following UI components are needed to complete the IDSR workflow:
 35 unit tests in `backend/tests/test_idsr_weekly_reporting.py`:
 
 ### Model Tests (12 tests)
+
 - IDSRWeeklyReport creation, properties, methods
 - IDSRDiseaseSummary auto-calculations
 - Unique constraints
 
 ### Service Tests (8 tests)
+
 - Epidemiological week calculation
 - Report generation and aggregation
 - DHIS2 payload preparation
 
 ### Celery Task Tests (2 tests)
+
 - Weekly report generation task
 - Overdue notification check
 
 ### API Endpoint Tests (10 tests)
+
 - List, retrieve, filter reports
 - Generate report endpoint
 - Approve workflow
 - Dashboard statistics
 
 ### Serializer Tests (3 tests)
+
 - Report serialization
 - Disease summary serialization
 - Validation
@@ -516,6 +545,7 @@ The following UI components are needed to complete the IDSR workflow:
 The IDSR interface is available at `/surveillance/idsr`:
 
 **Features:**
+
 - Report list with epidemiological week display
 - Status filtering (Draft, Pending Review, Approved, Submitted, Failed)
 - Report generation for current/previous week
@@ -524,6 +554,7 @@ The IDSR interface is available at `/surveillance/idsr`:
 - Report detail view with disease breakdown
 
 **Components:**
+
 - `app/(dashboard)/surveillance/idsr/page.tsx` - Report list
 - `app/(dashboard)/surveillance/idsr/[id]/page.tsx` - Report detail
 
@@ -561,6 +592,7 @@ backend/hmis/apps/surveillance/migrations/0002_idsr_weekly_reporting.py
 ```
 
 Creates:
+
 - `IDSRWeeklyReport` table with indexes on (epi_year, epi_week), status, county
 - `IDSRDiseaseSummary` table
 - Unique constraint: one report per week per facility

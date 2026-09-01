@@ -30,6 +30,7 @@ python manage.py seed_demo_data --force
 ```
 
 **What gets created:**
+
 - Demo Health Services Ltd (organization) with 2 facilities (HQ + Branch)
 - 15+ demo users across all roles (admin, doctor, nurse, pharmacist, lab tech, billing, etc.)
 - 75+ sample patients with realistic Kenyan names
@@ -39,6 +40,7 @@ python manage.py seed_demo_data --force
 - MCH demo scenarios (ANC, delivery, immunization)
 
 **Demo Credentials:**
+
 | Username | Role | Password |
 |----------|------|----------|
 | `demo_admin` | Admin | `DemoAdmin2026?!` |
@@ -63,12 +65,14 @@ python manage.py seed_demo_data --force
 > "Vitora HMIS is a complete hospital management system built for Kenya's healthcare facilities. Let me show you how it works."
 
 **Actions**:
+
 1. Show login page briefly (highlight "Powered by Nexora Africa")
 2. Enter credentials: `demo_doctor` / `DemoDoctor2026?!`
 3. Click Login
 4. Land on dashboard
 
 **Key Points to Highlight**:
+
 - Clean, modern interface
 - Works on any device (mention offline capability)
 
@@ -82,12 +86,14 @@ python manage.py seed_demo_data --force
 > "The dashboard gives you a real-time snapshot of your facility. Today we have 47 patients checked in, 12 in the queue, and 3 critical alerts that need attention."
 
 **Actions**:
+
 1. Pan across stat cards (patients, encounters, revenue)
 2. Hover over a critical alert (e.g., low SpO2 warning)
 3. Show the "Today's Schedule" section
 4. Quick scroll to show recent activity feed
 
 **Key Points to Highlight**:
+
 - Real-time data
 - Critical alerts for patient safety
 - At-a-glance operational status
@@ -102,6 +108,7 @@ python manage.py seed_demo_data --force
 > "Let's register a new patient. Vitora automatically generates a unique Medical Record Number and validates all required fields."
 
 **Actions**:
+
 1. Click "New Patient" button
 2. Fill in patient details:
    - First Name: `Sarah`
@@ -120,6 +127,7 @@ python manage.py seed_demo_data --force
 6. **Highlight**: Auto-generated MRN (e.g., `MRN-20260526-0042`)
 
 **Key Points to Highlight**:
+
 - Kenya location hierarchy (47 counties, 289 sub-counties)
 - National ID validation
 - Auto-generated MRN format
@@ -137,6 +145,7 @@ python manage.py seed_demo_data --force
 > "When Mary arrives, our triage nurse captures her vitals. The system automatically calculates triage priority based on clinical indicators."
 
 **Actions**:
+
 1. Navigate to Triage Queue
 2. Search for "Mary Otieno" or click "Start Triage" for her
 3. Enter vitals:
@@ -150,6 +159,7 @@ python manage.py seed_demo_data --force
 6. Click "Complete Triage"
 
 **Key Points to Highlight**:
+
 - Vitals with normal range indicators
 - SpO2 monitoring (alerts below 95%)
 - Automated priority scoring
@@ -167,6 +177,7 @@ python manage.py seed_demo_data --force
 > "The clinician now sees Mary. They have her full history, vitals from triage, and can document the encounter comprehensively."
 
 **Actions**:
+
 1. Click on Mary Otieno from the queue (or search for "Mary Otieno")
 2. Show tabs: History | Vitals | Allergies | Medications
 3. **Review allergies**: Show existing allergies:
@@ -186,6 +197,7 @@ python manage.py seed_demo_data --force
 8. Save encounter
 
 **Key Points to Highlight**:
+
 - ICD-10 code search with autocomplete
 - Treatment plan templates (time-saver)
 - **Drug-allergy interaction warnings** (critical safety feature)
@@ -203,6 +215,7 @@ python manage.py seed_demo_data --force
 > "The prescription is instantly available in the pharmacy. Our pharmacist verifies and dispenses with full tracking."
 
 **Actions**:
+
 1. Switch to Pharmacy module (login as `demo_pharmacist` or stay as doctor)
 2. Show Mary Otieno's prescription in queue
 3. Click to dispense
@@ -212,6 +225,7 @@ python manage.py seed_demo_data --force
 7. Mark as dispensed
 
 **Key Points to Highlight**:
+
 - Real-time prescription queue
 - Allergy alerts visible to pharmacist
 - Stock level integration
@@ -228,6 +242,7 @@ python manage.py seed_demo_data --force
 > "Billing is automatic. The system generates an invoice from the encounter and can submit directly to SHA for reimbursement."
 
 **Actions**:
+
 1. Navigate to Billing
 2. Show Mary Otieno's invoice (auto-generated):
    - Consultation: KES 500
@@ -243,6 +258,7 @@ python manage.py seed_demo_data --force
 5. Receive payment (show as "Paid" status)
 
 **Key Points to Highlight**:
+
 - Automatic invoice generation from clinical data
 - Real-time SHA eligibility check
 - Direct claims submission (no manual forms)
@@ -258,6 +274,7 @@ python manage.py seed_demo_data --force
 > "Vitora provides comprehensive reporting for both facility management and mandatory KHIS submissions."
 
 **Actions**:
+
 1. Navigate to Reports
 2. Show key reports:
    - Daily OPD Summary
@@ -267,6 +284,7 @@ python manage.py seed_demo_data --force
 4. Show generated MOH 705A preview
 
 **Key Points to Highlight**:
+
 - Built-in MOH report templates
 - KHIS/DHIS2 integration ready
 - Financial reconciliation
@@ -282,6 +300,7 @@ python manage.py seed_demo_data --force
 > "And here's what sets Vitora apart: it works completely offline. When internet returns, everything syncs automatically."
 
 **Actions**:
+
 1. Show network indicator (online - green)
 2. Simulate offline (show indicator turn orange/red)
 3. Demonstrate creating a record while offline
@@ -289,6 +308,7 @@ python manage.py seed_demo_data --force
 5. Show "All data synced" confirmation
 
 **Key Points to Highlight**:
+
 - Works in rural areas with poor connectivity
 - No data loss
 - Automatic conflict resolution
@@ -304,6 +324,7 @@ python manage.py seed_demo_data --force
 > "Vitora HMIS: Built for Kenya, ready for your facility. Visit vitora.co.ke to schedule your demo."
 
 **Actions**:
+
 1. Return to dashboard (show smooth interface)
 2. Fade to logo + website URL
 3. Show contact information
@@ -313,23 +334,27 @@ python manage.py seed_demo_data --force
 ## Recording Tips
 
 ### Audio
+
 - Use a quality microphone (USB condenser or lapel mic)
 - Record narration separately for cleaner audio (easier to edit)
 - Keep background music subtle (10-15% volume)
 
 ### Video
+
 - Record at 1080p 60fps minimum
 - Use keyboard shortcuts instead of searching menus (looks more professional)
 - Pause briefly on important screens (gives viewers time to read)
 - Zoom in on key UI elements (OBS or Screen Studio can do this)
 
 ### Editing
+
 - Add subtle zoom effects on clicks
 - Use lower-third text for feature callouts
 - Include captions (accessibility + silent autoplay)
 - Keep transitions simple (cuts or short fades)
 
 ### Suggested Tools
+
 | Task | Tool | Notes |
 |------|------|-------|
 | Screen Recording | OBS Studio | Free, reliable |
@@ -343,14 +368,17 @@ python manage.py seed_demo_data --force
 ## Version Variants
 
 ### Short Version (3 min)
+
 Include: Scenes 1, 3, 5, 7, 10
 Focus: Patient journey from registration to billing
 
 ### Full Version (8-10 min)
+
 Include: All scenes
 Focus: Comprehensive feature walkthrough
 
 ### SHA-Focused Version (5 min)
+
 Include: Scenes 1, 3, 5, 7 (expanded), 10
 Focus: Claims workflow for payer/MoH audiences
 

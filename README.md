@@ -1,9 +1,11 @@
 # Vitora HMIS
+>
 > Vitora HMIS — Built for Care Without Limits
 
 ---
 
 # Kenya HMIS (Hospital Management Information System)
+
 _Comprehensive Technical Blueprint & Implementation Guide (Kenya-Tailored)_
 _Last Updated: August 2, 2026_
 
@@ -32,6 +34,7 @@ _Last Updated: August 2, 2026_
 ## 1. Project Overview
 
 ### 1.1 Context & Goals
+
 A modular-monolith Hospital Management Information System tailored for Kenya, combining the best of standalone offline operations and optional cloud connectivity:
 
 - **Offline-first** for rural / low-bandwidth facilities
@@ -41,6 +44,7 @@ A modular-monolith Hospital Management Information System tailored for Kenya, co
 - **Progressive scale**: single facility → multi-facility tenancy (PostgreSQL RLS) → regional DR
 
 **Core Vision**:
+
 - **Offline-First Standalone Desktop Application**: Runs fully on local machines or hospital servers without internet, supporting essential workflows (patient records, appointments, billing, reporting). Uses lightweight embedded databases like SQLite for single-site setups or PostgreSQL for multi-department loads. Ensures continuity during outages, ideal for Kenya's infrastructure challenges.
 - **Optional Cloud Integration**: Enables sync with a cloud backend for multi-location access, centralized analytics, secure off-site backups, and real-time collaboration. Background synchronization handles conflicts gracefully, allowing hospitals to start standalone and scale gradually.
 - **Flexible Architecture**: Desktop GUI via Tauri v2 (wrapping the web app with a native shell + sidecar); backend via Python Django (primary). Mobile app option for out-of-office tasks like rural outreach.
@@ -48,6 +52,7 @@ A modular-monolith Hospital Management Information System tailored for Kenya, co
 - **Why This Approach**: Hospitals can adopt affordably (standalone first, no cloud costs initially), ensuring uninterrupted care while enabling growth. Forward-looking for AI (e.g., sepsis predictions) and analytics, aligned with Kenya's health goals and global standards like WHO digital health guidelines.
 
 ### 1.2 Target Stack
+
 | Layer | Technology | Status |
 |-------|------------|--------|
 | Desktop GUI | Tauri v2 + Next.js standalone sidecar | ✅ Complete |
@@ -62,6 +67,7 @@ A modular-monolith Hospital Management Information System tailored for Kenya, co
 | Container | Docker / Docker Compose | ✅ Complete |
 
 ### 1.3 Kenya-Specific Considerations
+
 - **Identifiers**: National ID / Passport / Phone; multiple support with Fernet encryption
 - **Compliance**: DPIA completed, Data Processing Register, breach response protocols
 - **SHA**: Claims packaging (tariffs, eligibility, attachments) - All 15 DHA APIs integrated
@@ -71,6 +77,7 @@ A modular-monolith Hospital Management Information System tailored for Kenya, co
 - **Affordability**: Standalone mode requires minimal hardware; cloud optional
 
 ### 1.4 Phased Delivery
+
 | Phase | Timeline | Focus | Status |
 |-------|----------|-------|--------|
 | **Phase 0** | Jan-Mar 2026 | Foundation, Desktop Prototype, Security | ✅ Complete |
@@ -86,6 +93,7 @@ A modular-monolith Hospital Management Information System tailored for Kenya, co
 ### 2.1 Implementation Progress
 
 #### ✅ Phase 0 Complete (Foundation)
+
 - Offline-first desktop application with Tauri
 - JWT authentication with refresh tokens
 - Patient registration with auto-MRN generation (MRN-YYYYMMDD-XXXX)
@@ -96,6 +104,7 @@ A modular-monolith Hospital Management Information System tailored for Kenya, co
 - Audit logging (Kenya DPA 2019 compliant - 7 year retention)
 
 #### ✅ Phase 1 Complete (Clinical Core + SHA Integration)
+
 - **SHA Integration** (all 15 DHA APIs):
   - Authentication: JWT token management with 5-min expiry buffer
   - Eligibility: Coverage verification with retry logic
@@ -113,6 +122,7 @@ A modular-monolith Hospital Management Information System tailored for Kenya, co
 - **Web App**: Next.js dashboard with real-time updates
 
 #### 🚧 Phase 2 In Progress (Surveillance, MCH, AI, Interoperability)
+
 - **Surveillance**: IDSR weekly reporting, IHR notifications, DHIS2 mapping, outbreak alerts
 - **MCH**: ANC visits, delivery, PNC, labour partograph, growth monitoring, KEPI immunization
 - **Imaging**: DICOM instances/series/studies, procedure catalog, order workflow
@@ -129,6 +139,7 @@ A modular-monolith Hospital Management Information System tailored for Kenya, co
 - **Theatre** (frontend): Schedule, cases, checklists, reports
 
 ### 2.2 Test Coverage
+
 | Component | Tests | Coverage |
 |-----------|-------|----------|
 | Backend (Django) | 10,241+ functions (494 files) | Core modules 80%+ |
@@ -140,6 +151,7 @@ A modular-monolith Hospital Management Information System tailored for Kenya, co
 > *Overall backend coverage reflects rapid codebase expansion across many apps. Core modules (patients, encounters, billing, triage, pharmacy, laboratory) retain higher coverage. Improving coverage for newer modules is an ongoing priority.
 
 ### 2.3 Key Metrics Achieved
+
 - ✅ 10,241+ backend test functions across 494 test files
 - ✅ Zero critical security vulnerabilities (Bandit + Trivy scan)
 - ✅ 100% Kenya Data Protection Act compliance
@@ -263,7 +275,7 @@ vitora/
 │   │   ├── inpatient/
 │   │   ├── mch/
 │   │   └── sync/
-│   └── __tests__/                  # Jest tests (348 files)
+│   └── **tests**/                  # Jest tests (348 files)
 │
 ├── docs/                           # Documentation (115 files)
 ├── scripts/                        # Utility scripts
@@ -280,77 +292,94 @@ vitora/
 ## 4. Local Development Setup
 
 ### 4.1 Prerequisites
+
 - Python 3.12+
 - Node.js 20+
 - Poetry (Python package manager)
 - Docker + Docker Compose (optional, for Redis/PostgreSQL)
 
 ### 4.2 Backend Setup
+
 \`\`\`bash
 cd backend
 poetry install
 poetry shell
 
 # Enable mandatory git hooks (runs pre-commit on every commit)
+
 cd ..
 ./scripts/setup-git-hooks.sh
 cd backend
 
 # Environment setup
+
 cp .env.example .env
+
 # Edit .env with your settings
 
 # Database migrations
+
 python manage.py migrate
 python manage.py createsuperuser
 
 # Load Kenya locations (47 counties, 289 sub-counties, 1448 wards)
+
 python manage.py import_kenya_locations
 
 # Load ICD-10 codes
+
 python manage.py import_icd10
 
 # Run development server (default port 9088)
+
 python manage.py runserver      # WSGI (no WebSocket)
 make api                         # ASGI with WebSocket support (recommended)
 
 # Run tests
+
 make test          # Full test suite with coverage
 make quality       # Ruff + mypy + bandit
 make format        # Black + isort
 \`\`\`
 
 ### 4.3 Desktop App Setup
+
 \`\`\`bash
 cd desktop-app
 npm install
 
 # Development (auto-starts backend on port 9088)
+
 npm run dev
 
 # Run tests
+
 npm test                    # Jest unit tests
 npm run e2e                 # Playwright E2E tests
 npm run test:coverage       # Coverage report
 
 # Build for distribution
+
 npm run build:linux         # Creates .AppImage, .deb
 npm run build:win           # Creates .exe installer
 npm run build:mac           # Creates .dmg
 \`\`\`
 
 ### 4.4 Web App Setup
+
 \`\`\`bash
 cd web-app
 npm install
-npm run dev                 # http://localhost:3009
+npm run dev                 # <http://localhost:3009>
 
 # Run tests
+
 npm test
 npm run test:coverage
 \`\`\`
 
 ### 4.5 Mobile App Setup
+
 \`\`\`bash
 cd mobile
 npm install
@@ -358,30 +387,38 @@ npx expo start              # Opens Expo developer tools
 \`\`\`
 
 ### 4.6 Environment Variables
+
 Key variables for backend (see \`backend/.env.example\`):
 \`\`\`bash
+
 # Django
+
 SECRET_KEY=your-secret-key
 DEBUG=true
 ALLOWED_HOSTS=localhost,127.0.0.1
 
 # Database
+
 DB_ENGINE=sqlite            # or postgres
 DATABASE_URL=sqlite:///vitora.db
 
 # Security
+
 ENCRYPTION_KEY=your-32-byte-fernet-key
 
 # Celery (optional, for background sync)
+
 CELERY_BROKER_URL=redis://localhost:6379/0
 
 # SHA Integration (optional)
-SHA_BASE_URL=https://api.sha.go.ke
+
+SHA_BASE_URL=<https://api.sha.go.ke>
 SHA_CLIENT_ID=your-client-id
 SHA_CLIENT_SECRET=your-client-secret
 \`\`\`
 
 ### 4.7 Verification Checklist
+
 - [ ] Backend: \`python manage.py runserver\` starts on port 9088
 - [ ] Tests: \`make test\` passes with ≥80% coverage
 - [ ] Quality: \`make quality\` passes (ruff, mypy, bandit)
@@ -394,9 +431,11 @@ SHA_CLIENT_SECRET=your-client-secret
 ## 5. Backend (Django + DRF) Implementation
 
 ### 5.1 Core Models & Architecture
+
 The backend uses Django 5.x with Django REST Framework. All models inherit from \`TimeStampedModel\` with audit fields.
 
 #### 5.1.1 Patient Model (\`hmis/apps/patients/models.py\`)
+
 \`\`\`python
 class Patient(TimeStampedModel):
     """Patient master record with Kenya-specific considerations."""
@@ -440,6 +479,7 @@ class Patient(TimeStampedModel):
 \`\`\`
 
 #### 5.1.2 Encounter Model (\`hmis/apps/encounters/models.py\`)
+
 \`\`\`python
 class Encounter(TimeStampedModel):
     """Clinical encounter with vitals, diagnoses, and status workflow."""
@@ -482,6 +522,7 @@ class Encounter(TimeStampedModel):
 \`\`\`
 
 #### 5.1.3 Laboratory Models (\`hmis/apps/laboratory/models.py\`)
+
 \`\`\`python
 class LabOrder(TimeStampedModel):
     """Lab order with in-house vs external workflow."""
@@ -509,7 +550,6 @@ class LabOrder(TimeStampedModel):
     external_lab_name = models.CharField(max_length=200, blank=True)
     requisition_pdf = models.FileField(upload_to='lab_requisitions/', blank=True)
 
-
 class LabResult(TimeStampedModel):
     """Lab result linked to a LabOrder."""
     order = models.OneToOneField(LabOrder, on_delete=models.CASCADE, related_name='result')
@@ -522,6 +562,7 @@ class LabResult(TimeStampedModel):
 \`\`\`
 
 #### 5.1.4 Pharmacy Models (\`hmis/apps/pharmacy/models.py\`)
+
 \`\`\`python
 class Drug(TimeStampedModel):
     """Drug catalog with SHA integration."""
@@ -532,7 +573,6 @@ class Drug(TimeStampedModel):
     unit_of_measure = models.CharField(max_length=50)
     requires_prescription = models.BooleanField(default=True)
     is_controlled = models.BooleanField(default=False)
-
 
 class InventoryItem(TimeStampedModel):
     """Pharmacy inventory with FEFO tracking."""
@@ -547,7 +587,6 @@ class InventoryItem(TimeStampedModel):
     def needs_reorder(self):
         return self.quantity <= self.reorder_level
 
-
 class Prescription(TimeStampedModel):
     """Prescription linked to encounter."""
     encounter = models.ForeignKey(Encounter, on_delete=models.CASCADE)
@@ -561,6 +600,7 @@ class Prescription(TimeStampedModel):
 \`\`\`
 
 #### 5.1.5 Billing Models (\`hmis/apps/billing/models.py\`)
+
 \`\`\`python
 class Invoice(TimeStampedModel):
     """Patient invoice with SHA claims integration."""
@@ -583,7 +623,6 @@ class Invoice(TimeStampedModel):
     sha_claim_id = models.CharField(max_length=100, blank=True)
     sha_claim_status = models.CharField(max_length=50, blank=True)
 
-
 class Payment(TimeStampedModel):
     """Payment record with M-Pesa integration."""
     PAYMENT_METHOD_CHOICES = [
@@ -602,6 +641,7 @@ class Payment(TimeStampedModel):
 \`\`\`
 
 #### 5.1.6 Inpatient Models (\`hmis/apps/inpatient/models.py\`)
+
 \`\`\`python
 class Ward(TimeStampedModel):
     """Hospital ward configuration."""
@@ -619,7 +659,6 @@ class Ward(TimeStampedModel):
     capacity = models.IntegerField()
     floor = models.IntegerField(default=1)
 
-
 class Bed(TimeStampedModel):
     """Individual bed tracking."""
     STATUS_CHOICES = [
@@ -633,7 +672,6 @@ class Bed(TimeStampedModel):
     bed_number = models.CharField(max_length=20)
     status = models.CharField(choices=STATUS_CHOICES, default='AVAILABLE')
 
-
 class Admission(TimeStampedModel):
     """Patient admission record."""
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE)
@@ -646,6 +684,7 @@ class Admission(TimeStampedModel):
 \`\`\`
 
 #### 5.1.7 Triage Models (\`hmis/apps/triage/models.py\`)
+
 \`\`\`python
 class TriageAssessment(TimeStampedModel):
     """Triage assessment using KETA scale."""
@@ -680,13 +719,13 @@ class TriageAssessment(TimeStampedModel):
 \`\`\`
 
 #### 5.1.8 RBAC Models (\`hmis/apps/core/models.py\`)
+
 \`\`\`python
 class Department(models.Model):
     """Hospital department for role scoping."""
     name = models.CharField(max_length=100)
     code = models.CharField(max_length=20, unique=True)
     is_active = models.BooleanField(default=True)
-
 
 class Role(models.Model):
     """System roles with granular permissions."""
@@ -708,7 +747,6 @@ class Role(models.Model):
     can_order_labs = models.BooleanField(default=False)
     can_finalize_encounters = models.BooleanField(default=False)
 
-
 class StaffProfile(models.Model):
     """Extended user profile with role and department."""
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='staff_profile')
@@ -719,6 +757,7 @@ class StaffProfile(models.Model):
 \`\`\`
 
 #### 5.1.9 AI / TibaBot Models (\`hmis/apps/ai/models.py\`)
+
 \`\`\`python
 class ChatSession(models.Model):
     """Multi-turn clinical chat session with TibaBot AI."""
@@ -750,8 +789,11 @@ class AIICURiskResult(AIResultBase):
 \`\`\`
 
 #### 5.1.10 Security Infrastructure Models (\`hmis/apps/core/\`)
+
 \`\`\`python
+
 # MFA (core/mfa/models.py)
+
 class UserTOTPDevice(models.Model):
     """TOTP authenticator device enrollment."""
 class BackupCode(models.Model):
@@ -760,12 +802,14 @@ class MFAToken(models.Model):
     """Short-lived MFA session tokens."""
 
 # Emergency Access (core/emergency_access/models.py)
+
 class EmergencyAccess(models.Model):
     """Break-glass access to locked patient records with audit trail."""
     # Reasons: LIFE_THREATENING, UNCONSCIOUS, PUBLIC_HEALTH, etc.
     # Statuses: ACTIVE, EXPIRED, REVOKED, UNDER_REVIEW
 
 # PKI & Digital Signatures (core/models.py)
+
 class CertificateAuthority(models.Model):
     """Root/intermediate CA for clinical document signing."""
 class UserCertificate(models.Model):
@@ -776,6 +820,7 @@ class DocumentSignature(models.Model):
     """RSA-2048 digital signature on clinical documents."""
 
 # Platform Infrastructure (core/models.py)
+
 class FeatureFlag(models.Model):
     """Runtime feature toggles."""
 class IdempotencyKey(models.Model):
@@ -810,6 +855,7 @@ class ExternalCodeMapping(models.Model):
 ### 5.3 API Endpoints
 
 #### Authentication
+
 \`\`\`
 POST   /api/token/                  # Login → {access, refresh} (username or email)
 POST   /api/token/refresh/          # Refresh → {access}
@@ -817,6 +863,7 @@ POST   /api/token/verify/           # Verify → 200 OK
 \`\`\`
 
 #### Patients
+
 \`\`\`
 GET    /api/patients/               # List (paginated, filterable)
 POST   /api/patients/               # Create (auto-generates MRN)
@@ -828,6 +875,7 @@ POST   /api/patients/{id}/emergency-contacts/
 \`\`\`
 
 #### Encounters
+
 \`\`\`
 GET    /api/encounters/             # List
 POST   /api/encounters/             # Create
@@ -839,6 +887,7 @@ POST   /api/encounters/{id}/diagnoses/
 \`\`\`
 
 #### Laboratory
+
 \`\`\`
 GET    /api/laboratory/orders/      # List lab orders
 POST   /api/laboratory/orders/      # Create lab order
@@ -848,6 +897,7 @@ GET    /api/laboratory/orders/{id}/requisition/  # PDF requisition
 \`\`\`
 
 #### Pharmacy
+
 \`\`\`
 GET    /api/pharmacy/drugs/         # Drug catalog
 GET    /api/pharmacy/inventory/     # Stock levels
@@ -858,6 +908,7 @@ POST   /api/pharmacy/dispense/      # Dispense medication
 \`\`\`
 
 #### Billing
+
 \`\`\`
 GET    /api/billing/invoices/       # List invoices
 POST   /api/billing/invoices/       # Create invoice
@@ -867,6 +918,7 @@ GET    /api/billing/invoices/{id}/receipt/  # Generate receipt PDF
 \`\`\`
 
 #### SHA Integration
+
 \`\`\`
 POST   /api/sha/auth/token/         # Get SHA access token
 GET    /api/sha/members/{id}/       # SHA member lookup
@@ -881,6 +933,7 @@ GET    /api/sha/practitioners/      # HWR practitioner search
 \`\`\`
 
 #### Triage
+
 \`\`\`
 GET    /api/triage/queue/           # Waiting queue
 POST   /api/triage/checkin/         # Check in patient
@@ -890,6 +943,7 @@ GET    /api/triage/reports/wait-times/  # Wait time report
 \`\`\`
 
 #### Inpatient
+
 \`\`\`
 GET    /api/inpatient/wards/        # List wards
 GET    /api/inpatient/beds/         # List beds
@@ -902,6 +956,7 @@ GET    /api/inpatient/dashboard/    # Bed occupancy dashboard
 \`\`\`
 
 #### Kenya Locations
+
 \`\`\`
 GET    /api/locations/counties/     # All 47 counties
 GET    /api/locations/sub-counties/?county={id}  # Cascading
@@ -913,6 +968,7 @@ GET    /api/locations/wards/?sub_county={id}     # Cascading
 ## 6. Frontend (Next.js) Implementation
 
 ### 6.1 Architecture
+
 - **Framework**: Next.js 16+ with App Router (React 19)
 - **Styling**: TailwindCSS + shadcn/ui component library
 - **State Management**: TanStack Query 5 for server state, Zustand 4 for local state
@@ -921,6 +977,7 @@ GET    /api/locations/wards/?sub_county={id}     # Cascading
 - **API Validation**: Zod schemas for all API responses
 
 ### 6.2 Web App Modules
+
 | Module | Routes | Status |
 |--------|--------|--------|
 | **Dashboard** | `/dashboard` | ✅ Complete |
@@ -942,7 +999,9 @@ GET    /api/locations/wards/?sub_county={id}     # Cascading
 | **Theatre** | `/theatre` | 📋 Planned |
 
 ### 6.3 API Client Modules (39 modules)
+
 All API clients include Zod validation schemas:
+
 - `ai.ts`, `allergies.ts`, `allied-health.ts`, `audit-integrity.ts`, `billing.ts`
 - `cds.ts`, `certificates.ts`, `checkin.ts`, `clinical-templates.ts`, `clinics.ts`
 - `consultation-queue.ts`, `core.ts`, `counselling.ts`, `encounters.ts`, `events.ts`
@@ -953,6 +1012,7 @@ All API clients include Zod validation schemas:
 - `sha.ts`, `social-work.ts`, `surveillance.ts`, `triage.ts`
 
 ### 6.4 Project Structure
+
 \`\`\`
 web-app/
 ├── app/
@@ -992,6 +1052,7 @@ web-app/
 \`\`\`
 
 ### 6.5 Key Features
+
 - **Responsive Design**: Mobile-first with overlay sidebar on mobile
 - **Dark Mode**: System preference detection + manual toggle
 - **Real-time Updates**: WebSocket notifications for critical alerts
@@ -1001,11 +1062,12 @@ web-app/
 - **API Validation**: All API responses validated with Zod schemas
 
 ### 6.6 Brand Colors (Vitora HMIS)
+
 \`\`\`css
 :root {
-  --primary: #3D000F;      /* Deep Burgundy */
-  --secondary: #1A4D5C;    /* Teal */
-  --accent: #D4A574;       /* Warm Gold */
+  --primary: #3D000F;      /_Deep Burgundy _/
+  --secondary: #1A4D5C;    /_ Teal _/
+  --accent: #D4A574;       /_ Warm Gold_/
 }
 \`\`\`
 
@@ -1014,6 +1076,7 @@ web-app/
 ## 7. Desktop App (Tauri) Implementation
 
 ### 7.1 Architecture
+
 The desktop app uses a Tauri v2 shell with a bundled Node.js sidecar that serves the Next.js standalone build.
 
 \`\`\`
@@ -1029,6 +1092,7 @@ desktop-app/
 \`\`\`
 
 ### 7.2 Features
+
 - **Native shell**: Tauri window + system tray integration
 - **Sidecar runtime**: Bundled Node.js process serves Next.js standalone app
 - **Desktop capabilities**: Native notifications, file export, printing, deep links
@@ -1036,7 +1100,9 @@ desktop-app/
 - **Config-first boot**: First-run API URL setup for facility deployments
 
 ### 7.3 Source of Truth
+
 For current desktop build, release, and runtime details see:
+
 - `desktop-app/README.md`
 - `desktop-app/src-tauri/tauri.conf.json`
 - `desktop-app/package.json`
@@ -1046,12 +1112,14 @@ For current desktop build, release, and runtime details see:
 ## 8. Mobile App (React Native) Implementation
 
 ### 8.1 Architecture
+
 - **Framework**: React Native 0.81 with Expo 54
 - **Database**: SQLite (expo-sqlite) for offline storage
 - **Sync**: Background sync with queue management
 - **Navigation**: Expo Router (file-based routing)
 
 ### 8.2 Key Features
+
 - Patient lookup and registration
 - Vital signs recording during rural outreach
 - Offline-first data persistence
@@ -1060,6 +1128,7 @@ For current desktop build, release, and runtime details see:
 - Push notifications for critical alerts
 
 ### 8.3 Use Cases
+
 - Rural outreach clinics
 - Ward rounds without WiFi
 - Community health worker visits
@@ -1070,6 +1139,7 @@ For current desktop build, release, and runtime details see:
 ## 9. Database Schema (Core Modules)
 
 ### 9.1 Entity Relationship Overview
+
 \`\`\`
 ┌──────────────┐     ┌──────────────┐     ┌──────────────┐
 │   Patient    │────<│  Encounter   │────<│   LabOrder   │
@@ -1101,6 +1171,7 @@ For current desktop build, release, and runtime details see:
 ### 9.2 Key Tables
 
 See Section 5 for detailed model definitions. Core tables:
+
 - \`patients_patient\`: Patient master record
 - \`encounters_encounter\`: Clinical encounters with vitals
 - \`laboratory_laborder\`: Lab orders (in-house/external)
@@ -1126,6 +1197,7 @@ See Section 5 for detailed model definitions. Core tables:
 ## 10. Security & Privacy (Kenya Data Protection Act)
 
 ### 10.1 Data Protection Act (2019) Compliance
+
 | Requirement | Implementation |
 |-------------|----------------|
 | **Consent Management** | Explicit consent tracking with timestamps |
@@ -1139,6 +1211,7 @@ See Section 5 for detailed model definitions. Core tables:
 ### 10.2 Security Measures
 
 #### Authentication & Authorization
+
 - JWT-based authentication with 30-min access / 7-day refresh tokens
 - **Login by username or email** (case-insensitive email, unique email enforced at DB + app level)
 - **MFA / Two-Factor Authentication**: TOTP devices, backup codes, MFA tokens
@@ -1150,6 +1223,7 @@ See Section 5 for detailed model definitions. Core tables:
 - Rate limiting on auth endpoints
 
 #### Data Protection
+
 - **In Transit**: TLS 1.3 for all network communications
 - **At Rest**: Fernet encryption for national_id, phone_number
 - **Sensitive Data**: Additional access controls for HIV/GBV/Mental Health
@@ -1159,6 +1233,7 @@ See Section 5 for detailed model definitions. Core tables:
 - **Idempotency Keys**: Safe request retries for critical operations
 
 #### Audit Logging
+
 All data access is logged:
 \`\`\`python
 AuditLog.log(
@@ -1172,6 +1247,7 @@ AuditLog.log(
 \`\`\`
 
 #### SensitiveAccessPermission
+
 \`\`\`python
 class SensitiveAccessPermission(BasePermission):
     """Restricts access to sensitive patient records."""
@@ -1182,6 +1258,7 @@ class SensitiveAccessPermission(BasePermission):
 \`\`\`
 
 ### 10.3 DPIA Completed
+
 Data Protection Impact Assessment documented in \`docs/dpia.md\`.
 
 ---
@@ -1189,6 +1266,7 @@ Data Protection Impact Assessment documented in \`docs/dpia.md\`.
 ## 11. Interoperability (FHIR, KHIS/DHIS2, SHA)
 
 ### 11.1 SHA Integration (Complete ✅)
+
 All 15 DHA APIs integrated:
 
 | Service | Endpoint | Status |
@@ -1212,13 +1290,16 @@ All 15 DHA APIs integrated:
 See \`docs/sha-guides/\` for detailed integration documentation.
 
 ### 11.2 KHIS/DHIS2 Integration (Planned Phase 2)
+
 - OPD attendance indicators
 - IPD admissions indicators
 - Immunization coverage
 - Disease surveillance
 
 ### 11.3 FHIR R4 Compliance
+
 Support for key FHIR resources:
+
 - Patient: Map to internal Patient model
 - Encounter: Clinical visit mapping
 - Observation: Vitals and lab results
@@ -1228,6 +1309,7 @@ Support for key FHIR resources:
 - Bundle: IPS and claim bundles
 
 #### FHIR Validation Service
+
 Vitora includes a built-in FHIR R4 validator using the `fhir.resources` library:
 
 ```python
@@ -1248,6 +1330,7 @@ result = validator.validate_bundle(bundle_dict)
 ```
 
 Run FHIR validation tests:
+
 ```bash
 cd backend
 make test-fhir  # Runs 190 FHIR/SHR compliance tests
@@ -1322,38 +1405,48 @@ Vitora uses a **hybrid approach**: PowerSync for offline-first data sync + WebSo
 ## 12. Testing Strategy & Quality Gates
 
 ### 12.1 TDD Approach
+
 All features developed using Test-Driven Development:
+
 1. **RED**: Write failing tests first
 2. **GREEN**: Write minimal code to pass tests
 3. **REFACTOR**: Improve code while keeping tests green
 
 ### 12.2 Testing Pyramid
+
 - **Unit Tests** (70%): Fast, isolated, models and utilities
 - **Integration Tests** (20%): API endpoints, database operations
 - **E2E Tests** (10%): Critical user workflows, Playwright
 
 ### 12.3 Backend Testing
+
 \`\`\`bash
 cd backend
 
 # Run all tests with coverage
+
 make test  # or: poetry run pytest --cov=hmis --cov-fail-under=80
 
 # Run specific test file
+
 poetry run pytest tests/test_patient_api.py -v
 
 # Quality checks
+
 make quality  # ruff + mypy + bandit
 \`\`\`
 
 ### 12.4 Coverage Requirements
+
 - **Backend**: ≥80% coverage for core modules (patients, encounters, billing, triage, pharmacy, lab)
 - **Desktop**: ≥70% coverage target (currently 70%+)
 - **CI/CD**: All tests must pass before merge
 - **Overall**: 30.21% backend coverage (expanding rapidly; core modules higher)
 
 ### 12.5 Quality Gates
+
 Before merge:
+
 - [ ] All tests pass
 - [ ] Code coverage ≥80%
 - [ ] Ruff linting passes
@@ -1368,6 +1461,7 @@ Before merge:
 ### 13.1 Deployment Modes
 
 #### Standalone Desktop (Offline-First)
+
 \`\`\`bash
 cd desktop-app
 npm run build:linux   # Creates .AppImage, .deb
@@ -1376,22 +1470,26 @@ npm run build:mac     # Creates .dmg
 \`\`\`
 
 Distribution includes:
+
 - Embedded Python + Django backend
 - SQLite database
 - Auto-update mechanism
 
 #### Docker (Development/Staging)
+
 \`\`\`bash
 cd backend
 docker compose up -d
 \`\`\`
 
 Services:
+
 - Django backend (port 9088)
 - PostgreSQL (port 5432)
 - Redis (port 6379)
 
 ### 13.2 Production Checklist
+
 - [ ] Set \`DEBUG=false\`
 - [ ] Configure proper \`SECRET_KEY\`
 - [ ] Set up SSL/TLS certificates
@@ -1402,6 +1500,7 @@ Services:
 - [ ] Set up health checks
 
 ### 13.3 Backup & Recovery
+
 - **Standalone**: Automated daily backups with encryption
 - **Cloud**: PostgreSQL point-in-time recovery
 - **RTO**: <4 hours standalone, <15 minutes cloud
@@ -1433,24 +1532,29 @@ Vitora integrates with **TibaBot**, an external clinical AI service, providing 2
 | AI Status | `/api/ai/status/` | ✅ Complete |
 
 **Stored Results** (persisted for audit trail):
+
 - `AICarePlanResult`, `AICDSResult`, `AILabInterpretResult`, `AIDischargeResult`, `AIICURiskResult`
 
 **Fallback Services** (when TibaBot is unavailable):
+
 - `care_plan_fallback.py`, `clerking_fallback.py`, `discharge_fallback.py`, `lab_fallback.py`
 
 ### 14.2 Future AI Capabilities (Phase 4 — Q4 2027)
 
 #### On-Device Predictive Models
+
 - **Sepsis Early Warning**: ONNX model for offline risk scoring
 - **No-Show Prediction**: Appointment adherence modeling
 - **Resource Optimization**: Bed and staff allocation predictions
 
 #### Enhanced Clinical Decision Support
+
 - **Drug Interaction Alerts**: AI-powered pharmacy safety checks
 - **Inventory Forecasting**: Stock prediction using historical patterns
 - **Patient Flow Optimization**: Queue management and wait time reduction
 
 ### 14.3 Implementation Strategy
+
 - **Local Models**: ONNX format for edge deployment (offline mode)
 - **Cloud Models**: TibaBot API for connected facilities (current)
 - **Privacy**: On-device processing for sensitive data
@@ -1461,31 +1565,41 @@ Vitora integrates with **TibaBot**, an external clinical AI service, providing 2
 ## 15. Appendix
 
 ### A. Sample .env File
+
 \`\`\`bash
+
 # Django
+
 SECRET_KEY=your-secret-key-here
 DEBUG=False
 ALLOWED_HOSTS=localhost,127.0.0.1
 
 # Database
+
 DB_ENGINE=sqlite
 DATABASE_URL=sqlite:///vitora.db
 
 # Security
+
 ENCRYPTION_KEY=your-32-byte-fernet-key
 
 # Celery (optional)
+
 CELERY_BROKER_URL=redis://localhost:6379/0
 
 # SHA Integration (optional)
-SHA_BASE_URL=https://api.sha.go.ke
+
+SHA_BASE_URL=<https://api.sha.go.ke>
 SHA_CLIENT_ID=your-client-id
 SHA_CLIENT_SECRET=your-client-secret
 \`\`\`
 
 ### B. Available Test Fixtures
+
 \`\`\`python
+
 # backend/tests/conftest.py
+
 api_client              # Unauthenticated DRF APIClient
 test_user               # User instance
 authenticated_client    # APIClient with force_authenticate
@@ -1499,8 +1613,11 @@ sample_encounter        # Encounter instance
 \`\`\`
 
 ### C. Common Commands
+
 \`\`\`bash
+
 # Backend
+
 cd backend
 make test              # Run tests with coverage
 make quality           # Ruff + mypy + bandit
@@ -1510,6 +1627,7 @@ python manage.py createsuperuser
 python manage.py runserver
 
 # Desktop
+
 cd desktop-app
 npm run dev            # Development
 npm test               # Unit tests
@@ -1517,16 +1635,19 @@ npm run e2e            # E2E tests
 npm run build:linux    # Build for Linux
 
 # Web
+
 cd web-app
 npm run dev            # Development
 npm test               # Tests
 
 # Mobile
+
 cd mobile
 npx expo start         # Development
 \`\`\`
 
 ### D. Key Documentation
+
 - **Roadmap**: [ROADMAP.md](ROADMAP.md)
 - **TDD Guidelines**: [docs/tdd-guidelines.md](docs/tdd-guidelines.md)
 - **Coding Standards**: [docs/coding-standards.md](docs/coding-standards.md)
@@ -1547,6 +1668,7 @@ npx expo start         # Development
 7. Push and create Pull Request
 
 ### Code Style
+
 - **Python**: Black + isort + Ruff
 - **JavaScript/TypeScript**: Prettier + ESLint
 - **Commits**: Conventional Commits
@@ -1557,7 +1679,7 @@ npx expo start         # Development
 
 - **Documentation**: [docs/](docs/)
 - **Issues**: GitHub Issues
-- **Contact**: dev@nexora.africa
+- **Contact**: <dev@nexora.africa>
 - **Company**: Nexora Consulting Ltd
 
 ---

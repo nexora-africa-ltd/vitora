@@ -4,6 +4,7 @@ _Version: `1.0.0`_
 APIs for eClaims and Preauthorization processes.
 
 **Servers:**
+
 - `https://ilm-dev.dha.go.ke/uat-middleware`
 
 ## Table of Contents
@@ -37,6 +38,7 @@ Add claim attachment request input
 _Required._
 
 _Content-Type: `multipart/form-data`_
+
 ```json
 {
   "consent_token": "string",
@@ -49,6 +51,7 @@ _Content-Type: `multipart/form-data`_
 **Responses:**
 **Response `200`** — Claim attachment added successfully
 _Content-Type: `application/json`_
+
 ```json
 {
   "attachment": "string",
@@ -67,6 +70,7 @@ _Content-Type: `application/json`_
 
 **Response `400`** — Bad Request - Invalid request
 _Content-Type: `application/json`_
+
 ```json
 {
   "error": "string",
@@ -91,6 +95,7 @@ Remove claim attachment request input
 _Required._
 
 _Content-Type: `application/json`_
+
 ```json
 {
   "attachment_id": "string",
@@ -102,6 +107,7 @@ _Content-Type: `application/json`_
 **Responses:**
 **Response `200`** — Claim attachment removed successfully
 _Content-Type: `application/json`_
+
 ```json
 {
   "message": "string"
@@ -128,6 +134,7 @@ Add diagnosis request input
 _Required._
 
 _Content-Type: `application/json`_
+
 ```json
 {
   "consent_token": "string",
@@ -162,6 +169,7 @@ Remove claim diagnosis request input
 _Required._
 
 _Content-Type: `application/json`_
+
 ```json
 {
   "consent_token": "string",
@@ -194,6 +202,7 @@ Add claim line item request input
 _Required._
 
 _Content-Type: `multipart/form-data`_
+
 ```json
 {
   "consent_token": "string",
@@ -231,6 +240,7 @@ Remove claim line request input
 _Required._
 
 _Content-Type: `application/json`_
+
 ```json
 {
   "consent_token": "string",
@@ -262,6 +272,7 @@ Edit claim line request input
 _Required._
 
 _Content-Type: `application/json`_
+
 ```json
 {
   "line_id": "string",
@@ -295,6 +306,7 @@ Resubmit claim line request input
 _Required._
 
 _Content-Type: `application/json`_
+
 ```json
 {
   "consent_token": "string"
@@ -304,6 +316,7 @@ _Content-Type: `application/json`_
 **Responses:**
 **Response `200`** — Claim line resubmitted successfully
 _Content-Type: `application/json`_
+
 ```json
 {
   "line_id": "string",
@@ -333,6 +346,7 @@ Preview claim request input
 _Required._
 
 _Content-Type: `application/json`_
+
 ```json
 {
   "consent_token": "string"
@@ -342,6 +356,7 @@ _Content-Type: `application/json`_
 **Responses:**
 **Response `200`** — Claim preview retrieved successfully
 _Content-Type: `application/json`_
+
 ```json
 {
   "authorization_code": "string",
@@ -395,12 +410,13 @@ _Security: `BearerAuth`_
 
 | Name | In | Type | Required | Description |
 |---|---|---|---|---|
-| `guid` | query | `string` |  *(required)* | Claim GUID |
-| `provider_claim_no` | query | `string` |  *(required)* | Provider claim number |
+| `guid` | query | `string` |  _(required)_ | Claim GUID |
+| `provider_claim_no` | query | `string` |  _(required)_ | Provider claim number |
 
 **Responses:**
 **Response `200`** — Payer claim preview retrieved successfully
 _Content-Type: `application/json`_
+
 ```json
 {
   "pageSize": 0,
@@ -749,13 +765,14 @@ _Security: `BearerAuth`_
 
 | Name | In | Type | Required | Description |
 |---|---|---|---|---|
-| `patient_id` | query | `string` |  *(required)* | Patient's POMSF member number (CR number) |
-| `policy_year` | query | `string` |  *(required)* | The policy year for which you want to fetch the balances |
+| `patient_id` | query | `string` |  _(required)_ | Patient's POMSF member number (CR number) |
+| `policy_year` | query | `string` |  _(required)_ | The policy year for which you want to fetch the balances |
 | `principal_member_number` | query | `string` |  | Patient principal POMSF member number (CR number) |
 
 **Responses:**
 **Response `200`** — OK
 _Content-Type: `application/json`_
+
 ```json
 {
   "dateOfBirth": "string",
@@ -879,6 +896,7 @@ _Security: `BearerAuth`_
 _Required._
 
 _Content-Type: `multipart/form-data`_
+
 ```json
 {
   "file": "string"
@@ -911,7 +929,7 @@ _Security: `BearerAuth`_
 
 | Name | In | Type | Required | Description |
 |---|---|---|---|---|
-| `file_id` | path | `string` |  *(required)* | File ID returned when the file was uploaded |
+| `file_id` | path | `string` |  _(required)_ | File ID returned when the file was uploaded |
 
 **Responses:**
 **Response `200`** — Pre-signed URL generated successfully
@@ -944,6 +962,7 @@ Close claim request input
 _Required._
 
 _Content-Type: `application/json`_
+
 ```json
 {
   "cancel_reason_text": "string",
@@ -955,6 +974,7 @@ _Content-Type: `application/json`_
 **Responses:**
 **Response `200`** — Claim closed successfully
 _Content-Type: `application/json`_
+
 ```json
 {
   "admitted_on": "string",
@@ -1209,6 +1229,7 @@ Discharge patient request input
 _Required._
 
 _Content-Type: `application/json`_
+
 ```json
 {
   "consent_token": "string",
@@ -1243,6 +1264,7 @@ OTP Request
 _Required._
 
 _Content-Type: `application/json`_
+
 ```json
 {
   "consent_token": "string",
@@ -1253,6 +1275,7 @@ _Content-Type: `application/json`_
 **Responses:**
 **Response `200`** — OTP sent successfully
 _Content-Type: `application/json`_
+
 ```json
 {
   "message": "string"
@@ -1282,6 +1305,7 @@ Submit claim request
 _Required._
 
 _Content-Type: `application/json`_
+
 ```json
 {
   "consent_token": "string",
@@ -1320,6 +1344,7 @@ Add contact request input
 _Required._
 
 _Content-Type: `application/json`_
+
 ```json
 {
   "consent_token": "string",
@@ -1333,6 +1358,7 @@ _Content-Type: `application/json`_
 **Responses:**
 **Response `200`** — Contact added successfully
 _Content-Type: `application/json`_
+
 ```json
 {
   "active": false,
@@ -1383,6 +1409,7 @@ Doctor consent request
 _Required._
 
 _Content-Type: `application/json`_
+
 ```json
 {
   "consent_token": "string",
@@ -1401,6 +1428,7 @@ _Content-Type: `application/json`_
 **Responses:**
 **Response `200`** — Doctor consent request initiated successfully
 _Content-Type: `application/json`_
+
 ```json
 {
   "message": "string"
@@ -1437,6 +1465,7 @@ Emergency claim doctor request
 _Required._
 
 _Content-Type: `application/json`_
+
 ```json
 {
   "consent_token": "string",
@@ -1447,6 +1476,7 @@ _Content-Type: `application/json`_
 **Responses:**
 **Response `200`** — Doctor successfully added to claim
 _Content-Type: `application/json`_
+
 ```json
 {
   "message": "string"
@@ -1479,6 +1509,7 @@ Emergency claim doctor request
 _Required._
 
 _Content-Type: `application/json`_
+
 ```json
 {
   "consent_token": "string"
@@ -1514,6 +1545,7 @@ Emergency visit Request
 _Required._
 
 _Content-Type: `application/json`_
+
 ```json
 {
   "beneficiary_cr_id": "string",
@@ -1552,12 +1584,13 @@ _Security: `BearerAuth`_
 
 | Name | In | Type | Required | Description |
 |---|---|---|---|---|
-| `active` | query | `string` |  *(required)* | Filter intervention if it is still active |
-| `intervention_code` | query | `string` |  *(required)* | Intervention applicable to a protocol |
+| `active` | query | `string` |  _(required)_ | Filter intervention if it is still active |
+| `intervention_code` | query | `string` |  _(required)_ | Intervention applicable to a protocol |
 
 **Responses:**
 **Response `200`** — Emergency protocol retrieved successfully
 _Content-Type: `application/json`_
+
 ```json
 {
   "count": 0,
@@ -1673,6 +1706,7 @@ Emergency protocol Request
 _Required._
 
 _Content-Type: `multipart/form-data`_
+
 ```json
 {
   "consent_token": "string",
@@ -1715,6 +1749,7 @@ EMT visit Request
 _Required._
 
 _Content-Type: `application/json`_
+
 ```json
 {
   "attachments": [
@@ -1774,6 +1809,7 @@ Add intervention Request
 _Required._
 
 _Content-Type: `application/json`_
+
 ```json
 {
   "consent_token": "string",
@@ -1807,6 +1843,7 @@ Restore intervention request
 _Required._
 
 _Content-Type: `application/json`_
+
 ```json
 {
   "consent_token": "string",
@@ -1838,6 +1875,7 @@ Retire intervention Request
 _Required._
 
 _Content-Type: `application/json`_
+
 ```json
 {
   "consent_token": "string",
@@ -1869,6 +1907,7 @@ Switch intervention request
 _Required._
 
 _Content-Type: `application/json`_
+
 ```json
 {
   "bill_from": "string",
@@ -1942,13 +1981,14 @@ _Security: `BearerAuth`_
 
 | Name | In | Type | Required | Description |
 |---|---|---|---|---|
-| `patient_id` | query | `string` |  *(required)* | Patient's client registry ID |
+| `patient_id` | query | `string` |  _(required)_ | Patient's client registry ID |
 | `fields` | query | `string` |  | Fields to include in response (e.g parent_benefit,parent_benefit_code) |
 | `is_unique_benefit` | query | `boolean` |  | Filter unique benefits only |
 
 **Responses:**
 **Response `200`** — OK
 _Content-Type: `application/json`_
+
 ```json
 {
   "count": 0,
@@ -1982,6 +2022,7 @@ _Content-Type: `application/json`_
 
 **Response `400`** — Bad Request - Missing query parameters or invalid request input
 _Content-Type: `application/json`_
+
 ```json
 {
   "error": "string",
@@ -2002,12 +2043,13 @@ _Security: `BearerAuth`_
 
 | Name | In | Type | Required | Description |
 |---|---|---|---|---|
-| `patient_id` | query | `string` |  *(required)* | Patient's client registry ID |
-| `sub_benefit_code` | query | `string` |  *(required)* | Sub benefit whose interventions are to be returned |
+| `patient_id` | query | `string` |  _(required)_ | Patient's client registry ID |
+| `sub_benefit_code` | query | `string` |  _(required)_ | Sub benefit whose interventions are to be returned |
 
 **Responses:**
 **Response `200`** — OK
 _Content-Type: `application/json`_
+
 ```json
 {
   "count": 0,
@@ -2128,12 +2170,13 @@ _Security: `BearerAuth`_
 
 | Name | In | Type | Required | Description |
 |---|---|---|---|---|
-| `identification_number` | query | `string` |  *(required)* | Patient identification number |
-| `identification_type` | query | `string` |  *(required)* | Patient identification type |
+| `identification_number` | query | `string` |  _(required)_ | Patient identification number |
+| `identification_type` | query | `string` |  _(required)_ | Patient identification type |
 
 **Responses:**
 **Response `200`** — OK
 _Content-Type: `application/json`_
+
 ```json
 {
   "age": 0,
@@ -2197,12 +2240,13 @@ _Security: `BearerAuth`_
 
 | Name | In | Type | Required | Description |
 |---|---|---|---|---|
-| `patient_id` | query | `string` |  *(required)* | Patient's CR number |
-| `intervention_code` | query | `string` |  *(required)* | Intervention code |
+| `patient_id` | query | `string` |  _(required)_ | Patient's CR number |
+| `intervention_code` | query | `string` |  _(required)_ | Intervention code |
 
 **Responses:**
 **Response `200`** — OK
 _Content-Type: `application/json`_
+
 ```json
 {
   "code": "string",
@@ -2256,11 +2300,12 @@ _Security: `BearerAuth`_
 
 | Name | In | Type | Required | Description |
 |---|---|---|---|---|
-| `patient_id` | query | `string` |  *(required)* | Patient's client registry ID |
+| `patient_id` | query | `string` |  _(required)_ | Patient's client registry ID |
 
 **Responses:**
 **Response `200`** — OK
 _Content-Type: `application/json`_
+
 ```json
 {
   "count": 0,
@@ -2335,6 +2380,7 @@ Cancel preauthorization request
 _Required._
 
 _Content-Type: `application/json`_
+
 ```json
 {
   "consent_token": "string",
@@ -2365,7 +2411,7 @@ _Security: `BearerAuth`_
 
 | Name | In | Type | Required | Description |
 |---|---|---|---|---|
-| `consent_token` | query | `string` |  *(required)* | consent token linked to the preauth |
+| `consent_token` | query | `string` |  _(required)_ | consent token linked to the preauth |
 
 **Responses:**
 **Response `200`** — Preauthorization retrieved successfully
@@ -2414,6 +2460,7 @@ Remove preauth diagnosis request
 _Required._
 
 _Content-Type: `application/json`_
+
 ```json
 {
   "consent_token": "string",
@@ -2452,6 +2499,7 @@ Remove preauth doctor
 _Required._
 
 _Content-Type: `application/json`_
+
 ```json
 {
   "consent_token": "string",
@@ -2463,6 +2511,7 @@ _Content-Type: `application/json`_
 **Responses:**
 **Response `200`** — Preauth Doctor removed successfully
 _Content-Type: `application/json`_
+
 ```json
 "string"
 ```
@@ -2496,11 +2545,12 @@ _Security: `BearerAuth`_
 
 | Name | In | Type | Required | Description |
 |---|---|---|---|---|
-| `consent_token` | query | `string` |  *(required)* | Consent token |
+| `consent_token` | query | `string` |  _(required)_ | Consent token |
 
 **Responses:**
 **Response `200`** — Prescription preview fetched successfully
 _Content-Type: `application/json`_
+
 ```json
 {
   "authorization": {
@@ -2635,6 +2685,7 @@ Create prescription payload
 _Required._
 
 _Content-Type: `application/json`_
+
 ```json
 {
   "consent_token": "string",
@@ -2692,6 +2743,7 @@ Create dispense payload
 _Required._
 
 _Content-Type: `application/json`_
+
 ```json
 {
   "actual_products": [
@@ -2715,6 +2767,7 @@ _Content-Type: `application/json`_
 **Responses:**
 **Response `200`** — Dispense created successfully
 _Content-Type: `application/json`_
+
 ```json
 {
   "dispenseDosages": [
@@ -2779,6 +2832,7 @@ Remove prescription doctor payload
 _Required._
 
 _Content-Type: `application/json`_
+
 ```json
 {
   "consent_token": "string",
@@ -2827,6 +2881,7 @@ _Security: `BearerAuth`_
 **Responses:**
 **Response `200`** — Authorization retrieved successfully
 _Content-Type: `application/json`_
+
 ```json
 {
   "authCode": "string",

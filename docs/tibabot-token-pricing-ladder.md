@@ -3,6 +3,7 @@
 Last updated: 2026-08-02
 
 This draft ties token allocations to the current seeded subscription plans in:
+
 - `backend/hmis/apps/core/management/commands/seed_subscription_plans.py`
 - `docs/pricing-feature-matrix.md`
 
@@ -50,10 +51,12 @@ For invoicing clarity, use a contracted "included baseline" (e.g., 1M/month) in 
 ## Example Monthly Overage Calculation
 
 If a Pro tenant uses:
+
 - 1,800,000 standard tokens
 - 300,000 premium tokens
 
 Then:
+
 - Included = 200,000 tokens (apply to standard first by policy)
 - Billable standard = 1,600,000 = 1.6M × 600 = **KES 960**
 - Billable premium = 300,000 = 0.3M × 2,800 = **KES 840**

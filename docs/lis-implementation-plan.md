@@ -56,6 +56,7 @@ New Models:
 ```
 
 **Features:**
+
 - Register QC materials with lot numbers and expiry tracking
 - Define target values (mean, SD) per analyte per lot
 - Expiry alerting (7-day, 30-day warnings)
@@ -71,6 +72,7 @@ New Models:
 ```
 
 **Features:**
+
 - Daily QC data entry (manual or auto-imported from analyzers)
 - Levey-Jennings chart visualization (React, recharts)
 - Westgard multi-rule engine:
@@ -90,6 +92,7 @@ New Models:
 ```
 
 **Features:**
+
 - Track external proficiency testing programs (e.g., HUQAS, NEQAS)
 - Record submitted results and received z-scores
 - Dashboard showing EQA performance over time
@@ -110,6 +113,7 @@ New Models:
 ```
 
 **Features:**
+
 - Compare current result to patient's most recent prior result
 - Configurable thresholds per test (%, absolute, or both)
 - Actions: FLAG_FOR_REVIEW, BLOCK_RELEASE, ALERT_ONLY
@@ -125,6 +129,7 @@ New Models:
 ```
 
 **Features:**
+
 - Configurable rules per test:
   - Result within reference range
   - Delta check passes
@@ -155,6 +160,7 @@ New/Updated Models:
 ```
 
 **Features:**
+
 - Protocol adapters:
   - ASTM E1394/LIS2-A2 (most common for chemistry/hematology analyzers)
   - HL7 v2.x over MLLP (already implemented, enhance for bidirectional)
@@ -199,6 +205,7 @@ New Models:
 ```
 
 **Features:**
+
 - Multi-step culture workflow: Inoculation → Incubation → Reading → Reporting
 - Organism identification (manual entry + future VITEK integration)
 - Antibiotic sensitivity testing (disc diffusion + MIC)
@@ -217,6 +224,7 @@ Priority: **MEDIUM**
 #### L5.1 TAT Monitoring & SLA Dashboards
 
 **Features:**
+
 - Turnaround time tracking per test per priority:
   - Order → Collection
   - Collection → Receipt
@@ -231,6 +239,7 @@ Priority: **MEDIUM**
 #### L5.2 Workload & Productivity
 
 **Features:**
+
 - Tests per tech per day/shift
 - Specimen rejection rates (by reason, by collector)
 - Repeat/rerun rates per analyzer
@@ -240,6 +249,7 @@ Priority: **MEDIUM**
 #### L5.3 Worksheet Printing & Label Generation
 
 **Features:**
+
 - Batch worksheet generation (grouped by analyzer/section)
 - Barcode label printing (specimen tubes, slides)
 - Configurable label formats (ZPL for Zebra, PDF for generic)
@@ -259,6 +269,7 @@ New Models:
 ```
 
 **Features:**
+
 - Auto-add follow-up tests based on initial results
 - Example: TSH > 10 → auto-order Free T4
 - Configurable per facility
@@ -271,6 +282,7 @@ New Models:
 ```
 
 **Features:**
+
 - Configurable critical ranges per test (separate from reference ranges)
 - Mandatory notification workflow (call clinician, document who/when)
 - Read-back verification

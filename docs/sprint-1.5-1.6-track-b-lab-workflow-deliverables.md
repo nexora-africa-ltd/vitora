@@ -43,10 +43,11 @@ Before implementation begins, the following inputs are needed:
 | **Facility Name** | Official facility name | "[Your Facility Name]" |
 | **Facility Address** | Physical address | "P.O. Box 00000, Nairobi, Kenya" |
 | **Facility Phone** | Contact number | "+254 700 000 000" |
-| **Facility Email** | Contact email | "lab@facility.example" |
+| **Facility Email** | Contact email | "<lab@facility.example>" |
 | **License Number** | Medical facility license | "MF-00000" |
 
 **Action Required**:
+
 - Provide facility logo file (PNG, min 300x100px)
 - Confirm facility details for official documents
 
@@ -79,6 +80,7 @@ Before implementation begins, the following inputs are needed:
 The following models should already exist from the previous sprint:
 
 ### Existing LabOrder Model
+
 ```python
 class LabOrder(models.Model):
     """Lab order from an encounter."""
@@ -104,6 +106,7 @@ class LabOrder(models.Model):
 ```
 
 ### Existing LabResult Model
+
 ```python
 class LabResult(models.Model):
     """Result for a lab order."""
@@ -128,6 +131,7 @@ class LabResult(models.Model):
 **Purpose**: Manage the in-house lab queue with worklist, prioritization, and technician assignment.
 
 **Fields**:
+
 ```python
 class LabQueue(models.Model):
     """Lab queue entry for in-house processing."""
@@ -207,6 +211,7 @@ class LabQueue(models.Model):
 **Auto-generated Queue Number Format**: `LAB-YYYYMMDD-XXXX`
 
 **Methods**:
+
 - `generate_queue_number()`: Auto-generate unique queue number
 - `assign_to(technician)`: Assign to lab technician
 - `collect_sample(collector, sample_id)`: Record sample collection
@@ -244,6 +249,7 @@ class LabQueue(models.Model):
 **Purpose**: Manage state transitions for lab orders with validation.
 
 **Implementation**:
+
 ```python
 class LabOrderWorkflow:
     """
@@ -386,6 +392,7 @@ class LabOrderWorkflow:
 **Purpose**: Generate PDF requisition forms for external lab referrals.
 
 **Implementation**:
+
 ```python
 from django.template.loader import render_to_string
 from weasyprint import HTML
@@ -468,6 +475,7 @@ class ExternalLabRequisition:
 ```
 
 **HTML Template** (`templates/laboratory/requisition.html`):
+
 ```html
 <!DOCTYPE html>
 <html>
@@ -519,6 +527,7 @@ class ExternalLabRequisition:
 **Purpose**: Enhanced result entry with reference ranges, flags, and validation.
 
 **Extended Fields**:
+
 ```python
 class LabResult(models.Model):
     """Result for a lab order - extended for result entry workflow."""
@@ -652,6 +661,7 @@ class LabResultTemplate(models.Model):
 ```
 
 **Methods**:
+
 - `evaluate_flag()`: Auto-calculate flag based on value vs reference
 - `is_within_range()`: Check if value is normal
 - `requires_verification()`: Check if critical and needs verification
@@ -688,6 +698,7 @@ class LabResultTemplate(models.Model):
 **Purpose**: Store and manage reference ranges for lab parameters.
 
 **Sample Data Migration**:
+
 ```python
 # migrations/0005_populate_reference_ranges.py
 
@@ -780,6 +791,7 @@ def populate_cbc_ranges(apps, schema_editor):
 **Purpose**: Notify clinicians when lab results are ready, with priority for critical values.
 
 **Implementation**:
+
 ```python
 from django.conf import settings
 from django.core.mail import send_mail
@@ -876,6 +888,7 @@ class LabNotificationService:
 ```
 
 **Notification Model (in core)**:
+
 ```python
 class Notification(models.Model):
     """In-app notification for users."""
@@ -931,6 +944,7 @@ class Notification(models.Model):
 **Purpose**: Support scanned result attachments for external lab results.
 
 **Fields**:
+
 ```python
 class LabResultAttachment(models.Model):
     """Scanned or uploaded lab result document."""
@@ -979,6 +993,7 @@ class LabResultAttachment(models.Model):
 ```
 
 **File Validation**:
+
 ```python
 from django.core.validators import FileExtensionValidator
 from django.core.exceptions import ValidationError
@@ -1218,11 +1233,13 @@ LAB_ATTACHMENT_ALLOWED_TYPES = ['application/pdf', 'image/png', 'image/jpeg', 'i
 ## Dependencies
 
 ### Internal Dependencies
+
 - `patients` app - Patient model
 - `encounters` app - Encounter model
 - `core` app - AuditLog, Notification models
 
 ### External Dependencies
+
 ```
 # Add to pyproject.toml
 weasyprint>=60.0  # For PDF generation

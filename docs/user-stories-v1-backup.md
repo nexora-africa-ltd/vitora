@@ -5,6 +5,7 @@ This document outlines user stories and acceptance criteria for key end-user rol
 Stories are prioritized for Phase 1-4 alignment: Phase 1 (core clinical/billing), Phase 2 (claims/theatre), Phase 3 (MCH/immunizations), Phase 4 (AI). Acceptance criteria ensure compliance with Kenya Data Protection Act (2019), KHIS integration, SHA claims, FHIR interoperability, and offline functionality for rural settings. As engineering lead, I've incorporated forward-looking elements like AI-driven reminders and predictive analytics for immunization coverage, while grounding in Kenya's KEPI (Kenya Expanded Programme on Immunization) standards and global WHO guidelines for scalability.
 
 ## Doctor / Consultant / Clinical Officer
+
 These roles focus on clinical encounters, diagnostics, and decision-making.
 
 - **User Story 1:** As a doctor/consultant/clinical officer, I want to search and view patient records quickly using identifiers like national ID or MRN so that I can access full medical history before consultations.
@@ -45,6 +46,7 @@ These roles focus on clinical encounters, diagnostics, and decision-making.
     - Access may be time-limited or case-specific
 
 ## Surgeon / Theatre Nurse / Perioperative Theatre Technician
+
 These roles emphasize surgical scheduling, theatre management, and perioperative care (Phase 2 focus).
 
 - **User Story 1:** As a surgeon/theatre nurse/perioperative theatre technician, I want to schedule and view theatre procedures so that operations are coordinated efficiently.
@@ -75,8 +77,8 @@ These roles emphasize surgical scheduling, theatre management, and perioperative
     - Faults or shortages can be flagged
     - Records are tied to theatre session and timestamped
 
-
 ## Pharmacist
+
 Focus on medication management and inventory.
 
 - **User Story 1:** As a pharmacist, I want to manage medication stock and dispensing so that I can avoid stockouts and ensure accurate fulfillment.
@@ -99,6 +101,7 @@ Focus on medication management and inventory.
     - Data anonymized for privacy compliance.
 
 ## Cashier / Claims Officer
+
 Handle payments and insurance claims.
 
 - **User Story 1:** As a cashier/claims officer, I want to generate and process invoices/payments so that transactions are seamless.
@@ -121,6 +124,7 @@ Handle payments and insurance claims.
     - Role-restricted: Cashiers view daily; officers view aggregates.
 
 ## Nurse / Nurse Aide
+
 Focus on vitals, encounters, and patient care.
 
 - **User Story 1:** As a nurse/nurse aide, I want to log vitals and encounters offline so that I can work in rural areas without internet.
@@ -141,6 +145,7 @@ Focus on vitals, encounters, and patient care.
     - Secure sharing via FHIR; audit logs access.
 
 ## Receptionist / Front Desk Staff
+
 Manage registrations and queues.
 
 - **User Story 1:** As a receptionist, I want to register patients quickly so that wait times are reduced.
@@ -155,6 +160,7 @@ Manage registrations and queues.
     - Offline registration queues for sync.
 
 ## Management / Administrator
+
 Oversee operations and compliance.
 
 - **User Story 1:** As management/administrator, I want dashboards for performance monitoring so that I can ensure regulatory compliance.
@@ -172,6 +178,7 @@ Oversee operations and compliance.
     - Predicts no-shows, stockouts; dashboards with actionable recommendations.
 
 ## Part-time / Locum Staff
+
 Flexible access for temporary users.
 
 - **User Story 1:** As part-time/locum staff, I want temporary role-based access so that I can perform duties without full admin rights.
@@ -184,6 +191,7 @@ Flexible access for temporary users.
     - Self-service login with OTP; mobile app support.
 
 ## Laboratory Tech / Radiologist
+
 Handle tests and imaging.
 
 - **User Story 1:** As a laboratory tech/radiologist, I want to receive and process orders so that results are delivered promptly.
@@ -196,6 +204,7 @@ Handle tests and imaging.
     - Auto-generates line items; links to SHA claims.
 
 ## IT Administrator
+
 Maintain system reliability.
 
 - **User Story 1:** As an IT administrator, I want to monitor system performance so that downtime is minimized.
@@ -208,6 +217,7 @@ Maintain system reliability.
     - Configure RBAC, encryption; run DPIA reports.
 
 ## Regulator
+
 Access national-level data.
 
 - **User Story 1:** As a regulator, I want aggregated reports so that I can oversee national health metrics.
@@ -216,6 +226,7 @@ Access national-level data.
     - Secure access via FHIR; audited downloads.
 
 ## Patient
+
 Benefit from improved care (passive role).
 
 - **User Story 1:** As a patient, I want secure data privacy so that my information is protected.
@@ -224,6 +235,7 @@ Benefit from improved care (passive role).
     - No unauthorized access; breach notifications if applicable.
 
 ## Maternal and Child Health (MCH) Roles
+
 These roles (e.g., MCH Nurse/Midwife, Pediatrician/Obstetrician, Community Health Promoter) focus on Phase 3 features for maternal and child health, including antenatal care (ANC), postnatal care, immunizations, HIV-exposed infant follow-up, and growth monitoring. Stories align with Kenyan RMNCAH (Reproductive, Maternal, Newborn, Child, and Adolescent Health) indicators, such as skilled deliveries, 4+ ANC visits, and immunization coverage, while incorporating forward-looking AI for risk prediction and global standards like FHIR for interoperability with programs like Linda Jamii (expanded free maternity services).
 
 - **User Story 1:** As an MCH nurse/midwife, I want to enroll pregnant women and children in the MCH module so that I can track their care journey from registration to follow-up.
@@ -270,6 +282,7 @@ These roles (e.g., MCH Nurse/Midwife, Pediatrician/Obstetrician, Community Healt
     - Integrates with KHIS for community-level indicators; supports offline in rural areas.
 
 ## Community Health Workers (CHW) / Community Health Promoters (CHP) Roles
+
 In Kenya, CHWs (now often referred to as CHPs) are frontline volunteers or workers who bridge communities and health facilities, playing a pivotal role in immunization by educating, mobilizing, tracing defaulters, and sometimes administering vaccines if trained. These stories emphasize Phase 3 MCH/immunization features with forward-looking mobile-first design for low-resource settings, integrating with national strategies like the Kenya Community Health Strategy for equity and coverage.
 
 - **User Story 1:** As a CHW/CHP, I want to educate and mobilize communities for immunizations so that vaccine hesitancy is reduced and coverage improves.

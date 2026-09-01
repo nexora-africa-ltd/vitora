@@ -47,6 +47,7 @@ Support for Kenya Essential Medicines List (KEML):
 ## Tags Reference
 
 ### Feature Tags
+
 - `@pharmacy` - All pharmacy-related scenarios
 - `@drug-catalog` - Drug catalog management
 - `@stock` / `@inventory` - Stock management
@@ -56,11 +57,13 @@ Support for Kenya Essential Medicines List (KEML):
 - `@reports` - Reporting and analytics
 
 ### Priority Tags
+
 - `@smoke` - Critical path scenarios (run first)
 - `@controlled` - Controlled drug scenarios
 - `@keml` - Kenya Essential Medicines List
 
 ### Functional Tags
+
 - `@fefo` - First Expiry First Out logic
 - `@otc` - Over-the-counter dispensing
 - `@returns` - Medication returns
@@ -69,6 +72,7 @@ Support for Kenya Essential Medicines List (KEML):
 - `@interaction` - Drug interaction checking
 
 ### Quality Tags
+
 - `@offline` - Offline functionality
 - `@sync` - Data synchronization
 - `@validation` - Input validation
@@ -212,16 +216,19 @@ All offline operations sync when connectivity is restored.
 ## Compliance Requirements
 
 ### Kenya Data Protection Act 2019
+
 - 7-year retention for pharmacy records
 - Audit trail on all dispensing
 - Patient consent for data processing
 
 ### Pharmacy & Poisons Board
+
 - Controlled drug register maintenance
 - Pharmacist verification records
 - Stock reconciliation documentation
 
 ### NHIF/SHA Integration
+
 - NHIF/SHA drug codes supported
 - Claims-compatible dispensing records
 - Eligibility verification integration

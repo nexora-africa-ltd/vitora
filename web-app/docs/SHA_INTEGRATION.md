@@ -5,6 +5,7 @@ This document describes the frontend implementation for integrating with Kenya's
 ## Overview
 
 The SHA integration enables healthcare facilities to:
+
 - Verify patient coverage through the Client Registry (CR)
 - Check eligibility for SHA benefits
 - Submit claims for reimbursement

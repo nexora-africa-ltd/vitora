@@ -4,6 +4,7 @@ _Version: `1.0.0`_
 API for accessing various registries in the Health Information Exchange (HIE) system.
 
 **Servers:**
+
 - `https://ilm-dev.dha.go.ke/uat-middleware`
 
 ## Table of Contents
@@ -31,13 +32,14 @@ _Security: `BearerAuth`_
 
 | Name | In | Type | Required | Description |
 |---|---|---|---|---|
-| `identifier` | query | `string` |  *(required)* | The unique identifier value for the facility |
-| `identifier-type` | query | `string` |  *(required)* | The type of identifier being used to search for the facility |
+| `identifier` | query | `string` |  _(required)_ | The unique identifier value for the facility |
+| `identifier-type` | query | `string` |  _(required)_ | The type of identifier being used to search for the facility |
 | `name` | query | `string` |  | Facility's name |
 
 **Responses:**
 **Response `200`** — OK
 _Content-Type: `application/json`_
+
 ```json
 {
   "SHAOperationStatus": {
@@ -101,6 +103,7 @@ _Content-Type: `application/json`_
 
 **Response `400`** — Bad Request - Missing required query parameters
 _Content-Type: `application/json`_
+
 ```json
 {
   "error": "string",
@@ -110,6 +113,7 @@ _Content-Type: `application/json`_
 
 **Response `401`** — Unauthorized - Invalid identity
 _Content-Type: `application/json`_
+
 ```json
 {
   "error": "string",
@@ -140,12 +144,13 @@ _Security: `BearerAuth`_
 
 | Name | In | Type | Required | Description |
 |---|---|---|---|---|
-| `identification_number` | query | `string` |  *(required)* | The unique number from the patient's identification document |
-| `identification_type` | query | `string` |  *(required)* | The kind of identification document of the Patient |
+| `identification_number` | query | `string` |  _(required)_ | The unique number from the patient's identification document |
+| `identification_type` | query | `string` |  _(required)_ | The kind of identification document of the Patient |
 
 **Responses:**
 **Response `200`** — OK
 _Content-Type: `application/json`_
+
 ```json
 {
   "admission_number": "string",
@@ -266,13 +271,14 @@ _Security: `BearerAuth`_
 
 | Name | In | Type | Required | Description |
 |---|---|---|---|---|
-| `identification_number` | query | `string` |  *(required)* | The unique number from the professional's identification document |
-| `identification_type` | query | `string` |  *(required)* | The kind of identification document of the healthcare professional |
-| `regulator` | query | `string` |  *(required)* | Practitioner regulator. This is required to identify the correct practitioner registry to query. |
+| `identification_number` | query | `string` |  _(required)_ | The unique number from the professional's identification document |
+| `identification_type` | query | `string` |  _(required)_ | The kind of identification document of the healthcare professional |
+| `regulator` | query | `string` |  _(required)_ | Practitioner regulator. This is required to identify the correct practitioner registry to query. |
 
 **Responses:**
 **Response `200`** — OK
 _Content-Type: `application/json`_
+
 ```json
 {
   "message": {

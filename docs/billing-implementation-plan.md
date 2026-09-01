@@ -15,6 +15,7 @@
 > **Important**: The code snippets and model definitions in the deliverables specification document serve as the **baseline/reference point** for this implementation. These specifications define the minimum requirements, expected fields, methods, and behaviors.
 >
 > **Implementation Flexibility**: While adhering to the specification baseline, reasonable improvements and enhancements may be made where opportunities are identified, such as:
+>
 > - Additional validation or error handling
 > - Performance optimizations (additional indexes, query optimization)
 > - Enhanced logging or audit capabilities
@@ -37,6 +38,7 @@ The Vitora HMIS Billing Module is **fully implemented**, providing end-to-end in
 **Source Lines**: ~15,000 (app code + services)
 
 ### Module Capabilities
+
 - ✅ **Phase 1**: Core Billing Models — Service, Invoice, InvoiceItem, Payment, Receipt, CreditNote
 - ✅ **Phase 2**: Payment Processing — Cash, M-Pesa STK Push, Insurance, Split Payments
 - ✅ **Phase 3**: API Endpoints — Full REST API with 19 ViewSets/APIViews
@@ -76,6 +78,7 @@ All phases are complete. Below is the final state of each phase.
 | `SHAEligibilityCheck` | Eligibility verification records | 27 |
 
 ### Key Design Decisions
+
 - `InvoiceItem.save()` auto-calculates `line_total = quantity × unit_price` and triggers `invoice.calculate_totals()`
 - `Invoice.save()` runs `full_clean()` for data integrity
 - `SHAClaim.save()` auto-generates `claim_number` and runs validation
@@ -88,6 +91,7 @@ All phases are complete. Below is the final state of each phase.
 ## Phase 2: Payment Processing ✅ COMPLETE
 
 ### Capabilities
+
 - **Cash payments** with receipt auto-generation
 - **M-Pesa STK Push** via Daraja API (sandbox + production)
 - **Insurance (SHA)** payment tracking
@@ -96,6 +100,7 @@ All phases are complete. Below is the final state of each phase.
 - **Credit notes** with mandatory approval workflow (different user from requester)
 
 ### M-Pesa Integration (`services/mpesa.py` — 327 lines)
+
 - STK Push initiation
 - Callback processing
 - Transaction status queries
@@ -148,12 +153,14 @@ All phases are complete. Below is the final state of each phase.
 ## Phase 4: Reports & Admin ✅ COMPLETE
 
 ### Financial Reports (`reports.py` — 480 lines)
+
 - Revenue summary by date range, category, payment type
 - Collection reports with daily/monthly aggregation
 - Outstanding invoice reports with aging analysis
 - 10 report tests + 13 report API tests
 
 ### Admin Interface (`admin.py` — 399 lines)
+
 - All 14 models registered with colored status badges, fieldsets, `raw_id_fields`
 - 11 admin tests
 
@@ -162,6 +169,7 @@ All phases are complete. Below is the final state of each phase.
 ## Phase 5: SHA Claims Integration ✅ COMPLETE
 
 ### Services
+
 | Service | File | Lines | Description |
 |---------|------|-------|-------------|
 | `SHAClaimsService` | `services/sha_claims.py` | 1,531 | Full claim lifecycle, FHIR bundle generation, submission |
@@ -189,6 +197,7 @@ All phases are complete. Below is the final state of each phase.
 ## Phase 6: DHA Integration ✅ COMPLETE
 
 ### Services
+
 | Service | File | Lines | Description |
 |---------|------|-------|-------------|
 | `ClientRegistryService` | `services/client_registry.py` | 792 | Patient registration/search in national registry |
@@ -210,6 +219,7 @@ All phases are complete. Below is the final state of each phase.
 ## Phase 7: SHR Compliance ✅ COMPLETE
 
 ### FHIR R4 Resource Generation
+
 - **IPS (International Patient Summary)** bundles
 - **MedicationRequest** FHIR resources from prescriptions
 - **MedicationDispense** FHIR resources from dispensing records
@@ -472,6 +482,7 @@ python manage.py seed_service_catalog --dry-run   # preview, no writes
 ### SHA Stub Architecture
 
 `services/sha.py` is an intentional **offline fallback stub**, not dead code. The real implementations live in `sha_claims.py` and `sha_eligibility.py`. The stub is retained for:
+
 - `test_sha_stub.py` (7 tests verifying offline-safe behavior)
 - Lightweight fallback when SHA API configuration is unavailable
 - No production code imports it directly — real services are used via `sha_claims.py` and `sha_eligibility.py`
@@ -481,6 +492,7 @@ python manage.py seed_service_catalog --dry-run   # preview, no writes
 ## Dependencies & Prerequisites
 
 ### Internal Dependencies
+
 - ✅ `patients` app — Patient model
 - ✅ `encounters` app — Encounter model
 - ✅ `pharmacy` app — Drug, Dispensing models (medication billing)
@@ -489,6 +501,7 @@ python manage.py seed_service_catalog --dry-run   # preview, no writes
 - ✅ `clinics` app — Clinic visit billing
 
 ### External Dependencies
+
 - ✅ `requests>=2.31.0` — M-Pesa API, SHA API, DHA API calls
 - ✅ `reportlab>=4.4.7` — PDF receipt generation
 - ✅ `num2words>=0.5.14` — Amount to words conversion

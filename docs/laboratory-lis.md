@@ -337,6 +337,7 @@ The IPS endpoint (`/fhir/Patient/{id}/$summary`) bundles all lab results into an
 ### ASTM E1394 / LIS2-A2
 
 Supported via `ASTMAdapter` for direct analyzer communication:
+
 - Record types: H (Header), P (Patient), O (Order), R (Result), L (Terminator)
 - Used by Roche cobas, Abbott Architect, and similar chemistry analyzers
 

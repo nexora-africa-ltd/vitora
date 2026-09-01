@@ -39,6 +39,7 @@ The frontend validates API responses with Zod at runtime via `parseResponse()`. 
 ```
 
 **How to update when intentionally changing a serializer**:
+
 1. Change the serializer field.
 2. Run `make test-contracts` — it will fail showing added/removed fields.
 3. Update the `CONTRACTS` dict in `tests/test_contracts.py` to match.
@@ -49,6 +50,7 @@ The frontend validates API responses with Zod at runtime via `parseResponse()`. 
 **What**: Auto-generate an OpenAPI 3.0 JSON schema from all DRF serializers and views.
 
 **Endpoints**:
+
 - Schema download: `GET /api/schema/`
 - Swagger UI: `GET /api/docs/`
 
@@ -59,6 +61,7 @@ The frontend validates API responses with Zod at runtime via `parseResponse()`. 
 **What**: Convert Zod schemas to JSON Schema (via `zod-to-json-schema`), then compare field-by-field against the OpenAPI spec exported from Layer 2.
 
 **How**: Jest tests in `web-app/__tests__/contracts/` that:
+
 1. Read the exported `schema.json` from backend
 2. Convert each Zod schema to JSON Schema
 3. Assert that required fields, types, and nesting match
@@ -92,6 +95,7 @@ The frontend validates API responses with Zod at runtime via `parseResponse()`. 
 Follow this approach when adding contract tests for a new module:
 
 **1. Create the test file:**
+
 ```bash
 touch web-app/__tests__/contracts/{module}.contract.test.ts
 ```
@@ -194,6 +198,7 @@ describe('MyStatusSchema (enum)', () => {
 **5. Finding OpenAPI enum names:**
 
 OpenAPI uses hashed enum names (e.g., `Status145Enum`, `Priority0b7Enum`). To find the correct name:
+
 ```bash
 grep -n "your_enum_value" backend/schema.json | head -5
 ```
@@ -207,6 +212,7 @@ The contract test catching a mismatch is **success** — it means the test is wo
 3. **Update the doc**: Run tests again to confirm, then commit
 
 **7. Run and verify:**
+
 ```bash
 cd web-app && npm test -- --testPathPattern=contracts/{module} --no-coverage
 ```

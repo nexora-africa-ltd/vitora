@@ -46,6 +46,7 @@ Before implementation begins, the following inputs are needed:
 | **Custom KPIs** | Facility-specific metrics | ⏳ Provide if needed |
 
 **Action Required**:
+
 - Review default KPIs and confirm if suitable
 - Provide any facility-specific metrics you want tracked
 
@@ -79,6 +80,7 @@ Before implementation begins, the following inputs are needed:
 The following should already exist from the previous sprint:
 
 ### Existing Web App Structure
+
 ```
 web-app/
 ├── app/
@@ -105,6 +107,7 @@ web-app/
 ```
 
 ### Existing Authentication
+
 - JWT-based authentication
 - Token refresh mechanism
 - Protected route middleware
@@ -116,6 +119,7 @@ web-app/
 ### 1. Encounter Details View
 
 **Files**:
+
 - `app/(dashboard)/encounters/[id]/page.tsx`
 - `components/encounters/encounter-detail.tsx`
 - `components/encounters/vitals-card.tsx`
@@ -125,6 +129,7 @@ web-app/
 **Purpose**: Display comprehensive encounter information in a read-only format.
 
 **Component Structure**:
+
 ```tsx
 // app/(dashboard)/encounters/[id]/page.tsx
 import { EncounterDetail } from '@/components/encounters/encounter-detail';
@@ -209,6 +214,7 @@ export function EncounterDetail({ encounterId }: EncounterDetailProps) {
 ```
 
 **Vitals Display with Alerts**:
+
 ```tsx
 // components/encounters/vitals-card.tsx
 interface VitalsCardProps {
@@ -324,6 +330,7 @@ export function VitalsCard({ vitals }: VitalsCardProps) {
 ### 2. Patient Timeline/History
 
 **Files**:
+
 - `app/(dashboard)/patients/[id]/history/page.tsx`
 - `components/patients/patient-timeline.tsx`
 - `components/patients/timeline-item.tsx`
@@ -331,6 +338,7 @@ export function VitalsCard({ vitals }: VitalsCardProps) {
 **Purpose**: Display chronological history of all patient encounters and events.
 
 **Component Structure**:
+
 ```tsx
 // components/patients/patient-timeline.tsx
 'use client';
@@ -489,6 +497,7 @@ export function TimelineItem({ event }: { event: TimelineEvent }) {
 ### 3. Reporting Dashboard
 
 **Files**:
+
 - `app/(dashboard)/reports/page.tsx`
 - `app/(dashboard)/reports/[reportType]/page.tsx`
 - `components/reports/dashboard-overview.tsx`
@@ -498,6 +507,7 @@ export function TimelineItem({ event }: { event: TimelineEvent }) {
 **Purpose**: Comprehensive reporting dashboard with KPIs and visualizations.
 
 **Component Structure**:
+
 ```tsx
 // app/(dashboard)/reports/page.tsx
 import { DashboardOverview } from '@/components/reports/dashboard-overview';
@@ -624,6 +634,7 @@ export function DashboardOverview() {
 ```
 
 **KPI Card Component**:
+
 ```tsx
 // components/reports/kpi-card.tsx
 interface KPICardProps {
@@ -715,6 +726,7 @@ export function KPICard({
 ### 4. Dashboard Widgets
 
 **Files**:
+
 - `components/widgets/patient-volume-chart.tsx`
 - `components/widgets/revenue-chart.tsx`
 - `components/widgets/department-stats.tsx`
@@ -723,6 +735,7 @@ export function KPICard({
 **Purpose**: Reusable chart and data visualization widgets.
 
 **Chart Components** (using Recharts):
+
 ```tsx
 // components/widgets/patient-volume-chart.tsx
 'use client';
@@ -844,6 +857,7 @@ export function RevenueBreakdownChart({ data }: { data: RevenueData[] }) {
 ### 5. Data Visualization Charts
 
 **Files**:
+
 - `lib/chart-utils.ts`
 - `components/charts/line-chart.tsx`
 - `components/charts/bar-chart.tsx`
@@ -869,6 +883,7 @@ export function RevenueBreakdownChart({ data }: { data: RevenueData[] }) {
 ### 6. Responsive Design
 
 **Files**:
+
 - `components/layout/responsive-sidebar.tsx`
 - `components/layout/mobile-nav.tsx`
 - `app/globals.css` (responsive utilities)
@@ -876,6 +891,7 @@ export function RevenueBreakdownChart({ data }: { data: RevenueData[] }) {
 **Purpose**: Ensure all dashboard views work on mobile devices.
 
 **Responsive Breakpoints**:
+
 ```css
 /* Tailwind breakpoints used */
 sm: 640px   /* Mobile landscape */
@@ -885,6 +901,7 @@ xl: 1280px  /* Large desktop */
 ```
 
 **Mobile Navigation**:
+
 ```tsx
 // components/layout/mobile-nav.tsx
 'use client';
@@ -914,6 +931,7 @@ export function MobileNav() {
 ```
 
 **Responsive Table Component**:
+
 ```tsx
 // components/ui/responsive-table.tsx
 interface ResponsiveTableProps<T> {
@@ -999,6 +1017,7 @@ export function ResponsiveTable<T>({
 ### 7. Stakeholder Access Control
 
 **Files**:
+
 - `lib/permissions.ts`
 - `components/auth/permission-gate.tsx`
 - `middleware.ts` (route protection)
@@ -1006,6 +1025,7 @@ export function ResponsiveTable<T>({
 **Purpose**: Control dashboard access based on user roles.
 
 **Permission Configuration**:
+
 ```tsx
 // lib/permissions.ts
 export const DASHBOARD_PERMISSIONS = {
@@ -1075,6 +1095,7 @@ export function PermissionGate({
 ### 8. Print/Export Reports
 
 **Files**:
+
 - `lib/export-utils.ts`
 - `components/reports/export-button.tsx`
 - `app/(dashboard)/reports/print/[reportType]/page.tsx`
@@ -1082,6 +1103,7 @@ export function PermissionGate({
 **Purpose**: Export dashboard data to PDF/CSV and print-friendly views.
 
 **Export Utilities**:
+
 ```tsx
 // lib/export-utils.ts
 import { jsPDF } from 'jspdf';
@@ -1195,6 +1217,7 @@ export function ExportButton({ data, filename, title }: ExportButtonProps) {
 ### 9. E2E Tests (Playwright)
 
 **Files**:
+
 - `e2e/encounter-detail.spec.ts`
 - `e2e/patient-timeline.spec.ts`
 - `e2e/reports-dashboard.spec.ts`
@@ -1203,6 +1226,7 @@ export function ExportButton({ data, filename, title }: ExportButtonProps) {
 **Purpose**: End-to-end tests for critical user flows.
 
 **Test Specifications**:
+
 ```typescript
 // e2e/encounter-detail.spec.ts
 import { test, expect } from '@playwright/test';
@@ -1340,6 +1364,7 @@ The following API endpoints are needed to support the dashboard:
 ## Dependencies
 
 ### NPM Packages to Add
+
 ```json
 {
   "dependencies": {

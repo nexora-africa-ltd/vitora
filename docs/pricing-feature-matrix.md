@@ -5,6 +5,7 @@ Last updated: 2026-07-20
 This matrix is intended to be the pricing-logic reference for tier gating.
 
 Sources of truth:
+
 - `backend/hmis/apps/core/management/commands/seed_subscription_plans.py` (plan prices, limits, and enabled features)
 - `backend/hmis/apps/core/models.py` (`SubscriptionPlan.FEATURE_REGISTRY` canonical feature keys)
 
@@ -20,6 +21,7 @@ Sources of truth:
 ## Feature Availability Matrix (Canonical Keys)
 
 Legend:
+
 - `Yes` = enabled for the plan in current seed data
 - `No` = disabled or not explicitly set for the plan in current seed data
 

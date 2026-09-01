@@ -16,6 +16,7 @@ This document covers the testing infrastructure setup including Jest configurati
 ## 1. Jest Configuration
 
 **jest.config.js**:
+
 ```javascript
 const nextJest = require('next/jest');
 
@@ -99,6 +100,7 @@ module.exports = createJestConfig(customJestConfig);
 ## 2. Jest Setup File
 
 **jest.setup.js**:
+
 ```javascript
 import '@testing-library/jest-dom';
 import { server } from './__tests__/mocks/server';
@@ -208,7 +210,8 @@ global.IntersectionObserver = jest.fn().mockImplementation(() => ({
 
 ## 3. MSW Server Setup
 
-**__tests__/mocks/server.ts**:
+****tests**/mocks/server.ts**:
+
 ```typescript
 import { setupServer } from 'msw/node';
 import { handlers } from './handlers';
@@ -217,7 +220,8 @@ import { handlers } from './handlers';
 export const server = setupServer(...handlers);
 ```
 
-**__tests__/mocks/handlers.ts**:
+****tests**/mocks/handlers.ts**:
+
 ```typescript
 import { http, HttpResponse } from 'msw';
 import { mockPatients, mockEncounters, mockCounties } from './data';
@@ -416,7 +420,8 @@ export const handlers = [
 
 ## 4. Mock Data
 
-**__tests__/mocks/data.ts**:
+****tests**/mocks/data.ts**:
+
 ```typescript
 import { Patient } from '@/lib/types/patient';
 import { Encounter } from '@/lib/types/encounter';
@@ -569,7 +574,8 @@ export const mockUser = {
 
 ## 5. Test Utilities
 
-**__tests__/utils/test-utils.tsx**:
+****tests**/utils/test-utils.tsx**:
+
 ```typescript
 import React, { ReactElement } from 'react';
 import { render, RenderOptions } from '@testing-library/react';
@@ -632,7 +638,8 @@ export async function waitForLoadingToFinish() {
 }
 ```
 
-**__tests__/utils/test-fixtures.ts**:
+****tests**/utils/test-fixtures.ts**:
+
 ```typescript
 import { Patient } from '@/lib/types/patient';
 import { Encounter } from '@/lib/types/encounter';
@@ -707,6 +714,7 @@ export const createMockEncounter = (overrides?: Partial<Encounter>): Encounter =
 ## 6. Playwright E2E Configuration
 
 **playwright.config.ts**:
+
 ```typescript
 import { defineConfig, devices } from '@playwright/test';
 
@@ -807,6 +815,7 @@ export default defineConfig({
 ## 7. E2E Auth Setup
 
 **e2e/auth.setup.ts**:
+
 ```typescript
 import { test as setup, expect } from '@playwright/test';
 
@@ -839,6 +848,7 @@ setup('authenticate', async ({ page }) => {
 ## 8. Sample E2E Tests
 
 **e2e/patients.spec.ts**:
+
 ```typescript
 import { test, expect } from '@playwright/test';
 
@@ -912,6 +922,7 @@ test.describe('Patient Detail Page', () => {
 ```
 
 **e2e/encounters.spec.ts**:
+
 ```typescript
 import { test, expect } from '@playwright/test';
 
@@ -1018,6 +1029,7 @@ Add these dev dependencies to package.json:
 ## 11. Checklist
 
 ### Days 1-2: Testing Setup
+
 - [x] Configure Jest with Next.js
 - [x] Create jest.setup.js
 - [x] Set up MSW server

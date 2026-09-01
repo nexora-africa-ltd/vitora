@@ -131,6 +131,7 @@ Under Kenya Data Protection Act Section 30, processing is lawful based on:
 
 **Risk**: Unauthorized disclosure could enable identity theft
 **Controls**:
+
 - Encrypted database storage (SQLCipher)
 - Authentication required for all access
 - MRN is non-identifiable format
@@ -139,6 +140,7 @@ Under Kenya Data Protection Act Section 30, processing is lawful based on:
 
 **Risk**: Breach could cause significant harm to patients
 **Controls**:
+
 - Role-based access control (RBAC)
 - Audit logging of all access
 - Offline-first reduces network attack surface
@@ -147,6 +149,7 @@ Under Kenya Data Protection Act Section 30, processing is lawful based on:
 
 **Risk**: Disclosure could cause severe harm, discrimination, or danger
 **Controls**:
+
 - `is_sensitive` flag requiring special permission
 - Separate `view_sensitive_patient` permission
 - Access logged to audit trail with 7-year retention
@@ -298,6 +301,7 @@ Patient Model Fields:
 **Current Status**: No cross-border transfers planned
 
 **If Required**:
+
 - Kenya DPA Section 48 requires adequate protection
 - Transfer Impact Assessment to be conducted
 - Standard Contractual Clauses or adequacy decision required
@@ -373,6 +377,7 @@ The residual risks documented above are acceptable for the following reasons:
 ### 10.2 Change Management
 
 DPIA must be updated when:
+
 - New data processing activities are introduced
 - New data categories are collected
 - New third-party processors are engaged
@@ -424,6 +429,7 @@ DPIA must be updated when:
 ## Appendix B: Security Controls Checklist
 
 ### Authentication
+
 - [x] JWT token-based authentication
 - [x] 30-minute access token lifetime
 - [x] 1-day refresh token lifetime
@@ -432,12 +438,14 @@ DPIA must be updated when:
 - [ ] Two-factor authentication (planned)
 
 ### Authorization
+
 - [x] Role-based access control
 - [x] Permission groups configured
 - [x] Object-level permissions
 - [x] Sensitive data special permission
 
 ### Audit Logging
+
 - [x] All CRUD operations logged
 - [x] Login/logout logged
 - [x] Login failures logged
@@ -447,12 +455,14 @@ DPIA must be updated when:
 - [x] Admin-only log access
 
 ### Data Protection
+
 - [ ] Database encryption (SQLCipher)
 - [x] Input validation
 - [x] Transport encryption (HTTPS)
 - [ ] Backup encryption
 
 ### Monitoring
+
 - [x] Audit log API
 - [x] Log filtering
 - [ ] Anomaly detection

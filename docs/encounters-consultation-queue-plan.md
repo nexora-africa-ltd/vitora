@@ -79,6 +79,7 @@
 ```
 
 > **Kenya Compliance Notes:**
+>
 > - MANDATORY types align with Level 4-6 facility requirements
 > - Emergency uses ETAT (Emergency Triage Assessment and Treatment)
 > - High-risk clinics (ANC, Paediatrics, Dialysis, Oncology) are mandatory per MOH guidelines
@@ -169,6 +170,7 @@ Add the following fields to the Encounter model:
 
 **Decision**: ✅ Facility-configurable setting
 **Implementation**:
+
 - Add facility settings for queue visibility
 - Options: "All patients", "Assigned area only", "Assigned to me only"
 - Default: All patients visible (small facility mode)
@@ -177,6 +179,7 @@ Add the following fields to the Encounter model:
 
 **Decision**: ✅ YES - Trigger notification/announcement
 **Implementation**:
+
 - Update encounter status to "CALLED"
 - Trigger real-time notification (WebSocket/polling)
 - Display announcement on waiting room display (future)
@@ -293,7 +296,9 @@ def get_consultation_queue():
 ### Phase 1: Backend Model Updates
 
 #### 1.1 Encounter Type & Triage Requirement
+
 - [x] **Extend existing `ENCOUNTER_TYPE_CHOICES`** in `hmis/apps/encounters/models.py`:
+
   ```python
   # Current choices (keep existing):
   # ("OPD", "Outpatient Department"),
@@ -324,11 +329,13 @@ def get_consultation_queue():
       ("DISCHARGE_REVIEW", "Discharge Review"),
   ]
   ```
+
 - [x] Add `TRIAGE_REQUIREMENT_CHOICES`: `MANDATORY`, `OPTIONAL`, `NOT_REQUIRED`
 - [x] Add `TRIAGE_STATUS_CHOICES`: `PENDING`, `IN_PROGRESS`, `COMPLETED`, `BYPASSED`, `NOT_APPLICABLE`
 - [x] Add `TRIAGE_BYPASS_REASON_CHOICES`
 
 #### 1.2 Encounter Model Fields
+
 - [x] Add `triage_requirement` field (auto-set based on encounter_type)
 - [x] Add `triage_status` field (default: computed from requirement)
 - [x] Add `triage_bypass_reason` field (nullable)
@@ -342,12 +349,14 @@ def get_consultation_queue():
 - [x] Add signal: Auto-set `triage_status=COMPLETED` when TriageAssessment created
 
 #### 1.3 Migrations
+
 - [x] Create migration for new fields
 - [ ] Data migration: Set existing encounters' triage fields appropriately
 
 ### Phase 2: Backend API Updates
 
 #### 2.1 Encounter Endpoints
+
 - [x] Update Encounter serializer with new fields
 - [x] Add `POST /api/encounters/{id}/bypass_triage/` endpoint
 - [x] Add `POST /api/encounters/{id}/call/` endpoint
@@ -355,6 +364,7 @@ def get_consultation_queue():
 - [x] Add `GET /api/encounters/consultation_queue/` endpoint
 
 #### 2.2 Consultation Queue Endpoint
+
 - [x] Filter by triage eligibility (COMPLETED, BYPASSED, NOT_APPLICABLE)
 - [x] Exclude MANDATORY + PENDING
 - [x] Sort by priority, then wait time
@@ -362,6 +372,7 @@ def get_consultation_queue():
 - [x] Support filtering by triage_status, consultation_status
 
 #### 2.3 Notification System
+
 - [x] Create notification event for "Patient Called"
 - [x] Add notification API endpoint
 - [x] Frontend notification subscription (polling initially)
@@ -369,6 +380,7 @@ def get_consultation_queue():
 ### Phase 3: Frontend - Encounters Page
 
 #### 3.1 Consultation Queue Component
+
 - [x] Create `components/encounters/consultation-queue.tsx`
 - [x] Create `components/encounters/consultation-queue-item.tsx`
 - [x] Fetch from `/api/encounters/consultation-queue/`
@@ -377,24 +389,28 @@ def get_consultation_queue():
 - [x] Actions: Call, Start Consultation
 
 #### 3.2 Bypass Triage Dialog
+
 - [x] Create `components/encounters/bypass-triage-dialog.tsx`
 - [x] Reason selector (required)
 - [x] Confirmation step
 - [x] API call to bypass-triage endpoint
 
 #### 3.3 Call Patient Functionality
+
 - [x] "Call Patient" button
 - [x] Update consultation_status to CALLED
 - [x] Visual indicator for called patients
 - [x] Re-call option
 
 #### 3.4 Start Consultation
+
 - [x] "Start Consultation" button
 - [x] Navigate to encounter documentation
 - [x] Update consultation_status to IN_PROGRESS
 - [x] Record timestamp
 
 #### 3.5 Page Layout
+
 - [x] Redesign `app/(dashboard)/encounters/page.tsx`
 - [x] Tab: "Consultation Queue" (default)
 - [x] Tab: "My Active Consultations"
@@ -404,12 +420,14 @@ def get_consultation_queue():
 ### Phase 4: Frontend - Triage Page Updates
 
 #### 4.1 Remove Awaiting Consultation
+
 - [x] Remove "Awaiting Consultation" section from `/triage/`
 - [x] Keep: Waiting Queue (pre-triage patients)
 - [x] Keep: Triage Assessment actions
 - [x] Update page description
 
 #### 4.2 Pre-Triage Queue Logic
+
 - [x] Only show encounters with `triage_status=PENDING` AND `triage_requirement` in (MANDATORY, OPTIONAL)
 - [x] Sort by arrival time
 - [x] Add `GET /api/encounters/pre_triage_queue/` backend endpoint
@@ -418,6 +436,7 @@ def get_consultation_queue():
 ### Phase 5: Patient Journey Store Integration
 
 #### 5.1 Store Updates
+
 - [x] Add `triage_status` to patient journey state
 - [x] Add `consultation_status` to patient journey state
 - [x] Update on: triage completed, bypassed, called, consultation started
@@ -426,6 +445,7 @@ def get_consultation_queue():
 - [x] Add `updateTriageStatus` and `updateConsultationStatus` direct actions
 
 #### 5.2 Stage Mapping
+
 - [x] `triage_status=PENDING` → stage: `AWAITING_TRIAGE`
 - [x] `triage_status=IN_PROGRESS` → stage: `IN_TRIAGE`
 - [x] `triage_status=COMPLETED` + `consultation_status=WAITING` → stage: `AWAITING_CONSULTATION`

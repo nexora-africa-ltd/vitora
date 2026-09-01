@@ -11,7 +11,7 @@ docker compose up -d
 
 First boot takes ~60 seconds (DB migrations + admin creation).
 
-**UI**: http://localhost:8088
+**UI**: <http://localhost:8088>
 **Login**: `admin` / `admin`
 
 ## Connect to Vitora data
@@ -19,9 +19,11 @@ First boot takes ~60 seconds (DB migrations + admin creation).
 1. Open Superset → **Settings → Database Connections → + Database**
 2. Choose **PostgreSQL**
 3. SQLAlchemy URI (local dev with Neon):
+
    ```
    postgresql://user:pass@host.docker.internal:5432/vitora
    ```
+
    Or paste your Neon connection string directly.
 4. **Test Connection** → **Connect**
 

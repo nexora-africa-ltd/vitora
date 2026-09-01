@@ -34,9 +34,10 @@ big = [(p, sum(1 for _ in p.open())) for p in files]
 big = [x for x in big if x[1] > 1500]
 
 print(len(big))
-for p, n in sorted(big, key=lambda x: x[1], reverse=True)[:20]:
+for p, n in sorted[big, key=lambda x: x[1], reverse=True](:20):
     print(n, p)
 PY`
+
 - Web API raw return count (`return response.data`):
   - Command: `cd web-app && rg -n "return response\.data" lib/api | wc -l`
 

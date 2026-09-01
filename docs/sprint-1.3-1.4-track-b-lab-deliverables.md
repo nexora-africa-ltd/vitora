@@ -67,6 +67,7 @@ Track B of Sprint 1.3-1.4 implements the Laboratory and Investigations Foundatio
 **Purpose**: Master catalog of available laboratory tests.
 
 **Fields**:
+
 ```python
 class TestCatalog(models.Model):
     """Laboratory test master catalog."""
@@ -146,11 +147,13 @@ class TestCatalog(models.Model):
 ```
 
 **Methods**:
+
 - `get_normal_range(patient)`: Returns appropriate range based on gender/age
 - `is_result_abnormal(value, patient)`: Check if result is outside normal range
 - `get_panel_tests()`: Get component tests if this is a panel
 
 **Pre-seeded Tests** (Kenya Essential):
+
 ```python
 ESSENTIAL_TESTS = [
     # Hematology
@@ -190,6 +193,7 @@ ESSENTIAL_TESTS = [
 ```
 
 **Test Coverage**: 10 tests
+
 - Test creation with required fields
 - Test code uniqueness
 - LOINC code assignment
@@ -210,6 +214,7 @@ ESSENTIAL_TESTS = [
 **Purpose**: Order for laboratory tests linked to patient encounter.
 
 **Fields**:
+
 ```python
 class LabOrder(models.Model):
     """Laboratory test order from clinical encounter."""
@@ -284,6 +289,7 @@ class LabOrder(models.Model):
 ```
 
 **Methods**:
+
 - `generate_order_number()`: Auto-generate unique order number (LAB-YYYYMMDD-XXXX)
 - `calculate_total_cost()`: Sum of all ordered test costs
 - `update_status(new_status, user)`: Status transition with validation
@@ -294,6 +300,7 @@ class LabOrder(models.Model):
 - `get_turnaround_time()`: Time from order to completion
 
 **Status Workflow**:
+
 ```
 DRAFT → ORDERED → SPECIMEN_COLLECTED → IN_PROGRESS → COMPLETED
                                     ↘ REJECTED
@@ -301,6 +308,7 @@ DRAFT → ORDERED → SPECIMEN_COLLECTED → IN_PROGRESS → COMPLETED
 ```
 
 **Test Coverage**: 18 tests
+
 - Order creation from encounter
 - Order number auto-generation
 - Order number uniqueness
@@ -329,6 +337,7 @@ DRAFT → ORDERED → SPECIMEN_COLLECTED → IN_PROGRESS → COMPLETED
 **Purpose**: Individual test items within a lab order.
 
 **Fields**:
+
 ```python
 class LabOrderItem(models.Model):
     """Individual test within a lab order."""
@@ -358,10 +367,12 @@ class LabOrderItem(models.Model):
 ```
 
 **Methods**:
+
 - `save()`: Auto-populate unit_cost from TestCatalog
 - `has_result()`: Check if result exists for this item
 
 **Test Coverage**: 12 tests
+
 - Item creation with test reference
 - Cost snapshot from catalog
 - Status transitions
@@ -384,6 +395,7 @@ class LabOrderItem(models.Model):
 **Purpose**: Store laboratory test results.
 
 **Fields**:
+
 ```python
 class LabResult(models.Model):
     """Laboratory test result."""
@@ -444,12 +456,14 @@ class LabResult(models.Model):
 ```
 
 **Methods**:
+
 - `auto_flag_result()`: Automatically determine flag based on normal ranges
 - `is_critical()`: Check if result is critically abnormal
 - `get_formatted_value()`: Return result with unit
 - `verify(user)`: Mark result as verified
 
 **Test Coverage**: 16 tests
+
 - Result creation for order item
 - Numeric value storage
 - Text value storage
@@ -476,6 +490,7 @@ class LabResult(models.Model):
 **Purpose**: LOINC code lookup table for interoperability.
 
 **Fields**:
+
 ```python
 class LOINCCode(models.Model):
     """LOINC code reference for lab test interoperability."""
@@ -496,10 +511,12 @@ class LOINCCode(models.Model):
 ```
 
 **Data Import**:
+
 - Import from official LOINC CSV (subset for common tests)
 - Management command: `python manage.py import_loinc`
 
 **Test Coverage**: 8 tests
+
 - LOINC code import from CSV
 - Code uniqueness
 - Component search
@@ -516,6 +533,7 @@ class LOINCCode(models.Model):
 **Module**: `hmis/apps/laboratory/views.py` and `hmis/apps/laboratory/urls.py`
 
 **Endpoints**:
+
 ```
 # Test Catalog
 GET    /api/lab/tests/                     # List available tests
@@ -542,6 +560,7 @@ GET    /api/encounters/{id}/lab-orders/    # Orders for encounter
 ```
 
 **Serializers**:
+
 ```python
 class TestCatalogSerializer(serializers.ModelSerializer):
     """Serializer for test catalog listing."""
@@ -565,6 +584,7 @@ class LabOrderItemSerializer(serializers.ModelSerializer):
 ```
 
 **Test Coverage**: 16 tests
+
 - List tests (authenticated)
 - Search tests by name
 - Create lab order from encounter
@@ -589,6 +609,7 @@ class LabOrderItemSerializer(serializers.ModelSerializer):
 **Module**: `hmis/apps/laboratory/views.py`
 
 **Endpoints**:
+
 ```
 # Results Entry
 POST   /api/lab/orders/{order_number}/results/          # Enter result for item
@@ -605,6 +626,7 @@ POST   /api/lab/results/{id}/attachment/                # Upload external result
 ```
 
 **Serializers**:
+
 ```python
 class LabResultCreateSerializer(serializers.ModelSerializer):
     """Create/update result."""
@@ -624,6 +646,7 @@ class LabResultVerifySerializer(serializers.Serializer):
 ```
 
 **Test Coverage**: 14 tests
+
 - Enter numeric result
 - Enter text result
 - Enter option result
@@ -648,6 +671,7 @@ class LabResultVerifySerializer(serializers.Serializer):
 **Purpose**: Service layer for lab workflow management.
 
 **Classes**:
+
 ```python
 class LabWorkflowService:
     """Service for managing lab order workflow."""
@@ -694,6 +718,7 @@ class LabAlertService:
 ```
 
 **Test Coverage**: 12 tests
+
 - Submit order validation
 - Specimen collection recording
 - Start processing transition
@@ -716,6 +741,7 @@ class LabAlertService:
 **Purpose**: Integration with external lab partners.
 
 **Classes**:
+
 ```python
 class ExternalLabRequisition:
     """Generate requisition documents for external labs."""
@@ -742,6 +768,7 @@ class ExternalResultImporter:
 ```
 
 **PDF Requisition Content**:
+
 - Facility header and logo
 - Patient demographics (name, MRN, DOB, gender)
 - Ordering clinician details
@@ -753,6 +780,7 @@ class ExternalResultImporter:
 - Kenya MOH requisition format compliance
 
 **Test Coverage**: 10 tests
+
 - PDF requisition generation
 - Requisition contains patient info
 - Requisition contains test list
@@ -773,6 +801,7 @@ class ExternalResultImporter:
 **File**: `hmis/apps/laboratory/migrations/0001_initial.py`
 
 **Operations**:
+
 1. Create TestCatalog table
 2. Create LOINCCode table
 3. Create LabOrder table
@@ -784,10 +813,12 @@ class ExternalResultImporter:
 **File**: `hmis/apps/laboratory/migrations/0002_seed_tests.py`
 
 **Operations**:
+
 1. Import Kenya essential lab tests
 2. Import common LOINC codes
 
 **Indexes**:
+
 - `test_code_idx` on TestCatalog.code
 - `test_loinc_idx` on TestCatalog.loinc_code
 - `order_number_idx` on LabOrder.order_number
@@ -828,6 +859,7 @@ LOINC_DATA_PATH = "data/loinc_common.csv"
 **Decision**: Use LabOrder + LabOrderItem rather than single model
 
 **Rationale**:
+
 - Orders often contain multiple tests
 - Each test can have independent status
 - Supports partial result entry
@@ -839,6 +871,7 @@ LOINC_DATA_PATH = "data/loinc_common.csv"
 **Decision**: Single LabOrder model with order_type field
 
 **Rationale**:
+
 - Same data structure for both workflows
 - Easy to switch between (if external lab unavailable)
 - Unified patient history view
@@ -849,6 +882,7 @@ LOINC_DATA_PATH = "data/loinc_common.csv"
 **Decision**: Require verification for all results
 
 **Rationale**:
+
 - Quality assurance requirement
 - Lab accreditation compliance
 - Audit trail for clinical governance
@@ -859,6 +893,7 @@ LOINC_DATA_PATH = "data/loinc_common.csv"
 **Decision**: Optional LOINC codes, not required
 
 **Rationale**:
+
 - Many Kenya facilities don't use LOINC
 - Enables future FHIR interoperability
 - Progressive enhancement approach

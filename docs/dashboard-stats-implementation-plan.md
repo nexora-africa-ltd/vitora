@@ -280,6 +280,7 @@ For charts and trend analysis, create a time-series endpoint:
 ## Database Queries
 
 ### Patients Stats
+
 ```python
 from django.utils import timezone
 from datetime import timedelta
@@ -294,12 +295,14 @@ Patient.objects.filter(created_at__date__gte=week_ago).count()  # this_week
 ```
 
 ### Encounters Stats
+
 ```python
 Encounter.objects.filter(encounter_date=today).count()  # today
 Encounter.objects.filter(encounter_date=today, status='IN_PROGRESS').count()
 ```
 
 ### Pharmacy Stats
+
 ```python
 Prescription.objects.filter(
     created_at__date=today,
@@ -313,6 +316,7 @@ StockAlert.objects.filter(
 ```
 
 ### Laboratory Stats
+
 ```python
 LabOrder.objects.filter(
     status__in=['PENDING', 'SAMPLE_COLLECTED']
@@ -320,6 +324,7 @@ LabOrder.objects.filter(
 ```
 
 ### Triage Stats
+
 ```python
 from django.db.models import Avg
 
@@ -340,6 +345,7 @@ TriageAssessment.objects.filter(
 ## Testing Plan
 
 ### Backend Tests
+
 ```python
 # tests/test_dashboard_stats.py
 
@@ -367,6 +373,7 @@ def test_dashboard_stats_caching(authenticated_client):
 ```
 
 ### Frontend Tests
+
 ```typescript
 // __tests__/dashboard-stats.test.tsx
 
@@ -395,19 +402,23 @@ describe('useDashboardStats', () => {
 ## Files to Create/Modify
 
 ### Backend (New)
+
 - [ ] `hmis/apps/core/dashboard_views.py` - Stats endpoint
 - [ ] `hmis/apps/core/dashboard_serializers.py` - Response schema
 - [ ] `tests/test_dashboard_stats.py` - API tests
 
 ### Backend (Modify)
+
 - [ ] `hmis/apps/core/urls.py` - Add route
 - [ ] `hmis/settings/base.py` - Cache configuration
 
 ### Frontend (New)
+
 - [ ] `lib/hooks/use-dashboard-stats.ts` - React Query hook
 - [ ] `lib/types/dashboard-stats.ts` - TypeScript types
 
 ### Frontend (Modify)
+
 - [ ] `app/(dashboard)/dashboard/page.tsx` - Use real data
 - [ ] `components/dashboard/stats-card.tsx` - Add loading state
 - [ ] `lib/hooks/use-dashboard-metrics.ts` - Replace mock data

@@ -16,6 +16,7 @@ This document covers the API client setup with Axios, authentication interceptor
 ## 1. Axios Client Setup
 
 **lib/api/client.ts**:
+
 ```typescript
 import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from 'axios';
 import { tokenStorage } from '@/lib/auth/storage';
@@ -201,6 +202,7 @@ export function transformAxiosError(error: AxiosError): ApiError {
 ## 2. Kenya Locations API
 
 **lib/api/locations.ts**:
+
 ```typescript
 import { apiClient } from './client';
 
@@ -260,6 +262,7 @@ export const locationsApi = {
 ## 3. TanStack Query Configuration
 
 **lib/query-client.ts**:
+
 ```typescript
 import { QueryClient, DefaultOptions } from '@tanstack/react-query';
 import { transformAxiosError } from './api/client';
@@ -352,6 +355,7 @@ export const queryKeys = {
 ## 4. Locations Hooks
 
 **lib/hooks/use-locations.ts**:
+
 ```typescript
 import { useQuery } from '@tanstack/react-query';
 import { locationsApi, County, SubCounty, Ward } from '@/lib/api/locations';
@@ -416,6 +420,7 @@ export function useLocationSelector(initialCountyId?: number, initialSubCountyId
 ## 5. UI Store (Zustand)
 
 **lib/stores/ui-store.ts**:
+
 ```typescript
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
@@ -478,6 +483,7 @@ export const useUIStore = create<UIState>()(
 ## 6. Form Store (Zustand)
 
 **lib/stores/form-store.ts**:
+
 ```typescript
 import { create } from 'zustand';
 
@@ -536,6 +542,7 @@ export const useFormStore = create<FormState>()((set, get) => ({
 ## 7. Toast Notifications
 
 **lib/hooks/use-toast-notification.ts**:
+
 ```typescript
 import { useToast } from '@/components/ui/use-toast';
 import { ApiError } from '@/lib/api/client';
@@ -591,6 +598,7 @@ export function useToastNotification() {
 ## 8. Global Error Boundary
 
 **components/shared/error-boundary.tsx**:
+
 ```typescript
 'use client';
 
@@ -680,6 +688,7 @@ export class ErrorBoundary extends Component<Props, State> {
 ## 9. Network Status Hook
 
 **lib/hooks/use-network-status.ts**:
+
 ```typescript
 import { useState, useEffect } from 'react';
 
@@ -723,6 +732,7 @@ export function useNetworkStatus(): NetworkStatus {
 ```
 
 **components/shared/offline-banner.tsx**:
+
 ```typescript
 'use client';
 
@@ -766,7 +776,8 @@ export function OfflineBanner() {
 
 ### 10.1 API Client Tests (6 tests)
 
-**__tests__/lib/api/client.test.ts**:
+****tests**/lib/api/client.test.ts**:
+
 ```typescript
 import { apiClient, transformAxiosError } from '@/lib/api/client';
 import { tokenStorage } from '@/lib/auth/storage';
@@ -838,7 +849,8 @@ describe('transformAxiosError', () => {
 
 ### 10.2 Query Client Tests (4 tests)
 
-**__tests__/lib/query-client.test.ts**:
+****tests**/lib/query-client.test.ts**:
+
 ```typescript
 import { createQueryClient, queryKeys } from '@/lib/query-client';
 
@@ -870,7 +882,8 @@ describe('Query Keys', () => {
 
 ### 10.3 Locations Hooks Tests (4 tests)
 
-**__tests__/lib/hooks/use-locations.test.tsx**:
+****tests**/lib/hooks/use-locations.test.tsx**:
+
 ```typescript
 import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -932,7 +945,8 @@ describe('useWards', () => {
 
 ### 10.4 UI Store Tests (4 tests)
 
-**__tests__/lib/stores/ui-store.test.ts**:
+****tests**/lib/stores/ui-store.test.ts**:
+
 ```typescript
 import { useUIStore } from '@/lib/stores/ui-store';
 
@@ -974,7 +988,8 @@ describe('UI Store', () => {
 
 ### 10.5 Network Status Tests (2 tests)
 
-**__tests__/lib/hooks/use-network-status.test.ts**:
+****tests**/lib/hooks/use-network-status.test.ts**:
+
 ```typescript
 import { renderHook, act } from '@testing-library/react';
 import { useNetworkStatus } from '@/lib/hooks/use-network-status';
@@ -1002,6 +1017,7 @@ describe('useNetworkStatus', () => {
 ## 11. Checklist
 
 ### Days 7-8: API & State
+
 - [x] Create Axios client with interceptors
 - [x] Implement token refresh logic
 - [x] Create error transformation utility

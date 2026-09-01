@@ -25,21 +25,15 @@
 
 # Integration Scenarios
 
-
 This section gives you end-to-end API roadmaps for the most common integration paths on the HIE platform. Each scenario maps a real clinical use case to the exact sequence of API calls across all services - from authentication through to claim submission.
-
 
 Use the decision matrix below to identify which scenario matches the intervention you are integrating, then follow the step-by-step walkthrough for that path.
 
-
 ---
-
 
 ## General API Flow
 
-
 In most cases, every integration on a visit flow starts with an eligibility check - verifying whether the patient is eligible for SHA and what services they can receive at the hospital. These can be seen as four prerequisite steps regardless of which scenario follows. They establish the patient's identity, their coverage, and the specific services available to them at your facility.
-
 
 | Step | Action | Service | Endpoint | Key Inputs | Key Output |
 | --- | --- | --- | --- | --- | --- |
@@ -49,12 +43,9 @@ In most cases, every integration on a visit flow starts with an eligibility chec
 | 4 | Sub-Benefit Coverage | eClaims | GET /api/v1/patients/sub-benefits | patient_id | sub_benefit_codelist |
 | 5 | Intervention Coverage | eClaims | GET /api/v1/patients/benefits/interventions | patient_id,sub_benefit_code | Intervention list with flags (see below) |
 
-
 ### Read the Intervention Flags
 
-
 The response from **Step 5 (Intervention Coverage)** contains the fields that determine which scenario applies. Check these on every intervention before proceeding:
-
 
 - `paymentMechanism` - `PER_DIEM` or `FEE_FOR_SERVICE`
 - `needsPreauth` - `true` or `false`
@@ -62,12 +53,9 @@ The response from **Step 5 (Intervention Coverage)** contains the fields that de
 - `accessPoint` - `IP` (inpatient), `OP` (outpatient), or both
 - `fund` - `SHIF`, `UHC`, etc.
 
-
 ---
 
-
 ## Scenario Decision Matrix
-
 
 | Scenario | Fund | Access Point | Payment Mechanism | Needs Preauth | Elective Preauth | Claim Dispatch |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -78,18 +66,13 @@ The response from **Step 5 (Intervention Coverage)** contains the fields that de
 | Scenario 5: SHIF OP FFS Normal Preauth | SHIF | Outpatient | Fee for Service | Yes | No | Submit |
 | Scenario 6: UHC OP Capitation | UHC | Outpatient | Capitation | N/A | N/A | Submit |
 
-
 ---
-
 
 ## Consent: OTP vs Biometrics
 
-
 All scenarios require patient consent to start a visit. The consent flow is the same regardless of scenario - only the authorization method differs. Both methods are documented separately below.
 
-
 ### OTP Flow
-
 
 | Step | Action | Service | Endpoint | Notes |
 | --- | --- | --- | --- | --- |
@@ -97,12 +80,9 @@ All scenarios require patient consent to start a visit. The consent flow is the 
 | B | Send OTP | Consent | POST /api/v1/claims/otp | Pass thebeneficiary_contact_idfrom Step A to target a specific contact. If omitted, the patient's default contact is used. |
 | C | Use OTP in visit creation | eClaims | POST /api/v1/claims/visit | Pass the OTP directly when creating the claim. |
 
-
 For **elective scenarios only**, the OTP is also used in a pre-visit `/authorize` call before the day of the actual visit (see Scenarios 3 and 4).
 
-
 ### OTP consent: example contacts response
-
 
 ```json
 {
@@ -119,15 +99,11 @@ For **elective scenarios only**, the OTP is also used in a pre-visit `/authorize
 }
 ```
 
-
 Confirm the masked number with the patient, then use the `id` as `beneficiary_contact_id` in the Send OTP call.
-
 
 ---
 
-
 ### Biometrics Flow
-
 
 | Step | Action | Service | Endpoint | Notes |
 | --- | --- | --- | --- | --- |
@@ -135,35 +111,25 @@ Confirm the masked number with the patient, then use the `id` as `beneficiary_co
 | B | Patient matches fingerprints | - | (via iframe) | After successful matching, authorization transitions toAUTHORIZED(standard visit) orAUTHORIZED_PENDING_VISIT(elective service). |
 | C | Use auth_guid in visit creation | eClaims | POST /api/v1/claims/visit | Pass theauth_guidfrom the authorization. No second consent step is needed on the day of visit. |
 
-
 ### token is your consent identifier
-
 
 The `token` field in the `POST /api/v1/claims/authorize` response is used as the `consent_token` parameter in all downstream eClaims endpoints. Store it immediately - it is required for every action on the visit.
 
-
 For biometrics, you also store the `guid` to reference the authorization by `auth_guid` in visit and discharge endpoints.
-
 
 ---
 
-
 ### Biometrics Discharge
 
-
 Discharge can also be performed via biometrics. The process mirrors the start-visit biometrics flow:
-
 
 1. Hit `POST /api/v1/claims/authorize` with biometric fields
 2. Match the patient's fingerprints via the iframe (authorization goes from `PENDING` to `AUTHORIZED`)
 3. Call `POST /api/v1/claims/discharge` - remove the `otp` field and replace with `auth_guid`, providing the GUID of the authorization where fingerprints were matched
 
-
 ---
 
-
 ## Claim Dispatch Reference
-
 
 | Visit Type | Action | Endpoint |
 | --- | --- | --- |
@@ -184,12 +150,9 @@ Scenario 1: SHIF IP Per Diem
 
 # Scenario 1: SHIF - Inpatient - Per Diem - No Preauth
 
-
 A patient is admitted to a ward and the intervention is charged on a **per-day tariff**. No preauthorization is required. The claim is submitted at discharge.
 
-
 ## Intervention Properties
-
 
 | Property | Value |
 | --- | --- |
@@ -200,18 +163,13 @@ A patient is admitted to a ward and the intervention is charged on a **per-day t
 | Elective Preauth | N/A |
 | Tariff Type | Hospital Level Tariff |
 
-
 **How to identify this scenario:** After calling `GET /api/v1/patients/benefits/interventions`, the intervention has `paymentMechanism: "PER_DIEM"` and `needsPreauth: false`.
-
 
 Examples: General Ward Admission (Management of Medical Cases), HDU, ICU transfers.
 
-
 ## Hospital Level Tariff
 
-
 Per diem interventions use a Hospital Level Tariff. SHA sets specific tariff amounts for each hospital based on their KEPH level as determined by KMPDC. The tariff fields in the intervention response correspond to each level:
-
 
 | Field | KEPH Level |
 | --- | --- |
@@ -221,16 +179,14 @@ Per diem interventions use a Hospital Level Tariff. SHA sets specific tariff amo
 | level5Tariff | Level 5 |
 | level6Tariff | Level 6 (highest) |
 
-
 Your facility's applicable tariff is determined by its KEPH level. When submitting `unit_price` in `POST /api/v1/claims/lines`, use the tariff value for your facility's level. If the submitted amount exceeds the tariff for your level, the request is rolled back.
 
-
 ---
-
 
 ## Complete Flow
 
 **Participants:**
+
 - 🏥 Point of Care
 - 🔐 Auth Service
 - 📋 Registries
@@ -238,6 +194,7 @@ Your facility's applicable tariff is determined by its KEPH level. When submitti
 - 🔄 eClaims & Preauths
 
 **Flow:**
+
 1. POST /api/v1/tenants/token
 2. access_token
 3. GET /api/v1/patients
@@ -272,6 +229,7 @@ Your facility's applicable tariff is determined by its KEPH level. When submitti
 32. claim submitted
 
 **Notes:**
+
 - General API Flow
 - Get Patient Consent (OTP path)
 - OR Get Patient Consent (Biometrics path)
@@ -282,16 +240,11 @@ Your facility's applicable tariff is determined by its KEPH level. When submitti
 - Discharge (OTP path)
 - OR Discharge (Biometrics path)
 
-
-
 ---
-
 
 ## Step-by-Step API Calls
 
-
 ### Phase 1: General API Flow
-
 
 | # | Action | Service | Endpoint | Key Request Fields | Key Output |
 | --- | --- | --- | --- | --- | --- |
@@ -301,12 +254,9 @@ Your facility's applicable tariff is determined by its KEPH level. When submitti
 | 4 | Sub-benefit coverage | eClaims | GET /api/v1/patients/sub-benefits | patient_id | sub_benefit_codelist |
 | 5 | Intervention coverage | eClaims | GET /api/v1/patients/benefits/interventions | patient_id,sub_benefit_code | intervention_code,paymentMechanism,needsPreauth, tariff fields per KEPH level |
 
-
 ### Phase 2: Patient Consent
 
-
 **OTP path:**
-
 
 | # | Action | Service | Endpoint | Key Request Fields | Key Output |
 | --- | --- | --- | --- | --- | --- |
@@ -314,9 +264,7 @@ Your facility's applicable tariff is determined by its KEPH level. When submitti
 | 7a | Send OTP | Consent | POST /api/v1/claims/otp | patient_id,intervention_codes,beneficiary_contact_id(optional) | OTP delivered to patient |
 | 8a | Create claim with OTP | eClaims | POST /api/v1/claims/visit | otp,intervention_code,service_type: "INPATIENT" | Claim created |
 
-
 **Biometrics path:**
-
 
 | # | Action | Service | Endpoint | Key Request Fields | Key Output |
 | --- | --- | --- | --- | --- | --- |
@@ -324,26 +272,19 @@ Your facility's applicable tariff is determined by its KEPH level. When submitti
 | 7b | (Patient matches fingerprints via iframe) | - | - | - | Authorization transitions toAUTHORIZED |
 | 8b | Create claim with auth_guid | eClaims | POST /api/v1/claims/visit | auth_guid,intervention_code,service_type: "INPATIENT" | Claim created |
 
-
 ### Phase 3: Create Claim
-
 
 See Phase 2 above - the claim is created as part of the consent step (OTP or `auth_guid` passed directly into `POST /api/v1/claims/visit`).
 
-
 ### Phase 4: Add Combined Billing Details
-
 
 | # | Action | Service | Endpoint | Key Request Fields | Key Output |
 | --- | --- | --- | --- | --- | --- |
 | 10 | Add combined billing details | eClaims | POST /api/v1/claims/lines | consent_token,intervention_code,unit_price(your KEPH level tariff value for validation),diagnoses(ICD-11 array),attachments(files + metadata) | Tariff validation result |
 
-
 ### Phase 5: Preview & Dispatch
 
-
 **OTP discharge path:**
-
 
 | # | Action | Service | Endpoint | Key Request Fields | Key Output |
 | --- | --- | --- | --- | --- | --- |
@@ -351,9 +292,7 @@ See Phase 2 above - the claim is created as part of the consent step (OTP or `au
 | 12 | Send discharge OTP | eClaims | POST /api/v1/claims/otp/discharge | consent_token | OTP sent for discharge consent |
 | 13 | Discharge patient | eClaims | POST /api/v1/claims/discharge | otp(discharge OTP) | Claim submitted to SHA |
 
-
 **Biometrics discharge path:**
-
 
 | # | Action | Service | Endpoint | Key Request Fields | Key Output |
 | --- | --- | --- | --- | --- | --- |
@@ -362,12 +301,9 @@ See Phase 2 above - the claim is created as part of the consent step (OTP or `au
 | 13 | (Patient matches fingerprints via iframe) | - | - | - | Authorization transitions toAUTHORIZED |
 | 14 | Discharge patient | eClaims | POST /api/v1/claims/discharge | auth_guid(from Step 12 authorization) | Claim submitted to SHA |
 
-
 ---
 
-
 ## Field Flow Between Steps
-
 
 | Output Field | Step It Comes From | Used In |
 | --- | --- | --- |
@@ -378,45 +314,31 @@ See Phase 2 above - the claim is created as part of the consent step (OTP or `au
 | token(OTP path) | n/a - OTP used directly | otpfield inPOST /api/v1/claims/visit |
 | guid(Biometrics path) | Step 6b authorize | auth_guidinPOST /api/v1/claims/visitand biometrics discharge |
 
-
 ---
-
 
 ## Important Notes
 
-
 ### Per Diem: Do Not Add a Manual Line Item
-
 
 For per diem interventions, the system **automatically generates the claim line item** based on the accrued days and the applicable tariff. You do **not** need to specify a separate line item when calling `POST /api/v1/claims/lines`.
 
-
 Submit `diagnoses` and `attachments` only. The `unit_price` field you send is used purely for tariff validation - it is compared against the intervention's Hospital Level Tariff for your facility's KEPH level. If the submitted amount exceeds the tariff, the entire request is rolled back and an error is returned.
-
 
 ### One Active Per Diem Intervention at a Time
 
-
 A claim cannot have more than one **active** per diem intervention at the same time. If the patient needs to transfer between wards (e.g., General Ward → ICU), you must **switch** the intervention using `POST /api/v1/claims/interventions/switch` rather than adding a new one alongside the existing active intervention.
-
 
 See the intervention management guides for details on switching.
 
-
 ### Discharge Submits the Claim
-
 
 The discharge step (`POST /api/v1/claims/discharge`) both discharges the patient and simultaneously submits the claim to SHA. There is no separate submit step for inpatient claims.
 
-
 Before discharging, always run `POST /api/v1/claims/preview` to verify the claim is complete and correct.
-
 
 ---
 
-
 ## See Also
-
 
 - [Start Visit Consent Process](https://hie-docs.dha.go.ke/docs/claims/process/startVisitConsent/startVisitConsentProcessOverview) - Detailed OTP and biometrics authorization walkthrough
 - [Intervention Coverage](https://hie-docs.dha.go.ke/docs/claims/process/eligibility/interventionsCoverage) - How to read intervention flags
@@ -438,12 +360,9 @@ Scenario 2: SHIF IP FFS Normal Preauth
 
 # Scenario 2: SHIF - Inpatient - Fee for Service - Normal/Special Preauth
 
-
 A patient is admitted for a service that is billed per item (fee for service) and requires a **non-elective preauthorization** raised within the same visit. The preauth must reach `FINALISED` status before billing can proceed. The claim is submitted at discharge.
 
-
 ## Intervention Properties
-
 
 | Property | Value |
 | --- | --- |
@@ -454,19 +373,16 @@ A patient is admitted for a service that is billed per item (fee for service) an
 | Elective Preauth | No (needsManualPreauthApproval: false) |
 | Tariff Type | Overall / KEPH Level |
 
-
 **How to identify this scenario:** After calling `GET /api/v1/patients/benefits/interventions`, the intervention has `paymentMechanism: "FEE_FOR_SERVICE"`, `needsPreauth: true`, and `needsManualPreauthApproval: false`.
-
 
 The preauth type (normal, surgical, oncology, renal, imaging, optical) is indicated by the `isSurgicalPreauth`, `isRenalPreauth`, `isOncologyPreauth`, `isImagingPreauth`, and `isOpticalPreauth` flags. Normal preauth = all flags are false.
 
-
 ---
-
 
 ## Complete Flow
 
 **Participants:**
+
 - 🏥 Point of Care
 - 🔐 Auth Service
 - 📋 Registries
@@ -474,6 +390,7 @@ The preauth type (normal, surgical, oncology, renal, imaging, optical) is indica
 - 🔄 eClaims & Preauths
 
 **Flow:**
+
 1. POST /api/v1/tenants/token
 2. access_token
 3. GET /api/v1/patients
@@ -512,6 +429,7 @@ The preauth type (normal, surgical, oncology, renal, imaging, optical) is indica
 36. claim submitted
 
 **Notes:**
+
 - General API Flow
 - Get Patient Consent (OTP path)
 - OR Get Patient Consent (Biometrics path)
@@ -523,16 +441,11 @@ The preauth type (normal, surgical, oncology, renal, imaging, optical) is indica
 - Discharge (OTP path)
 - OR Discharge (Biometrics path)
 
-
-
 ---
-
 
 ## Step-by-Step API Calls
 
-
 ### Phase 1: General API Flow
-
 
 | # | Action | Service | Endpoint | Key Request Fields | Key Output |
 | --- | --- | --- | --- | --- | --- |
@@ -542,12 +455,9 @@ The preauth type (normal, surgical, oncology, renal, imaging, optical) is indica
 | 4 | Sub-benefit coverage | eClaims | GET /api/v1/patients/sub-benefits | patient_id | sub_benefit_codelist |
 | 5 | Intervention coverage | eClaims | GET /api/v1/patients/benefits/interventions | patient_id,sub_benefit_code | intervention_code,needsPreauth,needsManualPreauthApproval, preauth type flags |
 
-
 ### Phase 2: Patient Consent
 
-
 **OTP path:**
-
 
 | # | Action | Service | Endpoint | Key Request Fields | Key Output |
 | --- | --- | --- | --- | --- | --- |
@@ -555,9 +465,7 @@ The preauth type (normal, surgical, oncology, renal, imaging, optical) is indica
 | 7a | Send OTP | Consent | POST /api/v1/claims/otp | patient_id,intervention_codes,beneficiary_contact_id(optional) | OTP sent |
 | 8a | Create claim with OTP | eClaims | POST /api/v1/claims/visit | otp,intervention_code,service_type: "INPATIENT" | IP claim created |
 
-
 **Biometrics path:**
-
 
 | # | Action | Service | Endpoint | Key Request Fields | Key Output |
 | --- | --- | --- | --- | --- | --- |
@@ -565,35 +473,26 @@ The preauth type (normal, surgical, oncology, renal, imaging, optical) is indica
 | 7b | (Patient matches fingerprints via iframe) | - | - | - | Authorization transitions toAUTHORIZED |
 | 8b | Create claim with auth_guid | eClaims | POST /api/v1/claims/visit | auth_guid,intervention_code,service_type: "INPATIENT" | IP claim created |
 
-
 ### Phase 3: Create Claim
-
 
 See Phase 2 above - the claim is created as part of the consent step.
 
-
 ### Phase 4: Create & Await Preauth
-
 
 | # | Action | Service | Endpoint | Key Request Fields | Key Output |
 | --- | --- | --- | --- | --- | --- |
 | 10 | Create preauth | eClaims | POST /api/v1/preauths | consent_token,intervention_code, preauth form fields (normal or special), doctor details, diagnosis, attachments, requested amount | Preauth created |
 | 11 | Poll preauth status | eClaims | GET /api/v1/preauths | consent_token | status- repeat untilFINALISED |
 
-
 ### Phase 5: Add Combined Billing Details
-
 
 | # | Action | Service | Endpoint | Key Request Fields | Key Output |
 | --- | --- | --- | --- | --- | --- |
 | 12 | Add combined billing details | eClaims | POST /api/v1/claims/lines | consent_token,intervention_code,unit_price,quantity,diagnoses(ICD-11 array),attachments | Billing saved; amount validated against tariff |
 
-
 ### Phase 6: Preview & Dispatch
 
-
 **OTP discharge path:**
-
 
 | # | Action | Service | Endpoint | Key Request Fields | Key Output |
 | --- | --- | --- | --- | --- | --- |
@@ -601,9 +500,7 @@ See Phase 2 above - the claim is created as part of the consent step.
 | 14 | Send discharge OTP | eClaims | POST /api/v1/claims/otp/discharge | consent_token | OTP sent for discharge |
 | 15 | Discharge patient | eClaims | POST /api/v1/claims/discharge | otp(discharge OTP) | Claim submitted to SHA |
 
-
 **Biometrics discharge path:**
-
 
 | # | Action | Service | Endpoint | Key Request Fields | Key Output |
 | --- | --- | --- | --- | --- | --- |
@@ -612,12 +509,9 @@ See Phase 2 above - the claim is created as part of the consent step.
 | 15 | (Patient matches fingerprints via iframe) | - | - | - | Authorization transitions toAUTHORIZED |
 | 16 | Discharge patient | eClaims | POST /api/v1/claims/discharge | auth_guid(from Step 14) | Claim submitted to SHA |
 
-
 ---
 
-
 ## Field Flow Between Steps
-
 
 | Output Field | Step It Comes From | Used In |
 | --- | --- | --- |
@@ -629,12 +523,9 @@ See Phase 2 above - the claim is created as part of the consent step.
 | guid(Biometrics path) | Step 6b authorize | auth_guidinPOST /api/v1/claims/visitand biometrics discharge |
 | consent_token | From claim creation (Step 8) | Steps 10-16 |
 
-
 ---
 
-
 ## Choosing the Right Preauth Form
-
 
 | Preauth Type | When to Use | Intervention Flag |
 | --- | --- | --- |
@@ -645,48 +536,33 @@ See Phase 2 above - the claim is created as part of the consent step.
 | Imaging Preauth | Radiology / imaging | isImagingPreauth: true |
 | Optical Preauth | Eye care services | isOpticalPreauth: true |
 
-
 Each special preauth form collects additional clinical data specific to that service category. The `POST /api/v1/preauths` endpoint accepts all types via a `oneOf` schema - submit the form that matches the flag.
 
-
 ---
-
 
 ## Important Notes
 
-
 ### Billing Requires an Approved Preauth
-
 
 You cannot add bill items to the claim until the preauth status is `FINALISED`. Any attempt to call `POST /api/v1/claims/lines` before the preauth is approved will be rejected.
 
-
 Poll `GET /api/v1/preauths?consent_token=...` until the status reaches `FINALISED` before proceeding to billing.
-
 
 ### Doctor Info Required, But No Approval Step for Non-Elective Preauths
 
-
 When you call `POST /api/v1/preauths` for a non-elective preauth, doctor information (doctor name, doctor ID, etc.) is required in the payload. However, the doctor does **not** need to approve the preauth. The system processes it directly without waiting for doctor confirmation.
-
 
 Doctor approval (which puts the preauth into `PENDING_DOCTOR_APPROVAL` status) is only required for **elective preauths** - see Scenarios 3 and 4.
 
-
 The `POST /api/v1/claims/doctor-consent` endpoint is used only as a fallback to resend a consent request if a doctor reports they did not receive it.
-
 
 ### Billing Amount Validated Against Tariff
 
-
 The `unit_price` submitted in `POST /api/v1/claims/lines` is validated against the intervention's Overall/KEPH Level tariff. The billed amount must not exceed the tariff. If it does, the entire combined billing request is rolled back.
-
 
 ---
 
-
 ## See Also
-
 
 - [Normal Preauth](https://hie-docs.dha.go.ke/docs/claims/process/preauths/normalPreauths) - Full normal preauth guide
 - [Surgical Preauth](https://hie-docs.dha.go.ke/docs/claims/process/preauths/surgicalPreauths) - Surgical-specific form fields
@@ -708,12 +584,9 @@ Scenario 3: SHIF IP FFS Elective Preauth
 
 # Scenario 3: SHIF - Inpatient - Fee for Service - Elective Preauth
 
-
 A patient is scheduled for a planned inpatient procedure that requires **prior approval before the visit begins** (elective preauthorization). The preauth is created and approved in advance. On the day of the actual visit, the claim is created using the same patient and intervention - no new consent or authorization step is needed.
 
-
 ## Intervention Properties
-
 
 | Property | Value |
 | --- | --- |
@@ -724,16 +597,14 @@ A patient is scheduled for a planned inpatient procedure that requires **prior a
 | Elective Preauth | Yes (needsManualPreauthApproval: true) |
 | Tariff Type | Overall / KEPH Level |
 
-
 **How to identify this scenario:** After calling `GET /api/v1/patients/benefits/interventions`, the intervention has `paymentMechanism: "FEE_FOR_SERVICE"`, `needsPreauth: true`, and `needsManualPreauthApproval: true` with `accessPoint: "IP"`.
 
-
 ---
-
 
 ## Complete Flow
 
 **Participants:**
+
 - 🏥 Point of Care
 - 🔐 Auth Service
 - 📋 Registries
@@ -741,6 +612,7 @@ A patient is scheduled for a planned inpatient procedure that requires **prior a
 - 🔄 eClaims & Preauths
 
 **Flow:**
+
 1. POST /api/v1/tenants/token
 2. access_token
 3. GET /api/v1/patients
@@ -786,6 +658,7 @@ A patient is scheduled for a planned inpatient procedure that requires **prior a
 43. claim submitted
 
 **Notes:**
+
 - PRE-VISIT PHASE (Before admission day)
 - Get consent to create an authorization (OTP path)
 - OR Get consent to create an authorization (Biometrics path)
@@ -799,22 +672,15 @@ A patient is scheduled for a planned inpatient procedure that requires **prior a
 - Discharge (OTP path)
 - OR Discharge (Biometrics path)
 
-
-
 This scenario has **two distinct phases** separated in time.
-
 
 ---
 
-
 ## Step-by-Step API Calls
-
 
 ### Pre-Visit Phase
 
-
 #### Phase 1: General API Flow
-
 
 | # | Action | Service | Endpoint | Key Request Fields | Key Output |
 | --- | --- | --- | --- | --- | --- |
@@ -824,12 +690,9 @@ This scenario has **two distinct phases** separated in time.
 | 4 | Sub-benefit coverage | eClaims | GET /api/v1/patients/sub-benefits | patient_id | sub_benefit_codelist |
 | 5 | Intervention coverage | eClaims | GET /api/v1/patients/benefits/interventions | patient_id,sub_benefit_code | intervention_code,needsManualPreauthApproval: trueconfirmed |
 
-
 #### Phase 2: Authorization for Preauth
 
-
 **OTP path:**
-
 
 | # | Action | Service | Endpoint | Key Request Fields | Key Output |
 | --- | --- | --- | --- | --- | --- |
@@ -837,80 +700,60 @@ This scenario has **two distinct phases** separated in time.
 | 7a | Send OTP | Consent | POST /api/v1/claims/otp | patient_id,intervention_codes,beneficiary_contact_id(optional) | OTP sent |
 | 8a | Create authorization | Consent | POST /api/v1/claims/authorize | patient_id,otp | Authorizationtoken(status:AUTHORIZED_PENDING_VISIT) |
 
-
 **Biometrics path:**
-
 
 | # | Action | Service | Endpoint | Key Request Fields | Key Output |
 | --- | --- | --- | --- | --- | --- |
 | 6b | Create authorization | Consent | POST /api/v1/claims/authorize | patient_id, biometric fields | AuthorizationPENDING;guid;token; iframe link |
 | 7b | (Patient matches fingerprints via iframe) | - | - | - | Authorization transitions toAUTHORIZED_PENDING_VISIT |
 
-
 #### Phase 3: Create & Await Preauth
-
 
 | # | Action | Service | Endpoint | Key Request Fields | Key Output |
 | --- | --- | --- | --- | --- | --- |
 | 9 | Create preauth | eClaims | POST /api/v1/preauths | consent_token(authorizationtoken),intervention_code, preauth form, doctor details, diagnosis, requested amount, attachments | Preauth created (status:PENDING_DOCTOR_APPROVAL) |
 | 10 | Poll preauth status | eClaims | GET /api/v1/preauths | consent_token | status- repeat untilFINALISED |
 
-
 ---
-
 
 ### Day of Actual Visit
 
-
 ### No New Consent Required on Day of Visit
 
-
 On the day of the actual visit, you do **not** need to call `POST /api/v1/claims/authorize` again. The system checks that:
-
 
 - The same `patient_id` is used
 - The same `intervention_code` is used
 - An existing authorization in `AUTHORIZED` status exists
 - An approved preauth exists for this patient and intervention
 
-
 For OTP: send a fresh OTP and pass it directly in `POST /api/v1/claims/visit`.
 For biometrics: pass the `auth_guid` from the pre-visit authorization directly in `POST /api/v1/claims/visit`.
 
-
 #### Phase 4: Create Claim
 
-
 **OTP path:**
-
 
 | # | Action | Service | Endpoint | Key Request Fields | Key Output |
 | --- | --- | --- | --- | --- | --- |
 | 11a | Send fresh OTP | Consent | POST /api/v1/claims/otp | patient_id,intervention_codes | OTP sent |
 | 12a | Create IP claim | eClaims | POST /api/v1/claims/visit | otp,intervention_code,service_type: "INPATIENT" | IP claim created;consent_tokenreturned |
 
-
 **Biometrics path:**
-
 
 | # | Action | Service | Endpoint | Key Request Fields | Key Output |
 | --- | --- | --- | --- | --- | --- |
 | 12b | Create IP claim | eClaims | POST /api/v1/claims/visit | auth_guid(from pre-visit authorization),intervention_code,service_type: "INPATIENT" | IP claim created;consent_tokenreturned |
 
-
 #### Phase 5: Add Combined Billing Details
-
 
 | # | Action | Service | Endpoint | Key Request Fields | Key Output |
 | --- | --- | --- | --- | --- | --- |
 | 13 | Add combined billing details | eClaims | POST /api/v1/claims/lines | consent_token,intervention_code,unit_price,quantity,diagnoses,attachments | Billing saved |
 
-
 #### Phase 6: Preview & Discharge
 
-
 **OTP discharge path:**
-
 
 | # | Action | Service | Endpoint | Key Request Fields | Key Output |
 | --- | --- | --- | --- | --- | --- |
@@ -918,9 +761,7 @@ For biometrics: pass the `auth_guid` from the pre-visit authorization directly i
 | 15 | Send discharge OTP | eClaims | POST /api/v1/claims/otp/discharge | consent_token | OTP sent for discharge |
 | 16 | Discharge patient | eClaims | POST /api/v1/claims/discharge | otp(discharge OTP) | Claim submitted to SHA |
 
-
 **Biometrics discharge path:**
-
 
 | # | Action | Service | Endpoint | Key Request Fields | Key Output |
 | --- | --- | --- | --- | --- | --- |
@@ -929,12 +770,9 @@ For biometrics: pass the `auth_guid` from the pre-visit authorization directly i
 | 16 | (Patient matches fingerprints via iframe) | - | - | - | Authorization transitions toAUTHORIZED |
 | 17 | Discharge patient | eClaims | POST /api/v1/claims/discharge | auth_guid(from Step 15) | Claim submitted to SHA |
 
-
 ---
 
-
 ## Field Flow Between Steps
-
 
 | Output Field | Step It Comes From | Used In |
 | --- | --- | --- |
@@ -946,47 +784,33 @@ For biometrics: pass the `auth_guid` from the pre-visit authorization directly i
 | guid(Biometrics path) | Step 6b | auth_guidin Day-of-Visit claim creation |
 | consent_token | From claim creation (Step 12) | Billing, preview, discharge steps |
 
-
 ---
-
 
 ## Important Notes
 
-
 ### Elective Preauth - Doctor Approval Required
 
-
 For elective preauths, the doctor **must** approve before the preauth proceeds. The status flow is:
-
 
 1. `PENDING_DOCTOR_APPROVAL` - created; awaiting doctor confirmation
 2. `ACTIVE` - doctor approved; sent to payer for review
 3. `FINALISED` - payer approved; preauth is now valid for claim creation
 
-
 The `POST /api/v1/claims/doctor-consent` endpoint is available as a fallback to resend the consent request if the doctor reports they did not receive it.
-
 
 ### Authorization Status: AUTHORIZED_PENDING_VISIT
 
-
 When you call `POST /api/v1/claims/authorize` during the pre-visit phase, the authorization is created in `AUTHORIZED_PENDING_VISIT` status. This is correct and expected - it means the patient has consented but no claim exists yet.
-
 
 Once the preauth is approved (FINALISED), the authorization transitions to `AUTHORIZED` status, signaling that a claim can now be created for this patient and intervention.
 
-
 ### Same Patient and Intervention on the Day of Visit
-
 
 The system automatically links the approved preauth to the new claim. For this to work, use the **same patient_id** and the **same intervention_code** that were used during the pre-visit phase.
 
-
 ---
 
-
 ## See Also
-
 
 - [Elective Preauth Guide](https://hie-docs.dha.go.ke/docs/claims/process/preauths/electivePreauths) - Detailed elective preauth walkthrough
 - [Understanding Preauth Statuses](https://hie-docs.dha.go.ke/docs/claims/guides/understandingPreauthStatuses)
@@ -1007,12 +831,9 @@ Scenario 4: SHIF OP FFS Elective Preauth
 
 # Scenario 4: SHIF - Outpatient - Fee for Service - Elective Preauth
 
-
 A patient is scheduled for a planned outpatient procedure that requires **prior approval before the visit begins** (elective preauthorization). The preauth is created and approved in advance. On the day of the actual visit, an outpatient claim is created using the same patient and intervention - no new consent or authorization step is needed.
 
-
 ## Intervention Properties
-
 
 | Property | Value |
 | --- | --- |
@@ -1023,19 +844,16 @@ A patient is scheduled for a planned outpatient procedure that requires **prior 
 | Elective Preauth | Yes (needsManualPreauthApproval: true) |
 | Tariff Type | Overall / KEPH Level |
 
-
 **How to identify this scenario:** After calling `GET /api/v1/patients/benefits/interventions`, the intervention has `paymentMechanism: "FEE_FOR_SERVICE"`, `needsPreauth: true`, `needsManualPreauthApproval: true`, and `accessPoint: "OP"`.
-
 
 This scenario is identical to [Scenario 3](https://hie-docs.dha.go.ke/docs/scenarios/scenario-3-shif-ip-ffs-elective-preauth) except the access point is **Outpatient** - the pre-visit phase is the same, but the day-of-visit phase creates an `OUTPATIENT` claim and ends with `POST /api/v1/claims/submit` instead of discharge.
 
-
 ---
-
 
 ## Complete Flow
 
 **Participants:**
+
 - 🏥 Point of Care
 - 🔐 Auth Service
 - 📋 Registries
@@ -1043,6 +861,7 @@ This scenario is identical to [Scenario 3](https://hie-docs.dha.go.ke/docs/scena
 - 🔄 eClaims & Preauths
 
 **Flow:**
+
 1. POST /api/v1/tenants/token
 2. access_token
 3. GET /api/v1/patients
@@ -1081,6 +900,7 @@ This scenario is identical to [Scenario 3](https://hie-docs.dha.go.ke/docs/scena
 36. outpatient claim submitted
 
 **Notes:**
+
 - PRE-VISIT PHASE (Before appointment day)
 - Get consent to create an authorization (OTP path)
 - OR Get consent to create an authorization (Biometrics path)
@@ -1091,19 +911,13 @@ This scenario is identical to [Scenario 3](https://hie-docs.dha.go.ke/docs/scena
 - OTP path - send fresh OTP, create claim directly
 - OR Biometrics path - create claim directly using auth_guid
 
-
-
 ---
-
 
 ## Step-by-Step API Calls
 
-
 ### Pre-Visit Phase
 
-
 #### Phase 1: General API Flow
-
 
 | # | Action | Service | Endpoint | Key Request Fields | Key Output |
 | --- | --- | --- | --- | --- | --- |
@@ -1113,12 +927,9 @@ This scenario is identical to [Scenario 3](https://hie-docs.dha.go.ke/docs/scena
 | 4 | Sub-benefit coverage | eClaims | GET /api/v1/patients/sub-benefits | patient_id | sub_benefit_codelist |
 | 5 | Intervention coverage | eClaims | GET /api/v1/patients/benefits/interventions | patient_id,sub_benefit_code | intervention_code,needsManualPreauthApproval: trueconfirmed |
 
-
 #### Phase 2: Authorization for Preauth
 
-
 **OTP path:**
-
 
 | # | Action | Service | Endpoint | Key Request Fields | Key Output |
 | --- | --- | --- | --- | --- | --- |
@@ -1126,89 +937,67 @@ This scenario is identical to [Scenario 3](https://hie-docs.dha.go.ke/docs/scena
 | 7a | Send OTP | Consent | POST /api/v1/claims/otp | patient_id,intervention_codes,beneficiary_contact_id(optional) | OTP sent |
 | 8a | Create authorization | Consent | POST /api/v1/claims/authorize | patient_id,otp | Authorizationtoken(status:AUTHORIZED_PENDING_VISIT) |
 
-
 **Biometrics path:**
-
 
 | # | Action | Service | Endpoint | Key Request Fields | Key Output |
 | --- | --- | --- | --- | --- | --- |
 | 6b | Create authorization | Consent | POST /api/v1/claims/authorize | patient_id, biometric fields | AuthorizationPENDING;guid;token; iframe link |
 | 7b | (Patient matches fingerprints via iframe) | - | - | - | Authorization transitions toAUTHORIZED_PENDING_VISIT |
 
-
 #### Phase 3: Create & Await Preauth
-
 
 | # | Action | Service | Endpoint | Key Request Fields | Key Output |
 | --- | --- | --- | --- | --- | --- |
 | 9 | Create preauth | eClaims | POST /api/v1/preauths | consent_token(authorizationtoken),intervention_code, preauth form, doctor details, diagnosis, requested amount, attachments | Preauth created (status:PENDING_DOCTOR_APPROVAL) |
 | 10 | Poll preauth status | eClaims | GET /api/v1/preauths | consent_token | status- repeat untilFINALISED |
 
-
 ---
-
 
 ### Day of Actual Visit
 
-
 ### No New Consent Required on Day of Visit
 
-
 On the day of the actual visit, you do **not** need to call `POST /api/v1/claims/authorize` again. The system checks that:
-
 
 - The same `patient_id` is used
 - The same `intervention_code` is used
 - An existing authorization in `AUTHORIZED` status exists
 - An approved preauth exists for this patient and intervention
 
-
 For OTP: send a fresh OTP and pass it directly in `POST /api/v1/claims/visit`.
 For biometrics: pass the `auth_guid` from the pre-visit authorization directly in `POST /api/v1/claims/visit`.
 
-
 #### Phase 4: Create Claim
 
-
 **OTP path:**
-
 
 | # | Action | Service | Endpoint | Key Request Fields | Key Output |
 | --- | --- | --- | --- | --- | --- |
 | 11a | Send fresh OTP | Consent | POST /api/v1/claims/otp | patient_id,intervention_codes | OTP sent |
 | 12a | Create OP claim | eClaims | POST /api/v1/claims/visit | otp,intervention_code,service_type: "OUTPATIENT" | OP claim created;consent_tokenreturned |
 
-
 **Biometrics path:**
-
 
 | # | Action | Service | Endpoint | Key Request Fields | Key Output |
 | --- | --- | --- | --- | --- | --- |
 | 12b | Create OP claim | eClaims | POST /api/v1/claims/visit | auth_guid(from pre-visit authorization),intervention_code,service_type: "OUTPATIENT" | OP claim created;consent_tokenreturned |
 
-
 #### Phase 5: Add Combined Billing Details
-
 
 | # | Action | Service | Endpoint | Key Request Fields | Key Output |
 | --- | --- | --- | --- | --- | --- |
 | 13 | Add combined billing details | eClaims | POST /api/v1/claims/lines | consent_token,intervention_code,unit_price,quantity,diagnoses,attachments | Billing saved; amount validated against tariff |
 
-
 #### Phase 6: Preview & Submit
-
 
 | # | Action | Service | Endpoint | Key Request Fields | Key Output |
 | --- | --- | --- | --- | --- | --- |
 | 14 | Preview provider claim | eClaims | POST /api/v1/claims/preview | consent_token | Claim preview |
 | 15 | Submit outpatient claim | eClaims | POST /api/v1/claims/submit | consent_token | Claim submitted to SHA |
 
-
 ---
 
-
 ## Field Flow Between Steps
-
 
 | Output Field | Step It Comes From | Used In |
 | --- | --- | --- |
@@ -1220,42 +1009,30 @@ For biometrics: pass the `auth_guid` from the pre-visit authorization directly i
 | guid(Biometrics path) | Step 6b | auth_guidin Day-of-Visit claim creation |
 | consent_token | From claim creation (Step 12) | Billing, preview, submit steps |
 
-
 ---
-
 
 ## Important Notes
 
-
 ### Elective Preauth - Doctor Approval Required
 
-
 For elective preauths, the doctor **must** approve before the preauth proceeds. The status flow is:
-
 
 1. `PENDING_DOCTOR_APPROVAL` - created; awaiting doctor confirmation
 2. `ACTIVE` - doctor approved; sent to payer for review
 3. `FINALISED` - payer approved; preauth is now valid for claim creation
 
-
 The `POST /api/v1/claims/doctor-consent` endpoint is available as a fallback to resend the consent request if the doctor reports they did not receive it.
-
 
 ### Difference from Scenario 3 (Inpatient)
 
-
 Scenario 4 is structurally identical to Scenario 3. The only differences are:
-
 
 - `service_type: "OUTPATIENT"` instead of `"INPATIENT"` in the claim creation step
 - Claim dispatch uses `POST /api/v1/claims/submit` (Step 15) instead of the two-step OTP/biometrics discharge flow
 
-
 ---
 
-
 ## See Also
-
 
 - [Elective Preauth Guide](https://hie-docs.dha.go.ke/docs/claims/process/preauths/electivePreauths)
 - [Scenario 3: SHIF IP Elective Preauth](https://hie-docs.dha.go.ke/docs/scenarios/scenario-3-shif-ip-ffs-elective-preauth) - Same flow, inpatient variant
@@ -1275,12 +1052,9 @@ Scenario 5: SHIF OP FFS Normal Preauth
 
 # Scenario 5: SHIF - Outpatient - Fee for Service - Normal/Special Preauth
 
-
 A patient presents for an outpatient service that requires a **non-elective preauthorization** raised within the same visit. The claim is created first, then the preauth is created within the visit context. Billing proceeds once the preauth is approved. The claim is submitted at the end of the visit.
 
-
 ## Intervention Properties
-
 
 | Property | Value |
 | --- | --- |
@@ -1291,19 +1065,16 @@ A patient presents for an outpatient service that requires a **non-elective prea
 | Elective Preauth | No (needsManualPreauthApproval: false) |
 | Tariff Type | Overall / KEPH Level |
 
-
 **How to identify this scenario:** After calling `GET /api/v1/patients/benefits/interventions`, the intervention has `paymentMechanism: "FEE_FOR_SERVICE"`, `needsPreauth: true`, `needsManualPreauthApproval: false`, and `accessPoint: "OP"`.
-
 
 This scenario is the **outpatient equivalent of Scenario 2** - the preauth flow is the same, but the claim is an outpatient claim and dispatch ends with submit rather than discharge.
 
-
 ---
-
 
 ## Complete Flow
 
 **Participants:**
+
 - 🏥 Point of Care
 - 🔐 Auth Service
 - 📋 Registries
@@ -1311,6 +1082,7 @@ This scenario is the **outpatient equivalent of Scenario 2** - the preauth flow 
 - 🔄 eClaims & Preauths
 
 **Flow:**
+
 1. POST /api/v1/tenants/token
 2. access_token
 3. GET /api/v1/patients
@@ -1344,6 +1116,7 @@ This scenario is the **outpatient equivalent of Scenario 2** - the preauth flow 
 31. outpatient claim submitted
 
 **Notes:**
+
 - General API Flow
 - Get Patient Consent (OTP path)
 - Create OP Claim with OTP
@@ -1353,16 +1126,11 @@ This scenario is the **outpatient equivalent of Scenario 2** - the preauth flow 
 - Create Preauth (within visit)
 - Add Combined Billing Details
 
-
-
 ---
-
 
 ## Step-by-Step API Calls
 
-
 ### Phase 1: General API Flow
-
 
 | # | Action | Service | Endpoint | Key Request Fields | Key Output |
 | --- | --- | --- | --- | --- | --- |
@@ -1372,12 +1140,9 @@ This scenario is the **outpatient equivalent of Scenario 2** - the preauth flow 
 | 4 | Sub-benefit coverage | eClaims | GET /api/v1/patients/sub-benefits | patient_id | sub_benefit_codelist |
 | 5 | Intervention coverage | eClaims | GET /api/v1/patients/benefits/interventions | patient_id,sub_benefit_code | intervention_code,needsPreauth,needsManualPreauthApproval, preauth type flags |
 
-
 ### Phase 2: Patient Consent
 
-
 **OTP path:**
-
 
 | # | Action | Service | Endpoint | Key Request Fields | Key Output |
 | --- | --- | --- | --- | --- | --- |
@@ -1385,9 +1150,7 @@ This scenario is the **outpatient equivalent of Scenario 2** - the preauth flow 
 | 7a | Send OTP | Consent | POST /api/v1/claims/otp | patient_id,intervention_codes,beneficiary_contact_id(optional) | OTP sent |
 | 8a | Create claim with OTP | eClaims | POST /api/v1/claims/visit | otp,intervention_code,service_type: "OUTPATIENT" | OP claim created |
 
-
 **Biometrics path:**
-
 
 | # | Action | Service | Endpoint | Key Request Fields | Key Output |
 | --- | --- | --- | --- | --- | --- |
@@ -1395,38 +1158,29 @@ This scenario is the **outpatient equivalent of Scenario 2** - the preauth flow 
 | 7b | (Patient matches fingerprints via iframe) | - | - | - | Authorization transitions toAUTHORIZED |
 | 8b | Create claim with auth_guid | eClaims | POST /api/v1/claims/visit | auth_guid,intervention_code,service_type: "OUTPATIENT" | OP claim created |
 
-
 ### Phase 3: Create & Await Preauth
-
 
 | # | Action | Service | Endpoint | Key Request Fields | Key Output |
 | --- | --- | --- | --- | --- | --- |
 | 9 | Create preauth | eClaims | POST /api/v1/preauths | consent_token,intervention_code, preauth form fields (normal or special), doctor details, diagnosis, attachments, requested amount | Preauth created (no doctor approval step) |
 | 10 | Poll preauth status | eClaims | GET /api/v1/preauths | consent_token | status- repeat untilFINALISED |
 
-
 ### Phase 4: Add Combined Billing Details
-
 
 | # | Action | Service | Endpoint | Key Request Fields | Key Output |
 | --- | --- | --- | --- | --- | --- |
 | 11 | Add combined billing details | eClaims | POST /api/v1/claims/lines | consent_token,intervention_code,unit_price,quantity,diagnoses,attachments | Billing saved; amount validated against tariff |
 
-
 ### Phase 5: Preview & Submit
-
 
 | # | Action | Service | Endpoint | Key Request Fields | Key Output |
 | --- | --- | --- | --- | --- | --- |
 | 12 | Preview provider claim | eClaims | POST /api/v1/claims/preview | consent_token | Claim preview |
 | 13 | Submit outpatient claim | eClaims | POST /api/v1/claims/submit | consent_token | Claim submitted to SHA |
 
-
 ---
 
-
 ## Field Flow Between Steps
-
 
 | Output Field | Step It Comes From | Used In |
 | --- | --- | --- |
@@ -1438,12 +1192,9 @@ This scenario is the **outpatient equivalent of Scenario 2** - the preauth flow 
 | guid(Biometrics path) | Step 6b authorize | auth_guidinPOST /api/v1/claims/visit |
 | consent_token | From claim creation (Step 8) | Steps 9-13 |
 
-
 ---
 
-
 ## Choosing the Right Preauth Form
-
 
 | Preauth Type | When to Use | Intervention Flag |
 | --- | --- | --- |
@@ -1454,43 +1205,30 @@ This scenario is the **outpatient equivalent of Scenario 2** - the preauth flow 
 | Imaging Preauth | Radiology / imaging | isImagingPreauth: true |
 | Optical Preauth | Eye care | isOpticalPreauth: true |
 
-
 ---
-
 
 ## Important Notes
 
-
 ### Billing Requires an Approved Preauth
-
 
 You cannot add billing details until the preauth status is `FINALISED`. Poll `GET /api/v1/preauths?consent_token=...` and wait for approval before calling `POST /api/v1/claims/lines`.
 
-
 ### Doctor Info Required, But No Approval Step for Non-Elective Preauths
-
 
 When you call `POST /api/v1/preauths` for a non-elective preauth, doctor information is required in the payload. However, the doctor does **not** need to approve the preauth. The system processes it directly without waiting for doctor confirmation.
 
-
 Doctor approval (which puts the preauth into `PENDING_DOCTOR_APPROVAL` status) is only required for **elective preauths** - see Scenarios 3 and 4.
-
 
 ### Difference from Scenario 2 (Inpatient)
 
-
 This scenario is structurally identical to Scenario 2. The only differences are:
-
 
 - `service_type: "OUTPATIENT"` in the claim creation step
 - Claim dispatch uses `POST /api/v1/claims/submit` (Step 13) instead of the two-step inpatient discharge
 
-
 ---
 
-
 ## See Also
-
 
 - [Scenario 2: SHIF IP FFS Normal Preauth](https://hie-docs.dha.go.ke/docs/scenarios/scenario-2-shif-ip-ffs-normal-preauth) - Same flow, inpatient variant
 - [Normal Preauth](https://hie-docs.dha.go.ke/docs/claims/process/preauths/normalPreauths)
@@ -1511,12 +1249,9 @@ Scenario 6: UHC OP Capitation
 
 # Scenario 6: UHC - Outpatient - Capitation
 
-
 A patient presents at a facility for a UHC-covered outpatient service under a **capitation payment mechanism**. No preauthorization is required. This path also covers **PHC (Primary Healthcare Fund)** outpatient visits at Level 2, Level 3, and select Level 4 (primarily government-owned) facilities, where attachments are not mandatory.
 
-
 ## Intervention Properties
-
 
 | Property | Value |
 | --- | --- |
@@ -1527,19 +1262,16 @@ A patient presents at a facility for a UHC-covered outpatient service under a **
 | Elective Preauth | N/A |
 | Tariff Type | N/A |
 
-
 **How to identify this scenario:** After calling `GET /api/v1/patients/benefits/interventions`, the intervention has `paymentMechanism: "CAPITATION"` and fund = `UHC`.
-
 
 For PHC claims at Level 2, Level 3, and select Level 4 (primarily government-owned) facilities, the flow is the same but attachments are not required.
 
-
 ---
-
 
 ## Complete Flow
 
 **Participants:**
+
 - 🏥 Point of Care
 - 🔐 Auth Service
 - 📋 Registries
@@ -1547,6 +1279,7 @@ For PHC claims at Level 2, Level 3, and select Level 4 (primarily government-own
 - 🔄 eClaims & Preauths
 
 **Flow:**
+
 1. POST /api/v1/tenants/token
 2. access_token
 3. GET /api/v1/patients
@@ -1576,6 +1309,7 @@ For PHC claims at Level 2, Level 3, and select Level 4 (primarily government-own
 27. outpatient claim submitted ✓
 
 **Notes:**
+
 - General API Flow
 - Get Patient Consent (OTP path)
 - Create OP Claim with OTP
@@ -1585,16 +1319,11 @@ For PHC claims at Level 2, Level 3, and select Level 4 (primarily government-own
 - Add Combined Billing Details
 - Attachments optional for PHC
 
-
-
 ---
-
 
 ## Step-by-Step API Calls
 
-
 ### Phase 1: General API Flow
-
 
 | # | Action | Service | Endpoint | Key Request Fields | Key Output |
 | --- | --- | --- | --- | --- | --- |
@@ -1604,12 +1333,9 @@ For PHC claims at Level 2, Level 3, and select Level 4 (primarily government-own
 | 4 | Sub-benefit coverage | eClaims | GET /api/v1/patients/sub-benefits | patient_id | sub_benefit_codelist |
 | 5 | Intervention coverage | eClaims | GET /api/v1/patients/benefits/interventions | patient_id,sub_benefit_code | intervention_code,paymentMechanism: "CAPITATION"confirmed |
 
-
 ### Phase 2: Patient Consent
 
-
 **OTP path:**
-
 
 | # | Action | Service | Endpoint | Key Request Fields | Key Output |
 | --- | --- | --- | --- | --- | --- |
@@ -1617,9 +1343,7 @@ For PHC claims at Level 2, Level 3, and select Level 4 (primarily government-own
 | 7a | Send OTP | Consent | POST /api/v1/claims/otp | patient_id,intervention_codes,beneficiary_contact_id(optional) | OTP sent |
 | 8a | Create claim with OTP | eClaims | POST /api/v1/claims/visit | otp,intervention_code,service_type: "OUTPATIENT" | OP claim created |
 
-
 **Biometrics path:**
-
 
 | # | Action | Service | Endpoint | Key Request Fields | Key Output |
 | --- | --- | --- | --- | --- | --- |
@@ -1627,29 +1351,22 @@ For PHC claims at Level 2, Level 3, and select Level 4 (primarily government-own
 | 7b | (Patient matches fingerprints via iframe) | - | - | - | Authorization transitions toAUTHORIZED |
 | 8b | Create claim with auth_guid | eClaims | POST /api/v1/claims/visit | auth_guid,intervention_code,service_type: "OUTPATIENT" | OP claim created |
 
-
 ### Phase 3: Add Combined Billing Details
-
 
 | # | Action | Service | Endpoint | Key Request Fields | Key Output |
 | --- | --- | --- | --- | --- | --- |
 | 9 | Add combined billing details | eClaims | POST /api/v1/claims/lines | consent_token,intervention_code,unit_price,quantity,diagnoses(ICD-11 array),attachments(optional for PHC) | Billing saved |
 
-
 ### Phase 4: Preview & Submit
-
 
 | # | Action | Service | Endpoint | Key Request Fields | Key Output |
 | --- | --- | --- | --- | --- | --- |
 | 10 | Preview provider claim | eClaims | POST /api/v1/claims/preview | consent_token | Claim preview |
 | 11 | Submit outpatient claim | eClaims | POST /api/v1/claims/submit | consent_token | Claim submitted to SHA |
 
-
 ---
 
-
 ## Field Flow Between Steps
-
 
 | Output Field | Step It Comes From | Used In |
 | --- | --- | --- |
@@ -1661,33 +1378,23 @@ For PHC claims at Level 2, Level 3, and select Level 4 (primarily government-own
 | guid(Biometrics path) | Step 6b authorize | auth_guidinPOST /api/v1/claims/visit |
 | consent_token | From claim creation (Step 8) | Steps 9-11 |
 
-
 ---
-
 
 ## Important Notes
 
-
 ### PHC Claims: Attachments Are Optional
-
 
 For **Primary Healthcare (PHC) claims** at Level 2, Level 3, and select Level 4 (primarily government-owned) facilities, attachments are **not required** when calling `POST /api/v1/claims/lines`. You can submit just the line item and diagnosis.
 
-
 For standard UHC outpatient claims, include attachments as required by the intervention.
-
 
 ### No Preauthorization Required
 
-
 Capitation interventions do not require any preauthorization step. After creating the claim, proceed directly to billing.
-
 
 ### Capitation vs Per Diem
 
-
 Capitation (this scenario) and Per Diem ([Scenario 1](https://hie-docs.dha.go.ke/docs/scenarios/scenario-1-shif-ip-per-diem)) are both non-preauth flows, but they differ in important ways:
-
 
 |   | Capitation (Scenario 6) | Per Diem (Scenario 1) |
 | --- | --- | --- |
@@ -1696,12 +1403,9 @@ Capitation (this scenario) and Per Diem ([Scenario 1](https://hie-docs.dha.go.ke
 | Line item | Manually submitted | Auto-generated |
 | Dispatch | Submit (POST /claims/submit) | Discharge (POST /claims/discharge) |
 
-
 ---
 
-
 ## See Also
-
 
 - [Start Visit Consent Process](https://hie-docs.dha.go.ke/docs/claims/process/startVisitConsent/startVisitConsentProcessOverview)
 - [Outpatient Claim Dispatch](https://hie-docs.dha.go.ke/docs/claims/process/claimDispatch/outPatientClaimDispatch)

@@ -33,16 +33,19 @@ Sprint 0.5 successfully implemented the complete offline sync logic for Vitora H
 **Module**: `hmis/apps/core/sync.py` (encrypt_field, decrypt_field functions)
 
 **Features**:
+
 - Fernet symmetric encryption for sensitive data
 - Encryption key from settings (ENCRYPTION_KEY)
 - Base64 encoding for database storage
 - Transparent encrypt/decrypt operations
 
 **Encrypted Fields**:
+
 - Patient.national_id
 - Patient.phone_number
 
 **Test Coverage**: 12 tests covering:
+
 - Encryption key configuration validation
 - Field encryption/decryption
 - Empty field handling
@@ -55,6 +58,7 @@ Sprint 0.5 successfully implemented the complete offline sync logic for Vitora H
 **Module**: `hmis/apps/core/models.py`
 
 **Fields**:
+
 - `operation`: CREATE, UPDATE, DELETE
 - `model_name`: Name of synced model
 - `record_id`: ID of affected record
@@ -65,6 +69,7 @@ Sprint 0.5 successfully implemented the complete offline sync logic for Vitora H
 - `created_at`, `updated_at`: Timestamps
 
 **Methods**:
+
 - `mark_pending()`: Reset to pending state
 - `mark_syncing()`: Mark as currently syncing
 - `mark_synced()`: Mark as successfully synced
@@ -72,6 +77,7 @@ Sprint 0.5 successfully implemented the complete offline sync logic for Vitora H
 - `mark_conflict()`: Flag as conflict
 
 **Test Coverage**: 20 tests covering:
+
 - Queue entry creation
 - Status transitions
 - Retry count tracking
@@ -84,6 +90,7 @@ Sprint 0.5 successfully implemented the complete offline sync logic for Vitora H
 **Module**: `hmis/apps/core/models.py`
 
 **Fields**:
+
 - `sync_entry`: Related SyncQueue entry
 - `model_name`: Conflicting model
 - `record_id`: Conflicting record
@@ -95,11 +102,13 @@ Sprint 0.5 successfully implemented the complete offline sync logic for Vitora H
 - `resolved_by`: User who resolved
 
 **Strategies**:
+
 - **Last-Write-Wins**: Automatic based on timestamps
 - **Field-Level Merge**: Non-conflicting fields merged
 - **Manual Resolution**: User intervention required
 
 **Test Coverage**: 18 tests covering:
+
 - Conflict detection
 - Resolution strategies
 - Field-level merge
@@ -112,6 +121,7 @@ Sprint 0.5 successfully implemented the complete offline sync logic for Vitora H
 **Module**: `hmis/apps/core/sync.py` and `hmis/apps/core/models.py`
 
 **ConnectivityChecker Class**:
+
 - Server URL configuration
 - HTTP health check endpoint
 - Configurable timeout
@@ -119,6 +129,7 @@ Sprint 0.5 successfully implemented the complete offline sync logic for Vitora H
 - Online/offline state management
 
 **ConnectivityMonitor Class**:
+
 - Periodic connectivity checks
 - Status change callbacks
 - Configurable check interval
@@ -126,6 +137,7 @@ Sprint 0.5 successfully implemented the complete offline sync logic for Vitora H
 - `_handle_status_change()` for notifications
 
 **NetworkStatus Model**:
+
 - Persists connectivity state changes
 - `is_online`: Current state
 - `latency_ms`: Connection latency
@@ -133,6 +145,7 @@ Sprint 0.5 successfully implemented the complete offline sync logic for Vitora H
 - `status_changed_at`: When status last changed
 
 **Test Coverage**: 19 tests covering:
+
 - Server reachability checks
 - Offline detection
 - Status change callbacks
@@ -144,12 +157,14 @@ Sprint 0.5 successfully implemented the complete offline sync logic for Vitora H
 **Module**: `hmis/apps/core/tasks.py`
 
 **Tasks**:
+
 - `process_sync_queue`: Main queue processing task
 - `check_connectivity`: Periodic connectivity check
 - `sync_to_server`: Server sync wrapper
 - `sync_entry_to_server`: Single entry sync
 
 **Features**:
+
 - Automatic retry with exponential backoff
 - Configurable batch size (SYNC_BATCH_SIZE)
 - Maximum retries limit (SYNC_MAX_RETRIES)
@@ -158,6 +173,7 @@ Sprint 0.5 successfully implemented the complete offline sync logic for Vitora H
 - SyncMetrics recording
 
 **Configuration**:
+
 ```python
 SYNC_ENABLED = True
 SYNC_BATCH_SIZE = 50
@@ -166,6 +182,7 @@ CELERY_TASK_ALWAYS_EAGER = True  # For testing
 ```
 
 **Test Coverage**: 22 tests covering:
+
 - Queue processing
 - Entry status updates
 - Failure handling
@@ -178,6 +195,7 @@ CELERY_TASK_ALWAYS_EAGER = True  # For testing
 **Module**: `hmis/apps/core/sync.py` (SyncManager class)
 
 **Features**:
+
 - Queue all local changes while offline
 - Automatic sync on reconnection
 - Graceful handling of connectivity changes
@@ -185,12 +203,14 @@ CELERY_TASK_ALWAYS_EAGER = True  # For testing
 - Data consistency guarantees
 
 **SyncManager Methods**:
+
 - `queue_change()`: Queue local modifications
 - `process_pending_entries()`: Process queue (classmethod)
 - `_process_entries()`: Internal processing logic
 - `trigger_background_sync()`: Start async sync
 
 **Test Coverage**: 17 tests covering:
+
 - Queued creates/updates/deletes sync on reconnect
 - Operations continue when going offline
 - Sync stops gracefully on disconnect
@@ -212,14 +232,17 @@ CELERY_TASK_ALWAYS_EAGER = True  # For testing
 ## Database Migrations
 
 ### Migration 0002: Add Sync Models
+
 - SyncQueue model
 - SyncConflict model
 - NetworkStatus model
 
 ### Migration 0003: Add SyncMetrics
+
 - SyncMetrics model for performance tracking
 
 ### Migration 0003 (Patients): Allow Null Fields
+
 - patient.national_id: null=True
 - patient.phone_number: null=True
 
@@ -255,6 +278,7 @@ CELERY_TASK_ALWAYS_EAGER = True  # Sync execution for testing
 **Decision**: Use Fernet field-level encryption instead of SQLCipher
 
 **Rationale**:
+
 - No native library dependencies (easier deployment)
 - Field-level granularity (only sensitive fields encrypted)
 - Python-native implementation (cryptography library)
@@ -266,6 +290,7 @@ CELERY_TASK_ALWAYS_EAGER = True  # Sync execution for testing
 **Decision**: `SyncManager.process_pending_entries()` is a classmethod
 
 **Rationale**:
+
 - Can be called without instance: `SyncManager.process_pending_entries()`
 - Accepts optional connectivity_checker parameter
 - Creates internal instance for processing
@@ -276,6 +301,7 @@ CELERY_TASK_ALWAYS_EAGER = True  # Sync execution for testing
 **Decision**: Default to `False` for offline-first
 
 **Rationale**:
+
 - Offline-first architecture principle
 - No cloud dependency for core operations
 - Explicit opt-in for cloud sync

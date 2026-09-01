@@ -64,6 +64,7 @@ Sprint 1.1-1.2 builds upon the Phase 0 foundation to deliver a production-ready 
 **Status**: ✅ COMPLETE
 
 **Implemented Features**:
+
 | Vital Sign | Normal Range | Warning Range | Critical Range | Unit |
 |------------|--------------|---------------|----------------|------|
 | Temperature | 36.1-37.2°C | 37.3-38.0°C / 35.5-36.0°C | >38.0°C / <35.5°C | °C |
@@ -77,6 +78,7 @@ Sprint 1.1-1.2 builds upon the Phase 0 foundation to deliver a production-ready 
 | BMI | 18.5-24.9 | 25-29.9 / 17-18.4 | ≥30 / <17 | kg/m² |
 
 **Implemented Methods**:
+
 ```python
 class Encounter(models.Model):
     # ... existing fields ...
@@ -116,6 +118,7 @@ class Encounter(models.Model):
 ```
 
 **Test Coverage** (14 tests in `test_vital_status_methods.py`):
+
 ```python
 class TestGetVitalStatus:
     def test_temperature_normal(self): ...           # ✅
@@ -146,6 +149,7 @@ class TestGetVitalStatusMap:
 **Status**: ✅ COMPLETE
 
 **Models Implemented**:
+
 ```python
 class ICD10Code(models.Model):
     """ICD-10 diagnosis code reference table."""
@@ -238,6 +242,7 @@ class Diagnosis(models.Model):
 ```
 
 **API Endpoints** (✅ Implemented):
+
 ```
 GET  /api/icd10-codes/                   # ✅ List/Search ICD-10 codes
 GET  /api/icd10-codes/?search=<query>    # ✅ Search by code, description, category
@@ -250,6 +255,7 @@ DELETE /api/encounters/<id>/diagnoses/<id>/ # ✅ Remove diagnosis
 ```
 
 **Test Coverage** (29 tests across 3 files):
+
 ```python
 # test_icd10_enhancements.py (9 tests)
 class TestICD10CodeModel:
@@ -287,6 +293,7 @@ class TestDiagnosisAPIFields:
 ```
 
 **Data Migration**:
+
 - Import ICD-10-CM codes (2024 version)
 - ~70,000+ codes with descriptions
 - Management command: `python manage.py import_icd10 data/icd10_codes.csv`
@@ -298,6 +305,7 @@ class TestDiagnosisAPIFields:
 **Module**: `hmis/apps/encounters/models.py` (new models)
 
 **Models**:
+
 ```python
 class TreatmentPlanTemplate(models.Model):
     """Reusable treatment plan templates."""
@@ -419,12 +427,14 @@ class TreatmentPlan(models.Model):
 ```
 
 **API Endpoints** (✅ Implemented):
+
 ```
 POST /api/encounters/<id>/treatment-plan/  # ✅ Create/update plan
 GET  /api/encounters/<id>/treatment-plan/  # ✅ Get plan
 ```
 
 **Test Coverage** (18 tests in `test_treatment_plan_template.py`):
+
 ```python
 class TestTreatmentPlanTemplateModel:
     def test_template_creation(self): ...                      # ✅
@@ -450,7 +460,9 @@ class TestApplyTemplate:
     def test_apply_template_preserves_existing_data(self): ... # ✅
     def test_apply_template_with_medications(self): ...        # ✅
 ```
+
     def test_cancelled_cannot_be_reactivated(self): ...
+
 ```
 
 ---
@@ -461,6 +473,7 @@ class TestApplyTemplate:
 
 **API Endpoints**:
 ```
+
 GET /api/patients/<id>/encounter-timeline/
     ?start_date=YYYY-MM-DD
     &end_date=YYYY-MM-DD
@@ -471,6 +484,7 @@ GET /api/patients/<id>/encounter-timeline/
     &include_alerts=true              # ✅ Implemented (bonus)
     &page=1                           # ✅ Implemented (bonus)
     &page_size=20                     # ✅ Implemented (bonus, max 100)
+
 ```
 
 **Response Format** (✅ Implemented):
@@ -543,6 +557,7 @@ GET /api/patients/<id>/encounter-timeline/
 ```
 
 **Test Coverage** (57 tests in `test_patient_timeline_api.py` + 13 in `test_encounter_timeline.py`):
+
 ```python
 # test_patient_timeline_api.py (57 tests)
 
@@ -628,6 +643,7 @@ class TestTimelineFollowupCompliance:            # 9 tests (BONUS)
 **Module**: `hmis/apps/clinical_templates/`
 
 **Models Implemented**:
+
 ```python
 class ClinicalTemplate(models.Model):
     """Master clinical template for common conditions."""
@@ -667,6 +683,7 @@ class TemplateSection(models.Model):
 ```
 
 **API Endpoints** (✅ Implemented):
+
 ```
 GET    /api/clinical-templates/              # List templates (paginated)
 POST   /api/clinical-templates/              # Create user template
@@ -680,6 +697,7 @@ GET    /api/clinical-templates/by_specialty/ # Group by specialty
 ```
 
 **Pre-built Templates** (Kenya-specific, ✅ Implemented - 14 templates):
+
 1. ✅ **General OPD Visit** - `general_opd.json`
 2. ✅ **Antenatal Care (ANC)** - `anc_visit.json`
 3. ✅ **Child Wellness Check** - `child_wellness.json`
@@ -696,18 +714,21 @@ GET    /api/clinical-templates/by_specialty/ # Group by specialty
 14. ✅ **Road Traffic Accident** - `road_traffic_accident.json` (ATLS-based trauma assessment)
 
 **JSON Schema Validation** (✅ Implemented):
+
 - `hmis/apps/clinical_templates/schemas.py`
 - `validate_template_content()` function
 - Max 20 sections, max 50 fields per section
 - Field types: text, textarea, number, boolean, date, select, multiselect
 
 **Management Command** (✅ Implemented):
+
 ```bash
 python manage.py load_clinical_templates --dir data/clinical_templates/
 python manage.py load_clinical_templates --update  # Update existing
 ```
 
 **Test Coverage** (✅ Implemented - 150 tests):
+
 ```python
 # tests/test_clinical_templates.py (31 tests)
 class TestClinicalTemplateModel:           # ✅ 14 tests
@@ -751,6 +772,7 @@ class TestSchemaValidationFunction:        # ✅ 4 tests
 **Module**: `hmis/apps/encounters/models.py`, `hmis/apps/patients/models.py`
 
 **Age Categories** (✅ Implemented via `Patient.get_age_category()`):
+
 | Category | Age Range |
 |----------|-----------|
 | newborn | 0-28 days |
@@ -762,10 +784,12 @@ class TestSchemaValidationFunction:        # ✅ 4 tests
 | adult | 18+ years |
 
 **Pediatric Vital Ranges** (✅ Implemented in `Encounter.PEDIATRIC_VITAL_RANGES`):
+
 - Different normal/warning/critical thresholds for each age group
 - Covers: pulse, respiratory_rate, systolic_bp, diastolic_bp
 
 **Test Coverage** (61 tests):
+
 ```python
 # tests/test_pediatric_vitals.py (35 tests)
 class TestPediatricPulseRanges:            # ✅ 9 tests
@@ -795,6 +819,7 @@ class TestAgeCategoryConstants:            # ✅ 3 tests
 **Formula**: MAP = Diastolic + (1/3 × (Systolic - Diastolic))
 
 **Methods Implemented**:
+
 ```python
 def get_map(self) -> Optional[int]:
     """Calculate Mean Arterial Pressure from blood pressure."""
@@ -804,6 +829,7 @@ def get_map_status(self) -> str | None:
 ```
 
 **MAP Status Thresholds**:
+
 | Status | Range |
 |--------|-------|
 | critical (low) | <60 mmHg |
@@ -815,6 +841,7 @@ def get_map_status(self) -> str | None:
 **Integration**: MAP included in `get_all_vital_statuses()` response
 
 **Test Coverage** (21 tests in `test_map_status.py`):
+
 ```python
 class TestGetMAPStatusMethod:              # ✅ 10 tests
 class TestMAPStatusRanges:                 # ✅ 2 tests
@@ -829,6 +856,7 @@ class TestMAPEdgeCases:                    # ✅ 3 tests
 ## Database Migrations
 
 ### Migration 0004: Enhanced Vitals
+
 ```python
 # hmis/apps/encounters/migrations/0004_enhanced_vitals.py
 - Add calculated fields (BMI tracking if needed)
@@ -836,6 +864,7 @@ class TestMAPEdgeCases:                    # ✅ 3 tests
 ```
 
 ### Migration 0005: ICD-10 Diagnosis
+
 ```python
 # hmis/apps/encounters/migrations/0005_icd10_diagnosis.py
 - Create ICD10Code model
@@ -845,6 +874,7 @@ class TestMAPEdgeCases:                    # ✅ 3 tests
 ```
 
 ### Migration 0006: Treatment Plans
+
 ```python
 # hmis/apps/encounters/migrations/0006_treatment_plans.py
 - Create TreatmentPlanTemplate model
@@ -853,6 +883,7 @@ class TestMAPEdgeCases:                    # ✅ 3 tests
 ```
 
 ### Migration 0007: Clinical Templates
+
 ```python
 # hmis/apps/clinical_templates/migrations/0001_initial.py
 - Create ClinicalTemplate model
@@ -965,6 +996,7 @@ class TestEncounterAdminRegistrations:
 ## Data Imports
 
 ### ICD-10 Codes Import ✅ IMPLEMENTED
+
 ```bash
 # Management command
 python manage.py import_icd10 data/icd10_codes.csv
@@ -977,6 +1009,7 @@ python manage.py import_icd10 data/icd10_codes.csv
 ```
 
 ### Clinical Templates Import ✅ IMPLEMENTED
+
 ```bash
 # Management command (Phase 2)
 python manage.py load_clinical_templates
@@ -1065,6 +1098,7 @@ TEMPLATE_MAX_FIELDS_PER_SECTION = 50
 **Decision**: Create separate `Diagnosis` model with FK to Encounter
 
 **Rationale**:
+
 - Multiple diagnoses per encounter (principal + secondary)
 - ICD-10 code referential integrity
 - Audit trail per diagnosis
@@ -1076,6 +1110,7 @@ TEMPLATE_MAX_FIELDS_PER_SECTION = 50
 **Decision**: OneToOne relationship with Encounter
 
 **Rationale**:
+
 - One active treatment plan per encounter
 - Simplifies retrieval (`encounter.treatment_plan`)
 - Prevents duplicate plans
@@ -1086,6 +1121,7 @@ TEMPLATE_MAX_FIELDS_PER_SECTION = 50
 **Decision**: Create `ICD10Code` model with pre-loaded data
 
 **Rationale**:
+
 - Standardized codes (WHO/CMS maintained)
 - Search/autocomplete performance
 - Version tracking for updates
@@ -1097,6 +1133,7 @@ TEMPLATE_MAX_FIELDS_PER_SECTION = 50
 **Decision**: Store template structure as JSONField
 
 **Rationale**:
+
 - Flexible field definitions
 - No schema changes for new templates
 - Easy import/export
@@ -1110,9 +1147,11 @@ TEMPLATE_MAX_FIELDS_PER_SECTION = 50
 ### Desktop App Updates (Electron)
 
 #### 1. Vitals Entry Form Enhancement
+
 **Files**: `desktop-app/src/renderer/index.html`, `desktop-app/src/renderer/app.js`, `desktop-app/src/renderer/styles.css`
 
 **Features**:
+
 - Color-coded input fields (green=normal, yellow=warning, red=critical)
 - Real-time BMI calculation display
 - Visual alerts banner for critical values
@@ -1120,6 +1159,7 @@ TEMPLATE_MAX_FIELDS_PER_SECTION = 50
 - Auto-calculate MAP from blood pressure
 
 **Implementation Tasks**:
+
 - [ ] Add CSS classes for vital status colors (`.vital-normal`, `.vital-warning`, `.vital-critical`)
 - [ ] Create `calculateBMI()` function in app.js
 - [ ] Create `getVitalStatus(vital, value)` function
@@ -1128,9 +1168,11 @@ TEMPLATE_MAX_FIELDS_PER_SECTION = 50
 - [ ] Show BMI category badge (underweight/normal/overweight/obese)
 
 #### 2. Diagnosis Search Component
+
 **Files**: `desktop-app/src/renderer/index.html`, `desktop-app/src/renderer/app.js`
 
 **Features**:
+
 - Autocomplete ICD-10 search (debounced, 300ms)
 - Recent/common codes quick-select buttons
 - Chapter browser accordion for discovery
@@ -1138,6 +1180,7 @@ TEMPLATE_MAX_FIELDS_PER_SECTION = 50
 - Diagnosis certainty dropdown
 
 **Implementation Tasks**:
+
 - [ ] Create `searchICD10(query)` API function
 - [ ] Build autocomplete dropdown component
 - [ ] Add "Add Diagnosis" button with modal
@@ -1146,9 +1189,11 @@ TEMPLATE_MAX_FIELDS_PER_SECTION = 50
 - [ ] Store recent searches in localStorage
 
 #### 3. Treatment Plan Builder
+
 **Files**: `desktop-app/src/renderer/index.html`, `desktop-app/src/renderer/app.js`
 
 **Features**:
+
 - Template selection dropdown with preview
 - Medication entry with drug name, dosage, frequency, duration
 - Follow-up date picker with quick presets (1 week, 2 weeks, 1 month)
@@ -1156,6 +1201,7 @@ TEMPLATE_MAX_FIELDS_PER_SECTION = 50
 - Referral section (specialty dropdown + notes)
 
 **Implementation Tasks**:
+
 - [ ] Create treatment plan form section in encounter tab
 - [ ] Fetch and populate template dropdown
 - [ ] "Apply Template" button to auto-fill fields
@@ -1164,9 +1210,11 @@ TEMPLATE_MAX_FIELDS_PER_SECTION = 50
 - [ ] Referral checkbox to show/hide referral fields
 
 #### 4. Encounter Timeline View
+
 **Files**: `desktop-app/src/renderer/index.html`, `desktop-app/src/renderer/app.js`, `desktop-app/src/renderer/styles.css`
 
 **Features**:
+
 - Chronological encounter cards (newest first)
 - Expandable/collapsible details
 - Filter by date range and encounter type
@@ -1174,6 +1222,7 @@ TEMPLATE_MAX_FIELDS_PER_SECTION = 50
 - Visual timeline connector lines
 
 **Implementation Tasks**:
+
 - [ ] Create timeline container in patient details modal
 - [ ] Fetch `/api/patients/<id>/encounter-timeline/` on patient view
 - [ ] Build encounter card component with expand/collapse
@@ -1277,6 +1326,7 @@ test.describe('Encounter Management E2E - Sprint 1.1-1.2', () => {
 ```
 
 **Run E2E Tests**:
+
 ```bash
 cd desktop-app && npm run test:e2e -- tests/e2e/sprint-1.1-1.2-documented.e2e.js
 ```
@@ -1286,12 +1336,14 @@ cd desktop-app && npm run test:e2e -- tests/e2e/sprint-1.1-1.2-documented.e2e.js
 ## Testing Strategy
 
 ### TDD Workflow
+
 1. Write failing test for new feature
 2. Implement minimum code to pass
 3. Refactor for quality
 4. Repeat
 
 ### Test Execution Order
+
 ```bash
 # Run all Sprint 1.1-1.2 tests
 pytest tests/test_vitals_validation.py -v
@@ -1309,6 +1361,7 @@ pytest tests/test_vitals*.py tests/test_diagnosis*.py tests/test_treatment*.py \
 ```
 
 ### E2E Tests (Playwright)
+
 ```javascript
 // desktop-app/tests/e2e/sprint-1.1-1.2-documented.e2e.js
 
@@ -1330,6 +1383,7 @@ test('complete encounter workflow', async ({ page }) => {
 ### Sprint 1.1-1.2 Definition of Done
 
 **Backend (155 tests)**:
+
 - [ ] All 155 backend tests passing
 - [ ] ≥85% code coverage for new modules
 - [ ] ICD-10 codes imported (70,000+)
@@ -1342,6 +1396,7 @@ test('complete encounter workflow', async ({ page }) => {
 - [ ] Audit: All clinical actions logged
 
 **Frontend (38 tests)**:
+
 - [x] All 30 Jest unit tests passing ✅
 - [x] All 8 Playwright E2E tests created ✅
 - [x] Vitals form with color-coded status indicators ✅
@@ -1352,6 +1407,7 @@ test('complete encounter workflow', async ({ page }) => {
 - [x] BMI calculation and category display ✅
 
 **Release**:
+
 - [ ] Code review completed
 - [ ] Demo to stakeholders
 - [x] Tag release: `v0.2.0-encounter-management`
@@ -1373,10 +1429,12 @@ test('complete encounter workflow', async ({ page }) => {
 ## Dependencies
 
 ### External
+
 - ICD-10-CM 2024 code files (CMS download) ✅
 - WHO ICD-10 documentation ✅
 
 ### Internal
+
 - Phase 0 Patient model ✅
 - Phase 0 Encounter model ✅
 - Phase 0 Authentication ✅
@@ -1398,6 +1456,7 @@ test('complete encounter workflow', async ({ page }) => {
 ## Sprint Summary
 
 ### ✅ Completed
+
 | Component | Tests | Status |
 |-----------|-------|--------|
 | Enhanced Vital Signs Validation | 14 | ✅ |
@@ -1408,17 +1467,20 @@ test('complete encounter workflow', async ({ page }) => {
 | **Total New Tests** | **136** | ✅ |
 
 ### Bonus Features Implemented
+
 - **Pagination** (`?page=1&page_size=20`) - Timeline API
 - **Include Toggles** (`?include_vitals=false`) - Bandwidth optimization
 - **Follow-up Compliance** - Statistics calculation with ±7 day window
 
 ### ⚠️ Deferred to Phase 2
+
 - Clinical Templates Library
 - Clinical Templates Admin
 - Pediatric-specific vital ranges
 - Mean Arterial Pressure (MAP) calculation
 
 ### Final Metrics
+
 | Metric | Value |
 |--------|-------|
 | Total Tests | 760 |

@@ -9,6 +9,7 @@ For general API authentication and setup, see [api-guide.md](api-guide.md).
 ## Overview
 
 The eGFR Calculator provides:
+
 - **CKD-EPI 2021** (race-free) equation — KDIGO/NKF recommended for CKD staging
 - **Cockcroft-Gault** equation — standard for drug dosing adjustments
 - **CKD staging** (G1–G5) with clinical interpretation
@@ -50,6 +51,7 @@ GET /clinical/egfr/health
 ```
 
 **Response:**
+
 ```json
 {
   "status": "healthy",

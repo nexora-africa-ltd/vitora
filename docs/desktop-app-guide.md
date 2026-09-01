@@ -50,6 +50,7 @@
 ```
 
 **Key design decisions:**
+
 - The web-app runs locally inside a Node.js sidecar — no internet required to load the UI
 - A random free TCP port is selected on each launch to avoid conflicts
 - The Rust shell manages lifecycle, tray, auto-updates, printing, and native OS integration
@@ -81,6 +82,7 @@ WebView2 is bundled in the Windows installer (silent embed). Linux requires WebK
 | npm | 10+ | Package management |
 
 **Linux dev dependencies:**
+
 ```bash
 sudo apt install libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev \
   patchelf libssl-dev libgtk-3-dev libsoup-3.0-dev libjavascriptcoregtk-4.1-dev
@@ -135,6 +137,7 @@ Desktop login uses the same backend credential path as the web app. `/api/auth/l
 ### Connection Test
 
 The setup page validates the endpoint before saving:
+
 ```
 GET <url>/api/health/ → expects 200 OK
 ```
@@ -153,17 +156,20 @@ The desktop app supports four operating modes configured during first-run:
 | **Web Only** | Cloud + PowerSync | Unusual for desktop; browser-like mode |
 
 ### Standalone Mode
+
 - Best for: Clinicians working from home, single-provider clinics
 - Internet required for all API calls
 - Cookie auth to cloud API (SameSite=None; Secure)
 
 ### LAN Client Mode
+
 - Best for: Multi-user facilities with a dedicated hub machine
 - Hub URL is the facility server's LAN IP (e.g., `http://192.168.1.100:9088`)
 - Works entirely offline from internet (hub handles sync to cloud)
 - Cookie auth over HTTP (SameSite=Lax)
 
 ### LAN Hub Mode
+
 - Best for: Small facilities where one PC serves as both workstation and hub
 - The installer sets up Django as a local service
 - Hub activation now requires EULA acceptance (`GET /api/licensing/eula/` then `POST /api/licensing/activate/` with `eula_accepted=true` and `eula_version="2026-07-31"`)
@@ -174,6 +180,7 @@ The desktop app supports four operating modes configured during first-run:
 In the Tauri desktop app, Settings includes a **Desktop** tab only for admin roles (`ADMIN`, `ORG-ADMIN`, `OWNER`, platform staff, or superuser). Non-admin users cannot see the tab even if they deep link to `?tab=desktop`.
 
 For LAN Client and LAN Hub modes, the tab includes **Hub Operations**:
+
 - Hub health status, queue counts, last sync time, license-token presence, hub ID, facility ID, and uptime
 - **Refresh** to re-check `/api/hub/health/`
 - **Sync Now** to run one admin-gated `POST /api/hub/sync-now/` cycle
@@ -257,6 +264,7 @@ All frontend wrappers are in `web-app/lib/desktop/index.ts` with graceful browse
 ### Deep Link Scheme
 
 The app registers `vitora://` as a URL scheme. Example deep links:
+
 - `vitora://patient/123` — open patient detail
 - `vitora://encounter/456` — open encounter
 
@@ -265,6 +273,7 @@ Events are emitted to the frontend as `deep-link` Tauri events.
 ### ESC/POS Printing
 
 The desktop app supports thermal receipt printers:
+
 ```typescript
 // List available printers
 const printers = await listPrinters();
@@ -294,6 +303,7 @@ cd desktop-app && npm install && npm run dev:tauri
 ```
 
 Or combined:
+
 ```bash
 cd desktop-app && npm run dev
 ```
@@ -414,6 +424,7 @@ From the app's About/Settings page, trigger a manual check. Or restart the app.
 ### Rollback
 
 Tauri's updater doesn't have built-in rollback. To downgrade:
+
 1. Uninstall the current version
 2. Install the desired older version from GitHub Releases
 
@@ -427,6 +438,7 @@ Tauri's updater doesn't have built-in rollback. To downgrade:
 
 1. Check if another process is using the app data directory
 2. Delete the extracted standalone bundle to force re-extraction:
+
    ```bash
    # Linux
    rm -rf ~/.local/share/digital.vitora.hmis/standalone/
@@ -437,6 +449,7 @@ Tauri's updater doesn't have built-in rollback. To downgrade:
    # macOS
    rm -rf ~/Library/Application\ Support/digital.vitora.hmis/standalone/
    ```
+
 3. Restart the app
 
 ### "Failed to start Vitora" Error Page
@@ -466,6 +479,7 @@ Tauri's updater doesn't have built-in rollback. To downgrade:
 ### System Tray Icon Missing (Linux)
 
 Install the AppIndicator library:
+
 ```bash
 sudo apt install libappindicator3-1
 ```
@@ -490,6 +504,7 @@ sudo apt install libappindicator3-1
 ### Uninstalling
 
 **Windows:**
+
 ```powershell
 # Via Control Panel or:
 & "C:\Program Files\Vitora HMIS\uninstall.exe"
@@ -499,6 +514,7 @@ Remove-Item -Recurse "$env:APPDATA\digital.vitora.hmis"
 ```
 
 **Linux:**
+
 ```bash
 sudo dpkg -r vitora-hmis  # DEB
 # or just delete the AppImage
@@ -509,6 +525,7 @@ rm -rf ~/.local/share/digital.vitora.hmis
 ```
 
 **macOS:**
+
 ```bash
 rm -rf /Applications/Vitora\ HMIS.app
 rm -rf ~/Library/Application\ Support/digital.vitora.hmis
@@ -517,6 +534,7 @@ rm -rf ~/Library/Application\ Support/digital.vitora.hmis
 ### Viewing Logs
 
 The desktop app logs to stdout (visible in dev mode). In production, Tauri logs to:
+
 - **Windows**: `%APPDATA%\digital.vitora.hmis\logs\`
 - **Linux**: `~/.local/share/digital.vitora.hmis/logs/` or systemd journal
 - **macOS**: `~/Library/Logs/digital.vitora.hmis/`
@@ -545,6 +563,7 @@ The app will behave as a fresh install on next launch.
 3. Restart the app → choose new mode
 
 ### Stop Hub
+
 ```bash
 # Linux
 # Stop now:
@@ -566,6 +585,7 @@ The app will behave as a fresh install on next launch.
 #If you want it fully removed:
   sc.exe delete VitoraHub
 ```
+
 ### Performance Targets
 
 | Metric | Target | Notes |
@@ -581,6 +601,7 @@ The app will behave as a fresh install on next launch.
 ### Content Security Policy
 
 The WebView enforces a CSP (in `tauri.conf.json`):
+
 - `connect-src`: localhost, `*.vitora.digital`, `*.azurecontainerapps.io`, `*.powersync.journeyapps.com`
 - `script-src`: self + unsafe-inline/eval (required by Next.js)
 - `frame-src`: self + `*.vitora.digital`

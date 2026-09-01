@@ -47,6 +47,7 @@ This directory contains Behavior-Driven Development (BDD) feature files for the 
 ## Key Features
 
 ### Patient Registration
+
 - **Auto-generated MRN**: Format `MRN-YYYYMMDD-XXXX`
 - **Kenya Location Hierarchy**: 47 Counties → 289 Sub-Counties → 1448 Wards
 - **Data Encryption**: National ID and phone numbers encrypted with Fernet
@@ -55,6 +56,7 @@ This directory contains Behavior-Driven Development (BDD) feature files for the 
 - **Duplicate Detection**: Warns on matching National ID or phone
 
 ### Outpatient (OPD)
+
 - **Vitals with Alerts**: SpO2 < 95% triggers hypoxemia alert
 - **ICD-10 Diagnoses**: Searchable diagnosis codes
 - **Clinical Templates**: Pre-defined treatment protocols
@@ -63,6 +65,7 @@ This directory contains Behavior-Driven Development (BDD) feature files for the 
 - **Admission Recommendation**: OPD to IPD transition
 
 ### Inpatient (IPD)
+
 - **Ward Management**: Medical, Surgical, Pediatric, Maternity, ICU, Isolation
 - **Bed Tracking**: Real-time occupancy with status (Available, Occupied, Maintenance)
 - **Nursing Kardex**: Care plans, orders, shift notes
@@ -71,6 +74,7 @@ This directory contains Behavior-Driven Development (BDD) feature files for the 
 - **Discharge Planning**: Checklist-based discharge workflow
 
 ### Queue Management
+
 - **Priority Levels**: Emergency, Urgent, Pregnant, Elderly, Standard
 - **Department Queues**: Reception, Triage, OPD, Lab, Pharmacy, Cashier
 - **Display Screens**: Public queue displays with audio
@@ -80,6 +84,7 @@ This directory contains Behavior-Driven Development (BDD) feature files for the 
 ## Tags Reference
 
 ### Feature Tags
+
 - `@patients` - All patient-related scenarios
 - `@registration` - Patient registration
 - `@search` - Patient search and lookup
@@ -88,6 +93,7 @@ This directory contains Behavior-Driven Development (BDD) feature files for the 
 - `@queue` - Queue management
 
 ### Workflow Tags
+
 - `@encounter` - Clinical encounters
 - `@vitals` - Vital signs capture
 - `@diagnosis` - ICD-10 diagnosis
@@ -99,11 +105,13 @@ This directory contains Behavior-Driven Development (BDD) feature files for the 
 - `@handover` - Shift handover
 
 ### Priority Tags
+
 - `@smoke` - Critical path scenarios
 - `@emergency` - Emergency workflows
 - `@priority` - Queue prioritization
 
 ### Quality Tags
+
 - `@offline` - Offline functionality
 - `@sync` - Data synchronization
 - `@validation` - Input validation
@@ -156,6 +164,7 @@ VILLAGE/STREET (Free text) - Optional
 ## Encounter Status Flow
 
 ### OPD Encounter
+
 ```
 CREATED → IN_PROGRESS → COMPLETED
                     ↓
@@ -163,6 +172,7 @@ CREATED → IN_PROGRESS → COMPLETED
 ```
 
 ### IPD Admission
+
 ```
 PENDING → ADMITTED → DISCHARGED
               ↓
@@ -239,18 +249,21 @@ Patients flagged as sensitive (HIV, GBV, Mental Health):
 ## Data Encryption
 
 Encrypted fields (Fernet AES-128):
+
 - `national_id`
 - `phone_number`
 
 ## Compliance Requirements
 
 ### Kenya Data Protection Act 2019
+
 - 7-year retention for patient records
 - Consent capture at registration
 - Audit trail on all access
 - Right to access/delete (with limitations)
 
 ### KHIS/DHIS2 Reporting
+
 - Encounter data feeds reports
 - ICD-10 diagnosis codes
 - Facility statistics

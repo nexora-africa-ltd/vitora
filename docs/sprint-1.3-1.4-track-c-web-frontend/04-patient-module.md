@@ -16,6 +16,7 @@ This document covers the Patient module implementation including list view with 
 ## 1. TypeScript Types
 
 **lib/types/patient.ts**:
+
 ```typescript
 export interface Patient {
   id: number;
@@ -93,6 +94,7 @@ export type PatientFormData = Omit<Patient, 'id' | 'mrn' | 'created_at' | 'updat
 ## 2. Patient API Client
 
 **lib/api/patients.ts**:
+
 ```typescript
 import { apiClient } from './client';
 import {
@@ -177,6 +179,7 @@ export const patientsApi = {
 ## 3. Patient Hooks
 
 **lib/hooks/use-patients.ts**:
+
 ```typescript
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { patientsApi } from '@/lib/api/patients';
@@ -275,6 +278,7 @@ export function usePatientEmergencyContacts(patientId: number) {
 ## 4. Patient List Page
 
 **app/(dashboard)/patients/page.tsx**:
+
 ```typescript
 'use client';
 
@@ -384,6 +388,7 @@ export default function PatientsPage() {
 ## 5. Patient Table Component
 
 **components/patients/patient-table.tsx**:
+
 ```typescript
 'use client';
 
@@ -582,6 +587,7 @@ export function PatientTable({
 ## 6. Patient Detail Page
 
 **app/(dashboard)/patients/[id]/page.tsx**:
+
 ```typescript
 'use client';
 
@@ -808,6 +814,7 @@ function PatientDetailSkeleton() {
 ## 7. Patient Components
 
 **components/patients/patient-card.tsx**:
+
 ```typescript
 import Link from 'next/link';
 import { User, Phone, Calendar } from 'lucide-react';
@@ -874,6 +881,7 @@ export function PatientCard({ patient }: PatientCardProps) {
 ```
 
 **components/patients/patient-encounters.tsx**:
+
 ```typescript
 'use client';
 
@@ -973,6 +981,7 @@ export function PatientEncounters({ patientId }: PatientEncountersProps) {
 ```
 
 **components/patients/emergency-contacts-list.tsx**:
+
 ```typescript
 import { User, Phone } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -1032,6 +1041,7 @@ export function EmergencyContactsList({ contacts }: EmergencyContactsListProps) 
 ## 8. Debounce Hook
 
 **lib/hooks/use-debounce.ts**:
+
 ```typescript
 import { useState, useEffect } from 'react';
 
@@ -1061,7 +1071,8 @@ export function useDebounce<T>(value: T, delay = 500): T {
 
 ### 9.1 Patient API Tests (8 tests)
 
-**__tests__/lib/api/patients.test.ts**:
+****tests**/lib/api/patients.test.ts**:
+
 ```typescript
 import { patientsApi } from '@/lib/api/patients';
 import { apiClient } from '@/lib/api/client';
@@ -1147,7 +1158,8 @@ describe('Patients API', () => {
 
 ### 9.2 Patient Hooks Tests (10 tests)
 
-**__tests__/lib/hooks/use-patients.test.tsx**:
+****tests**/lib/hooks/use-patients.test.tsx**:
+
 ```typescript
 import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -1223,7 +1235,8 @@ describe('usePatientSearch', () => {
 
 ### 9.3 Patient Table Tests (8 tests)
 
-**__tests__/components/patients/patient-table.test.tsx**:
+****tests**/components/patients/patient-table.test.tsx**:
+
 ```typescript
 import { render, screen, fireEvent } from '@testing-library/react';
 import { PatientTable } from '@/components/patients/patient-table';
@@ -1323,6 +1336,7 @@ describe('PatientTable', () => {
 ## 10. Checklist
 
 ### Days 9-10: Patient List
+
 - [ ] Create Patient types
 - [ ] Implement Patients API client
 - [ ] Create usePatients hook
@@ -1334,6 +1348,7 @@ describe('PatientTable', () => {
 - [ ] Write 18 tests
 
 ### Days 11-12: Patient Detail
+
 - [ ] Create Patient detail page
 - [ ] Implement PatientCard component
 - [ ] Implement PatientEncounters component

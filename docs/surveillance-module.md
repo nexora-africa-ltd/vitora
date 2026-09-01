@@ -156,6 +156,7 @@ Mapping between NotifiableDisease and DHIS2 Data Element UIDs.
 **Management**: Django Admin at `/admin/surveillance/dhis2dataelementmapping/`
 
 **Usage**:
+
 ```python
 from hmis.apps.surveillance.dhis2_mappings import get_data_element_uid
 uid = get_data_element_uid("Cholera", "cases_under_5", "local")
@@ -693,6 +694,7 @@ const { stats, isConnected, connectionState } = useSurveillanceWebSocket({
 ```
 
 **Features:**
+
 - **Primary**: WebSocket connection to `ws://*/ws/surveillance/alerts/`
 - **Fallback**: Automatic polling (30s interval) when WebSocket unavailable
 - **Toast notifications**: Destructive toasts for immediate/outbreak alerts
@@ -736,6 +738,7 @@ export const IHRDashboardSchema = z.object({ ... });
 ## Changelog
 
 ### Version 3.0 (March 2, 2026)
+
 - **IHR Notification Pipeline** — Full WHO IHR 2005 compliance implementation (DHA compliance gap #24)
   - `IHRNotification` model with 30+ fields, 8-status escalation workflow, 6 state-transition methods, 4 computed properties
   - 7 serializers: detail, list, create, + 4 action serializers (submit, escalate, notify WHO, reject, close)
@@ -755,6 +758,7 @@ export const IHRDashboardSchema = z.object({ ... });
 - **Audit logging**: All mutating IHR operations logged to AuditLog
 
 ### Version 2.3 (February 23, 2026)
+
 - **Frontend WebSocket integration** with polling fallback
   - Created `useSurveillanceWebSocket` hook in `lib/hooks/surveillance-websocket/`
   - Integrated WebSocket status indicator in dashboard and alerts pages
@@ -768,6 +772,7 @@ export const IHRDashboardSchema = z.object({ ... });
 - Updated test coverage for new schemas
 
 ### Version 2.2 (February 22, 2026)
+
 - Integrated IDSR Clinicians Handbook (42+ priority diseases)
 - **Added 12 new diseases from IDSR Clinicians Handbook:**
   - AEFI (Adverse Events Following Immunization) - IMMEDIATE
@@ -786,6 +791,7 @@ export const IHRDashboardSchema = z.object({ ... });
 - Schema bumped to v2.2
 
 ### Version 2.1 (February 22, 2026)
+
 - Integrated official IDSR Clinicians Booklet case definitions
 - Added 3 new diseases: Dracunculiasis (Guinea Worm), Sexually Transmitted Infections, HIV/AIDS
 - Total diseases: 43 (16 immediate, 20 weekly, 7 monthly)
@@ -799,6 +805,7 @@ export const IHRDashboardSchema = z.object({ ... });
 - Schema bumped to v2.1
 
 ### Version 2.0 (February 22, 2026)
+
 - Enhanced JSON schema with structured case definitions
 - Added suspected/confirmed case definition fields
 - Added laboratory criteria with specimen, test, turnaround details
@@ -808,6 +815,7 @@ export const IHRDashboardSchema = z.object({ ... });
 - Integrated into `render.yaml` deployment
 
 ### Version 1.0 (February 22, 2026)
+
 - Initial implementation of surveillance module
 - 40 MOH 502 diseases seeded
 - WebSocket real-time alerts

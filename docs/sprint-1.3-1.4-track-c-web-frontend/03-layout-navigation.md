@@ -16,6 +16,7 @@ This document covers the dashboard layout shell, sidebar navigation, header comp
 ## 1. Dashboard Layout Structure
 
 **app/(dashboard)/layout.tsx**:
+
 ```typescript
 'use client';
 
@@ -77,6 +78,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 ## 2. Sidebar Component
 
 **components/layout/sidebar.tsx**:
+
 ```typescript
 'use client';
 
@@ -272,6 +274,7 @@ export function Sidebar({ collapsed, onCollapse, mobileOpen, onMobileClose }: Si
 ## 3. Header Component
 
 **components/layout/header.tsx**:
+
 ```typescript
 'use client';
 
@@ -434,6 +437,7 @@ export function Header({ onMenuClick, sidebarCollapsed }: HeaderProps) {
 ## 4. Breadcrumb Component
 
 **components/layout/breadcrumb.tsx**:
+
 ```typescript
 'use client';
 
@@ -519,6 +523,7 @@ export function Breadcrumb() {
 ## 5. Dashboard Home Page
 
 **app/(dashboard)/page.tsx**:
+
 ```typescript
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Users, Stethoscope, Pill, AlertTriangle } from 'lucide-react';
@@ -608,6 +613,7 @@ export default function DashboardPage() {
 ## 6. Dashboard Components
 
 **components/dashboard/stats-card.tsx**:
+
 ```typescript
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils/cn';
@@ -666,6 +672,7 @@ export function StatsCard({
 ```
 
 **components/dashboard/recent-patients.tsx**:
+
 ```typescript
 'use client';
 
@@ -736,6 +743,7 @@ export function RecentPatients() {
 ```
 
 **components/dashboard/alerts-widget.tsx**:
+
 ```typescript
 'use client';
 
@@ -832,6 +840,7 @@ export function AlertsWidget() {
 ## 7. Shared Components
 
 **components/shared/loading-spinner.tsx**:
+
 ```typescript
 import { Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
@@ -857,6 +866,7 @@ export function LoadingSpinner({ size = 'md', className }: LoadingSpinnerProps) 
 ```
 
 **components/shared/empty-state.tsx**:
+
 ```typescript
 import { LucideIcon, FileQuestion } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -897,6 +907,7 @@ export function EmptyState({
 ```
 
 **components/shared/page-header.tsx**:
+
 ```typescript
 interface PageHeaderProps {
   title: string;
@@ -925,7 +936,8 @@ export function PageHeader({ title, description, actions }: PageHeaderProps) {
 
 ### 8.1 Sidebar Tests (8 tests)
 
-**__tests__/components/layout/sidebar.test.tsx**:
+****tests**/components/layout/sidebar.test.tsx**:
+
 ```typescript
 import { render, screen, fireEvent } from '@testing-library/react';
 import { Sidebar } from '@/components/layout/sidebar';
@@ -996,7 +1008,8 @@ describe('Sidebar', () => {
 
 ### 8.2 Header Tests (6 tests)
 
-**__tests__/components/layout/header.test.tsx**:
+****tests**/components/layout/header.test.tsx**:
+
 ```typescript
 import { render, screen, fireEvent } from '@testing-library/react';
 import { Header } from '@/components/layout/header';
@@ -1050,7 +1063,8 @@ describe('Header', () => {
 
 ### 8.3 Breadcrumb Tests (4 tests)
 
-**__tests__/components/layout/breadcrumb.test.tsx**:
+****tests**/components/layout/breadcrumb.test.tsx**:
+
 ```typescript
 import { render, screen } from '@testing-library/react';
 import { Breadcrumb } from '@/components/layout/breadcrumb';
@@ -1086,7 +1100,8 @@ describe('Breadcrumb', () => {
 
 ### 8.4 Dashboard Tests (4 tests)
 
-**__tests__/app/dashboard/page.test.tsx**:
+****tests**/app/dashboard/page.test.tsx**:
+
 ```typescript
 import { render, screen } from '@testing-library/react';
 import DashboardPage from '@/app/(dashboard)/page';
@@ -1122,6 +1137,7 @@ describe('Dashboard Page', () => {
 ## 9. Checklist
 
 ### Day 5: Layout Foundation
+
 - [ ] Create dashboard layout with sidebar state
 - [ ] Implement Sidebar component
 - [ ] Implement Header component
@@ -1129,6 +1145,7 @@ describe('Dashboard Page', () => {
 - [ ] Write 12 layout tests
 
 ### Day 6: Dashboard & Polish
+
 - [ ] Create dashboard home page
 - [ ] Implement StatsCard component
 - [ ] Implement RecentPatients component

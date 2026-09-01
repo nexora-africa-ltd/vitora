@@ -89,6 +89,7 @@ Replaces the MCH-only vaccine models with a standalone module that serves all de
 **History**: `simple_history` enabled
 
 **Computed properties**:
+
 - `is_overdue: bool` — Scheduled and past date
 - `days_overdue: int | None` — Days past scheduled date
 
@@ -110,6 +111,7 @@ Replaces the MCH-only vaccine models with a standalone module that serves all de
 **Ordering**: `-start_date`
 
 **Computed properties**:
+
 - `is_running: bool` — Status is `ACTIVE` and within date range
 
 ---
@@ -156,6 +158,7 @@ Replaces the MCH-only vaccine models with a standalone module that serves all de
 **Ordering**: `expiry_date`
 
 **Computed properties**:
+
 - `is_expired: bool` — Past expiry date
 - `is_low_stock: bool` — Qty ≤ min_stock_level
 - `is_near_expiry: bool` — Within 30 days of expiry (not yet expired)
@@ -391,6 +394,7 @@ Base path: `/api/immunizations/`
 **Required**: `vaccine_code`. Optional: `start_date`, `end_date` (ISO format).
 
 **Response**:
+
 ```json
 {
   "vaccine_code": "BCG",

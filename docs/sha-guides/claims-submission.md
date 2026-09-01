@@ -51,6 +51,7 @@ ICD-11 codes can be obtained through:
 - Downloading the ICD-11 data package from the WHO website
 
 **Resources**:
+
 - [ICD API Local Deployment](https://icd.who.int/icdapi/docs2/APIDoc-Version2/)
 - [ICD API Docker Container](https://github.com/ICD-API/icd-api-docker)
 - [ICD-11 GitHub Repository](https://github.com/ICD-API)
@@ -89,7 +90,7 @@ Track status of submitted claims using either:
 | 4 | Each Request must be a valid Bundle Json. |
 | 5 | Each claim Id must be unique. If you submit the same claim Id again then system will just treat it as duplicate and would give you the same response as earlier request (making it idempotent) |
 | 6 | Ensure that Insurance and Coverage objects are included in JSON. |
-| 7 | Use terminology server prefix as per environment in the request Json:<br>- Dev: https://qa-mis.apeiro-digital.com<br>- UAT: https://qa-mis.apeiro-digital.com<br>- Prod: https://fhir.sha.go.ke |
+| 7 | Use terminology server prefix as per environment in the request Json:<br>- Dev: <https://qa-mis.apeiro-digital.com><br>- UAT: <https://qa-mis.apeiro-digital.com><br>- Prod: <https://fhir.sha.go.ke> |
 | 8 | Each resource entry in bundle must have a fullUrl field according to the above url and type. |
 | 9 | Total amount must be Sum of Net Amount of all items in claim. |
 | 10 | Ensure CareTeam has valid details including reference to Practioner. |
@@ -731,9 +732,11 @@ Track status of submitted claims using either:
 ## Validation Rules
 
 ### Start and End Dates Required
+
 Each intervention must include both a start and an end date.
 
 ### Use of servicedPeriod Property
+
 The start and end dates must be captured under the `servicedPeriod` property of the Claim resource:
 
 ```json
@@ -744,17 +747,21 @@ The start and end dates must be captured under the `servicedPeriod` property of 
 ```
 
 ### Dates Must Be Within Billable Period
+
 The start and end dates must fall within the `billablePeriod` of the overall claim. **Note**: Only the date is validated - time is not considered.
 
 ### Length of Stay (LOS) for Per-Diem Interventions
+
 LOS is calculated based on the start and end dates provided in the `servicedPeriod`.
 
 ### Sequence Alignment Required
+
 Each intervention must include a sequence number. The sequence must align with the corresponding `servicedPeriod`.
 
 **Misalignment will result in rejection of the claim.**
 
 ### Duplicate Intervention Codes Allowed (with Valid Sequences)
+
 It is permissible to repeat intervention codes within a single claim message, provided that:
 
 - Each has a unique sequence number

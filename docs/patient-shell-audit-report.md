@@ -21,6 +21,7 @@
 | Billing requires encounter enforcement | ✅ RESOLVED |
 
 **Key Achievements:**
+
 - Patient Shell pattern implemented with context providers, read-only header, and route layouts
 - `usePermissions` hook for role-based access control (identity editing restricted)
 - Billing encounter enforcement via `SimpleInvoiceForm` and `SHAClaimForm`
@@ -42,6 +43,7 @@
 | UI prevents multiple active patients simultaneously | ⚠️ PARTIAL | No explicit prevention |
 
 **Migration Status:**
+
 - ✅ `app/(dashboard)/patients/[id]/page.tsx` - Now uses `usePatientContext()`
 - ✅ `app/(dashboard)/encounters/[id]/page.tsx` - Now uses `useEncounterContext()`
 - ✅ `components/laboratory/lab-order-form.tsx` - Context-aware with fallback
@@ -61,6 +63,7 @@
 | Encounter switcher exists and is deliberate | ⚠️ PARTIAL | URL-based, context-aware |
 
 **Implementation:**
+
 - `SHAClaimForm` shows warning when no encounter
 - Invoice submit button disabled without encounter
 - Warning banners for SHA compliance
@@ -78,6 +81,7 @@
 | No inline demographic editing in clinical views | ✅ YES | Read-only in clinical screens |
 
 **Implementation:**
+
 - `usePermissions` hook with `canEditPatient`, `canEditIdentity`
 - Clinical roles (NURSE, DOCTOR) denied identity editing by default
 - Admin role bypasses all permission checks
@@ -136,6 +140,7 @@
 ### Verdict: ✅ IMPLEMENTED
 
 **What Was Delivered:**
+
 1. `PatientContext` - Single source of truth for patient data with verification status
 2. `EncounterContext` - Single source of truth for encounter data with order permissions
 3. `PatientShellHeader` - Read-only identity banner component
@@ -146,7 +151,7 @@
 
 ## 6. Implementation Details
 
-### Files CREATED:
+### Files CREATED
 
 | File | Purpose | Status |
 |------|---------|--------|
@@ -160,7 +165,7 @@
 | `lib/hooks/use-permissions.ts` | Role-based access control hook | ✅ Done |
 | `components/billing/SHAClaimForm.tsx` | SHA claim form with encounter validation | ✅ Done |
 
-### Files to MODIFY (Future Work):
+### Files to MODIFY (Future Work)
 
 *All core Patient Shell pattern work is complete. Future enhancements:*
 
@@ -169,7 +174,7 @@
 | E2E Tests | Add Playwright tests for patient confusion prevention | ⏳ Future |
 | Journey Dashboard | Build patient journey visualization UI | ⏳ Future |
 
-### Files MODIFIED (Batch 2):
+### Files MODIFIED (Batch 2)
 
 | File | Change | Status |
 |------|--------|--------|
@@ -178,7 +183,7 @@
 | `lib/auth/context.tsx` | Added `role` field to User type | ✅ Done |
 | `lib/types/index.ts` | Added `role` field to User type | ✅ Done |
 
-### Files MODIFIED (Batch 3):
+### Files MODIFIED (Batch 3)
 
 | File | Change | Status |
 |------|--------|--------|
@@ -187,14 +192,14 @@
 | `app/(dashboard)/laboratory/orders/new/page.tsx` | Context-aware, encounter status check | ✅ Done |
 | `app/(dashboard)/pharmacy/prescriptions/new/page.tsx` | Context-aware with URL param fallback | ✅ Done |
 
-### Files MODIFIED (Patient Journey Integration):
+### Files MODIFIED (Patient Journey Integration)
 
 | File | Change | Status |
 |------|--------|--------|
 | `lib/context/patient-context.tsx` | Syncs with patient-journey store, exposes journeyStage | ✅ Done |
 | `lib/context/encounter-context.tsx` | Syncs triage/consultation status to journey store | ✅ Done |
 
-### Files UNTOUCHED (As Planned):
+### Files UNTOUCHED (As Planned)
 
 | File | Reason |
 |------|--------|
@@ -209,7 +214,7 @@
 
 ## 7. Implementation Summary
 
-### Steps Completed:
+### Steps Completed
 
 | Step | Description | Status |
 |------|-------------|--------|
@@ -220,7 +225,7 @@
 | 5 | Create encounters/[id]/layout.tsx | ✅ Done |
 | 6 | Write comprehensive tests (70 tests) | ✅ Done |
 
-### Remaining Steps (Progressive Migration):
+### Remaining Steps (Progressive Migration)
 
 | Step | Description | Priority | Status |
 |------|-------------|----------|--------|

@@ -15,6 +15,7 @@ This document outlines the implementation plan for a **two-dimensional access co
 2. **Capability-Based Access Control**: What a *facility* offers based on its services
 
 The combination ensures that:
+
 - A **nurse at a Level 4 hospital** sees inpatient wards, lab, pharmacy
 - A **nurse at a Level 2 dispensary** sees only outpatient and pharmacy (no lab, no inpatient)
 - A **clinician** can prescribe; a **nurse** in the same module cannot
@@ -117,6 +118,7 @@ class Role(models.Model):
 **Question**: "Can I see this section in the sidebar?"
 
 This is a **coarse-grained** check based on:
+
 - User's role category (CLINICAL, ADMINISTRATIVE, TECHNICAL)
 - Facility's enabled modules
 
@@ -138,6 +140,7 @@ This is a **coarse-grained** check based on:
 **Question**: "Can I perform this action within the module?"
 
 This is a **fine-grained** check based on:
+
 - Specific Django permissions
 - Role-action mappings
 
@@ -199,6 +202,7 @@ export type ModuleKey = keyof typeof MODULE_PERMISSIONS;
 ```
 
 > **✅ Phase 1 Implemented** (March 9, 2026)
+>
 > - Created `web-app/lib/permissions/constants.ts` — `MODULE_PERMISSIONS` mapping 15 sidebar modules to Django permissions (or `null` for dashboard), plus `ModuleKey` type.
 > - Created `web-app/lib/permissions/actions.ts` — `ACTION_PERMISSIONS` mapping 35 fine-grained actions across 7 modules (Inpatient, Pharmacy, Laboratory, Imaging, Billing, Encounters, Admin) to allowed roles, plus `ActionKey` type.
 > - Both files compile cleanly with `npx tsc --noEmit`.
@@ -355,6 +359,7 @@ export function usePermissions(): PermissionsResult {
 ```
 
 > **✅ Phase 2 Implemented** (March 9, 2026)
+>
 > - Enhanced `web-app/lib/hooks/use-permissions.ts` with two new capabilities:
 >   - `canAccessModule(module)` — Layer 1 check against `MODULE_PERMISSIONS` (Django permission lookup, superuser bypass, `null` = open access).
 >   - `canPerformAction(action)` — Layer 2 check against `ACTION_PERMISSIONS` (role-based lookup, superuser bypass).
@@ -481,6 +486,7 @@ export const mainNavItems: NavItemType[] = [
 ```
 
 > **✅ Phase 3 Implemented** (March 9, 2026)
+>
 > - Added `moduleKey?: ModuleKey` to `NavItem` and `NavItemWithChildren` interfaces.
 > - Annotated all 15 nav items with their `moduleKey` (dashboard, checkin, patients, triage, emergency, surveillance, clinics, encounters, inpatient, pharmacy, laboratory, imaging, theatre, billing, admin).
 > - Nav items without a module key (MCH, Allied Health, Quality, CDS, AI Assistant) remain visible to all users.
@@ -531,6 +537,7 @@ function useFilteredNavItems() {
 ```
 
 > **✅ Phase 4 Implemented** (March 9, 2026)
+>
 > - Added `useFilteredNavItems()` hook to `web-app/components/layout/sidebar.tsx`.
 > - Filters both top-level items and children within parent groups based on `canAccessModule()`.
 > - Parent groups with no visible children are automatically hidden.
@@ -662,6 +669,7 @@ class Facility(TimeStampedModel):
 ```
 
 > **✅ Phase 1 Implemented** (March 9, 2026)
+>
 > - Added `Facility` model to `backend/hmis/apps/core/models.py` with `FacilityLevel` and `OwnershipType` TextChoices enums, MFL code (unique), location FKs (County/SubCounty/Ward with PROTECT), SHA registration fields, 12 explicit boolean module flags, `is_active` status.
 > - `modules` property returns all 12 flags as a dictionary; `enabled_module_names` returns only enabled module names.
 > - `default_modules_for_level()` class method provides KEPH-level defaults (Level 1–2: outpatient+pharmacy; Level 6: all modules).
@@ -697,6 +705,7 @@ class StaffProfile(models.Model):
 ```
 
 > **✅ Phase 2 Implemented** (March 9, 2026)
+>
 > - Added `primary_facility` FK (nullable, `PROTECT`) and `secondary_facilities` M2M to `StaffProfile` in `backend/hmis/apps/core/models.py`.
 > - Added `get_all_facilities()` method returning primary + secondary facilities (primary first, deduplicated).
 > - Updated `StaffProfileSerializer` with `primary_facility_name` (resolved read-only) and `secondary_facilities` (nested `FacilityListSerializer`, read-only).
@@ -842,6 +851,7 @@ const isActionAllowed = (action: ActionKey): boolean => {
 ## Implementation Phases
 
 ### Phase 1: RBAC Foundation (Week 1)
+
 - [x] Create `web-app/lib/permissions/constants.ts`
 - [x] Create `web-app/lib/permissions/actions.ts`
 - [x] Update `usePermissions` hook with `canAccessModule()` and `canPerformAction()`
@@ -855,6 +865,7 @@ const isActionAllowed = (action: ActionKey): boolean => {
 **Deliverables**: Role-filtered navigation working
 
 ### Phase 2: Action Permissions (Week 2)
+
 - [x] Implement `canPerformAction()` in all relevant components
 - [x] Add permission-based button visibility (inpatient, pharmacy, lab, billing)
 - [x] Add API-level permission checks (backend)
@@ -866,6 +877,7 @@ const isActionAllowed = (action: ActionKey): boolean => {
 **Deliverables**: Action buttons show/hide based on role
 
 ### Phase 3: Facility Model (Week 3)
+
 - [x] Create `Facility` model with migrations
 - [x] Add `primary_facility` to `StaffProfile`
 - [x] Create `FacilitySerializer` and API endpoints
@@ -877,6 +889,7 @@ const isActionAllowed = (action: ActionKey): boolean => {
 **Deliverables**: Facility model in database
 
 ### Phase 4: Capability Context (Week 4)
+
 - [x] Create `FacilityContext` provider
 - [x] Add facility to auth response (`/api/me/`)
 - [x] Add `facilityModule` to navigation config
@@ -888,6 +901,7 @@ const isActionAllowed = (action: ActionKey): boolean => {
 **Deliverables**: Capability-filtered navigation working
 
 ### Phase 5: Polish & Documentation (Week 5)
+
 - [x] Create admin UI for role permissions_matrix
 - [x] Create admin UI for facility module toggles
 - [x] Write user documentation (see `docs/rbac-capability-guide.md`)

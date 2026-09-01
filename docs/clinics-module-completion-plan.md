@@ -27,6 +27,7 @@ This document outlines the remaining work to complete the Clinics Module impleme
 
 **Estimated Effort**: 4-6 hours
 **Files to Modify**:
+
 - `backend/hmis/apps/encounters/models.py`
 - `backend/hmis/apps/encounters/serializers.py`
 - `backend/hmis/apps/clinics/models.py` (ClinicVisit.start_consultation)
@@ -36,6 +37,7 @@ This document outlines the remaining work to complete the Clinics Module impleme
 ### 1.1 Problem Statement
 
 The `Encounter` model currently has no reference to `ClinicVisit`. This breaks:
+
 - Traceability (which clinic served the patient)
 - Clinic-based reporting
 - Revenue attribution per clinic
@@ -88,6 +90,7 @@ The `Encounter` model currently has no reference to `ClinicVisit`. This breaks:
 
 **Estimated Effort**: 6-8 hours
 **Files to Modify**:
+
 - `backend/hmis/apps/clinics/models.py` (start_consultation signal)
 - `backend/hmis/apps/billing/models.py` (Invoice)
 - `backend/hmis/apps/billing/services/` (new clinic billing service)
@@ -150,6 +153,7 @@ ClinicVisit.start_consultation()
 
 **Estimated Effort**: 6-8 hours
 **Files to Create/Modify**:
+
 - `backend/hmis/apps/clinics/models.py` (MonthlyClinicReport)
 - `backend/hmis/apps/clinics/serializers.py`
 - `backend/hmis/apps/clinics/views.py`
@@ -241,6 +245,7 @@ class MonthlyClinicReport(TimeStampedModel):
 
 **Estimated Effort**: 3-4 hours
 **Files to Modify**:
+
 - `backend/hmis/apps/billing/services/sha_claims.py`
 - `backend/tests/billing/test_services/test_sha_claims_service.py`
 
@@ -287,6 +292,7 @@ SHA claims bundle does not include clinic/service delivery point context, which 
 
 **Estimated Effort**: 8-10 hours
 **Files to Create**:
+
 - `web-app/e2e/clinics.spec.ts`
 - `web-app/e2e/clinic-queue.spec.ts`
 - `web-app/e2e/clinic-enrollment.spec.ts`
@@ -378,6 +384,7 @@ describe('Chronic Care Enrollment', () => {
 ## Success Criteria
 
 ### Must Have (Sprint 2.5)
+
 - [ ] Encounter model has clinic_visit FK
 - [ ] Starting consultation creates invoice
 - [ ] MonthlyClinicReport model exists and populates
@@ -385,11 +392,13 @@ describe('Chronic Care Enrollment', () => {
 - [ ] Coverage remains ≥80%
 
 ### Should Have
+
 - [ ] SHA claims include clinic context
 - [ ] E2E tests for clinic queue flow
 - [ ] E2E tests for enrollment flow
 
 ### Nice to Have (Defer to Phase 3)
+
 - [ ] DHIS2 export service
 - [ ] Automated monthly report generation task
 
@@ -408,6 +417,7 @@ describe('Chronic Care Enrollment', () => {
 ## Appendix: Files to Create/Modify
 
 ### New Files
+
 ```
 backend/hmis/apps/billing/services/clinic_billing.py
 backend/hmis/apps/clinics/services/reporting.py
@@ -419,6 +429,7 @@ web-app/e2e/clinic-enrollment.spec.ts
 ```
 
 ### Modified Files
+
 ```
 backend/hmis/apps/encounters/models.py
 backend/hmis/apps/encounters/serializers.py

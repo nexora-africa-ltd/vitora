@@ -352,6 +352,7 @@ web-app/
 The backend provides these endpoints for the web frontend:
 
 ### Authentication
+
 ```
 POST   /api/token/              # Login → {access, refresh}
 POST   /api/token/refresh/      # Refresh token
@@ -359,6 +360,7 @@ POST   /api/token/verify/       # Verify token
 ```
 
 ### Patients
+
 ```
 GET    /api/patients/                           # List (paginated, searchable)
 GET    /api/patients/{id}/                      # Detail
@@ -370,6 +372,7 @@ GET    /api/patients/{id}/encounters/           # Patient's encounters
 ```
 
 ### Encounters
+
 ```
 GET    /api/encounters/                         # List
 GET    /api/encounters/{id}/                    # Detail
@@ -380,6 +383,7 @@ GET    /api/encounters/{id}/treatment-plan/     # Treatment plan
 ```
 
 ### Locations
+
 ```
 GET    /api/locations/counties/                 # 47 Kenya counties
 GET    /api/locations/sub-counties/?county=X    # Cascading
@@ -387,6 +391,7 @@ GET    /api/locations/wards/?sub_county=X       # Cascading
 ```
 
 ### RBAC
+
 ```
 GET    /api/departments/                        # Departments
 GET    /api/roles/                              # Roles
@@ -394,6 +399,7 @@ GET    /api/staff/                              # Staff profiles
 ```
 
 ### Pharmacy (Read-only for dashboard)
+
 ```
 GET    /api/pharmacy/drugs/                     # Drug catalog
 GET    /api/pharmacy/stock/                     # Stock levels
@@ -401,6 +407,7 @@ GET    /api/pharmacy/alerts/                    # Stock alerts
 ```
 
 ### Laboratory (Read-only for dashboard)
+
 ```
 GET    /api/lab/orders/                         # Lab orders
 GET    /api/lab/results/                        # Lab results
@@ -411,6 +418,7 @@ GET    /api/lab/results/                        # Lab results
 ## Sprint Timeline
 
 ### Week 5 (Days 1-5)
+
 | Day | Track | Tasks |
 |-----|-------|-------|
 | 1 | Setup | Project scaffold, TypeScript, ESLint |
@@ -420,6 +428,7 @@ GET    /api/lab/results/                        # Lab results
 | 5 | Layout | Sidebar, header, dashboard shell |
 
 ### Week 6 (Days 6-10)
+
 | Day | Track | Tasks |
 |-----|-------|-------|
 | 6 | Layout | Navigation, breadcrumbs, mobile responsive |
@@ -429,6 +438,7 @@ GET    /api/lab/results/                        # Lab results
 | 10 | Patient | Patient search, filters, pagination |
 
 ### Week 7 (Days 11-15)
+
 | Day | Track | Tasks |
 |-----|-------|-------|
 | 11 | Patient | Patient detail page, info cards |
@@ -438,6 +448,7 @@ GET    /api/lab/results/                        # Lab results
 | 15 | Encounter | Encounter timeline, diagnoses view |
 
 ### Week 8 (Days 16-20)
+
 | Day | Track | Tasks |
 |-----|-------|-------|
 | 16 | Dashboard | Stats cards, charts setup |
@@ -451,38 +462,48 @@ GET    /api/lab/results/                        # Lab results
 ## Parallel Implementation Tracks
 
 ### 🅰️ Track A: Core Infrastructure (Days 1-5)
+
 **Owner**: Developer 1
 **Files**: `01-setup-infrastructure.md`, `02-authentication.md`
+
 - Next.js scaffold
 - TypeScript config
 - TailwindCSS + shadcn/ui
 - Auth system
 
 ### 🅱️ Track B: Layout & API (Days 5-10)
+
 **Owner**: Developer 2
 **Files**: `03-layout-navigation.md`, `06-api-state-management.md`
+
 - Dashboard layout
 - Sidebar navigation
 - API client
 - TanStack Query
 
 ### 🅲 Track C: Patient Module (Days 9-14)
+
 **Owner**: Developer 1 or 3
 **Files**: `04-patient-module.md`
+
 - Patient list
 - Patient detail
 - Search & filters
 
 ### 🅳 Track D: Encounter Module (Days 13-17)
+
 **Owner**: Developer 2 or 3
 **Files**: `05-encounter-module.md`
+
 - Encounter views
 - Vitals display
 - Timeline
 
 ### 🅴 Track E: Testing & Polish (Days 16-20)
+
 **Owner**: All developers
 **Files**: `07-testing-infrastructure.md`
+
 - Unit tests
 - E2E tests
 - Documentation

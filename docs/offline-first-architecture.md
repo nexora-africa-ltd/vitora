@@ -80,6 +80,7 @@ For small clinics (1–3 staff), one machine can be both hub and client — Djan
 Each Tauri client maintains a local SQLite database using `better-sqlite3` in the Next.js standalone sidecar (Node.js).
 
 **Configuration:**
+
 ```sql
 PRAGMA journal_mode = WAL;          -- Write-Ahead Logging for crash resilience
 PRAGMA synchronous = NORMAL;        -- Balance between safety and speed
@@ -90,6 +91,7 @@ PRAGMA busy_timeout = 5000;         -- Wait up to 5s for locks
 **Schema**: Mirrors the Django models relevant to the facility (patients, encounters, triage, pharmacy, lab, billing). Generated from a shared schema definition.
 
 **Storage location:**
+
 ```
 Linux:   ~/.local/share/digital.vitora.hmis/db/vitora.db
 Windows: %APPDATA%/digital.vitora.hmis/db/vitora.db
@@ -101,18 +103,21 @@ macOS:   ~/Library/Application Support/digital.vitora.hmis/db/vitora.db
 The facility hub is a Django instance running on the LAN — identical to the cloud backend but configured for local use.
 
 **Hardware options (in order of preference):**
+
 1. Dedicated desktop PC (always on) — most reliable
 2. Raspberry Pi 5 (4GB+) — $50, low power, fanless
 3. Mini NUC / thin client — compact, reliable
 4. The same machine as a user workstation (small clinics only)
 
 **Software stack:**
+
 - Django + Gunicorn/Daphne (same codebase as cloud)
 - SQLite (WAL mode) for facilities ≤20 staff, PostgreSQL for larger
 - Django Channels (WebSocket) for real-time updates
 - Celery (optional) for background tasks
 
 **Deployment:**
+
 ```bash
 # On the hub machine (one-time setup)
 ./install-hub.sh  # Extracts Django, creates DB, runs migrations, starts services
@@ -122,6 +127,7 @@ The facility hub is a Django instance running on the LAN — identical to the cl
 ### 3. Cloud Server
 
 Unchanged from current architecture:
+
 - Django REST API + PostgreSQL (Azure Container Apps or VPS)
 - PowerSync Cloud (logical replication for web clients)
 - Serves as the ultimate source of truth and cross-facility data
@@ -133,6 +139,7 @@ Unchanged from current architecture:
 ### Client → Hub (LAN Sync)
 
 **Write path:**
+
 ```
 User action
   → Write to local SQLite (instant UI response)
@@ -143,6 +150,7 @@ User action
 ```
 
 **Read path:**
+
 ```
 User opens screen
   → Query local SQLite (instant)
@@ -153,6 +161,7 @@ User opens screen
 ### Hub → Cloud (WAN Sync)
 
 **When internet is available:**
+
 ```
 Hub detects connectivity
   → POST /api/sync/push/ (batch of changes since last sync)
@@ -193,6 +202,7 @@ GET    /api/sync/status/                 # Sync health check
 | Schema version mismatch | Reject until client updates | Force app update |
 
 **Conflict UI in Tauri client:**
+
 - Shows both versions side-by-side
 - User picks "Keep mine", "Keep theirs", or manually merges
 - Resolution posted to `/api/sync/resolve-conflict/`
@@ -226,6 +236,7 @@ ws://192.168.x.x:9088/ws/facility/{facility_id}/
 ```
 
 **Client handling:**
+
 1. Receive WebSocket message
 2. Fetch full record from hub: `GET /api/{table}/{id}/`
 3. Upsert into local SQLite
@@ -262,6 +273,7 @@ Tauri clients discover automatically on startup. No manual configuration needed.
 ### Option B: UDP Broadcast Probe
 
 Client sends a UDP broadcast to `255.255.255.255:19088` with payload `VITORA_DISCOVER`. Hub responds with JSON:
+
 ```json
 { "url": "http://192.168.1.100:9088", "facility_id": "uuid", "facility_name": "Demo Clinic", "version": "0.3.0" }
 ```
@@ -290,6 +302,7 @@ For networks where mDNS is blocked or VLAN'd, users (or IT staff) enter the hub 
 ### ~~Option D: QR Code~~ (Removed)
 
 QR code pairing was removed from the plan. Rationale:
+
 - Raspberry Pi hubs are typically headless (no display to show QR)
 - Desktop PCs don't have cameras aimed at other screens
 - The problem QR solves (hub discovery) is better served by mDNS + UDP broadcast + manual entry

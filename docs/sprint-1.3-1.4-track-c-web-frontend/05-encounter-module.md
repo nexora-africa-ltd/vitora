@@ -16,6 +16,7 @@ This document covers the Encounter module implementation including list view, de
 ## 1. TypeScript Types
 
 **lib/types/encounter.ts**:
+
 ```typescript
 export interface Encounter {
   id: number;
@@ -115,6 +116,7 @@ export interface EncounterListParams {
 ## 2. Encounter API Client
 
 **lib/api/encounters.ts**:
+
 ```typescript
 import { apiClient } from './client';
 import {
@@ -194,6 +196,7 @@ export const encountersApi = {
 ## 3. Encounter Hooks
 
 **lib/hooks/use-encounters.ts**:
+
 ```typescript
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { encountersApi } from '@/lib/api/encounters';
@@ -278,6 +281,7 @@ export function useUpdateEncounter() {
 ## 4. Encounter List Page
 
 **app/(dashboard)/encounters/page.tsx**:
+
 ```typescript
 'use client';
 
@@ -393,6 +397,7 @@ export default function EncountersPage() {
 ## 5. Encounter Table Component
 
 **components/encounters/encounter-table.tsx**:
+
 ```typescript
 'use client';
 
@@ -584,6 +589,7 @@ export function EncounterTable({
 ## 6. Encounter Detail Page
 
 **app/(dashboard)/encounters/[id]/page.tsx**:
+
 ```typescript
 'use client';
 
@@ -781,6 +787,7 @@ function EncounterDetailSkeleton() {
 ## 7. Vitals Display Component
 
 **components/encounters/vitals-display.tsx**:
+
 ```typescript
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -942,6 +949,7 @@ export function VitalsDisplay({ encounter }: VitalsDisplayProps) {
 ## 8. Diagnoses List Component
 
 **components/encounters/diagnoses-list.tsx**:
+
 ```typescript
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -1006,6 +1014,7 @@ export function DiagnosesList({ diagnoses }: DiagnosesListProps) {
 ## 9. Treatment Plan View Component
 
 **components/encounters/treatment-plan-view.tsx**:
+
 ```typescript
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -1120,6 +1129,7 @@ export function TreatmentPlanView({ treatmentPlan }: TreatmentPlanViewProps) {
 ## 10. Medical History View Component
 
 **components/encounters/medical-history-view.tsx**:
+
 ```typescript
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Encounter } from '@/lib/types/encounter';
@@ -1208,9 +1218,13 @@ export function MedicalHistoryView({ encounter }: MedicalHistoryViewProps) {
 ## 11. Test Coverage (25 tests)
 
 ### 11.1 Encounter API Tests (6 tests)
+
 ### 11.2 Encounter Hooks Tests (6 tests)
+
 ### 11.3 Encounter Table Tests (5 tests)
+
 ### 11.4 Vitals Display Tests (4 tests)
+
 ### 11.5 Encounter Detail Tests (4 tests)
 
 ```typescript
@@ -1266,6 +1280,7 @@ describe('VitalsDisplay', () => {
 ## 12. Checklist
 
 ### Days 13-14: Encounter List & Table
+
 - [ ] Create Encounter types
 - [ ] Implement Encounters API client
 - [ ] Create useEncounters hooks
@@ -1275,6 +1290,7 @@ describe('VitalsDisplay', () => {
 - [ ] Write 12 tests
 
 ### Day 15: Encounter Detail
+
 - [ ] Implement Encounter detail page
 - [ ] Create VitalsDisplay component
 - [ ] Create DiagnosesList component

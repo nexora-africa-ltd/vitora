@@ -128,6 +128,7 @@ This document outlines the validation strategy for Vitora HMIS's FHIR R4, HL7, a
 
 > **Note**: Integration tests are excluded from `make test` as they require HAPI FHIR server.
 > Run manually with:
+>
 > ```bash
 > # Start HAPI FHIR server
 > cd docker/hapi-fhir && docker compose up -d
@@ -170,6 +171,7 @@ HAPI is the most widely-used open-source HL7 v2 library (Java) and provides robu
 **Quick Validation Steps**:
 
 1. **Install HAPI Test Panel** (GUI tool):
+
    ```bash
    # Download from: https://github.com/hapifhir/hapi-hl7v2/releases
    # Run the JAR file
@@ -177,6 +179,7 @@ HAPI is the most widely-used open-source HL7 v2 library (Java) and provides robu
    ```
 
 2. **Generate a test message**:
+
    ```python
    from hmis.apps.laboratory.services import HL7Service
 
@@ -201,6 +204,7 @@ HAPI is the most widely-used open-source HL7 v2 library (Java) and provides robu
 > TODO: Evaluate Gazelle for future use.
 
 **Adding Programmatic Validation** (future enhancement):
+
 ```python
 # Using hl7apy's built-in validation
 from hl7apy.parser import parse_message
@@ -253,6 +257,7 @@ def validate_hl7_message(message_str: str) -> list[str]:
 #### Configuration
 
 Add to Django settings:
+
 ```python
 INSTALLED_APPS = [
     ...

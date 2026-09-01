@@ -91,11 +91,13 @@
 **Overall status**: Core Phase 1 implementation is in place.
 
 **Verification completed**:
+
 - `npm run typecheck` passes
 - `npm run lint` passes
 - Targeted Jest coverage passes for check-in API, triage API, and ICD-10 picker selection
 
 **Residual validation gaps before broad rollout**:
+
 - No automated UI/integration coverage yet for encounter status actions (`Start progress`, `Finalize visit`, `Cancel encounter`)
 - No automated restart-flow test for edit draft restore and clear behavior
 - Generic encounter `transition()` support exists in the API client, but the mobile UI currently exposes only the core actions needed for consultation flow
@@ -107,6 +109,7 @@
 **Implementation status**: Complete for the core encounter workflow.
 
 **Implemented**:
+
 - Added `finalize()`, `cancel()`, `startProgress()`, and `transition()` to the encounter API client
 - Built encounter detail action buttons for `Start progress`, `Finalize visit`, and `Cancel encounter`
 - Added status guard helpers including `canFinalize()`, `canCancel()`, and `canStartProgress()`
@@ -114,9 +117,11 @@
 - Invalidates encounter, encounter list, triage, dashboard, and patient encounter queries after successful mutations
 
 **Notes**:
+
 - The generic `transition()` client method is available for future workflow expansion, but the current screen intentionally exposes only the core consultation actions
 
 **Files to touch**:
+
 - `lib/api/encounters.ts` — new action methods
 - `lib/types/encounter.ts` — action response types
 - `lib/encounters.ts` — guard helpers
@@ -129,15 +134,18 @@
 **Implementation status**: Complete.
 
 **Implemented**:
+
 - Added `searchICD10(query)` to the encounter API client with paginated Zod validation
 - Built reusable `ICD10Picker` with debounced search and selectable results
 - Integrated the picker into the encounter edit diagnosis form while preserving free-text fallback
 - Shows ICD-10 code badges in encounter detail and edit views
 
 **Notes**:
+
 - Mobile currently uses ICD-10 only; ICD-11 support remains out of scope for Phase 1
 
 **Files to touch**:
+
 - `lib/api/encounters.ts` — `searchICD10()` method
 - `lib/types/encounter.ts` — `ICD10Code` type
 - `lib/schemas/encounter.schema.ts` — `ICD10CodeSchema`
@@ -151,6 +159,7 @@
 **Implementation status**: Complete.
 
 **Implemented**:
+
 - Built triage API client with list, encounter lookup, create, and complete actions
 - Added triage types and Zod schemas for assessments, alerts, vitals, and KETA levels
 - Created encounter-linked triage screen with KETA acuity capture and completion workflow
@@ -158,9 +167,11 @@
 - Validates vitals and GCS ranges client-side before posting to the backend
 
 **Notes**:
+
 - The mobile triage flow supports both manual category override and completion of an existing triage record
 
 **Files to touch**:
+
 - `lib/api/triage.ts` — new API client
 - `lib/types/triage.ts` — `TriageAssessment`, `TriageLevel`, `TriageVitals`
 - `lib/schemas/triage.schema.ts` — Zod schemas
@@ -175,6 +186,7 @@
 **Implementation status**: Complete.
 
 **Implemented**:
+
 - Built check-in API client with patient search, patient lookup, and encounter creation
 - Created check-in screen with patient search, clinical snapshot, visit context, and routing controls
 - Supports routing to triage or directly to an active clinic with immediate post-check-in navigation
@@ -182,6 +194,7 @@
 - Added `Start consultation` shortcut on patient detail that deep-links into check-in with the patient preselected
 
 **Files to touch**:
+
 - `lib/api/checkin.ts` — new client
 - `lib/types/checkin.ts` — `CheckInRequest`, `CheckInResponse`
 - `lib/schemas/checkin.schema.ts` — Zod schemas
@@ -197,12 +210,14 @@
 **Implementation status**: Complete.
 
 **Implemented**:
+
 - Added `saveEditDraft(encounterId, form)`, `getEditDraft(encounterId)`, `clearEditDraft(encounterId)`, and `hasEditDraft(encounterId)` to draft storage
 - Wired 250ms debounced auto-save into encounter edit state
 - Restores local draft state on editor re-entry and clears it after successful encounter saves or explicit discard
 - Shows an `Unsaved changes` section on encounter detail when a local draft exists
 
 **Files to touch**:
+
 - `lib/encounter-draft-storage.ts` — edit draft methods
 - `app/encounters/[id]/edit.tsx` — wire draft persistence
 - `app/encounters/[id].tsx` — unsaved changes indicator
@@ -228,11 +243,13 @@
 **Recommendation**: Safe to proceed to Phase 2.
 
 **Why this is safe**:
+
 - The planned Phase 1 implementation is present in the mobile app and the core flows compile and lint cleanly
 - Targeted automated tests cover the new API and ICD-10 search behavior
 - Remaining gaps are validation-depth issues, not missing core functionality
 
 **Carry-forward items for early Phase 2**:
+
 - Add UI or integration coverage for encounter workflow actions
 - Add a manual or automated restart test for edit-draft persistence
 - Decide whether broader encounter state transitions need explicit mobile controls beyond `startProgress`, `finalize`, and `cancel`
@@ -248,6 +265,7 @@
 **Overall status**: Core Phase 2 implementation is in place.
 
 **Verification completed**:
+
 - `npm run typecheck` passes
 - `npm run lint` passes
 - Targeted Jest coverage passes for the new laboratory and pharmacy API clients
@@ -256,6 +274,7 @@
 - Role-aware entry points now tailor the `More` hub for clinicians, laboratory users, and pharmacy users
 
 **Residual validation gaps before broad rollout**:
+
 - The mobile experience now tailors entry points by role, but it still does not enforce strict module access boundaries or deep route authorization
 - Dedicated role-specific home screens do not yet exist; tailoring currently happens in the shared `More` launcher hub
 
@@ -266,6 +285,7 @@
 **Implementation status**: Complete for the core mobile laboratory workflow.
 
 **Implemented**:
+
 - Added a dedicated laboratory API client with Zod-validated methods for test catalog lookup, order listing, encounter-linked order retrieval, order creation, order submission, specimen collection, cancellation, result retrieval, and result verification
 - Added mobile laboratory types and schemas matching backend serializers for `LabTest`, `LabOrder`, `LabOrderItem`, and `LabResult`
 - Built a standalone laboratory workspace with distinct `Orders` and `Results` views, metric summary cards, and drill-down navigation into order detail
@@ -275,6 +295,7 @@
 - Added an `Lab orders` section and `Order labs` action to encounter detail so clinicians can launch and review laboratory work in consultation context
 
 **Tasks**:
+
 - Build lab API client (orders CRUD, results retrieval, result verification)
 - Define lab types + Zod schemas matching backend serializers (`LabOrder`, `LabResult`, `LabTest`, `LabCategory`)
 - Create order screen from encounter (pick tests from categories, add clinical notes, urgency)
@@ -283,6 +304,7 @@
 - Add "Lab Orders" section to encounter detail screen
 
 **Files to touch**:
+
 - `lib/api/laboratory.ts` — new client
 - `lib/types/laboratory.ts` — `LabOrder`, `LabResult`, `LabTest`, etc.
 - `lib/schemas/laboratory.schema.ts` — Zod schemas
@@ -299,6 +321,7 @@
 **Implementation status**: Complete for the core mobile prescribing and dispensing workflow.
 
 **Implemented**:
+
 - Added a pharmacy API client with Zod-validated methods for drug search, prescription list/detail/create/cancel, dispensing list, FEFO dispense execution, and stock lookup by drug
 - Added pharmacy types and schemas for `DrugProduct`, `StockBatch`, `StockLevel`, `Prescription`, `PrescriptionItem`, and `Dispensation`
 - Built a standalone pharmacy queue screen showing prescription status, remaining items, and navigation into dispensing detail
@@ -307,6 +330,7 @@
 - Added a `Prescriptions` section and `Create prescription` action to encounter detail so medication orders can be created and reviewed from the consultation screen
 
 **Tasks**:
+
 - Build pharmacy API client (prescriptions, dispensing, stock lookup, drug search)
 - Prescription creation from encounter treatment plan
 - Dispensing screen for pharmacist role (scan or search prescription → record quantities)
@@ -314,6 +338,7 @@
 - Prescription list with status (Pending, Partially Dispensed, Fully Dispensed, Cancelled)
 
 **Files to touch**:
+
 - `lib/api/pharmacy.ts` — new client
 - `lib/types/pharmacy.ts` — `Prescription`, `Dispensation`, `DrugProduct`, `StockLevel`
 - `lib/schemas/pharmacy.schema.ts` — Zod schemas
@@ -328,6 +353,7 @@
 **Implementation status**: Complete.
 
 **Implemented**:
+
 - Reworked the tab layout to keep the main bar at four core tabs plus a dedicated `More` overflow tab
 - Moved `Settings` out of the visible tab bar and into the `More` launcher screen
 - Added a `More` hub that launches Laboratory, Pharmacy, and Settings from a single overflow surface
@@ -335,11 +361,13 @@
 - Tailored the `More` launcher labels and descriptions so clinicians, laboratory staff, and pharmacy staff see different entry-point emphasis based on role metadata
 
 **Tasks**:
+
 - Add 5th tab: "More" (overflow hub for Lab, Pharmacy, and Settings)
 - Move Settings from tab to "More" screen
 - Keep bottom tabs at max 5 items for thumb reach on small screens
 
 **Files to touch**:
+
 - `app/(tabs)/_layout.tsx` — restructure tab definitions
 - `app/(tabs)/more.tsx` — module launcher grid
 
@@ -366,11 +394,13 @@
 **Recommendation**: Safe to proceed to Phase 3, with carry-forward hardening items.
 
 **Why this is safe**:
+
 - The planned Phase 2 mobile foundation is present in the app: laboratory ordering, lab result review, prescribing, dispensing, encounter integration, and overflow navigation are all implemented
 - The new code compiles cleanly, lints cleanly, and has focused API-level automated coverage for both new client layers
 - The remaining gaps are workflow-depth and product-hardening issues rather than missing architectural prerequisites for offline-first work
 
 **Carry-forward items for early Phase 3 or Phase 2 hardening**:
+
 - Add strict module access control if pharmacists and laboratory users should be prevented from entering non-role workflows
 - Consider dedicated role-specific landing screens if the `More` hub tailoring is not sufficient for production mobile operations
 
@@ -387,11 +417,13 @@
 **Design trade-off**: Encrypted MMKV (single JSON payload under key `vitora.mobile.offline-db.v1`) is now used instead of plain AsyncStorage, preserving the lightweight single-blob model while closing the local storage hardening gap. SQLite/WatermelonDB remains a future scaling option if pilot data volumes outgrow the current approach.
 
 **Verification completed**:
+
 - `npx tsc --noEmit` passes with zero errors
 - `npx eslint .` passes with zero errors (18 warnings, no fixable errors)
 - All 32 Jest test cases pass across 13 test files (including 10 offline DB tests, 7 sync engine tests, 4 API client tests, 6 screen integration tests, and 5 component/navigation tests)
 
 **Residual gaps before scaling to large facilities**:
+
 - No delta/incremental pull sync (`modified_after` not used — full-table pull on every sync)
 - No conflict resolution UI (conflicts detected and counted but user cannot view or resolve them)
 - No schema migration strategy (no version tracking for offline data shape changes)
@@ -406,6 +438,7 @@
 **Implementation status**: Complete.
 
 **Implemented**:
+
 - Defined `OfflineDatabase` type with patients, encounters, diagnoses, counties, sub-counties, wards, sync queue, and metadata
 - Built `LocalPatientRecord` and `LocalEncounterRecord` with full field mapping (~60 encounter fields) plus `LocalRecordMetadata` tracking sync state
 - Offline `has_critical_vitals` detection for SpO2 < 95% computed locally
@@ -419,6 +452,7 @@
 - `SyncStatusProvider` wraps the app in `_layout.tsx` inside `AuthProvider` and `QueryClientProvider`
 
 **Files touched**:
+
 - `lib/db/schema.ts` — `OfflineDatabase`, `LocalRecordMetadata`, `SyncQueueEntry`, `LocalSyncState` types
 - `lib/db/models/patient.ts` — `LocalPatientRecord`, search, sort, offline create
 - `lib/db/models/encounter.ts` — `LocalEncounterRecord`, full field mapping, critical vitals
@@ -434,6 +468,7 @@
 **Implementation status**: Complete for core push/pull. Conflict resolution UI and periodic background sync are absent.
 
 **Implemented**:
+
 - Pull sync: `pullOfflineData()` fetches all patients + encounters + counties with full pagination
 - Push sync: `pushPendingSyncQueue()` processes entries with correct patient→encounter ordering (encounters with unsynced patient IDs are deferred, not failed)
 - ID remapping after push: `replaceQueuedPatient()` updates ID remaps and re-links dependent encounter queue entries to server IDs
@@ -446,6 +481,7 @@
 - Network error handling: `isOfflineSyncError()` breaks the push loop when network errors occur
 
 **Not implemented**:
+
 - Conflict resolution UI — users see "N conflicts" in indicator but cannot view or resolve them
 - Periodic background sync — no `BackgroundFetch`, `TaskManager`, or interval-based refresh
 - Delta/incremental pull — every sync fetches all records (no `modified_after` parameter used)
@@ -453,6 +489,7 @@
 - Sub-county/ward pull — only counties refreshed during sync; sub-counties and wards rely on initial seed
 
 **Files touched**:
+
 - `lib/sync/engine.ts` — core sync orchestrator (~70 lines)
 - `lib/sync/engine.test.ts` — 1 test: full push+pull cycle with mocked APIs
 - `lib/sync/pull.ts` — server → local pull (~55 lines)
@@ -468,6 +505,7 @@
 **Implementation status**: Complete. All core patient and encounter screens migrated to local-first hooks.
 
 **Implemented**:
+
 - `useLocalPatients(search?, limit?)` — React Query wrapper over `listLocalPatients()`
 - `useLocalPatient(id)` — single-record fetch with ID remap support
 - `useLocalEncounters(patientId?, search?, limit?)` — supports filtering and search
@@ -491,6 +529,7 @@
 | `pharmacy/new.tsx` | `patientsApi.list` (API-first) | No (Phase 2, acceptable) |
 
 **Files touched**:
+
 - `lib/hooks/use-local-patients.ts` — offline patient query hooks (~25 lines)
 - `lib/hooks/use-local-encounters.ts` — offline encounter query hooks (~25 lines)
 - All list/detail screens updated to use local-first hooks (see table above)
@@ -514,6 +553,7 @@
 **Recommendation**: Safe to proceed to Phase 4, with carry-forward hardening items.
 
 **Why this is safe**:
+
 - The core offline-first flow is end-to-end functional: local storage, offline creates, sync queue, push/pull, ID remapping, and local-first UI are all working
 - All 40 test cases pass across 13 test files; TypeScript compiles cleanly; lint passes with zero errors
 - Phase 1 (clinical core) and Phase 2 (lab + pharmacy) are both complete and verified, meaning the offline layer covers the full OPD consultation workflow
@@ -521,6 +561,7 @@
 - The remaining gaps are scaling and polish concerns (incremental sync, conflict UI, background refresh), not missing architectural prerequisites for inpatient workflows
 
 **What has been validated end-to-end**:
+
 - Offline patient create → sync → server ID remap → encounter linking
 - Offline encounter create → deferred sync (waits for patient sync) → ordered push
 - Pull sync with full pagination → local upsert → UI refresh via `invalidateOfflineQueries()`
@@ -529,6 +570,7 @@
 - Sync on login → immediate data hydration
 
 **Carry-forward items for early Phase 4 or Phase 3 hardening**:
+
 - ~~**P0 (before pilot scaling)**: Implement delta/incremental pull sync using `modified_after` parameter~~ — **Done**: `fetchAllPatients` and `fetchAllEncounters` now accept `modifiedAfter` param, passed from `meta.last_pull_at`
 - ~~**P1**: Add schema versioning with migration functions for offline data shape evolution~~ — **Done**: `CURRENT_SCHEMA_VERSION` (now v3), `SCHEMA_MIGRATIONS` map, sequential migration runner in `normalizeDatabase`
 - ~~**P1**: Add retry cap (max 5 attempts) with permanent failure state for sync queue entries~~ — **Done**: `MAX_SYNC_ATTEMPTS = 5` in push.ts, entries auto-marked `failed` after cap; UI shows retry/discard actions
@@ -549,12 +591,14 @@
 **Overall status**: Complete. All inpatient, nursing, and MAR screens are implemented.
 
 **Verification completed**:
+
 - `npm run typecheck` passes (zero errors)
 - `npm run lint` passes (zero errors, zero warnings)
 - All 47 Jest tests pass (15 suites, 0 failures) including 7 new inpatient screen tests
 - All Zod schemas validate against live backend API responses
 
 **Phase 4 carry-forward items resolved**:
+
 - **P0** Admit patient screen — DONE: Full admission creation UI with ward selector, bed picker, diagnosis, payer type, and encounter linking (`app/inpatient/admissions/new.tsx`)
 - **P1** MAR backend + frontend — DONE: Backend `MedicationAdministration` model with scheduled/actual time, status (SCHEDULED/GIVEN/SKIPPED/REFUSED/HELD/VOMITED), dose, route, PRN, overdue tracking. Frontend MAR screen with record-administration flow, status pills, overdue badges, and summary counters
 - **P1** Inpatient screen tests — DONE: Jest test suites for ward list screen (3 tests) and MAR screen (4 tests)
@@ -569,6 +613,7 @@
 **Implementation status**: Complete.
 
 **Implemented**:
+
 - Built comprehensive inpatient type definitions: `InpatientWard`, `Bed`, `Admission`, `Discharge`, `Transfer`, plus ward types, bed statuses, admission statuses, payer types, and all create/list parameter types
 - Built Zod schemas for all inpatient types with paginated response variants
 - Built inpatient API client with full CRUD: `listWards`, `getWard`, `getWardBeds`, `getBed`, `listAdmissions`, `getAdmission`, `createAdmission`, `createDischarge`, `createTransfer`
@@ -581,6 +626,7 @@
 - Registered 8 inpatient Stack.Screen routes in root layout
 
 **Files touched**:
+
 - `lib/types/inpatient.ts` — full type definitions (~200 lines)
 - `lib/schemas/inpatient.schema.ts` — Zod schemas with paginated variants (~350 lines)
 - `lib/api/inpatient.ts` — inpatient API client
@@ -599,6 +645,7 @@
 **Implementation status**: Complete (MAR is placeholder pending backend).
 
 **Implemented**:
+
 - Built nursing API client with methods for: kardex retrieval, shift note creation, care plan entry creation, ward round list/create, temperature reading list/create, fluid balance sheet list/get, fluid balance entry creation, and **medication administration list/create/record**
 - Built nursing type definitions: `NursingKardex`, `KardexShiftNote`, `NursingCarePlanEntry`, `WardRound`, `TemperatureReading`, `FluidBalanceSheet`, `FluidBalanceEntry`, `MedicationAdministration`, plus create data types for all write operations
 - Nursing kardex screen showing patient info, mobility/diet/allergy/IV-access fields, fall risk and pressure sore risk pills, isolation indicator, shift note list with add form (day/night shift picker), and ADPIE care plan entries with full create form (assessment, diagnosis, goal, plan, implementation, evaluation, status)
@@ -608,9 +655,11 @@
 - MAR screen with live medication administration tracking: lists scheduled and recorded doses with status pills (Given/Skipped/Refused/Held/Vomited), overdue and PRN badges, inline record-administration form with status picker, dose entry, and notes, backed by a dedicated `MedicationAdministration` backend model
 
 **Notes**:
+
 - Fluid balance entries require an existing `FluidBalanceSheet` for the day; the UI checks for this and shows an error if no sheet exists.
 
 **Files touched**:
+
 - `lib/api/nursing.ts` — nursing API client
 - `app/inpatient/nursing/kardex.tsx` — kardex screen
 - `app/inpatient/nursing/rounds.tsx` — ward round capture
@@ -635,12 +684,14 @@
 **Recommendation**: Safe to proceed to Phase 5.
 
 **Why this is safe**:
+
 - The inpatient module is fully functional for ward management, bed boards, admissions, and discharge
 - Nursing workflows cover the three most critical bedside documentation needs: kardex (shift notes + care plan), ward rounds (SOAP), and vitals/fluid balance trending
 - TypeScript compiles cleanly and lint passes with zero warnings
 - The MAR placeholder is documented and will not block billing or SHA work in Phase 5
 
 **Carry-forward items for Phase 5 or later**:
+
 - Admit patient screen — ✅ DONE (carry-forward resolved)
 - MAR backend and frontend — ✅ DONE (carry-forward resolved)
 - Inpatient screen tests — ✅ DONE (carry-forward resolved)
@@ -662,6 +713,7 @@
 **Overall status**: Complete for the scoped feature work. Billing, SHA eligibility, audit log viewing, session security, encrypted offline storage, and certificate-pinning configuration are implemented in the mobile app.
 
 **Verification completed**:
+
 - Changed `/mobile` source files are clean in editor diagnostics
 - Focused Jest coverage was added for billing API, SHA API, persisted SHA eligibility hook flow, billing screens, patient consultation blocking, and offline eligibility persistence
 - Billing routes are registered in the mobile stack and surfaced from the `More` workspace and patient detail flow
@@ -672,6 +724,7 @@
 - Local `eas build` profile resolution for both `preview` and `production` confirms the configured `EXPO_PUBLIC_API_PIN_*` values are injected correctly
 
 **What is now implemented**:
+
 - Read-only billing client with Zod-validated invoice list, invoice detail, and payment summary responses
 - Billing list and detail screens in mobile for patient-filtered or encounter-filtered invoice review
 - SHA eligibility client with normalized coverage status mapping
@@ -688,6 +741,7 @@
 - Offline local database migrated to encrypted MMKV storage, with the encryption key held in `SecureStore` and one-time import from the legacy `AsyncStorage` payload
 
 **Validation caveat**:
+
 - Native Android `eas build --local` validation is currently blocked by the local machine using Java 11; Android Gradle now requires Java 17. The app configuration itself resolved correctly before Gradle failed.
 
 ### 5.1 Billing Read Access (Week 17)
@@ -697,6 +751,7 @@
 **Implementation status**: Complete for read-only mobile billing visibility.
 
 **Implemented**:
+
 - Built a billing API client for invoice list, invoice detail, and payment list reads using Zod-backed `parseResponse()` validation
 - Added shared billing types and schemas for invoices, line items, payments, and paginated responses
 - Added billing list screen with patient or encounter filtering, invoice status pills, totals, and balance visibility
@@ -704,12 +759,14 @@
 - Added a Billing launcher in the `More` workspace and patient-detail shortcut into the filtered billing view
 
 **Tasks**:
+
 - Build billing API client (invoice list, detail, payment summary — read-only)
 - Invoice list filtered by patient or encounter
 - Invoice detail with line items, totals, and payment status
 - No invoice creation on mobile (web-only for now)
 
 **Files to touch**:
+
 - `lib/api/billing.ts` — read-only client
 - `lib/types/billing.ts` — `Invoice`, `Payment`, `LineItem`
 - `lib/schemas/billing.schema.ts` — Zod schemas
@@ -723,6 +780,7 @@
 **Implementation status**: Complete for eligibility verification, persisted status, and consultation gating.
 
 **Implemented**:
+
 - Built a SHA API client for patient eligibility checks and direct eligibility lookup with normalized response typing
 - Added shared SHA types and Zod schemas for eligibility responses and coverage status
 - Added `Check SHA eligibility` action on patient detail
@@ -732,12 +790,14 @@
 - Replaced the patient-detail consultation shortcut with a real quick-consultation mutation and enforced a hard-stop when the patient is not covered
 
 **Tasks**:
+
 - Build SHA API client (eligibility verification call)
 - Add "Check SHA Eligibility" action on patient detail screen
 - Display coverage status badge on patient cards (Covered / Not Covered / Pending)
 - Show alert banner if patient is not covered before starting a consultation
 
 **Files to touch**:
+
 - `lib/api/sha.ts` — eligibility client
 - `lib/types/sha.ts` — `SHAEligibility`, `CoverageStatus`
 - `app/patients/[id].tsx` — eligibility check section
@@ -749,17 +809,20 @@
 **Implementation status**: Complete.
 
 **Implemented**:
+
 - Built a read-only audit log API client with paginated list support and Zod response validation
 - Added a dedicated audit-log screen reachable from Settings
 - Added user-facing action filtering and chronological audit entry cards with action, resource, and timestamp details
 - Updated backend audit permissions so authenticated non-staff users can only see their own logs while staff keep full visibility
 
 **Tasks**:
+
 - Build audit log API client (list with user filter, action type filter)
 - Create audit log screen in Settings showing current user's actions
 - Display action type, resource, timestamp in chronological list
 
 **Files to touch**:
+
 - `lib/api/audit.ts` — read-only client
 - `app/settings/audit-log.tsx` — audit log screen
 
@@ -770,6 +833,7 @@
 **Implementation status**: Complete.
 
 **Implemented**:
+
 - Added biometric authentication via `expo-local-authentication` with sign-in unlock support for locked sessions
 - Added inactivity-based auto-lock with configurable timeout values and a manual `Lock now` action in Settings
 - Added a locked-session re-auth flow that can resume with biometrics or password re-entry
@@ -780,6 +844,7 @@
 - Verified native dependency integration with `expo prebuild`, and verified EAS profile env injection before the local build host failed on Java 11
 
 **Tasks**:
+
 - Biometric authentication (FaceID/TouchID) via `expo-local-authentication`
 - Auto-lock after configurable inactivity timeout (default: 5 min)
 - Lock screen with biometric or PIN re-authentication
@@ -787,6 +852,7 @@
 - Audit all remaining local storage usage and migrate sensitive values to `SecureStore`
 
 **Files to touch**:
+
 - `lib/auth/biometric.ts` — biometric auth helper
 - `lib/auth/session-timeout.ts` — auto-lock logic
 - `app/sign-in.tsx` — biometric unlock option
@@ -810,12 +876,14 @@
 **Recommendation**: Phase 5 security hardening is complete at the code/config layer. Before relying on local Android builds for release validation, upgrade the build host to Java 17.
 
 **Why this is safe**:
+
 - The clinician-facing Phase 5 value is already present on mobile: invoice visibility, persisted SHA status, and consultation blocking for uncovered patients
 - The implementation follows the stronger `/mobile` app architecture with Zod-validated clients, React Query, and local-first persistence
 - Focused tests now cover the added billing screens, SHA API flow, persisted eligibility cache, consultation gating behavior, audit log rendering, biometric helper logic, and locked-session unlock path
 - The offline local database is no longer persisted in plain `AsyncStorage`, and preview/production EAS profiles now carry concrete certificate pin hashes
 
 **Carry-forward items**:
+
 - Upgrade local Android build environments to Java 17 so `eas build --local` can complete end-to-end
 - Consider suppressing or fixing the unrelated existing lint warnings in `app/inpatient/admissions/new.tsx`
 
@@ -830,11 +898,13 @@
 **Overall status**: Implemented for mobile-first ANC and community screening. MCH uses the existing backend `/api/mch/` module and is cached into the encrypted offline database. Community screening now has a backend `/api/mch/community-screenings/` endpoint, supports GPS and photo capture, and syncs queued field records through the mobile offline engine when connectivity returns.
 
 **Verification completed**:
+
 - `npm run typecheck` passes
 - `npm run lint` passes
 - Focused Jest suites pass for the new MCH API client, MCH list screen, screening form, and updated More workspace launcher
 
 **What is now implemented**:
+
 - Mobile MCH type definitions, Zod schemas, and API client aligned to the existing backend ANC and immunization endpoints
 - Offline database extensions for MCH registrations, ANC visits, immunization records, and community screenings
 - Pull sync now hydrates MCH registrations, ANC visits, and immunization records into the encrypted offline cache
@@ -848,6 +918,7 @@
 - Launchers from the More tab and quick links from patient detail into MCH and screening workflows
 
 **Residual gap before Phase 6 is fully end-to-end complete**:
+
 - No additional community-screening sync gap remains in this phase; further work is limited to broader end-to-end coverage and production hardening
 
 ### 6.1 MCH — Antenatal Care (Weeks 21–22)
@@ -855,6 +926,7 @@
 **Scope**: ANC visit recording, risk assessment, and immunization tracking.
 
 **Tasks**:
+
 - Build MCH API client (ANC visits, risk assessments, birth plans, immunization records)
 - ANC visit capture form (gestational age, fundal height, fetal heart rate, weight, BP, urine, blood group)
 - ANC visit history timeline per patient
@@ -862,6 +934,7 @@
 - Immunization schedule display (TT, IPT doses) with administered/due tracking
 
 **Files to touch**:
+
 - `lib/api/mch.ts` — ANC client
 - `lib/types/mch.ts` — `ANCVisit`, `BirthPlan`, `ImmunizationRecord`, `RiskFactor`
 - `lib/schemas/mch.schema.ts` — Zod schemas
@@ -874,6 +947,7 @@
 **Scope**: Offline field screening with GPS and photo capture.
 
 **Tasks**:
+
 - Build offline screening forms for common conditions (malnutrition, TB contact tracing, malaria RDT)
 - GPS location capture for field visits (expo-location)
 - Photo capture for wound/condition documentation (expo-camera)
@@ -881,6 +955,7 @@
 - Community Health Unit (CHU) assignment and territory display
 
 **Files to touch**:
+
 - `lib/api/screening.ts` — screening client
 - `app/screening/index.tsx` — screening list
 - `app/screening/new.tsx` — screening form
@@ -913,6 +988,7 @@
 **Implementation status**: Implemented for HTTP-layer API tests, shared component coverage, offline sync flow coverage, and critical-path Maestro scaffolding.
 
 **Implemented**:
+
 - Migrated mobile API unit tests from mocked `apiClient` calls to MSW-backed HTTP interception so request params, payloads, and response parsing are validated at the transport boundary
 - Added shared Jest coverage thresholds plus dedicated `test:api`, `test:components`, `test:flows`, and `test:coverage` scripts in the mobile package
 - Added component tests for the new app error boundary and shared virtualized list shell
@@ -921,6 +997,7 @@
 - Updated Jest transforms so Expo and MSW dependencies run together under `jest-expo`
 
 **Tasks**:
+
 - Unit tests for all API clients with MSW (Mock Service Worker) for HTTP mocking
 - Component tests for shared components using React Native Testing Library
 - Integration tests for critical flows (login → check-in → consult → diagnose → finalize)
@@ -933,6 +1010,7 @@
 - Offline scenario tests (create offline, sync, verify no duplicates)
 
 **Files to touch**:
+
 - `__tests__/api/` — API client unit tests
 - `__tests__/components/` — component tests
 - `__tests__/flows/` — integration test scenarios
@@ -947,6 +1025,7 @@
 **Implementation status**: Implemented for shared list virtualization, pull-to-refresh, skeleton loading, haptics, cached images, crash handling, and splash optimization. Bundle-size auditing remains a follow-up measurement task.
 
 **Implemented**:
+
 - Added a shared virtualized `ScreenList` wrapper with tuned `FlatList` settings (`windowSize`, `maxToRenderPerBatch`, `updateCellsBatchingPeriod`, optional `getItemLayout`) for list-heavy mobile routes
 - Replaced spinner-only loading states on key list screens with reusable skeleton cards
 - Added pull-to-refresh wiring for major list-heavy workflows including patients, encounters, billing, pharmacy, laboratory, MCH, screening, and audit log
@@ -956,10 +1035,12 @@
 - Added splash-screen coordination and background-color bootstrapping to reduce startup white flash during auth hydration
 
 **Carry-forward items**:
+
 - Measure APK/IPA size after the next production build and remove any newly identified dead dependencies if bundle targets are missed
 - Validate scroll performance and startup timing on a real mid-range Android device such as Samsung A14 before closing the phase as release-ready
 
 **Tasks**:
+
 - Profile and optimize FlatList rendering (windowSize, maxToRenderPerBatch, getItemLayout)
 - Image caching and lazy loading for patient photos / lab images
 - Bundle size reduction (tree-shaking, remove unused dependencies)
@@ -974,6 +1055,7 @@
 **Scope**: Submit to Play Store and App Store with all required metadata.
 
 **Tasks**:
+
 - App icons and splash screens for all densities (mdpi through xxxhdpi, 1x through 3x)
 - Store metadata: title, descriptions (short + full), screenshots (phone + tablet), keywords
 - Privacy policy and data handling declarations (Kenya DPA 2019 compliance statement)
@@ -982,6 +1064,7 @@
 - Address review feedback and resubmit if needed
 
 **Files to touch**:
+
 - `app.json` — version, icons, splash, permissions
 - `eas.json` — EAS Build profiles
 - `assets/` — icons, splash screens, store screenshots

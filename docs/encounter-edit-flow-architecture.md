@@ -104,6 +104,7 @@ interface EncounterEditSession {
 ## Tab Navigation
 
 The `EncounterEditTabs` component provides:
+
 - Visual step numbers with completion indicators (✓)
 - Active step highlighting
 - Short labels on mobile, full labels on desktop
@@ -128,6 +129,7 @@ const autoSave = useAutoSave({
 ```
 
 The `AutoSaveStatusIndicator` shows:
+
 - "Saving..." during save
 - "Saved X seconds ago" after success
 - Error state if save fails
@@ -135,6 +137,7 @@ The `AutoSaveStatusIndicator` shows:
 ## Read-Only Mode
 
 When `encounter.status === 'CLOSED' || 'CANCELLED'`:
+
 - All form fields are disabled
 - Alert banner explains read-only state
 - Finalize button is hidden
@@ -142,6 +145,7 @@ When `encounter.status === 'CLOSED' || 'CANCELLED'`:
 ## Browser Navigation
 
 The URL-based approach enables:
+
 - Browser back/forward navigation between steps
 - Bookmarkable step URLs
 - Refresh without losing current step

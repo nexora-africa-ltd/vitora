@@ -80,6 +80,7 @@ class SHAMember(models.Model):
 ```
 
 **Key Methods:**
+
 - `is_eligible()` - Check current eligibility status
 - `needs_eligibility_check()` - Check if 24h cache expired
 - `get_eligibility_display()` - Human-readable status
@@ -103,6 +104,7 @@ class SHATariff(models.Model):
 ```
 
 **Key Methods:**
+
 - `is_valid_on_date(date)` - Check tariff validity
 - `get_active_tariffs(category, facility_level)` - Query valid tariffs
 - `find_tariff_for_service(service)` - Auto-map service to tariff
@@ -138,6 +140,7 @@ class SHAClaim(models.Model):
 ```
 
 **Claim Status Lifecycle:**
+
 ```
 DRAFT → VALIDATED → SUBMITTED → UNDER_REVIEW → APPROVED/REJECTED → PAID
                                       ↓
@@ -145,6 +148,7 @@ DRAFT → VALIDATED → SUBMITTED → UNDER_REVIEW → APPROVED/REJECTED → PAI
 ```
 
 **Key Methods:**
+
 - `calculate_claimed_amount()` - Sum from items
 - `validate_for_submission()` - Pre-submission checks
 - `submit()` - Trigger submission workflow
@@ -187,6 +191,7 @@ class SHAClaimAttachment(models.Model):
 ```
 
 **Required Attachment Types by Claim Type:**
+
 | Claim Type | Required Attachments |
 |------------|---------------------|
 | Outpatient | clinical_notes, invoice |
@@ -227,6 +232,7 @@ class SHAAuthService:
 ```
 
 **Features:**
+
 - Token caching with 5-minute expiry buffer
 - Automatic refresh on 401 responses
 - Basic Auth credentials from environment
@@ -242,6 +248,7 @@ class SHAEligibilityService:
 ```
 
 **Features:**
+
 - 24-hour result caching
 - Retry logic with exponential backoff (3 attempts)
 - Member status auto-update
@@ -261,6 +268,7 @@ class SHAClaimsService:
 ```
 
 **FHIR Bundle Structure:**
+
 ```json
 {
   "resourceType": "Bundle",
@@ -276,6 +284,7 @@ class SHAClaimsService:
 ```
 
 **Key Features:**
+
 - Auto-detection of claim type (OPD/IPD/Emergency)
 - FHIR R4 compliant bundle generation
 - Offline queue integration via SyncQueue
@@ -466,11 +475,13 @@ elif result.status == 'submitted':
 ## Security & Compliance
 
 ### Authentication
+
 - API endpoints require JWT authentication
 - SHA API uses Basic Auth → JWT exchange
 - Credentials stored in environment variables (never in code)
 
 ### Permissions
+
 | Permission | Description |
 |------------|-------------|
 | `billing.view_shamember` | View SHA member records |
@@ -484,7 +495,9 @@ elif result.status == 'submitted':
 | `billing.verify_sha_eligibility` | Verify eligibility |
 
 ### Audit Logging
+
 All claim lifecycle events are logged:
+
 - `sha_claim_create`
 - `sha_claim_validate`
 - `sha_claim_submit`
@@ -493,6 +506,7 @@ All claim lifecycle events are logged:
 - `sha_eligibility_check`
 
 ### Kenya DPA 2019 Compliance
+
 - Patient data encrypted at rest (Fernet)
 - Audit logs retained for 7 years
 - Purpose limitation enforced via audit details
@@ -502,12 +516,14 @@ All claim lifecycle events are logged:
 ## Integration Points
 
 ### Internal Dependencies
+
 - **Patients Module**: SHAMember links to Patient
 - **Encounters Module**: Claims link to Encounters for diagnosis codes
 - **Billing Module**: Claims created from Invoices
 - **Core Module**: AuditLog, SyncQueue, TimeStampedModel
 
 ### External Dependencies
+
 - **SHA API**: Kenya Digital Superhighway (DHA Gateway)
 - **FHIR R4**: HL7 FHIR standard for interoperability
 
@@ -542,6 +558,7 @@ FACILITY_LEVEL=L3
 ## Quick Start
 
 ### 1. Enable SHA Integration
+
 ```python
 # .env
 SHA_ENABLED=true
@@ -549,17 +566,20 @@ SHA_API_BASE_URL=https://uat.dha.go.ke
 ```
 
 ### 2. Run Migrations
+
 ```bash
 cd backend
 python manage.py migrate
 ```
 
 ### 3. Load Tariffs
+
 ```bash
 python manage.py import_sha_tariffs data/sha_tariffs.csv
 ```
 
 ### 4. Register SHA Member
+
 ```python
 from hmis.apps.billing.models import SHAMember
 
@@ -574,6 +594,7 @@ member = SHAMember.objects.create(
 ```
 
 ### 5. Create and Submit Claim
+
 ```python
 from hmis.apps.billing.services.sha_claims import SHAClaimsService
 
@@ -596,19 +617,23 @@ if validation.is_valid:
 ### Common Issues
 
 **1. "Patient does not have SHA membership"**
+
 - Ensure patient has linked SHAMember record
 - Check `patient.sha_member` exists
 
 **2. "Eligibility check failed"**
+
 - Check SHA_API_BASE_URL is correct
 - Verify credentials (SHA_USERNAME, SHA_PASSWORD)
 - Check network connectivity
 
 **3. "Missing required attachments"**
+
 - Use `SHAClaimAttachment.get_required_types(claim_type)` to check requirements
 - Ensure all required attachment types are uploaded
 
 **4. "Tariff not found for service"**
+
 - Load SHA tariffs via import script
 - Check tariff is active and valid for service date
 
@@ -617,6 +642,7 @@ if validation.is_valid:
 ## Changelog
 
 ### January 2026
+
 - ✅ Complete SHA claims integration
 - ✅ FHIR R4 bundle generation
 - ✅ Eligibility verification with caching

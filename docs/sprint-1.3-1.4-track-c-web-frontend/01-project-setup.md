@@ -26,6 +26,7 @@ npx create-next-app@14 web-app --typescript --tailwind --eslint --app --src-dir 
 ### 1.2 Initial package.json
 
 **web-app/package.json**:
+
 ```json
 {
   "name": "vitora-web",
@@ -106,6 +107,7 @@ npx create-next-app@14 web-app --typescript --tailwind --eslint --app --src-dir 
 ## 2. TypeScript Configuration
 
 **web-app/tsconfig.json**:
+
 ```json
 {
   "compilerOptions": {
@@ -145,6 +147,7 @@ npx create-next-app@14 web-app --typescript --tailwind --eslint --app --src-dir 
 ## 3. TailwindCSS Configuration
 
 **web-app/tailwind.config.ts**:
+
 ```typescript
 import type { Config } from 'tailwindcss';
 
@@ -285,6 +288,7 @@ export default config;
 ## 4. Global CSS
 
 **app/globals.css**:
+
 ```css
 @tailwind base;
 @tailwind components;
@@ -389,6 +393,7 @@ export default config;
 ## 5. Next.js Configuration
 
 **web-app/next.config.js**:
+
 ```javascript
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -462,6 +467,7 @@ module.exports = nextConfig;
 ## 6. Environment Configuration
 
 **web-app/.env.local** (template):
+
 ```bash
 # Backend API URL
 NEXT_PUBLIC_API_URL=http://127.0.0.1:9088
@@ -474,6 +480,7 @@ NEXT_PUBLIC_ENV=development
 ```
 
 **web-app/.env.example**:
+
 ```bash
 # Backend API URL
 NEXT_PUBLIC_API_URL=http://127.0.0.1:9088
@@ -490,6 +497,7 @@ NEXT_PUBLIC_ENV=development
 ## 7. Utility Functions
 
 **lib/utils/cn.ts**:
+
 ```typescript
 import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -504,6 +512,7 @@ export function cn(...inputs: ClassValue[]): string {
 ```
 
 **lib/utils/format.ts**:
+
 ```typescript
 import { format, formatDistanceToNow, parseISO, differenceInYears } from 'date-fns';
 
@@ -566,6 +575,7 @@ export function formatMRN(mrn: string): string {
 ```
 
 **lib/utils/constants.ts**:
+
 ```typescript
 // API URL
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:9088';
@@ -621,6 +631,7 @@ export const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 ## 8. Root Layout
 
 **app/layout.tsx**:
+
 ```typescript
 import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
@@ -669,6 +680,7 @@ export default function RootLayout({
 ```
 
 **app/providers.tsx**:
+
 ```typescript
 'use client';
 
@@ -717,6 +729,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
 ## 9. ESLint Configuration
 
 **web-app/.eslintrc.json**:
+
 ```json
 {
   "extends": [
@@ -753,6 +766,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
 ## 10. Prettier Configuration
 
 **web-app/.prettierrc**:
+
 ```json
 {
   "semi": true,
@@ -767,6 +781,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
 ```
 
 **web-app/.prettierignore**:
+
 ```
 node_modules
 .next
@@ -780,6 +795,7 @@ playwright-report
 ## 11. Checklist
 
 ### Day 1: Project Scaffold
+
 - [ ] Create Next.js project with `create-next-app`
 - [ ] Configure package.json with all dependencies
 - [ ] Set up TypeScript with strict mode
@@ -788,6 +804,7 @@ playwright-report
 - [ ] Set up Next.js config with rewrites
 
 ### Day 2: Tooling & Utilities
+
 - [ ] Configure ESLint
 - [ ] Configure Prettier
 - [ ] Create utility functions (cn, format)

@@ -49,7 +49,9 @@ This report validates our FHIR claim bundle implementation against the official 
 ### ✅ Current Implementation (COMPLIANT)
 
 \`\`\`python
+
 # sha_claims.py line 252-285
+
 bundle = {
     'id': bundle_guid,                    # ✅ GUID matching Claim id
     'meta': {
@@ -87,7 +89,9 @@ bundle = {
 ### ✅ Current Implementation (COMPLIANT)
 
 \`\`\`python
+
 # sha_claims.py line 290-341 (_build_organization_resource)
+
 {
     'id': self.facility_code,             # ✅ FID from HFR
     'meta': {
@@ -134,7 +138,9 @@ bundle = {
 ### ✅ Current Implementation (COMPLIANT)
 
 \`\`\`python
+
 # sha_claims.py line 579-615 (_build_patient_resource)
+
 {
     'resourceType': 'Patient',
     'id': cr_number,                      # ✅ SHA CR Number (not internal ID)
@@ -169,6 +175,7 @@ bundle = {
 | \`birthDate\` | ISO date | \`_format_date()\` | ✅ |
 
 ### Minor Enhancement Needed
+
 - [ ] Add \`name.text\` field (concatenated full name) - Optional but recommended
 
 ---
@@ -178,7 +185,9 @@ bundle = {
 ### ✅ Current Implementation (COMPLIANT)
 
 \`\`\`python
+
 # sha_claims.py line 617-686 (_build_coverage_resource)
+
 {
     'resourceType': 'Coverage',
     'id': f'{cr_number}-sha-coverage',    # ✅ Correct ID format
@@ -222,7 +231,9 @@ bundle = {
 ### ✅ Current Implementation (COMPLIANT)
 
 \`\`\`python
+
 # sha_claims.py line 343-437 (_build_claim_resource)
+
 {
     'id': bundle_guid,                    # ✅ Same as bundle ID
     'identifier': [{
@@ -248,7 +259,7 @@ bundle = {
         'coverage': {'reference': '...Coverage/...'}
     }],                                   # ✅ Insurance array
     'provider': {
-        'reference': 'https://fr.kenya-hie.health/api/v4/Organization/...',
+        'reference': '<https://fr.kenya-hie.health/api/v4/Organization/>...',
         'id': facility_code,
         'type': 'Organization',
         'identifier': {...}               # ✅ Full provider reference
@@ -285,7 +296,9 @@ bundle = {
 ### ✅ Current Implementation (COMPLIANT)
 
 \`\`\`python
+
 # sha_claims.py line 439-481 (_build_diagnosis_list)
+
 diagnoses.append({
     'sequence': 1,
     'diagnosisCodeableConcept': {
@@ -312,7 +325,9 @@ diagnoses.append({
 ### ✅ Current Implementation (COMPLIANT)
 
 \`\`\`python
+
 # sha_claims.py line 483-577 (_build_item_list)
+
 item = {
     'sequence': idx,
     'productOrService': {
@@ -352,12 +367,15 @@ item = {
 ### ✅ Settings Configuration
 
 \`\`\`python
+
 # settings/base.py
-SHA_API_BASE_URL = os.getenv("SHA_API_BASE_URL", "https://api.sha.go.ke")
-SHA_FHIR_BASE_URL = os.getenv("SHA_FHIR_BASE_URL", "https://mis.apeiro-digital.com")
+
+SHA_API_BASE_URL = os.getenv("SHA_API_BASE_URL", "<https://api.sha.go.ke>")
+SHA_FHIR_BASE_URL = os.getenv("SHA_FHIR_BASE_URL", "<https://mis.apeiro-digital.com>")
 
 # settings/development.py (UAT)
-SHA_FHIR_BASE_URL = os.getenv("SHA_FHIR_BASE_URL", "https://qa-mis.apeiro-digital.com")
+
+SHA_FHIR_BASE_URL = os.getenv("SHA_FHIR_BASE_URL", "<https://qa-mis.apeiro-digital.com>")
 \`\`\`
 
 | Environment | API Base URL | FHIR Base URL | Status |

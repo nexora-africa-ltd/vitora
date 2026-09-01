@@ -74,6 +74,7 @@ GET /cds/health
 ```
 
 **Response:**
+
 ```json
 {
   "status": "healthy",
@@ -97,6 +98,7 @@ X-API-Key: your-api-key
 ```
 
 **Request:**
+
 ```json
 {
   "medications": ["warfarin", "aspirin", "metformin"],
@@ -127,6 +129,7 @@ X-API-Key: your-api-key
 | `facility_level` | string | No | `null` | Kenya facility level (`"H1"`-`"H5"`) |
 
 **Response:**
+
 ```json
 {
   "alerts": [
@@ -181,6 +184,7 @@ X-API-Key: your-api-key
 Optional query parameter: `?category=drug-interaction` to filter by category.
 
 **Response:**
+
 ```json
 {
   "total": 36,
@@ -212,6 +216,7 @@ GET /lab/health
 ```
 
 **Response:**
+
 ```json
 {
   "status": "healthy",
@@ -229,6 +234,7 @@ X-API-Key: your-api-key
 ```
 
 **Request:**
+
 ```json
 {
   "patient_age": 55,
@@ -264,6 +270,7 @@ X-API-Key: your-api-key
 | `timestamp` | datetime | No | When the sample was collected |
 
 **Response:**
+
 ```json
 {
   "flags": [
@@ -353,6 +360,7 @@ GET /discharge/health
 ```
 
 **Response:**
+
 ```json
 {
   "status": "healthy",
@@ -372,6 +380,7 @@ GET /discharge/conditions
 ```
 
 **Response:**
+
 ```json
 {
   "conditions": [
@@ -391,6 +400,7 @@ X-API-Key: your-api-key
 ```
 
 **Request:**
+
 ```json
 {
   "patient_age": 45,
@@ -469,6 +479,7 @@ X-API-Key: your-api-key
 | `oxygen_saturation` | float (0-100) | No | SpO2 (%) |
 
 **Response:**
+
 ```json
 {
   "readiness_score": 0.85,
@@ -529,6 +540,7 @@ X-API-Key: your-api-key
 | `vitals_stability` | string \| null | `"stable"`, `"improving"`, or `"unstable"` |
 
 **Readiness Levels:**
+
 - `ready` — All critical criteria met, safe to discharge
 - `near_ready` — Most criteria met, minor items outstanding
 - `not_ready` — Significant criteria unmet, not safe to discharge
@@ -550,6 +562,7 @@ GET /care-plan/health
 ```
 
 **Response:**
+
 ```json
 {
   "status": "healthy",
@@ -570,6 +583,7 @@ GET /care-plan/conditions
 ```
 
 **Response:**
+
 ```json
 {
   "conditions": [
@@ -605,6 +619,7 @@ X-API-Key: your-api-key
 ```
 
 **Request:**
+
 ```json
 {
   "primary_diagnosis": "Community-acquired pneumonia",
@@ -641,6 +656,7 @@ X-API-Key: your-api-key
 | `lab_results` | LabResult[] | No | `[]` | Recent lab results |
 
 **Response:**
+
 ```json
 {
   "primary_diagnosis": "Community-acquired pneumonia",
@@ -781,6 +797,7 @@ X-API-Key: your-api-key
 **Request:** Same as `/care-plan/generate` (see above).
 
 **Response:**
+
 ```json
 {
   "resourceType": "CarePlan",
@@ -918,6 +935,7 @@ GET /clerking/health
 ```
 
 **Response:**
+
 ```json
 {
   "status": "healthy",
@@ -935,6 +953,7 @@ GET /clerking/templates/clerking
 **Supported formats:** `clerking`, `soap`, `discharge_summary`
 
 **Response:**
+
 ```json
 {
   "format": "clerking",
@@ -965,6 +984,7 @@ X-API-Key: your-api-key
 ```
 
 **Request:**
+
 ```json
 {
   "current_text": "hea",
@@ -984,6 +1004,7 @@ X-API-Key: your-api-key
 **Valid Section Names:** `presenting_complaint`, `hpi`, `pmh`, `drug_history`, `allergies`, `family_history`, `social_history`, `review_of_systems`, `examination`, `investigations`, `assessment`, `plan`
 
 **Response:**
+
 ```json
 {
   "suggestions": [
@@ -1048,6 +1069,7 @@ X-API-Key: your-api-key
 ```
 
 **Request:**
+
 ```json
 {
   "free_text": "45 year old male presents with 3 days of productive cough, fever, and right-sided chest pain. PMH: Type 2 DM on metformin. NKDA. Exam: Temp 38.5, HR 95, BP 130/85, SpO2 93% on RA. Reduced air entry right lower zone with bronchial breathing. Assessment: Community-acquired pneumonia. Plan: Admit, IV antibiotics, O2 therapy, blood cultures, CXR.",
@@ -1067,6 +1089,7 @@ X-API-Key: your-api-key
 | `output_format` | string | No | `"clerking"` | `"clerking"`, `"soap"`, or `"discharge_summary"` |
 
 **Response:**
+
 ```json
 {
   "structured_note": {
@@ -1536,6 +1559,7 @@ X-API-Key: your-api-key
 ```
 
 **Request:**
+
 ```json
 {
   "message_id": "abc123",
@@ -1596,6 +1620,7 @@ X-API-Key: your-api-key
 | `icd10` | `code`, `confidence`, `search_mode` |
 
 **Response:**
+
 ```json
 {
   "status": "received",
@@ -1614,6 +1639,7 @@ GET /feedback/stats?service=care_plan
 Optional query parameter `service` filters statistics to a single service type.
 
 **Response (unfiltered):**
+
 ```json
 {
   "total": 142,
@@ -1653,6 +1679,7 @@ Optional query parameter `service` filters statistics to a single service type.
 ```
 
 **Response (filtered by `?service=care_plan`):**
+
 ```json
 {
   "total": 30,
@@ -1751,6 +1778,7 @@ Authorization: Bearer <token>
 ```
 
 **Response (all endpoints):**
+
 ```json
 [
   {
@@ -1823,5 +1851,5 @@ Several clinical features work together when available:
 
 - **Core API Docs:** [api-guide.md](api-guide.md)
 - **Clinical Features Plan:** [clinical_features_plan.md](clinical_features_plan.md)
-- **Issues:** https://github.com/nexora-africa-ltd/tibabot/issues
+- **Issues:** <https://github.com/nexora-africa-ltd/tibabot/issues>
 - **OpenAPI:** `https://tibabot.hmis.nexora.africa/docs` (when `TIBABOT_ENABLE_DOCS=true`)

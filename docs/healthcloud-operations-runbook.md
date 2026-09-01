@@ -7,6 +7,7 @@ On-call: Platform + Billing Integrations
 ## 1) Purpose
 
 This runbook covers HealthCloud private-insurance incidents for:
+
 - OAuth token acquisition failures
 - Upstream 5xx error spikes
 - Remittance polling lag
@@ -48,6 +49,7 @@ Use when `HealthCloudTokenAcquisitionFailures` is firing.
 5. If upstream auth is down and outage exceeds 15 minutes, move to rollback steps in Section 7.
 
 Exit criteria:
+
 - token failures return to baseline for 10+ minutes
 - one successful OTP request and one successful visit start recorded
 
@@ -62,6 +64,7 @@ Use when `HealthCloudUpstream5xxSpike` is firing.
 5. Coordinate with HealthCloud support using representative correlation IDs.
 
 Exit criteria:
+
 - 5xx ratio below threshold for 15+ minutes
 - claim submit and remittance checks succeed without manual retries
 
@@ -78,6 +81,7 @@ Use when `HealthCloudRemittanceLag` is firing.
 5. If backlog is large, scale workers and process oldest pending claims first.
 
 Exit criteria:
+
 - successful remittance polling resumes
 - no critical pending remittance records older than agreed SLA
 
@@ -96,6 +100,7 @@ Goal: disable HealthCloud flow safely in under 30 minutes.
 6. Notify operations and billing teams that legacy flow is active.
 
 Rollback validation:
+
 - new private-insurance claims can proceed via legacy path
 - no new HealthCloud workflow events are recorded
 

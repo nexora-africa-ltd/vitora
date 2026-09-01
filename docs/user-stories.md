@@ -27,6 +27,7 @@ KE-{ROLE}-{NUM} [Phase X] [Sprint X.X]: {Story Title}
 ```
 
 **Role Codes:**
+
 | Code | Role | Code | Role |
 |------|------|------|------|
 | DOC | Doctor/Consultant/Clinical Officer | NRS | Nurse/Nurse Aide |
@@ -53,6 +54,7 @@ KE-{ROLE}-{NUM} [Phase X] [Sprint X.X]: {Story Title}
 ### Compliance Requirements
 
 All stories must satisfy:
+
 - **Kenya Data Protection Act (2019)** — 7-year audit retention, consent management, breach notification
 - **KHIS/DHIS2** — Mandatory health indicators reporting
 - **SHA (Social Health Authority)** — Claims submission and eligibility verification
@@ -76,6 +78,7 @@ These roles focus on clinical encounters, diagnostics, and decision-making.
 **So that** I can access full medical history before consultations.
 
 **Acceptance Criteria:**
+
 - **Given** I am authenticated with `encounters.view_encounter` permission
 - **When** I search by national ID, phone, MRN, or name (partial match supported)
 - **Then** results return in <2 seconds for databases with 100K+ records
@@ -86,6 +89,7 @@ These roles focus on clinical encounters, diagnostics, and decision-making.
 - **And** FHIR-compliant Patient resource export is available
 
 **Technical Notes:**
+
 - Search endpoint: `GET /api/patients/?search={query}`
 - Encrypted fields (national_id, phone_number) use Fernet encryption at rest
 - Offline: SQLite FTS5 for full-text search
@@ -99,6 +103,7 @@ These roles focus on clinical encounters, diagnostics, and decision-making.
 **So that** patient data is standardized and interoperable.
 
 **Acceptance Criteria:**
+
 - **Given** I have selected a patient and have `encounters.add_encounter` permission
 - **When** I submit an encounter with vitals, chief complaint, and diagnosis
 - **Then** encounter is saved with ICD-10 diagnosis codes
@@ -123,6 +128,7 @@ These roles focus on clinical encounters, diagnostics, and decision-making.
 - **And** AuditLog records `encounter_create`
 
 **Technical Notes:**
+
 - Endpoint: `POST /api/encounters/`
 - Model: `Encounter` with `has_critical_vitals()` and `get_alerts()` methods
 - ICD-10 search: `GET /api/encounters/icd10/?search={term}`
@@ -136,6 +142,7 @@ These roles focus on clinical encounters, diagnostics, and decision-making.
 **So that** care is standardized and evidence-based.
 
 **Acceptance Criteria:**
+
 - Can select from pre-defined clinical templates (e.g., Malaria, Pneumonia, Diabetes)
 - Can customize treatment plan based on patient-specific factors
 - Treatment plan includes: medications, procedures, follow-up schedule, referrals
@@ -144,6 +151,7 @@ These roles focus on clinical encounters, diagnostics, and decision-making.
 - Plan auto-generates pharmacy orders and billing items
 
 **Technical Notes:**
+
 - Models: `TreatmentPlan`, `TreatmentPlanTemplate`, `ClinicalTemplate`
 - Endpoint: `POST /api/encounters/{id}/treatment-plans/`
 
@@ -156,6 +164,7 @@ These roles focus on clinical encounters, diagnostics, and decision-making.
 **So that** I can intervene early and improve patient outcomes.
 
 **Acceptance Criteria:**
+
 - Flags risks based on vitals trends with >90% accuracy in validation testing
 - Alerts appear prominently in encounter view with severity level (Warning, Critical)
 - Clinician can acknowledge or override alert with documented reason
@@ -173,6 +182,7 @@ These roles focus on clinical encounters, diagnostics, and decision-making.
 **So that** care continues when doctors are unavailable.
 
 **Acceptance Criteria:**
+
 - Can create encounters and clinical notes attributed to "Clinical Officer" role
 - Can order laboratory tests from approved test catalog
 - Can prescribe medications within defined formulary scope
@@ -190,6 +200,7 @@ These roles focus on clinical encounters, diagnostics, and decision-making.
 **So that** patients receive expert care.
 
 **Acceptance Criteria:**
+
 - Can view referral notes, attachments, and full patient history
 - Can add specialist opinions as separate notes (marked "Consultant Opinion")
 - Original notes remain unaltered (append-only specialist input)
@@ -212,6 +223,7 @@ Focus on vitals, encounters, patient care, and clinical support.
 **So that** I can work effectively in rural areas without internet.
 
 **Acceptance Criteria:**
+
 - **Given** I am using the mobile or desktop app without internet connectivity
 - **When** I record patient vitals (BP, temperature, pulse, SpO2, weight, height)
 - **Then** data is saved locally to SQLite database
@@ -221,6 +233,7 @@ Focus on vitals, encounters, patient care, and clinical support.
 - **And** AuditLog entries include offline timestamp and sync timestamp
 
 **Technical Notes:**
+
 - Models: `SyncQueue`, `SyncConflict`
 - Conflict resolution strategies: `AUTO`, `MANUAL`, `LOCAL_WINS`, `REMOTE_WINS`
 
@@ -233,6 +246,7 @@ Focus on vitals, encounters, patient care, and clinical support.
 **So that** I can escalate hypoxemia cases immediately.
 
 **Acceptance Criteria:**
+
 - **Given** I am viewing or entering patient vitals
 - **When** SpO2 value is <95%
 - **Then** a prominent red alert banner displays "CRITICAL: Hypoxemia Alert - SpO2 {value}%"
@@ -241,6 +255,7 @@ Focus on vitals, encounters, patient care, and clinical support.
 - **And** alert is logged in AuditLog
 
 **Technical Notes:**
+
 - Method: `Encounter.has_critical_vitals()` returns `True` if SpO2 < 95
 - Method: `Encounter.get_alerts()` returns list of alert messages
 
@@ -253,6 +268,7 @@ Focus on vitals, encounters, patient care, and clinical support.
 **So that** care continuity is maintained across shifts.
 
 **Acceptance Criteria:**
+
 - Can add nursing notes to patient encounter
 - Can flag urgent cases for immediate doctor attention
 - In-app notifications for vitals alerts and new orders
@@ -269,6 +285,7 @@ Focus on vitals, encounters, patient care, and clinical support.
 **So that** care is compliant with national guidelines.
 
 **Acceptance Criteria:**
+
 - Specialized MCH module for antenatal (ANC), postnatal care
 - Tracks 4+ ANC visits per national guidelines
 - Immunization schedule based on KEPI program
@@ -291,6 +308,7 @@ These roles focus on inpatient admission, ward management, nursing care, and dis
 **So that** the admission process is faster, coordinated, and does not require re-registration of the patient.
 
 **Acceptance Criteria:**
+
 - **Given** a patient has an active outpatient encounter
 - **When** I decide the patient requires inpatient care
 - **Then** I can mark the encounter as "Recommended for Admission"
@@ -302,6 +320,7 @@ These roles focus on inpatient admission, ward management, nursing care, and dis
 - **And** AuditLog records `admission_recommended` with reason
 
 **Technical Notes:**
+
 - New field: `Encounter.admission_status` (NONE, PENDING, ADMITTED, DECLINED)
 - New model: `AdmissionRecommendation` linking OPD encounter to IPD admission
 - Notification: Real-time alert to reception via WebSocket/polling
@@ -315,6 +334,7 @@ These roles focus on inpatient admission, ward management, nursing care, and dis
 **So that** I can efficiently process admissions once the patient agrees.
 
 **Acceptance Criteria:**
+
 - **Given** a patient has admission recommendation from a clinician
 - **When** the patient presents at reception and agrees to inpatient admission
 - **Then** I can convert the outpatient encounter to an inpatient admission
@@ -326,11 +346,13 @@ These roles focus on inpatient admission, ward management, nursing care, and dis
 - **And** AuditLog records `patient_admitted`
 
 **Edge Cases:**
+
 - If patient declines admission: encounter remains OPD, decline reason documented
 - If no beds available: patient added to admission waiting list
 - Bed availability validated before final admission confirmation
 
 **Technical Notes:**
+
 - New models: `Ward`, `Bed`, `Admission`
 - Endpoint: `POST /api/admissions/`
 - Bed status: AVAILABLE, OCCUPIED, MAINTENANCE, RESERVED
@@ -344,6 +366,7 @@ These roles focus on inpatient admission, ward management, nursing care, and dis
 **So that** bed allocation is efficient and accurate.
 
 **Acceptance Criteria:**
+
 - Can view all wards with bed counts (total, occupied, available, maintenance)
 - Ward types supported: Medical, Surgical, Pediatric, Maternity, ICU, Isolation
 - Can add/edit/deactivate beds within wards
@@ -354,6 +377,7 @@ These roles focus on inpatient admission, ward management, nursing care, and dis
 - Offline bed status visible; updates sync when connected
 
 **Technical Notes:**
+
 - Models: `Ward`, `Bed`
 - Endpoint: `GET /api/wards/`, `GET /api/wards/{id}/beds/`
 - Dashboard: Real-time occupancy percentage per ward
@@ -367,6 +391,7 @@ These roles focus on inpatient admission, ward management, nursing care, and dis
 **So that** inpatient care begins immediately without workflow disruption.
 
 **Acceptance Criteria:**
+
 - **Given** inpatient admission is completed
 - **When** I open the patient's chart
 - **Then** I can continue writing notes under the inpatient encounter
@@ -377,6 +402,7 @@ These roles focus on inpatient admission, ward management, nursing care, and dis
 - **And** offline documentation syncs when connected
 
 **Technical Notes:**
+
 - `Admission` model links OPD encounter to IPD encounter
 - Patient timeline shows seamless OPD → IPD transition
 
@@ -389,6 +415,7 @@ These roles focus on inpatient admission, ward management, nursing care, and dis
 **So that** progress is tracked and care plans are updated.
 
 **Acceptance Criteria:**
+
 - Can create daily round notes for each inpatient
 - Round note captures: clinical findings, assessment, plan updates
 - Can update diagnosis, medications, and investigations
@@ -399,6 +426,7 @@ These roles focus on inpatient admission, ward management, nursing care, and dis
 - Offline round documentation with sync
 
 **Technical Notes:**
+
 - New model: `WardRound` linked to `Admission`
 - Endpoint: `POST /api/admissions/{id}/rounds/`
 
@@ -411,6 +439,7 @@ These roles focus on inpatient admission, ward management, nursing care, and dis
 **So that** I can safely deliver, track, and hand over nursing care across shifts.
 
 **Acceptance Criteria:**
+
 - **Given** a patient is admitted as an inpatient
 - **When** I open the patient chart
 - **Then** a Kardex view is available with:
@@ -422,6 +451,7 @@ These roles focus on inpatient admission, ward management, nursing care, and dis
   - **Handover Notes**: Follow-up items for next shift, pending labs/procedures, escalations
 
 **Safety Rules:**
+
 - Nurses cannot alter doctor orders from the Kardex
 - Kardex entries are append-only (no silent edits)
 - Critical orders and allergies are visually highlighted
@@ -429,6 +459,7 @@ These roles focus on inpatient admission, ward management, nursing care, and dis
 - Kardex visibility limited to ward-assigned staff
 
 **Technical Notes:**
+
 - New model: `NursingKardex` with sections as JSON or related models
 - One active Kardex per admission
 - Endpoint: `GET/PATCH /api/admissions/{id}/kardex/`
@@ -442,6 +473,7 @@ These roles focus on inpatient admission, ward management, nursing care, and dis
 **So that** I understand the patient's current condition and care priorities.
 
 **Acceptance Criteria:**
+
 - Can view latest Kardex summary at shift start
 - Handover notes from previous shift clearly visible
 - Pending tasks and follow-ups highlighted
@@ -451,6 +483,7 @@ These roles focus on inpatient admission, ward management, nursing care, and dis
 - Handover timestamp and participants recorded
 
 **Technical Notes:**
+
 - New model: `ShiftHandover` linking outgoing and incoming nurses
 - Auto-generates handover summary from Kardex
 
@@ -463,6 +496,7 @@ These roles focus on inpatient admission, ward management, nursing care, and dis
 **So that** patients receive appropriate level of care.
 
 **Acceptance Criteria:**
+
 - Can initiate transfer request with reason (step-up, step-down, specialty care)
 - Target ward/bed selected from available options
 - Transfer requires bed availability validation
@@ -473,6 +507,7 @@ These roles focus on inpatient admission, ward management, nursing care, and dis
 - AuditLog records `patient_transferred`
 
 **Technical Notes:**
+
 - New model: `Transfer` linking admission to source/target beds
 - Endpoint: `POST /api/admissions/{id}/transfer/`
 
@@ -485,6 +520,7 @@ These roles focus on inpatient admission, ward management, nursing care, and dis
 **So that** patients leave with clear instructions and follow-up plans.
 
 **Acceptance Criteria:**
+
 - Can initiate discharge planning with target date
 - Discharge summary captures:
   - Admission diagnosis and final diagnosis
@@ -504,6 +540,7 @@ These roles focus on inpatient admission, ward management, nursing care, and dis
 - Length of Stay (LOS) calculated and stored
 
 **Technical Notes:**
+
 - New model: `Discharge` linked to `Admission`
 - Endpoint: `POST /api/admissions/{id}/discharge/`
 - Auto-calculates LOS for reporting
@@ -517,6 +554,7 @@ These roles focus on inpatient admission, ward management, nursing care, and dis
 **So that** continuity of care and documentation are maintained.
 
 **Acceptance Criteria:**
+
 - Can create referral request linked to inpatient encounter
 - Referral captures: reason, urgency, target specialty/consultant
 - Internal consultant can document review and recommendations
@@ -527,6 +565,7 @@ These roles focus on inpatient admission, ward management, nursing care, and dis
 - Referral history visible in patient timeline
 
 **Technical Notes:**
+
 - Extends existing referral model for IPD context
 - Notifications to consultant for pending reviews
 
@@ -545,6 +584,7 @@ These roles emphasize surgical scheduling, theatre management, and perioperative
 **So that** operations are coordinated efficiently.
 
 **Acceptance Criteria:**
+
 - Calendar view shows theatre availability, patient details, and required equipment
 - Integrates with patient records for pre-op vitals and consent verification
 - Notifications for scheduling conflicts or delays
@@ -561,6 +601,7 @@ These roles emphasize surgical scheduling, theatre management, and perioperative
 **So that** post-op care is informed and reportable.
 
 **Acceptance Criteria:**
+
 - Captures vitals, anesthesia details, and complications with ICD-10 codes
 - Structured forms for pre-op, intra-op, and post-op phases
 - Auto-generates reports for KHIS (surgical volumes indicator)
@@ -577,6 +618,7 @@ These roles emphasize surgical scheduling, theatre management, and perioperative
 **So that** procedures are not delayed due to shortages.
 
 **Acceptance Criteria:**
+
 - Real-time alerts for low/expiring inventory linked to theatre schedules
 - Integration with pharmacy module for quick reorders
 - Pre-procedure checklist validates supply availability
@@ -592,6 +634,7 @@ These roles emphasize surgical scheduling, theatre management, and perioperative
 **So that** theatre operations run smoothly.
 
 **Acceptance Criteria:**
+
 - Can log equipment readiness and sterilization status with timestamps
 - Can record consumables usage per procedure
 - Stock deductions are automatic upon procedure completion
@@ -615,6 +658,7 @@ Manage patient registrations, queue management, and record updates.
 **So that** wait times are reduced.
 
 **Acceptance Criteria:**
+
 - **Given** I have patient demographics (name, DOB, gender, national ID, phone, county, sub-county)
 - **When** I submit the registration form
 - **Then** MRN is auto-generated in format `MRN-YYYYMMDD-XXXX` within 500ms
@@ -626,6 +670,7 @@ Manage patient registrations, queue management, and record updates.
 - **And** AuditLog records `patient_create` with my user ID
 
 **Technical Notes:**
+
 - Endpoint: `POST /api/patients/`
 - MRN generation: Auto in `Patient.save()` method
 - Location models: `County`, `SubCounty`, `Ward` (47/289/1448 respectively)
@@ -639,6 +684,7 @@ Manage patient registrations, queue management, and record updates.
 **So that** family can be notified in emergencies.
 
 **Acceptance Criteria:**
+
 - Can add, edit, delete emergency contacts for a patient
 - Each contact captures: name, phone number, relationship
 - Relationship options: Spouse, Parent, Child, Sibling, Friend, Other
@@ -647,6 +693,7 @@ Manage patient registrations, queue management, and record updates.
 - Contacts synced offline with patient record
 
 **Technical Notes:**
+
 - Model: `EmergencyContact` with FK to `Patient`
 - Endpoint: `GET/POST /api/patients/{id}/emergency-contacts/`
 
@@ -659,6 +706,7 @@ Manage patient registrations, queue management, and record updates.
 **So that** records remain accurate.
 
 **Acceptance Criteria:**
+
 - Search by MRN, national ID, phone, or name returns results in <2 seconds
 - Can update demographics with audit trail of changes
 - Cannot modify clinical data (encounters, diagnoses)
@@ -674,6 +722,7 @@ Manage patient registrations, queue management, and record updates.
 **So that** data sharing is compliant with Kenya DPA.
 
 **Acceptance Criteria:**
+
 - Consent form presented at registration with clear explanation
 - Patient can grant or withhold consent for:
   - Data processing for treatment
@@ -698,6 +747,7 @@ Coordinate patient flow through facility departments.
 **So that** flow is optimized and wait times are minimized.
 
 **Acceptance Criteria:**
+
 - Dashboard shows real-time queue status per department (OPD, Lab, Pharmacy)
 - Can prioritize patients (emergency, pregnant, elderly, standard)
 - Average wait time displayed per queue
@@ -720,6 +770,7 @@ Focus on medication management, dispensing, and inventory.
 **So that** I can avoid stockouts and ensure drug safety.
 
 **Acceptance Criteria:**
+
 - Tracks stock levels by drug, batch number, and expiration date
 - Alerts for:
   - Low stock (below reorder threshold)
@@ -731,6 +782,7 @@ Focus on medication management, dispensing, and inventory.
 - Audit trail for all stock movements
 
 **Technical Notes:**
+
 - Models: `Drug`, `StockBatch`, `StockAlert`, `StockAdjustment`
 - Endpoint: `GET /api/pharmacy/drugs/`, `GET /api/pharmacy/stock/`
 
@@ -743,6 +795,7 @@ Focus on medication management, dispensing, and inventory.
 **So that** medications are dispensed securely and accurately.
 
 **Acceptance Criteria:**
+
 - **Given** a prescription is submitted by a clinician
 - **When** I open the dispensing queue
 - **Then** I see patient name, MRN, prescribed medications, and dosage
@@ -753,6 +806,7 @@ Focus on medication management, dispensing, and inventory.
 - **And** AuditLog records `medication_dispense` with batch number
 
 **Technical Notes:**
+
 - Models: `Prescription`, `PrescriptionItem`, `Dispensing`
 - Endpoint: `POST /api/pharmacy/dispensing/`
 
@@ -765,6 +819,7 @@ Focus on medication management, dispensing, and inventory.
 **So that** patient safety is ensured.
 
 **Acceptance Criteria:**
+
 - System checks prescribed medications against patient's allergy list
 - Warnings displayed for known drug-drug interactions
 - Pharmacist can override with documented reason
@@ -780,6 +835,7 @@ Focus on medication management, dispensing, and inventory.
 **So that** I can plan procurements proactively.
 
 **Acceptance Criteria:**
+
 - Forecasts based on historical dispense data with >85% accuracy
 - Dashboard shows consumption trends and predicted stockout dates
 - Exports to CSV for procurement team review
@@ -801,6 +857,7 @@ Dedicated inventory management role (distinct from dispensing pharmacist).
 **So that** stock levels are accurate.
 
 **Acceptance Criteria:**
+
 - Can record goods received with: supplier, batch, expiry, quantity, unit cost
 - Can record stock adjustments with reason codes:
   - Breakage/Damage
@@ -813,6 +870,7 @@ Dedicated inventory management role (distinct from dispensing pharmacist).
 - Integration with accounting for cost tracking
 
 **Technical Notes:**
+
 - Model: `StockAdjustment`
 - Endpoint: `POST /api/pharmacy/stock-adjustments/`
 
@@ -825,6 +883,7 @@ Dedicated inventory management role (distinct from dispensing pharmacist).
 **So that** I can manage inventory effectively.
 
 **Acceptance Criteria:**
+
 - Reports available:
   - Current stock levels by drug/batch
   - Stock movement history
@@ -849,6 +908,7 @@ Handle test orders, specimen processing, and results delivery.
 **So that** results are delivered promptly to clinicians.
 
 **Acceptance Criteria:**
+
 - Notifications for new orders with priority indicator (Routine, Urgent, STAT)
 - Order includes: patient MRN, test(s) requested, clinical indication, specimen type
 - Can update order status: Received → In Progress → Completed → Verified
@@ -857,6 +917,7 @@ Handle test orders, specimen processing, and results delivery.
 - Queue view shows pending orders sorted by priority
 
 **Technical Notes:**
+
 - Models: `LabOrder`, `LabOrderItem`, `LabResult`, `LabQueue`
 - Endpoint: `GET /api/laboratory/orders/`, `PATCH /api/laboratory/orders/{id}/`
 
@@ -869,6 +930,7 @@ Handle test orders, specimen processing, and results delivery.
 **So that** clinicians receive accurate data.
 
 **Acceptance Criteria:**
+
 - Results entry form matches test type (numeric, text, coded values)
 - Reference ranges displayed for numeric values
 - Abnormal values flagged automatically
@@ -878,6 +940,7 @@ Handle test orders, specimen processing, and results delivery.
 - Can attach images/documents (e.g., microscopy images)
 
 **Technical Notes:**
+
 - Models: `LabResult`, `LabResultTemplate`, `LabResultAttachment`, `LOINCCode`
 
 ---
@@ -889,6 +952,7 @@ Handle test orders, specimen processing, and results delivery.
 **So that** services are invoiced accurately.
 
 **Acceptance Criteria:**
+
 - Test catalog includes pricing per test
 - Completed tests auto-generate billing line items
 - Links to SHA claims for insured patients
@@ -896,6 +960,7 @@ Handle test orders, specimen processing, and results delivery.
 - Offline test logging syncs billing items when connected
 
 **Technical Notes:**
+
 - Model: `TestCatalog` with `price` field
 
 ---
@@ -907,6 +972,7 @@ Handle test orders, specimen processing, and results delivery.
 **So that** diagnostic images are accessible to clinicians.
 
 **Acceptance Criteria:**
+
 - Imaging orders (X-ray, Ultrasound, CT, MRI) received via lab module
 - Can upload DICOM images or PDF reports
 - Results linked to patient encounter
@@ -931,6 +997,7 @@ Handle payments and receipt generation.
 **So that** transactions are seamless and auditable.
 
 **Acceptance Criteria:**
+
 - Supports multiple payment methods:
   - Cash (with change calculation)
   - M-Pesa (STK push integration)
@@ -951,6 +1018,7 @@ Handle payments and receipt generation.
 **So that** patients know their charges before payment.
 
 **Acceptance Criteria:**
+
 - Invoice aggregates all billable items from encounter:
   - Consultation fees
   - Lab tests
@@ -977,6 +1045,7 @@ Invoice generation and accounts receivable management (distinct from cashier).
 **So that** revenue capture is complete.
 
 **Acceptance Criteria:**
+
 - Dashboard shows unbilled services by department
 - Can investigate and add missing billing items
 - Discrepancy reports for audit
@@ -992,6 +1061,7 @@ Invoice generation and accounts receivable management (distinct from cashier).
 **So that** bulk invoicing is efficient.
 
 **Acceptance Criteria:**
+
 - Can group patients by payer (SHA, corporate contracts)
 - Generate consolidated invoices per payer
 - Track payment status and aging
@@ -1013,6 +1083,7 @@ SHA claims submission and tracking.
 **So that** reimbursements are timely and accurate.
 
 **Acceptance Criteria:**
+
 - Packages claims with required attachments:
   - Patient registration form
   - Clinical notes
@@ -1034,6 +1105,7 @@ SHA claims submission and tracking.
 **So that** revenue loss is minimized.
 
 **Acceptance Criteria:**
+
 - Dashboard shows claims by status with aging
 - Can view rejection reasons from SHA
 - Can prepare and submit appeals with supporting documents
@@ -1049,6 +1121,7 @@ SHA claims submission and tracking.
 **So that** I can monitor revenue and collections.
 
 **Acceptance Criteria:**
+
 - Dashboards show:
   - Daily collections by payment method
   - Outstanding invoices
@@ -1075,6 +1148,7 @@ Oversee operations, compliance, and reporting.
 **So that** I can ensure operational efficiency and regulatory compliance.
 
 **Acceptance Criteria:**
+
 - Real-time views of:
   - OPD patient visits (today, week, month)
   - Revenue collection vs target
@@ -1094,6 +1168,7 @@ Oversee operations, compliance, and reporting.
 **So that** I can investigate privacy queries and ensure compliance.
 
 **Acceptance Criteria:**
+
 - Tracks all user actions with:
   - User ID, username
   - Action type (create, view, update, delete)
@@ -1107,6 +1182,7 @@ Oversee operations, compliance, and reporting.
 - Export for compliance audits
 
 **Technical Notes:**
+
 - Model: `AuditLog`
 - Endpoint: `GET /api/auditlogs/` (admin only)
 
@@ -1119,6 +1195,7 @@ Oversee operations, compliance, and reporting.
 **So that** facility meets mandatory reporting requirements.
 
 **Acceptance Criteria:**
+
 - Auto-aggregates facility data for KHIS indicators:
   - OPD attendance by age/gender
   - Disease morbidity (ICD-10 mapped)
@@ -1138,6 +1215,7 @@ Oversee operations, compliance, and reporting.
 **So that** facility operations are data-driven.
 
 **Acceptance Criteria:**
+
 - Predicts:
   - Patient no-show rates for appointment scheduling
   - Stock consumption for procurement planning
@@ -1161,6 +1239,7 @@ System maintenance, security, and infrastructure management.
 **So that** downtime is minimized.
 
 **Acceptance Criteria:**
+
 - Access to observability tools:
   - Prometheus metrics (CPU, memory, DB connections)
   - Grafana dashboards
@@ -1182,6 +1261,7 @@ System maintenance, security, and infrastructure management.
 **So that** data is protected according to Kenya DPA.
 
 **Acceptance Criteria:**
+
 - Can configure:
   - Password policies (complexity, expiry)
   - Session timeout settings
@@ -1201,6 +1281,7 @@ System maintenance, security, and infrastructure management.
 **So that** access control is properly enforced.
 
 **Acceptance Criteria:**
+
 - Can create, deactivate, reset user accounts
 - Can assign roles with predefined permission sets:
   - Doctor, Nurse, Pharmacist, Cashier, Receptionist, Admin, etc.
@@ -1224,6 +1305,7 @@ Temporary access for contract workers.
 **So that** I can perform duties without full admin rights.
 
 **Acceptance Criteria:**
+
 - Account created with expiration date
 - Permissions mirror primary role (e.g., Locum Doctor has Doctor permissions)
 - Auto-deactivated after expiry
@@ -1239,6 +1321,7 @@ Temporary access for contract workers.
 **So that** I can start work immediately.
 
 **Acceptance Criteria:**
+
 - Self-service account activation with OTP verification
 - Mobile app and desktop app support
 - Guided tour of key features on first login
@@ -1262,6 +1345,7 @@ Maternal and child health specialists focusing on ANC, immunizations, and child 
 **So that** I can track their care journey from registration to follow-up.
 
 **Acceptance Criteria:**
+
 - Captures key details:
   - Pregnant women: Expected delivery date, gravida/parity, HIV status, blood group
   - Children: Birth weight, birth date, HIV exposure status, mother linkage
@@ -1280,6 +1364,7 @@ Maternal and child health specialists focusing on ANC, immunizations, and child 
 **So that** care is compliant with national guidelines (4+ ANC visits).
 
 **Acceptance Criteria:**
+
 - Schedules visits based on gestational age with reminders
 - Tracks attendance and outcomes:
   - Ultrasounds, supplements, HIV testing, blood tests
@@ -1298,7 +1383,9 @@ Maternal and child health specialists focusing on ANC, immunizations, and child 
 **So that** children receive timely vaccinations per KEPI program.
 
 **Acceptance Criteria:**
+
 - Displays personalized schedule based on KEPI:
+
   | Age | Vaccines |
   |-----|----------|
   | Birth | BCG, OPV0, HepB-Birth |
@@ -1308,6 +1395,7 @@ Maternal and child health specialists focusing on ANC, immunizations, and child 
   | 9 months | MR1, Yellow Fever (endemic areas) |
   | 18 months | MR2 |
   | 6/12/18 months | Vitamin A supplements |
+
 - Offline logging in mobile app; syncs to KHIS for Penta3 coverage reporting
 - Integrates with pharmacy for:
   - Vaccine stock checks before administration
@@ -1330,6 +1418,7 @@ Maternal and child health specialists focusing on ANC, immunizations, and child 
 **So that** early interventions can be made.
 
 **Acceptance Criteria:**
+
 - Tracks growth metrics:
   - Weight-for-age (with Z-score calculation)
   - Height/length-for-age
@@ -1353,6 +1442,7 @@ Maternal and child health specialists focusing on ANC, immunizations, and child 
 **So that** I can identify high-risk pregnancies or child health issues early.
 
 **Acceptance Criteria:**
+
 - Analyzes trends (ANC data, vitals, lab results) to flag risks:
   - Preeclampsia risk
   - Gestational diabetes
@@ -1379,6 +1469,7 @@ Frontline workers bridging communities and health facilities.
 **So that** vaccine hesitancy is reduced and coverage improves.
 
 **Acceptance Criteria:**
+
 - Mobile app provides multilingual educational resources on KEPI vaccines
 - Can record community engagement events (barazas, household visits)
 - Syncs outcomes to KHIS for community health indicators
@@ -1395,6 +1486,7 @@ Frontline workers bridging communities and health facilities.
 **So that** children complete their vaccination schedules.
 
 **Acceptance Criteria:**
+
 - Dashboard flags defaulters based on KEPI timelines
 - Generates household visit lists with contact information
 - Offline mobile logging of follow-up visits
@@ -1412,6 +1504,7 @@ Frontline workers bridging communities and health facilities.
 **So that** information is captured at point of service.
 
 **Acceptance Criteria:**
+
 - Supports logging during outreach:
   - Campaign vaccinations (e.g., OPV during polio campaigns)
   - Growth monitoring (MUAC screening)
@@ -1431,6 +1524,7 @@ Frontline workers bridging communities and health facilities.
 **So that** community-level data informs facility planning.
 
 **Acceptance Criteria:**
+
 - Generates simple reports:
   - Coverage by village/community unit
   - Defaulter counts and follow-up status
@@ -1457,6 +1551,7 @@ Access national-level aggregated data for oversight.
 **So that** I can oversee national health metrics.
 
 **Acceptance Criteria:**
+
 - KHIS-compliant exports with mandatory indicators
 - Anonymized data only (no PII)
 - Secure access via authenticated FHIR API
@@ -1479,6 +1574,7 @@ Benefits from the system indirectly through improved care.
 **So that** my information is protected.
 
 **Acceptance Criteria:**
+
 - Consent prompts at registration with clear explanation of data use
 - Right to view what data is stored about me (data subject access)
 - Right to revoke consent (does not delete historical treatment records)
@@ -1495,6 +1591,7 @@ Benefits from the system indirectly through improved care.
 **So that** I don't miss my scheduled visits.
 
 **Acceptance Criteria:**
+
 - SMS reminders sent 24 hours before appointment
 - USSD option for feature phone users
 - Language preference respected (English, Swahili)
@@ -1510,6 +1607,7 @@ Benefits from the system indirectly through improved care.
 **So that** they receive timely vaccinations.
 
 **Acceptance Criteria:**
+
 - Automated SMS reminders based on KEPI schedule
 - Reminder includes: child name, vaccine due, facility location
 - Follow-up reminder if visit missed

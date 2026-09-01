@@ -48,6 +48,7 @@ Gaps are categorized into four tiers:
 ### Sprint 1.A — Regulatory Foundations (Weeks 1-4)
 
 #### 1. ODPC Registration `P0` `REQUIRED`
+
 - **Gap**: Data Controller & Data Processor not registered with ODPC
 - **Action**:
   - [ ] Complete DPIA sign-offs (Security Review, Legal Review, DPO Approval)
@@ -59,6 +60,7 @@ Gaps are categorized into four tiers:
 - **Dependency**: DPIA approval
 
 #### 2. MFA Implementation `P0` `REQUIRED` ✅ COMPLETE
+
 - **Gap**: ~~No multi-factor authentication~~ **RESOLVED**
 - **Action**:
   - [x] Add `pyotp` + `qrcode` backend dependencies
@@ -74,6 +76,7 @@ Gaps are categorized into four tiers:
 - **Deliverables**: `core/mfa/`, `docs/mfa-implementation.md`, MFA UI components
 
 #### 3. Backup & Disaster Recovery `P0` `REQUIRED` ✅ COMPLETE
+
 - **Gap**: ~~No backup strategy, no DR plan~~ **RESOLVED**
 - **Action**:
   - [x] Configure automated PostgreSQL backups (pg_dump daily)
@@ -87,6 +90,7 @@ Gaps are categorized into four tiers:
 - **Deliverables**: `scripts/backup.sh`, `scripts/restore.sh`, `scripts/backup_monitor.py`, `docs/disaster-recovery.md`
 
 #### 4. Emergency Access Procedures `P1` `REQUIRED` ✅ COMPLETE
+
 - **Gap**: ~~No break-glass mechanism~~ **RESOLVED**
 - **Action**:
   - [x] Create `EmergencyAccess` model (reason, duration, approver)
@@ -101,6 +105,7 @@ Gaps are categorized into four tiers:
 ### Sprint 1.B — Disease Surveillance Foundation (Weeks 5-8)
 
 #### 5. Immediate Reportable Diseases `P0` `CRITICAL` ✅ COMPLETE
+
 - **Gap**: ~~No disease surveillance module~~ **RESOLVED**
 - **Action**:
   - [x] Create `surveillance` Django app
@@ -115,6 +120,7 @@ Gaps are categorized into four tiers:
 - **Deliverables**: `hmis/apps/surveillance/`, `docs/surveillance-module.md`
 
 #### 6. IDSR Weekly Reporting `P0` `CRITICAL` ✅ COMPLETE
+
 - **Gap**: ~~No IDSR implementation~~ **RESOLVED**
 - **Action**:
   - [x] Create `IDSRWeeklyReport` model (epidemiological week, disease counts, facility)
@@ -130,6 +136,7 @@ Gaps are categorized into four tiers:
 - **Deliverables**: `IDSRWeeklyReport`, `IDSRDiseaseSummary` models, Celery tasks, `docs/idsr-weekly-reporting.md`
 
 #### 6b. Surveillance Frontend WebSocket Integration `P1` `REQUIRED` ✅ COMPLETE
+
 - **Gap**: ~~No real-time surveillance UI~~ **RESOLVED**
 - **Action**:
   - [x] Create `useSurveillanceWebSocket` hook with polling fallback
@@ -147,6 +154,7 @@ Gaps are categorized into four tiers:
 ### Sprint 1.C — Clinical Data Model Enhancements (Weeks 9-12)
 
 #### 7. Structured Allergy Model `P1` `REQUIRED` ✅ COMPLETE
+
 - **Gap**: ~~Allergies are free-text only~~ **RESOLVED**
 - **Action**:
   - [x] Create `Allergy` model (patient FK, substance, reaction_type, severity, onset_date, status)
@@ -164,6 +172,7 @@ Gaps are categorized into four tiers:
   - [x] Frontend `Patient` type and Zod schema updated; discharge form enriches AI context from PatientContext
 
 #### 8. Birth Certificate Identification Type `P1` ✅ COMPLETE
+
 - **Gap**: ~~Not in `IDENTIFICATION_TYPE_CHOICES`~~ **RESOLVED**
 - **Action**:
   - [x] Add `birth_certificate` to `IDENTIFICATION_TYPE_CHOICES`
@@ -175,6 +184,7 @@ Gaps are categorized into four tiers:
 - **Deliverables**: Migration, `web-app/lib/types/patient.ts`, `web-app/lib/schemas/patient.schema.ts`
 
 #### 9. IPS Bundle Dynamic Population `P1` ✅ COMPLETE
+
 - **Gap**: ~~Medications/allergies not dynamically populated in IPS~~ **RESOLVED**
 - **Action**:
   - [x] Query active prescriptions for IPS MedicationStatement section ✅
@@ -192,6 +202,7 @@ Gaps are categorized into four tiers:
 ### Sprint 1.D — Audit & Integrity Enhancements (Weeks 13-16)
 
 #### 10. Audit Trail Enhancements `P1` ✅ COMPLETE
+
 - **Gap**: ~~No automatic field-level diff, no version tracking~~ **RESOLVED**
 - **Action**:
   - [x] Integrate `django-simple-history` for model versioning
@@ -204,6 +215,7 @@ Gaps are categorized into four tiers:
 - **Deliverables**: `core/history.py`, `HistoryMixin`, history API endpoints, migrations
 
 #### 11. Key Management System `P1` ✅ COMPLETE
+
 - **Gap**: ~~Keys in environment variables only~~ **RESOLVED**
 - **Action**:
   - [x] Create KMS abstraction layer (`hmis/apps/core/kms/`)
@@ -225,6 +237,7 @@ Gaps are categorized into four tiers:
   - Azure SDK as optional dependency (`poetry install -E azure`)
 
 #### 12. Frontend Auto-Logoff `P1` ✅ COMPLETE
+
 - **Gap**: ~~No frontend idle timeout~~ **RESOLVED**
 - **Action**:
   - [x] Add idle timer hook (15 min warning, 30 min auto-logout)
@@ -249,6 +262,7 @@ Gaps are categorized into four tiers:
 ### Sprint 2.A — Allied Health Modules (Weeks 1-6)
 
 #### 13. Physiotherapy CPOE `P2` ✅ COMPLETE
+
 - **Gap**: ~~No dedicated physiotherapy order workflow~~ **RESOLVED**
 - **Action**:
   - [x] Create `PhysiotherapyOrder` model (referral, treatment_type, sessions, frequency)
@@ -266,6 +280,7 @@ Gaps are categorized into four tiers:
   - Migration: `0001_initial.py`
 
 #### 14. Nutrition/Dietetics CPOE `P2` ✅ COMPLETE
+
 - **Gap**: ~~No dedicated nutrition order workflow~~ **RESOLVED**
 - **Action**:
   - [x] Create `NutritionConsultation` model (assessment, BMI, recommendations)
@@ -283,6 +298,7 @@ Gaps are categorized into four tiers:
   - Migration: `0001_initial.py`
 
 #### 15. Occupational Therapy Module `P2` ✅ COMPLETE
+
 - **Gap**: ~~No occupational therapy module~~ **RESOLVED**
 - **Action**:
   - [x] Create `OccupationalTherapyOrder` model (referral, assessment_type, goals)
@@ -301,6 +317,7 @@ Gaps are categorized into four tiers:
   - Migration: `0001_initial.py`
 
 #### 16. Social Work Module `P2` ✅ COMPLETE
+
 - **Gap**: ~~No social work module~~ **RESOLVED**
 - **Action**:
   - [x] Create `SocialWorkReferral` model (reason, urgency, assigned_worker)
@@ -320,6 +337,7 @@ Gaps are categorized into four tiers:
   - Migration: `0001_initial.py`
 
 #### 17. Counselling Module `P2` ✅ COMPLETE
+
 - **Gap**: ~~No dedicated counselling order model~~ **RESOLVED**
 - **Action**:
   - [x] Create `CounsellingType` model (catalog with pricing, SHA codes)
@@ -343,6 +361,7 @@ Gaps are categorized into four tiers:
 ### Sprint 2.B — MCH & Growth Charts (Weeks 7-10)
 
 #### 18. MCH Register & Mother-Baby Linkage `P2` ✅ COMPLETE
+
 - **Gap**: ~~No dedicated MCH register~~ **RESOLVED**
 - **Action**:
   - [x] Create `MCHRegistration` model (mother_patient, edd, gravida, parity)
@@ -366,6 +385,7 @@ Gaps are categorized into four tiers:
   - Management commands: `seed_kepi_schedule`, `validate_who_lms`
 
 #### 19. Pediatric Growth Charts `P2` ✅ COMPLETE
+
 - **Gap**: ~~No growth chart tracking~~ **RESOLVED**
 - **Action**:
   - [x] Create `GrowthMeasurement` model (weight, height, head_circumference, muac, date)
@@ -385,6 +405,7 @@ Gaps are categorized into four tiers:
 ### Sprint 2.C — Quality Measures & Reporting (Weeks 11-16)
 
 #### 20. Quarterly & Annual Reports `P2` ✅ COMPLETE
+
 - **Gap**: ~~Only monthly reports exist~~ **RESOLVED**
 - **Action**:
   - [x] Create `QuarterlyReport` model (aggregates 3 MonthlyClinicReports)
@@ -404,6 +425,7 @@ Gaps are categorized into four tiers:
   - Frontend pages: quarterly/annual report list + detail views
 
 #### 21. Standard Quality Measures (CQM) `P2` ✅ COMPLETE
+
 - **Gap**: ~~No standard CQM definitions~~ **RESOLVED**
 - **Action**:
   - [x] Create `QualityMeasure` model (code, name, description, numerator_logic, denominator_logic)
@@ -423,6 +445,7 @@ Gaps are categorized into four tiers:
   - Sidebar navigation under "Quality" section
 
 #### 22. Quality Measure Import/Export `P2` ✅ COMPLETE
+
 - **Gap**: ~~No import/export mechanism~~ **RESOLVED**
 - **Action**:
   - [x] CSV/JSON import for quality measure definitions
@@ -440,6 +463,7 @@ Gaps are categorized into four tiers:
 ### Sprint 2.D — Public Health Reporting (Weeks 17-20)
 
 #### 23. Public Health Event Detection `P2` ✅ COMPLETE
+
 - **Gap**: ~~No outbreak detection~~ **RESOLVED**
 - **Action**:
   - [x] Create `OutbreakThreshold` model (disease, county, threshold_count, period_days)
@@ -458,6 +482,7 @@ Gaps are categorized into four tiers:
   - WebSocket integration for real-time outbreak notifications
 
 #### 24. IHR Compliance Framework `P2` ✅ COMPLETE
+
 - **Gap**: ~~No IHR implementation~~ **RESOLVED**
 - **Action**:
   - [x] Define IHR notifiable conditions (`is_ihr_notifiable` field on `NotifiableDisease`)
@@ -487,6 +512,7 @@ Gaps are categorized into four tiers:
 ### Sprint 3.A — Clinical Decision Support (Weeks 1-8)
 
 #### 25. Evidence-Based CDS Engine `P3` ✅ COMPLETE
+
 - **Gap**: ~~No rule-driven clinical decision support~~ **RESOLVED**
 - **Action**:
   - [x] Design CDS rule schema (condition, action, priority, evidence_level)
@@ -513,6 +539,7 @@ Gaps are categorized into four tiers:
   - Zod-validated API client with 17 methods
 
 #### 26. HPT Registry Integration `P3` ✅ COMPLETE
+
 - **Gap**: ~~No HPT registry integration~~ **RESOLVED**
 - **Action**:
   - [x] Integrate DHA HPT API (medication products, active components)
@@ -540,6 +567,7 @@ Gaps are categorized into four tiers:
 ### Sprint 3.B — Advanced Interoperability (Weeks 9-16)
 
 #### 27. Active Kenya HIE Integration `P3` ✅ COMPLETE
+
 - **Gap**: ~~Passive CR storage, no active push/pull~~ **RESOLVED**
 - **Action**:
   - [x] Implement CR patient lookup on registration (async Celery task)
@@ -561,6 +589,7 @@ Gaps are categorized into four tiers:
   - `docs/active-hie-integration.md`
 
 #### 28. HL7v2 Full Implementation `P3` ✅ COMPLETE
+
 - **Gap**: ~~HL7v2 behind feature flag, receive-only~~ **RESOLVED**
 - **Action**:
   - [x] Enable HL7 integration by default (graceful no-op when no LIS configured)
@@ -583,6 +612,7 @@ Gaps are categorized into four tiers:
   - `docs/hl7v2-full-implementation.md`
 
 #### 29. SDMX Implementation `P3` ✅ COMPLETE
+
 - **Gap**: ~~No SDMX support~~ **RESOLVED**
 - **Action**:
   - [x] Implement SDMX-ML 2.1 Generic Data export for aggregate statistics
@@ -598,6 +628,7 @@ Gaps are categorized into four tiers:
   - `docs/sdmx-implementation.md`
 
 #### 30. SNOMED CT Active Usage `P3` ✅ COMPLETE
+
 - **Gap**: ~~Registered but not used~~ **RESOLVED**
 - **Action**:
   - [x] Map diagnosis entries to SNOMED CT concepts (`snomed_code`, `snomed_display` on Diagnosis model)
@@ -621,6 +652,7 @@ Gaps are categorized into four tiers:
 ### Sprint 3.C — Security Hardening (Weeks 17-20)
 
 #### 31. Tamper-Resistant Audit Log `P3` ✅ COMPLETE
+
 - **Gap**: ~~No cryptographic chaining~~ **RESOLVED**
 - **Action**:
   - [x] Implement hash chaining (each log entry includes SHA-256 hash of previous)
@@ -641,6 +673,7 @@ Gaps are categorized into four tiers:
   - Zod-validated API client with 2 methods
 
 #### 32. Digital Signatures for Clinical Documents `P3` ✅ COMPLETE
+
 - **Gap**: ~~No cryptographic signing~~ **RESOLVED**
 - **Action**:
   - [x] Full X.509 PKI infrastructure (Root CA, user certificates, CRL-based revocation)
@@ -665,6 +698,7 @@ Gaps are categorized into four tiers:
 ### Sprint 3.D — KENHDD Compliance & Polish (Weeks 21-24)
 
 #### 33. KENHDD Schema Validation `P3` ✅ COMPLETE
+
 - **Gap**: No explicit KENHDD validation
 - **Action**:
   - [x] Document KENHDD field mappings for Patient, Encounter, Diagnosis, Facility, Lab Result, Prescription, MCH Visit (56 elements in `data/kenhdd_elements.json`)

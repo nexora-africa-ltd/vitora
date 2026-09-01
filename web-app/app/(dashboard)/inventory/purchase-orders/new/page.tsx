@@ -63,24 +63,11 @@ export default function NewPurchaseOrderPage() {
   const orderItemSource = bootstrap?.catalog_sources.order_item_source ?? 'catalogs';
   const unifiedPricingEnabled = bootstrap?.catalog_sources.unified_pricing_enabled ?? false;
 
-  if (!canCreatePurchaseOrder || !canCreateFromCapabilities) {
-    return (
-      <div className="space-y-4 sm:space-y-6">
-        <PageHeader title="New Purchase Order" />
-        <Card className="p-6 text-center">
-          <p className="text-sm font-medium">Access denied</p>
-          <p className="text-sm text-muted-foreground mt-1">
-            You do not have permission to create purchase orders.
-          </p>
-        </Card>
-      </div>
-    );
-  }
-
   // Fetch suppliers
   const { data: suppliersData } = useQuery({
     queryKey: ['inventory-suppliers-list'],
     queryFn: () => inventoryApi.listSuppliers({ page_size: 200, is_active: true }),
+    enabled: canCreatePurchaseOrder && canCreateFromCapabilities,
   });
   const suppliers = suppliersData?.results || [];
 
@@ -88,6 +75,7 @@ export default function NewPurchaseOrderPage() {
   const { data: drugsData } = useQuery({
     queryKey: ['pharmacy-drugs-list'],
     queryFn: () => pharmacyApi.listDrugs({ page_size: 500 }),
+    enabled: canCreatePurchaseOrder && canCreateFromCapabilities,
   });
   const drugs = drugsData?.results || [];
 
@@ -106,6 +94,20 @@ export default function NewPurchaseOrderPage() {
 
   const { fields, append, remove } = useFieldArray({ control: form.control, name: 'items' });
   const isSubmitting = form.formState.isSubmitting;
+
+  if (!canCreatePurchaseOrder || !canCreateFromCapabilities) {
+    return (
+      <div className="space-y-4 sm:space-y-6">
+        <PageHeader title="New Purchase Order" />
+        <Card className="p-6 text-center">
+          <p className="text-sm font-medium">Access denied</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            You do not have permission to create purchase orders.
+          </p>
+        </Card>
+      </div>
+    );
+  }
 
   const watchedItems = form.watch('items');
   const grandTotal = watchedItems.reduce(

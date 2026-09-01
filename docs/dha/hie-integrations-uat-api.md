@@ -7356,7 +7356,7 @@ Creates a new preauthorization using multipart form data with file uploads
 | diagnoses | [{"consent_token": "","icd_code": "ca07.0"}] | text |  |
 | doctors | [{"identification_number": "","identification_type":"", "regulation_body": "KMPDC", "intervention_code": "", "is_primary":true}] | text |  |
 | attachments | [{"document_title": "Lab Results", "document_type": "LAB_TESTS","file_field_name": "attachments_0_file_blob"}] | text |  |
-| provider_notification_email | clifford.ouma@savannahinformatics.com | text |  |
+| provider_notification_email | <clifford.ouma@savannahinformatics.com> | text |  |
 | chief_complaint | Clifford Ouma | text |  |
 | vital_signs | 110 BP | text |  |
 | history_of_present_illness | None | text |  |
@@ -8122,7 +8122,7 @@ Creates a new preauthorization using multipart form data with file uploads
 | diagnoses | [{"consent_token": "","icd_code": "ca07.0"}] | text |  |
 | doctors | [{"identification_number": "","identification_type":"", "regulation_body": "KMPDC", "intervention_code": "", "is_primary":true}] | text |  |
 | attachments | [{"document_title": "Lab Results", "document_type": "LAB_TESTS","file_field_name": "attachments_0_file_blob"}] | text |  |
-| provider_notification_email | clifford.ouma@savannahinformatics.com | text |  |
+| provider_notification_email | <clifford.ouma@savannahinformatics.com> | text |  |
 | number_of_sessions_required | 7 | text |  |
 | cost_per_session | 5000 | text |  |
 | frequency_of_sessions | ONCE_A_MONTH | text |  |
@@ -8887,7 +8887,7 @@ Creates a new preauthorization using multipart form data with file uploads
 | diagnoses | [{"consent_token": "","icd_code": "ca07.0"}] | text |  |
 | doctors | [{"identification_number": "","identification_type":"", "regulation_body": "KMPDC", "intervention_code": "", "is_primary":true}] | text |  |
 | attachments | [{"document_title": "Lab Results", "document_type": "LAB_TESTS","file_field_name": "attachments_0_file_blob"}] | text |  |
-| provider_notification_email | clifford.ouma@savannahinformatics.com | text |  |
+| provider_notification_email | <clifford.ouma@savannahinformatics.com> | text |  |
 | necessity_of_service | To help patient see clearly | text |  |
 | lens_prescription | FRAMES_LENSES | text |  |
 | lens_amount | 10000 | text |  |
@@ -9653,7 +9653,7 @@ Creates a new preauthorization using multipart form data with file uploads
 | doctors | [{"identification_number": "","identification_type":"", "regulation_body": "KMPDC", "intervention_code": "", "is_primary":true}] | text |  |
 | attachments | [{"document_title": "Lab Results", "document_type": "LAB_TESTS","file_field_name": "attachments_0_file_blob"}] | text |  |
 | attachments_0_file_blob | /home/clifford-ouma/SIL-Tech-Work/SHA repos/Benefits-Coverage.jpg | file |  |
-| provider_notification_email | clifford.ouma@savannahinformatics.com | text |  |
+| provider_notification_email | <clifford.ouma@savannahinformatics.com> | text |  |
 | carcinoma_staging | STAGE_1 | text |  |
 | comorbidity | The comorbidity | text |  |
 | metastases | ["LUNG"] | text |  |
@@ -10419,7 +10419,7 @@ Creates a new preauthorization using multipart form data with file uploads
 | diagnoses | [{"consent_token": "","icd_code": "ca07.0"}] | text |  |
 | doctors | [{"identification_number": "","identification_type":"", "regulation_body": "KMPDC", "intervention_code": "", "is_primary":true}] | text |  |
 | attachments | [{"document_title": "Lab Results", "document_type": "LAB_TESTS","file_field_name": "attachments_0_file_blob"}] | text |  |
-| provider_notification_email | clifford.ouma@savannahinformatics.com | text |  |
+| provider_notification_email | <clifford.ouma@savannahinformatics.com> | text |  |
 | clinical_indications | Prescence of head pains | text |  |
 
 ##### Example Response: Preauthorization created successfully (201 Created)

@@ -76,6 +76,7 @@ This deploys Grafana and Umami as Azure Container Apps. For Prometheus, you need
 For production, use Azure's managed Prometheus service instead of self-hosted:
 
 1. **Enable Azure Monitor** on the Container Apps environment:
+
    ```bash
    az monitor account create \
      --name vitora-monitor \
@@ -125,6 +126,7 @@ docker compose -f monitoring/compose.yml up -d umami umami-db
 ```
 
 After logging in:
+
 1. Go to **Settings → Websites → Add website**
 2. Create two websites:
    - `Vitora HMIS` (for the web app)
@@ -156,6 +158,7 @@ bash monitoring/scripts/azure-deploy-monitoring.sh
 ```
 
 After deployment:
+
 1. Access Umami at the URL printed by the script
 2. Change the default admin password
 3. Create websites and get their IDs

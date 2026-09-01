@@ -78,6 +78,7 @@ GET https://uat.dha.go.ke/terminology/v1/product
 | `route_id` | Integer | No | Filter by administration route |
 
 **Response format:**
+
 ```json
 {
   "IsSuccess": true,
@@ -120,6 +121,7 @@ GET https://uat.dha.go.ke/terminology/v1/active-component
 | `active_component_id` | Integer | No | Get specific component by ID |
 
 **Response format:**
+
 ```json
 {
   "IsSuccess": true,
@@ -149,6 +151,7 @@ GET https://uat.dha.go.ke/terminology/v1/active-component
 ### Authentication
 
 All DHA Terminology API requests require:
+
 - **Basic Auth** credentials from Kenya Digital Superhighway
 - **Bearer JWT token** from the DHA auth endpoint
 
@@ -216,6 +219,7 @@ python manage.py map_drugs_to_hpt --query "Metformin"
 ```
 
 **Mapping logic:**
+
 1. For each `Drug` without an `hpt_code` (or all drugs if `--force`):
    - Search DHA API: `search_drug_products(drug.generic_name)`
    - If exactly **1 match**: auto-map (`hpt_code`, `hpt_product_id`, `ppb_code`, `hpt_last_synced`)

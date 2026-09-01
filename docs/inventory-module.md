@@ -118,6 +118,7 @@ Procurement request with 6-state approval workflow.
 **Properties**: `total_amount`, `is_fully_received`
 
 **State Machine**:
+
 ```
 DRAFT → submit() → SUBMITTED → approve(user) → APPROVED
                                                     ↓
@@ -172,6 +173,7 @@ Record of physically receiving goods. Confirming creates `StockBatch` records.
 **Properties**: `total_items`, `total_amount`
 
 **State Machine**:
+
 ```
 DRAFT → confirm(user) → CONFIRMED    (creates StockBatch per item, updates PO quantities)
 DRAFT → cancel()      → CANCELLED
@@ -250,6 +252,7 @@ Inter-facility or inter-store stock transfer with 6-state lifecycle.
 **Properties**: `total_items` (count), `total_quantity` (sum)
 
 **State Machine**:
+
 ```
 DRAFT → submit() → REQUESTED → approve(user) → APPROVED → dispatch(user) → IN_TRANSIT → receive(user) → RECEIVED
 
@@ -336,6 +339,7 @@ Stock reconciliation cycle count with multi-step workflow.
 | `notes` | `TextField` | Blank OK | |
 
 **State Machine**:
+
 ```
 DRAFT → generate_items() → (populates StockCountItems from StockBatch)
       → start()          → IN_PROGRESS
@@ -429,6 +433,7 @@ KRA eTIMS fiscal invoice record with submission lifecycle.
 **Methods**: `mark_submitted(scu_number)`, `mark_confirmed(receipt_number, response_data=None, scu_data=None)`, `mark_failed(error)`, `mark_cancelled()`, `generate_qr_code_data()`
 
 **State Machine**:
+
 ```
 PENDING → mark_submitted() → SUBMITTED → mark_confirmed() → CONFIRMED
                            ↘ mark_failed()   → FAILED (retryable)
@@ -768,6 +773,7 @@ All use date-based prefix + sequential 4-digit suffix, querying the latest recor
 **Filter**: `DemandForecastFilter`
 
 **Generate action input** (`DemandForecastGenerateSerializer`):
+
 ```json
 {
   "drug_id": 123,           // optional — omit for all drugs

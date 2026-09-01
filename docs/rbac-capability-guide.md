@@ -86,6 +86,7 @@ Users without the required action permission simply don't see the button — no 
 Navigate to **Admin → Roles** to view and edit roles.
 
 Each role has:
+
 - **Code**: Unique identifier (e.g. `DOCTOR`, `NURSE`, `PHARMACIST`)
 - **Category**: `CLINICAL`, `ADMINISTRATIVE`, `TECHNICAL`, `BILLING`, `SUPPORT`
 - **Permissions Matrix**: JSON object mapping module keys to allowed actions
@@ -96,6 +97,7 @@ Each role has:
 Navigate to **Admin → Facilities** or use the Django admin.
 
 Each facility has boolean flags for each service module:
+
 - `has_outpatient`, `has_inpatient`, `has_emergency`
 - `has_pharmacy`, `has_laboratory`, `has_imaging`
 - `has_theatre`, `has_dialysis`, `has_icu`
@@ -218,6 +220,7 @@ When `facility` is null (e.g. user has no assigned facility), `hasModule` return
 In development (`NODE_ENV=development`), a **Permission Debug Panel** appears as a small bug icon (🐛) in the bottom-left corner of the screen.
 
 Click it to see:
+
 - **Modules tab**: Which module keys are ALLOW/DENY for the current user
 - **Actions tab**: Which action keys are ALLOW/DENY
 - **Facility tab**: Which facility capability modules are ON/OFF

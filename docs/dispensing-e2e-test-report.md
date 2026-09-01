@@ -14,9 +14,11 @@ End-to-end tests for the dispensing workflow have been created and are currently
 ## Test Categories & Status
 
 ### 1. Dispensing - From Prescription (17 tests)
+
 **Status**: ❌ All Failing
 
-#### Required Functionality:
+#### Required Functionality
+
 1. **Dispense Button on Prescription Items** ✘
    - Tests: `should open dispensing interface from prescription`
    - **Missing**: "Dispense" button on prescription items in PrescriptionsTable component
@@ -77,9 +79,11 @@ End-to-end tests for the dispensing workflow have been created and are currently
      - Update prescription badge in table
 
 ### 2. Dispensing - Controlled Drugs (5 tests)
+
 **Status**: ❌ All Failing
 
-#### Required Functionality:
+#### Required Functionality
+
 1. **Controlled Drug Indicator** ✘
    - Tests: `should require verification for controlled drugs`
    - **Missing**: Visual indicator for controlled drugs requiring verification
@@ -104,9 +108,11 @@ End-to-end tests for the dispensing workflow have been created and are currently
    - **Location**: Dispensing history view
 
 ### 3. Dispensing - Direct (OTC/Emergency) (7 tests)
+
 **Status**: ❌ All Failing
 
-#### Required Functionality:
+#### Required Functionality
+
 1. **Direct Dispense Button** ✘
    - Tests: `should have direct dispensing option`
    - **Missing**: "Direct Dispense" or "OTC" button in pharmacy page
@@ -133,9 +139,11 @@ End-to-end tests for the dispensing workflow have been created and are currently
    - **Payload**: `{ patient, drug, batch, quantity, counseling_notes }`
 
 ### 4. Dispensing - History (11 tests)
+
 **Status**: ❌ All Failing
 
-#### Required Functionality:
+#### Required Functionality
+
 1. **Dispensing History Tab/View** ✘
    - Tests: `should have dispensing history view`
    - **Missing**: "Dispensing" or "History" tab in pharmacy page
@@ -166,9 +174,11 @@ End-to-end tests for the dispensing workflow have been created and are currently
    - **Required**: Page navigation (Next/Previous, page numbers)
 
 ### 5. Dispensing - Returns (7 tests)
+
 **Status**: ❌ All Failing
 
-#### Required Functionality:
+#### Required Functionality
+
 1. **Return Action** ✘
    - Tests: `should have return action for dispensing`
    - **Missing**: "Return" button on dispensing records in history
@@ -196,9 +206,11 @@ End-to-end tests for the dispensing workflow have been created and are currently
    - **Expected**: DISPENSED → PENDING (if full return)
 
 ### 6. Dispensing - Multi-Batch FEFO (4 tests)
+
 **Status**: ❌ All Failing
 
-#### Required Functionality:
+#### Required Functionality
+
 1. **Multi-Batch Allocation** ✘
    - Tests: `should split across batches when quantity exceeds single batch`
    - **Missing**: Logic and UI to handle dispensing from multiple batches
@@ -221,9 +233,11 @@ End-to-end tests for the dispensing workflow have been created and are currently
    - **UI**: Should not display expired/quarantined batches
 
 ### 7. Dispensing - Labels (6 tests)
+
 **Status**: ❌ All Failing
 
-#### Required Functionality:
+#### Required Functionality
+
 1. **Print Label Action** ✘
    - Tests: `should have print label action`
    - **Missing**: "Print Label" button on dispensing records
@@ -246,7 +260,8 @@ End-to-end tests for the dispensing workflow have been created and are currently
 
 ## Backend API Status
 
-### ✅ Already Implemented:
+### ✅ Already Implemented
+
 - `GET /api/pharmacy/dispensings/` - List dispensings
 - `GET /api/pharmacy/dispensings/{id}/` - Get dispensing detail
 - `POST /api/pharmacy/dispensings/` - Create manual dispensing
@@ -254,7 +269,8 @@ End-to-end tests for the dispensing workflow have been created and are currently
 - `POST /api/pharmacy/dispensings/{id}/return_stock/` - Process return
 - `POST /api/pharmacy/dispensings/{id}/verify/` - Verify controlled drug
 
-### ✅ Backend Models:
+### ✅ Backend Models
+
 - `Dispensing` model with all required fields
 - `Prescription` and `PrescriptionItem` with dispensing tracking
 - `StockBatch` with FEFO ordering and quantity tracking
@@ -263,6 +279,7 @@ End-to-end tests for the dispensing workflow have been created and are currently
 ## Implementation Priority
 
 ### Phase 1: Core Dispensing (HIGH PRIORITY)
+
 **Goal**: Enable basic prescription dispensing
 
 1. **DispenseDialog Component** (Priority 1)
@@ -286,51 +303,54 @@ End-to-end tests for the dispensing workflow have been created and are currently
    - Handle success/error states
 
 ### Phase 2: Dispensing History (MEDIUM PRIORITY)
+
 **Goal**: View and manage dispensing records
 
-4. **DispensingHistoryTable Component** (Priority 2)
+1. **DispensingHistoryTable Component** (Priority 2)
    - Location: `web-app/components/pharmacy/dispensing-history-table.tsx`
    - Features: Display all dispensing records with filters
    - Columns: All required fields from tests
 
-5. **Add Dispensing Tab** (Priority 2)
+2. **Add Dispensing Tab** (Priority 2)
    - Location: `web-app/app/(dashboard)/pharmacy/page.tsx`
    - Add "Dispensing" tab to pharmacy page tabs
 
-6. **Dispensing Filters** (Priority 2)
+3. **Dispensing Filters** (Priority 2)
    - Patient filter
    - Date range filter
    - Drug filter
 
 ### Phase 3: Direct Dispensing (MEDIUM PRIORITY)
+
 **Goal**: Enable OTC and emergency dispensing
 
-7. **DirectDispenseDialog Component** (Priority 3)
+1. **DirectDispenseDialog Component** (Priority 3)
    - Location: `web-app/components/pharmacy/direct-dispense-dialog.tsx`
    - Features: Patient selector, OTC drug selector, batch selector, quantity
 
-8. **Add Direct Dispense Button** (Priority 3)
+2. **Add Direct Dispense Button** (Priority 3)
    - Location: `web-app/app/(dashboard)/pharmacy/page.tsx`
    - Action: Opens DirectDispenseDialog
 
 ### Phase 4: Advanced Features (LOW PRIORITY)
+
 **Goal**: Complete feature set
 
-9. **ReturnDialog Component** (Priority 4)
+1. **ReturnDialog Component** (Priority 4)
    - Location: `web-app/components/pharmacy/return-dialog.tsx`
    - Features: Quantity input, reason textarea
 
-10. **Controlled Drug Verification UI** (Priority 4)
+2. **Controlled Drug Verification UI** (Priority 4)
     - Verification indicator
     - Verify button (for different user)
     - Self-verification prevention
 
-11. **Label Generation** (Priority 4)
+3. **Label Generation** (Priority 4)
     - PrintLabelDialog component
     - Label preview
     - Print functionality
 
-12. **Multi-Batch Breakdown Display** (Priority 4)
+4. **Multi-Batch Breakdown Display** (Priority 4)
     - Show when FEFO uses multiple batches
     - Batch allocation table
 
@@ -373,6 +393,7 @@ export function useVerifyDispensing(dispensingId) // POST /api/pharmacy/dispensi
 ## Testing Strategy
 
 ### Unit Tests (Jest + React Testing Library)
+
 **Location**: `web-app/__tests__/components/pharmacy/`
 
 - ✅ Test each dialog component in isolation
@@ -381,6 +402,7 @@ export function useVerifyDispensing(dispensingId) // POST /api/pharmacy/dispensi
 - ✅ Test state management (opening/closing dialogs)
 
 ### Integration Tests
+
 **Location**: `web-app/__tests__/integration/pharmacy/`
 
 - ✅ Test full dispensing workflow
@@ -389,6 +411,7 @@ export function useVerifyDispensing(dispensingId) // POST /api/pharmacy/dispensi
 - ✅ Test controlled drug verification
 
 ### E2E Tests (Playwright)
+
 **Location**: `web-app/e2e/pharmacy/dispensing.spec.ts`
 
 - ✅ Already written (55 tests)
@@ -398,6 +421,7 @@ export function useVerifyDispensing(dispensingId) // POST /api/pharmacy/dispensi
 ## Success Criteria
 
 **Definition of Done**:
+
 1. ✅ All 55 E2E tests passing
 2. ✅ Unit tests for all new components (80%+ coverage)
 3. ✅ No console errors or warnings
@@ -419,14 +443,16 @@ export function useVerifyDispensing(dispensingId) // POST /api/pharmacy/dispensi
 
 ## Dependencies
 
-### External Libraries (Already Available):
+### External Libraries (Already Available)
+
 - ✅ `@radix-ui/react-dialog` - For modals
 - ✅ `@radix-ui/react-select` - For dropdowns
 - ✅ `react-hook-form` + `zod` - For form validation
 - ✅ `@tanstack/react-query` - For API calls
 - ✅ `date-fns` - For date formatting
 
-### Backend:
+### Backend
+
 - ✅ All required API endpoints implemented
 - ✅ FEFO logic working
 - ✅ Batch allocation logic working
@@ -435,15 +461,19 @@ export function useVerifyDispensing(dispensingId) // POST /api/pharmacy/dispensi
 ## Risks & Mitigation
 
 ### Risk 1: Multi-Batch Complexity
+
 **Mitigation**: Use backend FEFO endpoint which handles allocation logic. UI only displays the result.
 
 ### Risk 2: Controlled Drug Verification
+
 **Mitigation**: Backend already prevents self-verification. UI just needs to check `request.user.id !== dispensing.dispensed_by.id`.
 
 ### Risk 3: Real-time Stock Updates
+
 **Mitigation**: Use React Query's cache invalidation after dispensing to refetch stock levels.
 
 ### Risk 4: Print Label Browser Compatibility
+
 **Mitigation**: Use standard `window.print()` with `@media print` CSS. Test on Chrome, Firefox, Safari.
 
 ## Next Steps
@@ -467,6 +497,7 @@ export function useVerifyDispensing(dispensingId) // POST /api/pharmacy/dispensi
 ## Appendix: Sample API Payloads
 
 ### Dispense from Prescription (FEFO)
+
 ```json
 POST /api/pharmacy/dispensings/dispense/
 {
@@ -489,6 +520,7 @@ Response: [
 ```
 
 ### Direct Dispense (Manual)
+
 ```json
 POST /api/pharmacy/dispensings/
 {
@@ -504,6 +536,7 @@ POST /api/pharmacy/dispensings/
 ```
 
 ### Return Stock
+
 ```json
 POST /api/pharmacy/dispensings/123/return_stock/
 {
@@ -513,6 +546,7 @@ POST /api/pharmacy/dispensings/123/return_stock/
 ```
 
 ### Verify Controlled Drug
+
 ```json
 POST /api/pharmacy/dispensings/123/verify/
 {}

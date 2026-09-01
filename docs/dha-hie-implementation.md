@@ -51,6 +51,7 @@
 ```
 
 **Design Principles**:
+
 - Django acts as an **ILM proxy** — all DHA HIE calls route through the backend (never direct from browser)
 - Every state transition publishes a **domain event** (see catalog below)
 - Frontend validates API responses with **Zod schemas** (`parseResponse()`)
@@ -98,6 +99,7 @@ Notes:
 | `billing/sha_views.py` | `SHAClaimViewSet.submit()` — blocks with `400 {error}` when validation fails |
 
 **`missing_document_types` response shape:**
+
 ```json
 [
   {
@@ -183,6 +185,7 @@ detecting → ready → authorizing → polling → authorized
 | `components/billing/sha/BiometricsConsent.tsx` | `BiometricsConsent` | Full biometric flow component |
 
 **Configuration**:
+
 - Hardware detection: `GET https://localhost:18065/status` (5s timeout)
 - Poll interval: **2 seconds**
 - Poll timeout: **120 seconds**
@@ -413,6 +416,7 @@ detecting → ready → authorizing → polling → authorized
 #### Frontend
 
 **Component**: `InterventionsList` (`components/billing/sha/InterventionsList.tsx`)
+
 - Separates active vs retired interventions
 - Retire button on each active row
 - Restore button on each retired row
@@ -433,6 +437,7 @@ detecting → ready → authorizing → polling → authorized
 **Visibility**: Only shown for claims with status in `['submitted', 'processing', 'approved', 'rejected', 'paid', 'query']`
 
 **Data displayed**:
+
 - Payer workflow state (14 possible states, color-coded badges)
 - Processing notes / claim notes from SHA reviewers
 - Invoice flags array

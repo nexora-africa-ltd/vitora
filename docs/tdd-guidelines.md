@@ -53,6 +53,7 @@ This document defines the Test-Driven Development (TDD) approach for Vitora HMIS
 ### Test Pyramid
 
 Maintain this distribution:
+
 - **70% Unit Tests**: Fast, isolated, test individual functions/methods
 - **20% Integration Tests**: Test component interactions (e.g., API + database)
 - **10% End-to-End Tests**: Test complete user workflows
@@ -731,16 +732,19 @@ class EncounterFactory(DjangoModelFactory):
 ### Naming Conventions
 
 **Test Files**:
+
 - Pattern: `test_*.py` or `*_test.py`
 - Example: `test_patient_model.py`, `test_patient_api.py`
 
 **Test Functions/Methods**:
+
 - Pattern: `test_<what_is_being_tested>`
 - Be descriptive: `test_mrn_generation_with_invalid_site_code`
 - Bad: `test_patient`, `test_1`, `test_something`
 - Good: `test_patient_creation_with_required_fields`, `test_patient_age_calculation`
 
 **Test Classes**:
+
 - Pattern: `Test<ComponentName>`
 - Example: `TestPatientModel`, `TestPatientAPI`, `TestMRNGeneration`
 
@@ -807,6 +811,7 @@ def test_database_operation():
 ```
 
 **Run specific markers**:
+
 ```bash
 make test-unit        # Run only unit tests
 make test-integration # Run only integration tests
@@ -1167,11 +1172,13 @@ graph LR
 ### Step-by-Step Workflow
 
 1. **Start a new feature**
+
    ```bash
    git checkout -b feature/patient-consent-tracking
    ```
 
 2. **Write test first** (Red)
+
    ```python
    # tests/models/test_patient.py
    def test_patient_consent_can_be_recorded():
@@ -1190,12 +1197,14 @@ graph LR
    ```
 
 3. **Run tests** (should fail)
+
    ```bash
    make test
    # ERROR: ImportError: cannot import name 'PatientConsent'
    ```
 
 4. **Write minimal code** (Green)
+
    ```python
    # hmis/models/patient_consent.py
    from django.db import models
@@ -1209,12 +1218,14 @@ graph LR
    ```
 
 5. **Run tests again** (should pass)
+
    ```bash
    make test
    # ✅ All tests passed
    ```
 
 6. **Refactor** (if needed)
+
    ```python
    # Add choices, validation, etc.
    class PatientConsent(models.Model):
@@ -1241,18 +1252,21 @@ graph LR
    ```
 
 7. **Run tests again** (should still pass)
+
    ```bash
    make test
    # ✅ All tests still passed
    ```
 
 8. **Run linters**
+
    ```bash
    make lint
    make format
    ```
 
 9. **Commit**
+
    ```bash
    git add .
    git commit -m "feat: Add patient consent tracking model
@@ -1266,6 +1280,7 @@ graph LR
    ```
 
 10. **Push and create PR**
+
     ```bash
     git push origin feature/patient-consent-tracking
     # Create PR on GitHub
@@ -1274,6 +1289,7 @@ graph LR
 ### Pre-Commit Checklist
 
 Before committing, ensure:
+
 - [ ] All tests pass (`make test`)
 - [ ] Code coverage ≥80% (`make coverage`)
 - [ ] Linters pass (`make lint`)
@@ -1292,6 +1308,7 @@ Before committing, ensure:
 ### For Code Authors
 
 Before requesting review:
+
 - [ ] All tests pass locally
 - [ ] CI/CD pipeline passes
 - [ ] Test coverage ≥80%
@@ -1306,6 +1323,7 @@ Before requesting review:
 ### For Code Reviewers
 
 When reviewing PRs, check:
+
 - [ ] **Tests first**: Are there tests for all new functionality?
 - [ ] **Test quality**: Do tests actually test what they claim?
 - [ ] **Coverage**: Is coverage ≥80%?
@@ -1320,6 +1338,7 @@ When reviewing PRs, check:
 ### Common Test Code Smells
 
 ❌ **Test Interdependence**
+
 ```python
 def test_create():
     global user_id
@@ -1330,12 +1349,14 @@ def test_update():
 ```
 
 ❌ **Hardcoded Test Data**
+
 ```python
 def test_patient():
     patient = Patient.objects.get(id=123)  # Assumes data exists
 ```
 
 ❌ **Testing Implementation Instead of Behavior**
+
 ```python
 def test_patient_save_calls_generate_mrn():
     # Tests internal implementation detail
@@ -1345,6 +1366,7 @@ def test_patient_save_calls_generate_mrn():
 ```
 
 ❌ **Overly Complex Tests**
+
 ```python
 def test_patient_workflow():
     # 100+ lines of test code testing multiple things
@@ -1352,6 +1374,7 @@ def test_patient_workflow():
 ```
 
 ❌ **No Assertions**
+
 ```python
 def test_patient_creation():
     patient = Patient.objects.create(...)
@@ -1359,6 +1382,7 @@ def test_patient_creation():
 ```
 
 ✅ **Good Test**
+
 ```python
 @pytest.mark.django_db
 def test_patient_age_calculation_for_adult():
@@ -1391,11 +1415,13 @@ def test_patient_age_calculation_for_adult():
 **Symptom**: Tests pass sometimes, fail other times.
 
 **Likely Causes**:
+
 1. Test interdependence (tests modify shared state)
 2. Time-dependent tests (e.g., `datetime.now()`)
 3. Race conditions in parallel tests
 
 **Solutions**:
+
 ```python
 # ❌ Bad - Time-dependent
 def test_patient_created_today():
@@ -1416,17 +1442,22 @@ def test_patient_created_on_specific_date():
 **Symptom**: Test suite takes too long to run.
 
 **Solutions**:
+
 1. **Mark slow tests**: Use `@pytest.mark.slow`
 2. **Use pytest-xdist**: Run tests in parallel
+
    ```bash
    pytest -n auto  # Auto-detect CPU count
    ```
+
 3. **Optimize database usage**: Use transactions
+
    ```python
    @pytest.mark.django_db(transaction=True)
    def test_something():
        ...
    ```
+
 4. **Mock external services**: Don't make real HTTP calls
 5. **Use factories**: Faster than full model creation
 
@@ -1435,6 +1466,7 @@ def test_patient_created_on_specific_date():
 **Symptom**: Coverage below 80%.
 
 **Solutions**:
+
 1. **Identify gaps**: `make coverage-html` and open `htmlcov/index.html`
 2. **Focus on critical paths**: Patient, Encounter, Security
 3. **Test edge cases**: Empty inputs, max values, error conditions
@@ -1445,6 +1477,7 @@ def test_patient_created_on_specific_date():
 **Symptom**: `DatabaseError: no such table` or similar.
 
 **Solution**:
+
 ```python
 # Always use @pytest.mark.django_db for database tests
 @pytest.mark.django_db
@@ -1458,6 +1491,7 @@ def test_patient_creation():
 **Symptom**: `fixture 'my_fixture' not found`.
 
 **Solutions**:
+
 1. **Check conftest.py location**: Must be in test directory or parent
 2. **Check fixture scope**: Ensure scope matches usage
 3. **Check import**: Fixtures auto-discovered, don't import

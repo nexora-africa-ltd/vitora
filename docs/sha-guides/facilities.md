@@ -37,23 +37,27 @@ In FHIR, facilities are primarily represented through the **Organization** resou
 A Facility Resource typically includes:
 
 ### Organizational Information
+
 - Official facility name
 - Type of facility (hospital, clinic, laboratory)
 - Ownership model (public, private, faith-based)
 - Operational status (active, inactive, suspended)
 
 ### Location Details
+
 - Physical address
 - Geographic coordinates
 - Service catchment area
 - Administrative divisions (county, sub-county, ward)
 
 ### Identification
+
 - Multiple identifier types (MFL code, KMHFL code, etc.)
 - Issuing authorities for each identifier
 - Validity periods for credentials and certifications
 
 ### Service Information
+
 - Healthcare services offered
 - Operational hours
 - Contact information
@@ -64,15 +68,19 @@ A Facility Resource typically includes:
 In a Healthcare Information Exchange (HIE) ecosystem, the Facility Resource serves several critical functions:
 
 ### Standardized Facility Identification
+
 The HIE maintains a standardized Master Facility List (MFL) that uniquely identifies each healthcare facility, enabling accurate referencing across all systems.
 
 ### Enhanced Interoperability
+
 By maintaining consistent facility identifiers, the HIE enables proper attribution of clinical documents, lab results, and other health information to their originating facilities.
 
 ### Improved Data Exchange
+
 When exchanging clinical information, systems can reliably reference the source and recipient facilities, ensuring proper routing and context.
 
 ### Efficient Healthcare Operations
+
 Resource allocation, referral management, and health service mapping become more effective with standardized facility information.
 
 ## Facility Matching and Registry Management
@@ -149,9 +157,11 @@ The following API endpoint is available for interacting with the Facility Regist
 ### Search Facility API Endpoint
 
 #### Description
+
 Search for healthcare facilities based on facility codes.
 
 #### Endpoint
+
 - **Method**: `GET`
 - **URL**: `{{base_url}}/v1/facility-search?facility_code={{facility_code}}`
 
@@ -192,9 +202,11 @@ Search for healthcare facilities based on facility codes.
 ## Common Use Cases
 
 ### Facility Lookup
+
 Retrieve a facility's details for reference, status verification, or licensing purposes.
 
 ### Implementation Example
+
 Before approving a new facility for a healthcare program, use this API to verify the facility's status and operational details.
 
 ## Best Practices

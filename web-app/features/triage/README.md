@@ -28,6 +28,7 @@ The Kenya Emergency Triage Assessment (KETA) scale uses 5 priority levels:
 ## Tags Reference
 
 ### Feature Tags
+
 - `@triage` - All triage-related scenarios
 - `@assessment` - Triage assessment form
 - `@queue` - Queue management
@@ -36,11 +37,13 @@ The Kenya Emergency Triage Assessment (KETA) scale uses 5 priority levels:
 - `@thresholds` - Threshold configuration
 
 ### Priority Tags
+
 - `@smoke` - Critical path scenarios (run first)
 - `@critical` - Tests for critical alerts
 - `@keta` - KETA category calculation
 
 ### Component Tags
+
 - `@avpu` - Mental status (AVPU scale)
 - `@pain-score` - Pain assessment
 - `@chief-complaint` - Chief complaint entry
@@ -48,6 +51,7 @@ The Kenya Emergency Triage Assessment (KETA) scale uses 5 priority levels:
 - `@lwbs` - Left Without Being Seen
 
 ### Quality Tags
+
 - `@a11y` - Accessibility scenarios
 - `@mobile` - Mobile-specific scenarios
 - `@dark-mode` - Dark mode scenarios

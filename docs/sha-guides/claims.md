@@ -1,5 +1,7 @@
 # SHA CLAIMS GUIDE
+
 ---
+
 ## Bundle Overview
 
 The SHA (Social Health Authority) Claim Bundle is a FHIR-based data structure used to submit healthcare claims to the Social Health Authority system. This document outlines the structure, purpose, and required components of a valid claim bundle.
@@ -74,22 +76,23 @@ The claim bundle is a FHIR Bundle resource of type "message" containing four key
 }
 
 ```
+
 ---
 
 ### Bundle Root Properties
 
-Property	Description	What to Pass	Requirement
-id	Unique identifier for the bundle	Generate a unique GUID for each claim. This same GUID will be used in the Claim resource fullUrl,resource.id and resource.identifier.value	Required
-meta.profile	Profile defining the bundle structure	https://qa-mis.apeiro-digital.com/fhir/StructureDefinition/bundle|1.0.0	Required
-timestamp	Timestamp for creation of this claim object	Current datetime in ISO format (YYYY-MM-DDThh:mm:ss.ssssss)	Required
-type	Bundle type	Always "message" for claim bundles	Required
-entry	Array containing all resources	Array of all resources (Organization, Coverage, Patient, Claim)	Required
-resourceType	Resource type	Always "Bundle"	Required
+Property Description What to Pass Requirement
+id Unique identifier for the bundle Generate a unique GUID for each claim. This same GUID will be used in the Claim resource fullUrl,resource.id and resource.identifier.value Required
+meta.profile Profile defining the bundle structure <https://qa-mis.apeiro-digital.com/fhir/StructureDefinition/bundle|1.0.0> Required
+timestamp Timestamp for creation of this claim object Current datetime in ISO format (YYYY-MM-DDThh:mm:ss.ssssss) Required
+type Bundle type Always "message" for claim bundles Required
+entry Array containing all resources Array of all resources (Organization, Coverage, Patient, Claim) Required
+resourceType Resource type Always "Bundle" Required
 Detailed Resource Breakdown
 Environment URLs
-Base URL for UAT submissions: https://qa-mis.apeiro-digital.com
+Base URL for UAT submissions: <https://qa-mis.apeiro-digital.com>
 
-Base URL for production submissions: https://mis.apeiro-digital.com
+Base URL for production submissions: <https://mis.apeiro-digital.com>
 
 Note: When moving from UAT to production, ensure all URLs in the bundle are updated to use the production base URL.
 
@@ -157,12 +160,13 @@ Organization Resource Object
   }
 }
 ```
-2. Coverage Resource
+
+1. Coverage Resource
 Represents the patient's insurance/coverage with SHA.
 
 Key fields:
 
-fullUrl: Include the CR Number of the patient. e.g.https://qa-mis.apeiro-digital.com/fhir/Coverage/CR0000000000001-1-sha-coverage
+fullUrl: Include the CR Number of the patient. e.g.<https://qa-mis.apeiro-digital.com/fhir/Coverage/CR0000000000001-1-sha-coverage>
 
 extension: Contains scheme category information for SHA. Set schemeCategoryCode as CAT-SHA-001 and schemeCategoryName as SOCIAL HEALTH AUTHORITY
 
@@ -205,7 +209,8 @@ Coverage Resource Object
   }
 }
 ```
-3. Patient Resource
+
+1. Patient Resource
 Contains demographic details and identification for the patient receiving care.
 
 ```json
@@ -236,6 +241,7 @@ Contains demographic details and identification for the patient receiving care.
   }
 }
 ```
+
 Key fields:
 
 id: Patient identifier (must match the value in the identifier array)
@@ -413,6 +419,7 @@ The core resource containing claim details, diagnosis, and service information.
   }
 }
 ```
+
 Core Components of a FHIR Claim Resource
 
 1. Identification & Metadata
@@ -431,6 +438,7 @@ Core Components of a FHIR Claim Resource
   "resourceType": "Claim"
 }
 ```
+
 id: Unique identifier for the claim (e.g., "a0016666-8137-47c1-b90c-c8e7c3094a28")
 identifier: Array containing system identifier (must match the id)
 created: Timestamp when claim was created in ISO format
@@ -467,6 +475,7 @@ resourceType: Always "Claim" for this resource type
   }
 }
 ```
+
 type: Categorizes the claim (e.g., "institutional" for facility claims)
 subType: Further specifies the claim type (e.g., "op" for outpatient)
 use: Purpose of the claim (typically "claim" for initial submissions)
@@ -486,6 +495,7 @@ priority: Processing priority (typically "normal")
   }
 }
 ```
+
 patient: Reference to the patient resource including: - reference: Full URL to patient resource
 identifier: Patient's unique identifier
 type: Always "Patient" for this reference
@@ -500,8 +510,10 @@ type: Always "Patient" for this reference
   }
 }
 ```
+
 billablePeriod: The time period for which services were provided - start: When services began (ISO 8601 format)
 end: When services ended (ISO 8601 format)
+
 1. Provider Information
 
 ```json
@@ -526,6 +538,7 @@ end: When services ended (ISO 8601 format)
   }
 }
 ```
+
 provider: Reference to the organization providing services - reference: Full URL to organization resource
 id: Organization's unique identifier
 type: Always "Organization" for this reference
@@ -533,6 +546,7 @@ type: Always "Organization" for this reference
 identifier: Organization's system identifier with coding details
 
 1. Insurance & Coverage
+
 ```json
 {
   "insurance": [
@@ -546,9 +560,11 @@ identifier: Organization's system identifier with coding details
   ]
 }
 ```
+
 insurance: Array of coverage information - sequence: Order of consideration (usually 1 for primary)
 focal: Whether this is the primary coverage ("True")
 coverage: Reference to the coverage resource
+
 1. Diagnosis Information
 
 ```json
@@ -569,10 +585,13 @@ coverage: Reference to the coverage resource
   ]
 }
 ```
+
 diagnosis: Array of diagnoses relevant to the claim - sequence: Order of importance
 diagnosisCodeableConcept: The diagnosis code
 coding: System and code value (e.g., ICD-11 "1A00" for Cholera)
+
 1. Service Items
+
 ```json
 {
   "item": [
@@ -621,6 +640,7 @@ coding: System and code value (e.g., ICD-11 "1A00" for Cholera)
   ]
 }
 ```
+
 item: Array of services, procedures, or products provided - sequence: Order of line items
 productOrService: Service code
 servicedDate: When service was performed
@@ -630,7 +650,9 @@ factor: Multiplier for pricing (typically 1)
 net: Total cost for this line item
 category: Classification of the service
 extension: Additional data for this item (e.g., coverage links)
+
 1. Financial Information
+
 ```json
 {
   "total": {
@@ -639,6 +661,7 @@ extension: Additional data for this item (e.g., coverage links)
   }
 }
 ```
+
 total: Total claim amount in specified currency (must match sum of items)
 Resource References
 The resources in the bundle are connected through references:

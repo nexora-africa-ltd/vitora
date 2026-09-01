@@ -180,6 +180,7 @@ Antenatal care visit record following WHO's 8+ contact model.
 **Unique constraint:** `[registration, visit_number]` — one entry per visit number per pregnancy.
 
 **Clinical Alerts:**
+
 - Fetal bradycardia (FHR < 110 BPM) / tachycardia (FHR > 160 BPM)
 - Proteinuria (urine protein ≥ 2+) — pre-eclampsia risk
 - Anaemia (Hb < 10 g/dL)
@@ -221,6 +222,7 @@ Records the delivery event and birth outcome.
 | `is_macrosomia` | True if birth weight > 4.0 kg |
 
 **Critical Alerts:**
+
 - Low birth weight (< 2.5 kg)
 - Macrosomia (> 4.0 kg)
 - Low APGAR score (< 7 at 5 minutes)
@@ -257,6 +259,7 @@ Postnatal care visit for both mother and baby. The standard Kenyan PNC schedule 
 | `contraceptive_given` | CharField | Contraceptive method provided |
 
 **Critical Alerts:**
+
 - Foul-smelling lochia (infection risk)
 - Mastitis or breast abscess
 - Infected umbilical cord
@@ -519,6 +522,7 @@ GET /api/mch/deliveries/dashboard/
 ```
 
 Response includes:
+
 - Total deliveries, live births, stillbirths, C-section rate
 - Monthly trends
 - Delivery type breakdown
@@ -567,6 +571,7 @@ POST /api/mch/immunizations/{id}/report_aefi/
 ### `determine_final_status` (HEIFollowUp)
 
 Algorithmically determines the infant's final HIV status based on PCR test history:
+
 - **CONFIRMED_POSITIVE** — if any PCR test is positive
 - **CONFIRMED_NEGATIVE** — if 2+ PCR tests are negative with no positives
 - Remains **ACTIVE** otherwise
@@ -677,6 +682,7 @@ Implements the WHO Child Growth Standards using the LMS (Lambda-Mu-Sigma) method
 $$Z = \frac{\left(\frac{X}{M}\right)^L - 1}{L \times S}$$
 
 Where:
+
 - $X$ = measured value (weight, height, etc.)
 - $L$ = Box-Cox power (skewness)
 - $M$ = median
@@ -717,6 +723,7 @@ Generates the full Kenya Expanded Programme on Immunisation schedule for a child
 | 18 months | Measles-Rubella 2 |
 
 For each active vaccine, an `ImmunizationRecord` is created with:
+
 - `status = SCHEDULED`
 - `scheduled_date = DOB + vaccine.standard_age_days`
 
@@ -743,6 +750,7 @@ Automatically generates invoices for MCH services through signal handlers:
 **Location:** `backend/hmis/apps/mch/services/pdf_export.py`
 
 Generates a growth chart PDF report using ReportLab containing:
+
 - Patient demographics (name, MRN, DOB, age)
 - Growth measurement history table
 - Visual growth chart with WHO percentile reference lines
@@ -764,6 +772,7 @@ EDD = LMP + 280 days (Naegele's rule)
 ```
 
 The `MCHRegistration.gestation_display` property returns human-readable format (e.g., "32 weeks, 4 days"). The `trimester` property returns:
+
 - **1st trimester**: 0–13 weeks
 - **2nd trimester**: 14–27 weeks
 - **3rd trimester**: 28+ weeks
@@ -804,12 +813,14 @@ Mid-Upper Arm Circumference classification for children aged 6–59 months:
 The module generates alerts at multiple levels:
 
 **ANC Visit Alerts:**
+
 - Fetal bradycardia: FHR < 110 BPM
 - Fetal tachycardia: FHR > 160 BPM
 - Proteinuria: Urine protein ≥ 2+ (pre-eclampsia risk)
 - Anaemia: Hb < 10 g/dL
 
 **Delivery Alerts:**
+
 - Low birth weight: < 2.5 kg
 - Macrosomia: > 4.0 kg
 - Low APGAR: < 7 at 5 minutes
@@ -817,6 +828,7 @@ The module generates alerts at multiple levels:
 - Incomplete placenta
 
 **PNC Visit Alerts:**
+
 - Foul-smelling lochia
 - Mastitis or breast abscess
 - Infected umbilical cord
@@ -825,6 +837,7 @@ The module generates alerts at multiple levels:
 - Neonatal fever (≥ 37.5°C)
 
 **Growth Alerts:**
+
 - SAM (MUAC < 11.5 cm or any Z-score < -3)
 - MAM (MUAC 11.5–12.4 cm)
 - Severely underweight (WAZ < -3)
@@ -843,6 +856,7 @@ The `determine_final_status` action uses the following algorithm:
 3. Otherwise → remains `ACTIVE` (more testing needed)
 
 Standard PCR testing schedule:
+
 - Test 1: 6 weeks of age
 - Test 2: 9 months of age
 - Test 3: Confirmatory (if indicated)
@@ -971,6 +985,7 @@ Users without these permissions will not see sensitive records in list views.
 ### Audit Logging
 
 All CRUD operations on MCH data are audit-logged per Kenya Data Protection Act 2019 requirements, including:
+
 - Who accessed or modified the record
 - What action was performed
 - IP address and timestamp
@@ -1069,6 +1084,7 @@ python manage.py validate_who_lms
 ### Required Dependencies
 
 The MCH module depends on:
+
 - `hmis.apps.patients` — Patient model for mother and baby
 - `hmis.apps.encounters` — Encounter model for visit linking
 - `hmis.apps.clinics` — ClinicEnrollment for ANC data (LMP, EDD, gravida, parity)

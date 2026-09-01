@@ -161,12 +161,14 @@ Adverse Event Following Immunization report aligned with Kenya MOH AEFI Reportin
 ## 4. API Reference
 
 ### Vaccine Definitions
+
 ```
 GET    /api/immunizations/vaccines/              # List (filterable by program, target_population)
 GET    /api/immunizations/vaccines/{id}/          # Detail
 ```
 
 ### Immunization Records
+
 ```
 GET    /api/immunizations/records/                # List (filterable by patient, status, program)
 POST   /api/immunizations/records/                # Create record
@@ -178,6 +180,7 @@ POST   /api/immunizations/records/generate-adult-schedule/  # Generate multi-dos
 ```
 
 ### AEFI Reports
+
 ```
 GET    /api/immunizations/aefi/                    # List (filterable by severity, report_type)
 POST   /api/immunizations/aefi/                    # Create AEFI report
@@ -187,6 +190,7 @@ POST   /api/immunizations/aefi/{id}/submit-to-authorities/  # Submit to national
 ```
 
 ### Campaigns, Stock, Cold Chain
+
 ```
 GET/POST  /api/immunizations/campaigns/            # List/Create campaigns
 GET/PATCH /api/immunizations/campaigns/{id}/       # Detail/Update
@@ -201,6 +205,7 @@ POST      /api/immunizations/cold-chain/{id}/log-temperature/  # Record temperat
 ```
 
 ### Coverage Analytics
+
 ```
 GET    /api/immunizations/coverage/                # Coverage stats by vaccine
 ```
@@ -274,6 +279,7 @@ Invoice item uses `item_type=VACCINATION` and `immunization_record` FK for trace
 ### → Surveillance (AEFI Alerts)
 
 When an AEFI report is created with `severity=SEVERE` or `outcome=DEATH`:
+
 - A `SurveillanceAlert` is auto-created (via signal)
 - A `NotifiableCase` for "AEFI - Severe" is auto-created with encounter link (when available)
 
@@ -316,6 +322,7 @@ Initial AEFI reports can have follow-up reports linked via `parent_report` FK. F
 ### Printing
 
 The AEFI detail page supports `window.print()` with dedicated CSS that:
+
 - Adds "MINISTRY OF HEALTH — AEFI REPORTING FORM" header
 - Strips navigation, buttons, and dialogs
 - Formats cards as bordered sections for paper output
@@ -411,6 +418,7 @@ Resource.objects.create(
 ### Vaccines not auto-billing
 
 Check the resolution order:
+
 1. `VaccineDefinition.billing_service` FK is set and active?
 2. `Service.code` matches `VaccineDefinition.code`?
 3. `Service` in `IMM` category matches vaccine name?
@@ -429,5 +437,6 @@ cd backend && poetry run python manage.py seed_vaccines
 ### AEFI severe alert not creating surveillance case
 
 The signal only fires for `severity="SEVERE"` or `outcome="DEATH"`. It also requires:
+
 - `NotifiableDisease` named "AEFI - Severe" to exist (auto-created on first trigger)
 - The `immunization_record.encounter` to be set (surveillance `NotifiableCase` requires encounter)

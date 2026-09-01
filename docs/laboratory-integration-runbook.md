@@ -6,6 +6,7 @@ Scope: Analyzer integration for HL7/ASTM/serial/TCP workflows in Vitora LIS.
 ## 1) Purpose
 
 This runbook defines:
+
 - How to configure lab instrument integration safely
 - How to validate end-to-end analyzer connectivity and message flow
 - How to commission per vendor/protocol with a repeatable checklist
@@ -116,6 +117,7 @@ Run for each instrument before go-live:
 ## 10) Change Control Template
 
 Record each change:
+
 - date/time
 - facility
 - instrument + channel

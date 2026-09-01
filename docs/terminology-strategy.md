@@ -25,6 +25,7 @@ This document provides a **pragmatic, phased implementation plan** that delivers
 Kenya does **not** operationally depend on CPT (Current Procedural Terminology).
 
 Instead, procedures and services derive from:
+
 - Ministry of Health service lists
 - **SHA/NHIF reimbursement tariffs** (primary billing driver)
 - Facility-specific price catalogues
@@ -166,6 +167,7 @@ for m in mappings:
 ```
 
 **Deliverables**:
+
 1. Add `ExternalCodeMapping` model to `hmis.apps.core`:
 
 ```python
@@ -260,9 +262,9 @@ class ExternalCodeMapping(models.Model):
         return mapping.internal_object
 ```
 
-2. Add Django Admin interface for mapping management
-3. Add basic tests for CRUD and resolution
-4. Document supported `code_system` values
+1. Add Django Admin interface for mapping management
+2. Add basic tests for CRUD and resolution
+3. Document supported `code_system` values
 
 #### Supported `code_system` Values
 
@@ -278,11 +280,13 @@ class ExternalCodeMapping(models.Model):
 | `KEBS_DRUG` | Kenya Bureau of Standards drug codes | `DrugCatalog` | `KEBS_DRUG:KE001` |
 
 **Naming Convention**:
+
 - Use UPPERCASE with underscores
 - Include version/year suffix when applicable (e.g., `SHA_TARIFF_2025`)
 - Prefix vendor-specific codes with vendor identifier (e.g., `LIS_ACME`, `LIS_MINDRAY`)
 
 **Usage example (Phase C HL7 parser)**:
+
 ```python
 from hmis.apps.core.models import ExternalCodeMapping
 
@@ -382,6 +386,7 @@ fhir_uri = mapping.get_fhir_uri()  # "http://loinc.org"
 **Risk**: Low
 
 **Deliverables**:
+
 1. Add `ConceptAlias` model for synonyms:
 
 ```python
@@ -405,10 +410,11 @@ class ConceptAlias(models.Model):
     language = models.CharField(max_length=10, default='en')  # e.g., 'sw' for Kiswahili
 ```
 
-2. Update search endpoints to include aliases
-3. Add Kiswahili translations for common tests/procedures
+1. Update search endpoints to include aliases
+2. Add Kiswahili translations for common tests/procedures
 
 **Example**:
+
 ```
 TestCatalog: code="CBC", name="Complete Blood Count"
 Aliases: "FBC", "Hemogram", "Blood count", "Kipimo cha damu kamili"
@@ -423,6 +429,7 @@ Aliases: "FBC", "Hemogram", "Blood count", "Kipimo cha damu kamili"
 **Risk**: Medium (billing impact)
 
 **Deliverables**:
+
 1. Add `ProcedureCatalog` model (similar to `TestCatalog`):
 
 ```python
@@ -445,11 +452,12 @@ class ProcedureCatalog(models.Model):
     effective_to = models.DateField(null=True, blank=True)
 ```
 
-2. Migrate existing implicit procedures from billing items
-3. Add `ExternalCodeMapping` entries for SHA tariff codes
-4. Update billing to reference `ProcedureCatalog`
+1. Migrate existing implicit procedures from billing items
+2. Add `ExternalCodeMapping` entries for SHA tariff codes
+3. Update billing to reference `ProcedureCatalog`
 
 **Code structure**:
+
 | Code | Meaning |
 |------|---------|
 | VIT-CONS-OPD-001 | OPD Consultation |
@@ -466,6 +474,7 @@ class ProcedureCatalog(models.Model):
 **Risk**: Low (additive)
 
 **Deliverables**:
+
 1. `/fhir/CodeSystem/{id}` — FHIR CodeSystem resource
 2. `/fhir/ValueSet/{id}` — FHIR ValueSet resource
 3. `/fhir/ValueSet/$expand` — Expand a value set
@@ -502,6 +511,7 @@ For a production HMIS, terminology changes must be governed:
 4. **Analyst** — Ensures reporting continuity
 
 **Process**:
+
 - New codes require approval before activation
 - Retired codes are soft-deleted (`is_active=False`)
 - Breaking changes (renames, merges) require migration plan
@@ -552,5 +562,5 @@ EFFORT                 │                EFFORT
 - `docs/lis-evolution.md` (LIS architecture evolution, Specimen model, analyzer integration)
 - `backend/hmis/apps/laboratory/models.py` (`TestCatalog` with LOINC fields)
 - `backend/hmis/apps/encounters/models.py` (`ICD10Code`)
-- HL7 FHIR Terminology Module: https://hl7.org/fhir/terminology-module.html
+- HL7 FHIR Terminology Module: <https://hl7.org/fhir/terminology-module.html>
 - Kenya SHA Tariff Schedule (external reference)

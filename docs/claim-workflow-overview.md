@@ -32,6 +32,7 @@ Draft → Validated → Pending Submission → Submitted → Acknowledged
 ```
 
 Key fields:
+
 - **Identification**: `claim_number` (internal, `CLM-YYYYMMDD-XXXX`), `sha_claim_reference` (SHA-assigned)
 - **Linkage**: `patient`, `sha_member`, `encounter`, `invoice`
 - **Routing**: `claim_flow` (phc / shif / eccif), `is_emergency_claim`
@@ -134,6 +135,7 @@ Lab results verified / documents finalized
 ### 4.2 Key automation services (`sha_automation.py`)
 
 The `SHAAutomationService` class provides 10+ class methods:
+
 1. `auto_create_claim_from_encounter` — draft claim creation
 2. `auto_start_visit` — DHA visit start when consent is validated
 3. `auto_suggest_interventions` — infer interventions from clinical data
@@ -248,6 +250,7 @@ Properties: `time_barring_deadline`, `is_time_barred`, `hours_until_time_barred`
 ## 8. Appeals & Resubmissions
 
 Rejected or partially approved claims can be appealed via `SHAClaim.create_appeal()`:
+
 - Creates a new `SHAClaim` with `version = parent.version + 1` and `parent_claim` FK
 - Copies all line items from the original claim
 - Sets original claim status to `appealed`

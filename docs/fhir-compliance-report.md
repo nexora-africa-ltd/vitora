@@ -43,19 +43,19 @@ This document records the results of FHIR compliance testing for Vitora HMIS usi
 
 | Component | Value | Status |
 |-----------|-------|--------|
-| FHIR Base URL | \`http://localhost:9088/fhir\` | ✅ Working |
+| FHIR Base URL | \`<http://localhost:9088/fhir\`> | ✅ Working |
 | FHIR Version | R4 (4.0.1) | ✅ Implemented |
-| SMART Configuration | \`http://localhost:9088/.well-known/smart-configuration\` | ✅ Working |
-| CapabilityStatement | \`http://localhost:9088/fhir/metadata\` | ✅ Working |
-| OAuth2 Authorize | \`http://localhost:9088/oauth/authorize/\` | ✅ Working |
-| OAuth2 Token | \`http://localhost:9088/oauth/token/\` | ✅ Working |
+| SMART Configuration | \`<http://localhost:9088/.well-known/smart-configuration\`> | ✅ Working |
+| CapabilityStatement | \`<http://localhost:9088/fhir/metadata\`> | ✅ Working |
+| OAuth2 Authorize | \`<http://localhost:9088/oauth/authorize/\`> | ✅ Working |
+| OAuth2 Token | \`<http://localhost:9088/oauth/token/\`> | ✅ Working |
 
 ### 1.2 Inferno Test Suite
 
 | Test Kit | URL | Purpose | Status |
 |----------|-----|---------|--------|
-| Inferno Core | http://localhost:4567 | IPS & SMART Health Cards | Available |
-| ONC Program | http://localhost:4568 | US Core + SMART v2 | Available |
+| Inferno Core | <http://localhost:4567> | IPS & SMART Health Cards | Available |
+| ONC Program | <http://localhost:4568> | US Core + SMART v2 | Available |
 | IPS Test Kit | From source | IPS validation | Requires manual setup |
 
 ### 1.3 Test Data
@@ -130,6 +130,7 @@ Supports both lab results and encounter vitals.
 | \`/fhir/Observation/{id}\` | GET | ✅ Working |
 
 **Vital Signs LOINC Mappings:**
+
 - Temperature: \`8310-5\`
 - Heart Rate: \`8867-4\`
 - Blood Pressure: \`85354-9\`
@@ -155,6 +156,7 @@ Supports both lab results and encounter vitals.
 | \`/fhir/Patient/{id}/$summary\` | GET | ✅ Working |
 
 Returns a FHIR Bundle (type: document) containing:
+
 - Composition resource (IPS structure)
 - Patient resource
 - Condition resources (active diagnoses)
@@ -304,26 +306,30 @@ cd docker/inferno
 
 ### 6.3 Configure Test Session in Inferno
 
-1. Open http://localhost:4567
+1. Open <http://localhost:4567>
 2. Create new test session
 3. Configure:
-   - FHIR Server: \`http://host.docker.internal:9088/fhir\`
+   - FHIR Server: \`<http://host.docker.internal:9088/fhir\`>
    - Patient ID: Use ID from seed_fhir_test_data output
 4. Run tests
 
 ### 6.4 Test Individual Endpoints
 
 \`\`\`bash
+
 # Get auth token
-TOKEN=\$(curl -s -X POST http://localhost:9088/api/token/ \\
+
+TOKEN=\$(curl -s -X POST <http://localhost:9088/api/token/> \\
   -H "Content-Type: application/json" \\
   -d '{"username":"admin","password":"admin123"}' | jq -r '.access')
 
 # Test Patient
-curl -H "Authorization: Bearer \$TOKEN" http://localhost:9088/fhir/Patient/351
+
+curl -H "Authorization: Bearer \$TOKEN" <http://localhost:9088/fhir/Patient/351>
 
 # Test IPS Bundle
-curl -H "Authorization: Bearer \$TOKEN" 'http://localhost:9088/fhir/Patient/351/\$summary'
+
+curl -H "Authorization: Bearer \$TOKEN" '<http://localhost:9088/fhir/Patient/351/\$summary>'
 \`\`\`
 
 ---

@@ -34,11 +34,13 @@ Reference terminology services for healthcare coding standards.
 | **Status** | **✅ Production Ready** |
 
 **Analysis**: Fully implemented in `terminology.py`. The `TerminologyService` class provides:
+
 - `search_interventions()` - Search by name/code with facility level filtering
 - `get_intervention()` - Get specific intervention by code
 - Returns `InterventionCode` dataclass with price, category, facility level
 
 **Implementation Details**:
+
 ```python
 # File: hmis/apps/billing/services/terminology.py
 class TerminologyService:
@@ -59,11 +61,13 @@ class TerminologyService:
 | **Status** | **✅ Production Ready** |
 
 **Analysis**: Fully implemented in `terminology.py`. The `TerminologyService` class provides:
+
 - `search_ichi()` - Search ICHI codes by name or code
 - `get_ichi()` - Get specific ICHI code
 - Returns `ICHICode` dataclass
 
 **Implementation Details**:
+
 ```python
 # File: hmis/apps/billing/services/terminology.py
 class TerminologyService:
@@ -84,10 +88,12 @@ class TerminologyService:
 | **Status** | **✅ Production Ready (Remote + Local Fallback)** |
 
 **Analysis**: Dual implementation with remote-first approach:
+
 1. **Remote**: `TerminologyService.search_loinc()` fetches from DHA API
 2. **Fallback**: Local `LOINCCode` model used when API unavailable
 
 **Implementation Details**:
+
 ```python
 # File: hmis/apps/billing/services/terminology.py
 class TerminologyService:
@@ -97,6 +103,7 @@ class TerminologyService:
 ```
 
 **Local Fallback**:
+
 - Model: `hmis/apps/laboratory/models.py::LOINCCode`
 - ViewSet: `LOINCCodeViewSet` at `/api/laboratory/loinc-codes/`
 - Import: `python manage.py import_loinc`
@@ -114,11 +121,13 @@ class TerminologyService:
 | **Status** | **✅ Production Ready** |
 
 **Analysis**: Fully implemented in `terminology.py`. The `TerminologyService` class provides:
+
 - `search_icd11()` - Search ICD-11 codes by name or code
 - `get_icd11()` - Get specific ICD-11 code
 - Returns `ICD11Code` dataclass with title, chapter, parent hierarchy
 
 **Implementation Details**:
+
 ```python
 # File: hmis/apps/billing/services/terminology.py
 class TerminologyService:
@@ -139,11 +148,13 @@ class TerminologyService:
 | **Status** | **✅ Production Ready** |
 
 **Analysis**: Fully implemented in `terminology.py`. The `TerminologyService` class provides:
+
 - `search_active_components()` - Search active pharmaceutical ingredients
 - `get_active_component()` - Get specific component by ID
 - Returns `ActiveComponent` dataclass with ATC code and description
 
 **Implementation Details**:
+
 ```python
 # File: hmis/apps/billing/services/terminology.py
 class TerminologyService:
@@ -164,11 +175,13 @@ class TerminologyService:
 | **Status** | **✅ Production Ready** |
 
 **Analysis**: Fully implemented in `terminology.py`. The `TerminologyService` class provides:
+
 - `search_drug_products()` - Search drug products by brand/generic name
 - `get_drug_product()` - Get specific product by ID
 - Returns `DrugProduct` dataclass with manufacturer, dosage form, active components
 
 **Implementation Details**:
+
 ```python
 # File: hmis/apps/billing/services/terminology.py
 class TerminologyService:
@@ -205,12 +218,14 @@ class TerminologyService:
 | **Status** | **✅ Production Ready** |
 
 **Analysis**: Fully implemented in `sha_auth.py`. The `SHAAuthService` class handles:
+
 - Basic Auth header creation (base64 encoded username:password)
 - JWT token retrieval from DHA
 - Token caching with expiry tracking (5-minute buffer)
 - Automatic token refresh
 
 **Implementation Details**:
+
 ```python
 # File: hmis/apps/billing/services/sha_auth.py
 class SHAAuthService:
@@ -221,6 +236,7 @@ class SHAAuthService:
 ```
 
 **Required Settings**:
+
 - `SHA_API_BASE_URL` - Base URL (e.g., `https://uat.dha.go.ke`)
 - `SHA_CONSUMER_KEY` - API consumer key
 - `SHA_USERNAME` - API username
@@ -241,11 +257,13 @@ class SHAAuthService:
 | **Status** | **✅ Production Ready** |
 
 **Analysis**: Fully implemented in `client_registry.py`. The `ClientRegistryService` class provides:
+
 - `register_client()` - Register new client with validation
 - Returns `ClientRegistryClient` dataclass with assigned CR number
 - Handles duplicate detection via `DuplicateClientError`
 
 **Implementation Details**:
+
 ```python
 # File: hmis/apps/billing/services/client_registry.py
 class ClientRegistryService:
@@ -274,11 +292,13 @@ class ClientRegistryService:
 | **Status** | **✅ Production Ready** |
 
 **Analysis**: Fully implemented in `client_registry.py`. The `ClientRegistryService` class provides:
+
 - `fetch_client()` - Fetch by any supported ID type
 - Returns `ClientRegistryClient` dataclass or None if not found
 - Raises `ClientNotFoundError` for explicit not-found handling
 
 **Implementation Details**:
+
 ```python
 # File: hmis/apps/billing/services/client_registry.py
 class ClientRegistryService:
@@ -293,6 +313,7 @@ class ClientRegistryService:
 ```
 
 **Supported ID Types**:
+
 - National ID
 - Huduma Number
 - Passport
@@ -312,11 +333,13 @@ class ClientRegistryService:
 | **Status** | **✅ Production Ready** |
 
 **Analysis**: Fully implemented in `client_registry.py`. The `ClientRegistryService` class provides:
+
 - `update_client()` - Update existing client by CR number
 - Returns updated `ClientRegistryClient` dataclass
 - Validates client exists before update
 
 **Implementation Details**:
+
 ```python
 # File: hmis/apps/billing/services/client_registry.py
 class ClientRegistryService:
@@ -355,12 +378,14 @@ class ClientRegistryService:
 | **Status** | **✅ Production Ready** |
 
 **Analysis**: Fully implemented in `sha_eligibility.py`. The `SHAEligibilityService` handles:
+
 - Eligibility checking with multiple ID types
 - Response parsing and caching
 - Retry logic with exponential backoff
 - Coverage end date tracking
 
 **Implementation Details**:
+
 ```python
 # File: hmis/apps/billing/services/sha_eligibility.py
 class SHAEligibilityService:
@@ -369,6 +394,7 @@ class SHAEligibilityService:
 ```
 
 **Response Fields Parsed**:
+
 - `eligible` - Boolean eligibility status
 - `coverageEndDate` - Coverage expiry date
 - `isEmployed` - Employment status
@@ -388,12 +414,14 @@ class SHAEligibilityService:
 | **Status** | **✅ Production Ready** |
 
 **Analysis**: Fully implemented in `sha_claims.py`. The `SHAClaimsService` builds compliant FHIR R4 bundles containing:
+
 - Organization resource (facility)
 - Patient resource (with CR number)
 - Coverage resource (with scheme category)
 - Claim resource (with diagnoses, items, totals)
 
 **FHIR Bundle Structure**:
+
 ```json
 {
   "resourceType": "Bundle",
@@ -420,6 +448,7 @@ class SHAEligibilityService:
 | **Status** | **✅ Production Ready** |
 
 **Analysis**: Implemented for async claim tracking. Returns status:
+
 - `draft` - Pending processing
 - `active` - Under review
 - `completed` - Approved
@@ -452,11 +481,13 @@ class SHAEligibilityService:
 | **Status** | **✅ Production Ready** |
 
 **Analysis**: Fully implemented in `dha_search.py`. The `DHASearchService` class provides:
+
 - `search_facility()` - Search by MFL code, FID, or registration number
 - `validate_facility_for_claims()` - Validates SHA approval, operational status, license
 - Returns `FacilityInfo` dataclass with all facility details
 
 **Implementation Details**:
+
 ```python
 # File: hmis/apps/billing/services/dha_search.py
 class DHASearchService:
@@ -468,6 +499,7 @@ class DHASearchService:
 ```
 
 **Response Fields Parsed**:
+
 - `found` - Whether facility exists
 - `facility_level` - Level 1-6
 - `operational_status` - Active/Inactive
@@ -487,11 +519,13 @@ class DHASearchService:
 | **Status** | **✅ Production Ready** |
 
 **Analysis**: Fully implemented in `dha_search.py`. The `DHASearchService` class provides:
+
 - `search_practitioner()` - Search by registration number, national ID, or PUID
 - `validate_practitioner_for_claims()` - Validates license status and expiry
 - Returns `PractitionerInfo` dataclass with qualifications and license info
 
 **Implementation Details**:
+
 ```python
 # File: hmis/apps/billing/services/dha_search.py
 class DHASearchService:
@@ -508,6 +542,7 @@ class DHASearchService:
 ```
 
 **Response Fields Parsed**:
+
 - `puid` - Practitioner Unique ID
 - `qualification` - Professional qualification
 - `cadre` - Professional cadre
@@ -538,9 +573,10 @@ class DHASearchService:
 | Search | 2 | 2 | 2 | **100%** |
 | **Total** | **15** | **15** | **15** | **100%** |
 
-### ✅ All DHA APIs Now Implemented!
+### ✅ All DHA APIs Now Implemented
 
 #### Terminology Services (`terminology.py`)
+
 1. **SHA Interventions** - Search and lookup intervention codes
 2. **ICD-11 Codes** - Diagnosis code lookup with hierarchy
 3. **ICHI Codes** - Intervention classification
@@ -549,15 +585,18 @@ class DHASearchService:
 6. **Active Components** - Pharmaceutical ingredients
 
 #### Client Registry Services (`client_registry.py`)
+
 1. **Fetch Client** - Lookup by National ID, Huduma, Passport, etc.
 2. **Register Client** - New patient registration with CR number
 3. **Update Client** - Update existing client records
 
 #### Search Services (`dha_search.py`)
+
 1. **Facility Search** - MFL validation with SHA approval check
 2. **Practitioner Search** - HWR validation with license check
 
 #### Claims Services (Previously Complete)
+
 1. **Authentication** - JWT token management
 2. **Eligibility Check** - SHA coverage verification
 3. **Claims Submission** - FHIR R4 bundle submission

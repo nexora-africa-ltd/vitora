@@ -548,27 +548,35 @@ print(json.dumps(refill_info, indent=2))
 ## Complete Workflow Example
 
 1. **Patient Registration/Update:**
+
      ```http
      PUT {{base_url}}/v1/patient-resource?cr_id=CR06XX3268000-3-1
      ```
+
      - Ensures the patient exists in the system
 
 2. **Prescription Creation:**
+
      ```http
      POST {{base_url}}/v1/shr-submission?resource=MedicationRequest
      ```
+
      - Creates an initial prescription with 5 refills allowed
 
 3. **Initial Dispensing:**
+
      ```http
      POST {{base_url}}/v1/shr-submission?resource=MedicationDispense
      ```
+
      - Records the initial fill of the medication
 
 4. **Patient Summary Retrieval:**
+
      ```http
      GET {{base_url}}/v1/shr/summary?cr_id=CR06XX3268000-3-1
      ```
+
      - Gets current health information including prescription/dispensing history
 
 5. **Refill Balance Calculation:**
@@ -576,9 +584,11 @@ print(json.dumps(refill_info, indent=2))
      - Determines if patient is eligible for refill
 
 6. **Subsequent Dispensing:**
+
      ```http
      POST {{base_url}}/v1/shr-submission?resource=MedicationDispense
      ```
+
      - Records additional refills as they occur
 
 The workflow continues with repeated IPS retrievals and dispensing records until the prescription expires or all refills are used.
@@ -599,7 +609,7 @@ The system collects two key pieces of information:
 ### Step 2: Calculate Basic Numbers
 
 - **Total allowed fills**: This is the initial fill plus all refills
-    - Example: If the doctor allows 5 refills, the total is 6 fills (1 initial + 5 refills)
+  - Example: If the doctor allows 5 refills, the total is 6 fills (1 initial + 5 refills)
 - **Fills used so far**: Count how many times the pharmacy has given the medication to the patient
 - **Remaining refills**: Subtract the fills used from the total allowed
 

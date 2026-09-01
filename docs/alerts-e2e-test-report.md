@@ -562,20 +562,21 @@ export function AlertSettingsDialog({ open, onOpenChange, settings, onSave }) {
 
 ### 🟡 Medium Priority (Important UX)
 
-4. **Acknowledge Details** (3 tests) - Audit trail for acknowledged alerts
-5. **Navigation/Quick Actions** (4 tests) - Workflow efficiency
-6. **Dashboard Widget** (3 tests) - Visibility of critical alerts
+1. **Acknowledge Details** (3 tests) - Audit trail for acknowledged alerts
+2. **Navigation/Quick Actions** (4 tests) - Workflow efficiency
+3. **Dashboard Widget** (3 tests) - Visibility of critical alerts
 
 ### 🟢 Lower Priority (Enhancements)
 
-7. **Auto-Generation Indicators** (3 tests) - Nice to have
-8. **Alert Settings** (3 tests) - Admin configuration
+1. **Auto-Generation Indicators** (3 tests) - Nice to have
+2. **Alert Settings** (3 tests) - Admin configuration
 
 ---
 
 ## Implementation Checklist
 
 ### Alert Item Display
+
 - [ ] Add `data-testid="alert-item"` to each alert card
 - [ ] Add severity-based CSS classes (`critical`, `high`, `medium`, `low`)
 - [ ] Display drug name prominently
@@ -583,6 +584,7 @@ export function AlertSettingsDialog({ open, onOpenChange, settings, onSave }) {
 - [ ] Display creation timestamp
 
 ### Filtering
+
 - [ ] Add alert type filter (`data-testid="alert-type-filter"`)
 - [ ] Add severity filter (`data-testid="severity-filter"`)
 - [ ] Add resolved toggle switch (`data-testid="resolved-toggle"`)
@@ -591,11 +593,13 @@ export function AlertSettingsDialog({ open, onOpenChange, settings, onSave }) {
 - [ ] Implement filter logic
 
 ### Acknowledge Flow
+
 - [ ] Display "Acknowledged by" user name
 - [ ] Display "Acknowledged at" timestamp
 - [ ] Hide acknowledge button for already acknowledged alerts
 
 ### Resolve Flow
+
 - [ ] Add resolve button to each alert (`data-testid="resolve-button"`)
 - [ ] Create `ResolveAlertDialog` component
 - [ ] Add resolution notes field
@@ -604,23 +608,27 @@ export function AlertSettingsDialog({ open, onOpenChange, settings, onSave }) {
 - [ ] Show resolved alerts when toggle enabled
 
 ### Navigation/Quick Actions
+
 - [ ] Make drug name a clickable link
 - [ ] Make batch number a clickable link
 - [ ] Add "Reorder" button for low stock alerts
 - [ ] Add "View Batch" button for expiring alerts
 
 ### Dashboard Widget
+
 - [ ] Create `AlertsSummaryWidget` component
 - [ ] Display alert counts by severity
 - [ ] Add "View All" link
 - [ ] Show recent critical alerts
 
 ### Auto-Generation
+
 - [ ] Add "Auto-generated" badge for system alerts
 - [ ] Add refresh button
 - [ ] Display last refresh timestamp
 
 ### Settings
+
 - [ ] Add settings button
 - [ ] Create `AlertSettingsDialog` component
 - [ ] Add expiry warning days input
@@ -629,6 +637,7 @@ export function AlertSettingsDialog({ open, onOpenChange, settings, onSave }) {
 ---
 
 ## Test Code Bugs to Fix
+
 ✅ Completed
 
 **File:** `e2e/pharmacy/alerts.spec.ts`

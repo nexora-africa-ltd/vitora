@@ -39,6 +39,7 @@ Native desktop wrapper for Vitora HMIS. Bundles the Next.js web-app with a Node.
 | npm | 10+ | Comes with Node 22 |
 
 **Linux only:**
+
 ```bash
 sudo apt install libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev \
   patchelf libssl-dev libgtk-3-dev libsoup-3.0-dev libjavascriptcoregtk-4.1-dev
@@ -55,11 +56,13 @@ cd desktop-app && npm install && npm run dev:tauri
 ```
 
 Or combined:
+
 ```bash
 cd desktop-app && npm install && npm run dev
 ```
 
 In dev mode:
+
 - No sidecar is spawned — Tauri loads `http://127.0.0.1:3009`
 - Splash screen is closed immediately
 - System tray still works (Show/Quit)
@@ -73,6 +76,7 @@ npm run build:tauri   # Tauri build with production config
 ```
 
 Or step by step:
+
 ```bash
 npm run build:web              # Next.js standalone build
 npm run bundle-standalone      # Copy standalone output to src-tauri/standalone/
@@ -81,6 +85,7 @@ npm run build:tauri            # Tauri build → src-tauri/target/release/bundle
 ```
 
 Output artifacts:
+
 - **Windows**: `target/release/bundle/nsis/Vitora HMIS_0.1.0_x64-setup.exe` + `.msi`
 - **Linux**: `target/release/bundle/deb/` + `appimage/`
 - **macOS**: `target/release/bundle/dmg/`
@@ -135,6 +140,7 @@ All frontend wrappers are in `web-app/lib/desktop/index.ts` with graceful browse
 
 On first run, the app prompts for the API server URL via `/desktop-setup`.
 Config is stored at:
+
 - **Windows**: `%APPDATA%\digital.vitora.hmis\config.json`
 - **Linux**: `~/.config/digital.vitora.hmis/config.json`
 - **macOS**: `~/Library/Application Support/digital.vitora.hmis/config.json`
@@ -195,10 +201,12 @@ Cookie persistence: WebView2 stores cookies in its user profile directory, survi
    - Azure Front Door endpoint already provisioned: `vitora-releases-dzf4f6hmfdadf3gk.z01.azurefd.net`
    - Storage account: `vitorareleasessa` (eastus), container: `releases`, public blob access
    - To enable custom domain, add these records in **Vercel DNS**:
+
      ```
      CNAME  releases  →  vitora-releases-dzf4f6hmfdadf3gk.z01.azurefd.net
      CAA    0 issue "digicert.com"   (required for Azure managed TLS cert)
      ```
+
    - Then run: `az afd custom-domain create --profile-name vitora-cdn --resource-group vitora-rg --custom-domain-name releases-domain --host-name releases.vitora.digital --certificate-type ManagedCertificate --minimum-tls-version TLS12`
    - Associate domain with route: `az afd route update ... --custom-domains releases-domain`
    - Update `tauri.conf.json` endpoint back to `https://releases.vitora.digital/updates`
@@ -221,32 +229,32 @@ Cookie persistence: WebView2 stores cookies in its user profile directory, survi
 
 ### Should-Have (Before GA)
 
-6. **Serial port integration** (lab equipment)
+1. **Serial port integration** (lab equipment)
    - Add `tauri-plugin-serialport` or raw Rust serial crate
    - Wire to lab module screens in web-app
 
-7. **Native barcode scanner** (camera-based)
+2. **Native barcode scanner** (camera-based)
    - `nokhwa` crate for camera capture + `rxing` for decoding
    - Fallback: existing html5-qrcode in browser mode
 
-8. **macOS notarization**
+3. **macOS notarization**
    - Required for macOS distribution outside App Store
    - Apple Developer account + `xcrun notarytool`
    - Add to CI workflow for macOS builds
 
-9. **Crash reporting**
+4. **Crash reporting**
    - Integrate Sentry or similar for production error tracking
    - Both Rust panics and JS errors
 
-10. **Performance baselines**
+5. **Performance baselines**
     - Cold start time < 5s (splash → app ready)
     - Idle RAM < 200MB
     - Installer size < 100MB
 
 ### Nice-to-Have (Post-GA)
 
-11. Custom updater UI (progress bar, release notes display)
-12. Multi-window support (detach patient chart)
-13. Kiosk mode for queue display terminals
-14. Hardware security module integration (smart cards for auth)
-15. DICOM viewer integration (medical imaging)
+1. Custom updater UI (progress bar, release notes display)
+2. Multi-window support (detach patient chart)
+3. Kiosk mode for queue display terminals
+4. Hardware security module integration (smart cards for auth)
+5. DICOM viewer integration (medical imaging)

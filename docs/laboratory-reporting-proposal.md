@@ -173,6 +173,7 @@ This plan is intentionally incremental to reduce risk.
 **Goal**: Make uploaded/scanned result documents reliable and consistent.
 
 **Deliverables**:
+
 - Standardize on `LabResultAttachment` for uploads.
 - Add endpoints:
   - `POST /api/lab/orders/{order_number}/attachments/` (or result-level, but stored on order)
@@ -182,22 +183,24 @@ This plan is intentionally incremental to reduce risk.
 - Consolidate requisition generation to a single implementation and remove/stop referencing the duplicate.
 
 **Acceptance criteria**:
+
 - Uploading an attachment creates a `LabResultAttachment` row with correct metadata.
 - Listing returns attachments in reverse chronological order.
 - Deleting removes both row and file.
 - Existing UI flows still work (no broken upload/list use-cases).
 
 **Tests**:
+
 - Attachment upload validation (type/size)
 - Attachment create/list/delete
 - Requisition endpoint returns a PDF for external orders
-
 
 ### Phase B — Implement Lab Reports/Analytics (Operational reporting) ✅ **COMPLETED**
 
 **Goal**: Provide lab management reporting without changing clinical workflows.
 
 **Deliverables** (all implemented):
+
 - ✅ `backend/hmis/apps/laboratory/reports.py`:
   - `LabReportService.turnaround_time_report(start_date, end_date)`
   - `LabReportService.workload_report(start_date, end_date)`
@@ -210,6 +213,7 @@ This plan is intentionally incremental to reduce risk.
   - `GET /api/lab/reports/rejections/?start=YYYY-MM-DD&end=YYYY-MM-DD`
 
 **Implementation details** (documented in `reports.py` docstrings):
+
 - **TAT definitions**:
   - Result TAT: `verified_at - entered_at` (for verified results)
   - Queue TAT: `released_at - collected_at` (for released samples)
@@ -218,6 +222,7 @@ This plan is intentionally incremental to reduce risk.
 - Date ranges are timezone-aware and inclusive of start/end dates
 
 **TAT Report shape**:
+
 ```json
 {
   "start": "2026-02-01",
@@ -230,6 +235,7 @@ This plan is intentionally incremental to reduce risk.
 ```
 
 **Workload Report shape**:
+
 ```json
 {
   "start": "2026-02-01",
@@ -241,6 +247,7 @@ This plan is intentionally incremental to reduce risk.
 ```
 
 **Critical Values Report shape**:
+
 ```json
 {
   "start": "2026-02-01",
@@ -251,6 +258,7 @@ This plan is intentionally incremental to reduce risk.
 ```
 
 **Rejection Report shape**:
+
 ```json
 {
   "start": "2026-02-01",
@@ -263,6 +271,7 @@ This plan is intentionally incremental to reduce risk.
 ```
 
 **Tests** (all passing in `backend/tests/test_lab_reports.py`):
+
 - ✅ TAT by test and by priority
 - ✅ Workload by day and by technician
 - ✅ Critical values count
@@ -270,6 +279,7 @@ This plan is intentionally incremental to reduce risk.
 - ✅ Missing date params returns 400
 
 **Future enhancements** (not in current scope but identified for Phase B+):
+
 - **Outlier/percentile TAT**: Add 95th percentile TAT (spec mentioned but not implemented)
 - **TAT by category**: Currently only by test code; could add `by_category` grouping
 - **Time-to-notify metrics**: Track time from critical result entry to clinician notification
@@ -277,19 +287,21 @@ This plan is intentionally incremental to reduce risk.
 - **Weekly aggregation option**: Add `?granularity=week` for workload report
 - **Extended edge case tests**: Empty date ranges, single result scenarios
 
-
 ### Pre-Phase C — External Code Mapping Foundation
 
 **Goal**: Enable HL7/MLLP integration to resolve external LIS test codes to internal `TestCatalog` entries without hardcoding.
 
 **Why this is needed**:
+
 - Phase C HL7 parser will receive ORU messages with external test codes (e.g., `"12345"` from vendor LIS)
 - Must map these to internal `TestCatalog.code` (e.g., `"CBC"`)
 - Without a mapping layer, code resolution is hardcoded and unmaintainable
 - This is also foundational for future SHA/NHIF tariff mappings
 
 **Deliverables**:
+
 - Add `ExternalCodeMapping` model to `core` app:
+
   ```python
   class ExternalCodeMapping(models.Model):
       """Maps external system codes to internal Vitora codes."""
@@ -306,6 +318,7 @@ This plan is intentionally incremental to reduce risk.
           unique_together = ['code_system', 'external_code']
           indexes = [models.Index(fields=['code_system', 'external_code'])]
   ```
+
 - Add admin interface for mapping management
 - Add lookup utility: `ExternalCodeMapping.resolve(code_system, external_code) -> Model | None`
 - Add basic tests for mapping CRUD and lookup
@@ -313,22 +326,24 @@ This plan is intentionally incremental to reduce risk.
 **Effort**: ~2-4 hours (low risk, high ROI)
 
 **Acceptance criteria**:
+
 - External code `("LIS_ACME", "12345")` can be mapped to `TestCatalog` instance
 - Lookup returns `None` for unmapped codes (HL7 parser handles gracefully)
 - Admin can add/edit/deactivate mappings
 
 **Ref**: `docs/terminology-strategy.md` for full terminology architecture vision
 
-
 ### Phase C — External exchange wiring (HL7/MLLP) behind flags ✅ **COMPLETED**
 
 **Goal**: Turn the HL7/MLLP scaffolding into an optional working integration seam.
 
 **Dependencies** (from `docs/lis-evolution.md`):
+
 - Phase T0: `ExternalCodeMapping` for test code resolution ✅ (already exists in core)
 - Phase L0/L1: `Specimen` model for proper result attachment (recommended before Phase C)
 
 **Deliverables** (all implemented):
+
 - ✅ `backend/hmis/apps/laboratory/services/hl7_integration.py`:
   - `HL7IntegrationConfig` — Configuration dataclass from settings
   - `HL7IntegrationService` — High-level orchestration service
@@ -352,6 +367,7 @@ This plan is intentionally incremental to reduce risk.
 - ✅ ExternalCodeMapping integration — Resolves external LIS test codes to `TestCatalog`
 
 **Tests** (24 passing in `backend/tests/test_hl7_phase_c_integration.py`):
+
 - ✅ Feature flag behavior (disabled vs enabled)
 - ✅ Send order workflow (builds ORM, sends via MLLP, parses ACK)
 - ✅ ACK rejection handling
@@ -363,13 +379,13 @@ This plan is intentionally incremental to reduce risk.
 - ✅ Management command (validate mode, import mode, force flag, code system override)
 
 **Acceptance criteria** (all met):
+
 - ✅ When enabled, a sample ORU message creates results for an existing lab order
 - ✅ ExternalCodeMapping is used to resolve external test codes to internal TestCatalog
 - ✅ When disabled, system behavior is unchanged (no-ops return descriptive errors)
 - ✅ Management command provides controlled testing without always-on socket listener
 
 **Ref**: `docs/lis-evolution.md` — Phase L3 (AnalyzerRun) for storing raw HL7 messages
-
 
 ### Phase D — Offline-first (future)
 

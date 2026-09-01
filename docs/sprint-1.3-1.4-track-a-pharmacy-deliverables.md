@@ -38,6 +38,7 @@ Track A of Sprint 1.3-1.4 implements a comprehensive Pharmacy Module for Vitora 
 **Purpose**: Master catalog of drugs available in the facility, based on Kenya Essential Medicines List (KEML).
 
 **Fields**:
+
 ```python
 class Drug(models.Model):
     """Drug master catalog entry."""
@@ -129,11 +130,13 @@ class Drug(models.Model):
 ```
 
 **Methods**:
+
 - `get_display_name()`: "Generic Name Strength Form"
 - `search(query)`: Full-text search on name, brands
 - `get_current_stock()`: Total stock across all batches
 
 **Test Coverage**: 12 tests
+
 - Drug creation with required fields
 - Drug code uniqueness
 - Form/category validation
@@ -156,6 +159,7 @@ class Drug(models.Model):
 **Purpose**: Track drug stock by batch with FEFO (First Expiry, First Out) support.
 
 **Fields**:
+
 ```python
 class StockBatch(models.Model):
     """Individual batch of drug stock."""
@@ -219,6 +223,7 @@ class StockBatch(models.Model):
 ```
 
 **Methods**:
+
 - `is_expired()`: Check if batch is expired
 - `days_to_expiry()`: Days until expiry
 - `is_low_stock()`: Below drug's reorder level
@@ -229,6 +234,7 @@ class StockBatch(models.Model):
 - `get_value()`: Total value of remaining stock
 
 **Test Coverage**: 18 tests
+
 - Batch creation with drug linkage
 - Batch number uniqueness per drug
 - Quantity tracking (received, available, dispensed)
@@ -257,6 +263,7 @@ class StockBatch(models.Model):
 **Purpose**: Track and manage stock-related alerts (low stock, expiring, expired).
 
 **Fields**:
+
 ```python
 class StockAlert(models.Model):
     """Stock-related alerts and notifications."""
@@ -312,12 +319,14 @@ class StockAlert(models.Model):
 ```
 
 **Methods**:
+
 - `acknowledge(user)`: Mark alert as acknowledged
 - `resolve(user, notes)`: Mark alert as resolved
 - `generate_low_stock_alerts()`: Classmethod to generate alerts
 - `generate_expiry_alerts()`: Classmethod to generate alerts
 
 **Test Coverage**: 12 tests
+
 - Alert creation for low stock
 - Alert creation for out of stock
 - Alert creation for expiring (30/60/90 days)
@@ -340,6 +349,7 @@ class StockAlert(models.Model):
 **Purpose**: Track prescriptions from encounters, linked to dispensing.
 
 **Fields**:
+
 ```python
 class Prescription(models.Model):
     """Prescription for a patient encounter."""
@@ -417,6 +427,7 @@ class PrescriptionItem(models.Model):
 ```
 
 **Methods**:
+
 - `is_valid()`: Check if prescription not expired
 - `is_fully_dispensed()`: All items dispensed
 - `get_remaining_items()`: Items not fully dispensed
@@ -424,6 +435,7 @@ class PrescriptionItem(models.Model):
 - `update_status()`: Auto-update based on items
 
 **Test Coverage**: 15 tests
+
 - Prescription creation linked to encounter
 - Prescription creation linked to patient
 - Prescriber must be authenticated user
@@ -449,6 +461,7 @@ class PrescriptionItem(models.Model):
 **Purpose**: Track drug dispensing from prescriptions with batch traceability.
 
 **Fields**:
+
 ```python
 class Dispensing(models.Model):
     """Drug dispensing record."""
@@ -515,12 +528,14 @@ class Dispensing(models.Model):
 ```
 
 **Methods**:
+
 - `process_return(quantity, reason)`: Handle drug returns
 - `requires_verification()`: Check if drug needs second verification
 - `verify(user)`: Second pharmacist verification
 - `calculate_total()`: Unit price × quantity - discount
 
 **Test Coverage**: 16 tests
+
 - Dispensing from prescription
 - Direct dispensing (OTC)
 - Batch linkage required
@@ -547,6 +562,7 @@ class Dispensing(models.Model):
 **Purpose**: Automatically select batches with earliest expiry for dispensing.
 
 **Implementation**:
+
 ```python
 class FEFODispenser:
     """First Expiry First Out dispensing logic."""
@@ -618,6 +634,7 @@ class FEFODispenser:
 ```
 
 **Test Coverage**: 10 tests
+
 - Single batch sufficient
 - Multiple batches needed
 - Earliest expiry selected first
@@ -638,6 +655,7 @@ class FEFODispenser:
 **Purpose**: Track non-dispensing stock changes (damage, loss, returns to supplier).
 
 **Fields**:
+
 ```python
 class StockAdjustment(models.Model):
     """Record of stock adjustment (non-dispensing)."""
@@ -682,6 +700,7 @@ class StockAdjustment(models.Model):
 ```
 
 **Test Coverage**: 8 tests
+
 - Adjustment creation reduces stock
 - Adjustment creation increases stock
 - Reason required
@@ -698,6 +717,7 @@ class StockAdjustment(models.Model):
 **Module**: `hmis/apps/pharmacy/views.py`
 
 **Endpoints**:
+
 ```
 # Drug Catalog
 GET     /api/pharmacy/drugs/                     # List drugs (searchable)
@@ -740,6 +760,7 @@ GET     /api/pharmacy/reports/movement/          # Stock movement report
 ```
 
 **Test Coverage**: 14 tests (Prescription API) + 12 tests (Dispensing API)
+
 - Drug search and filtering
 - Stock receive endpoint
 - Stock level queries
@@ -977,6 +998,7 @@ DRUG_SCHEDULES = {
 **Decision**: Track stock at batch level, not aggregate
 
 **Rationale**:
+
 - FEFO requires knowing each batch's expiry
 - Recall management requires batch traceability
 - Cost accounting per batch
@@ -987,6 +1009,7 @@ DRUG_SCHEDULES = {
 **Decision**: Separate Prescription from Dispensing models
 
 **Rationale**:
+
 - Prescription can be filled partially over time
 - Prescription can be filled at different facilities
 - Clear audit trail for prescribing vs dispensing
@@ -997,6 +1020,7 @@ DRUG_SCHEDULES = {
 **Decision**: Include KEML codes in Drug model
 
 **Rationale**:
+
 - Essential for Kenya regulatory compliance
 - Required for NHIF/SHA claims
 - Standardizes drug catalog across facilities

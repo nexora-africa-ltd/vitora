@@ -37,18 +37,23 @@ The Patient resource captures essential demographic and contact information:
 The Patient resource allows healthcare facilities to:
 
 ### ✅ Create and Register
+
 Register new patients in the HIE system with a unique identifier.
 
 ### 🔍 Search and Retrieve
+
 Find and access patient information using various identifiers.
 
 ### 📌 Update Demographics
+
 Maintain current patient contact and demographic information.
 
 ### 🏥 Validate Eligibility
+
 Check patient insurance and program eligibility status.
 
 ### Patient Management
+
 Healthcare providers can manage comprehensive patient information including demographics, contact information, insurance details, and eligibility status through a unified API interface. This enables coordinated care across the healthcare network.
 
 ---
@@ -377,14 +382,16 @@ curl -X GET "{base_url}/v3/client-registry/fetch-client?identification_type=Nati
     }
 }
 ```
+
 #### Request Body
+
 The following fields can be updated:
 
-Field	Required	Description
-email	No	Patient email address
-phone	No	Patient phone number
-county	No	Patient county of residence
-sub_county	No	Patient sub-county of residence
+Field Required Description
+email No Patient email address
+phone No Patient phone number
+county No Patient county of residence
+sub_county No Patient sub-county of residence
 
 #### Status Codes
 

@@ -12,6 +12,7 @@
 This document tracks the implementation of Sprint 1.5-1.6 Track B Lab Workflow completion for Vitora HMIS. The implementation follows Test-Driven Development (TDD) principles and is organized into 4 phases with ~112 total planned tests.
 
 ### Key Objectives
+
 - ✅ Complete in-house lab queue management
 - 🔄 External lab PDF requisition generation
 - 🔄 Enhanced result entry with auto-flagging
@@ -44,11 +45,13 @@ This document tracks the implementation of Sprint 1.5-1.6 Track B Lab Workflow c
 **Status**: ✅ All tests passing
 **Tests**: 14/14 passing
 **Files**:
+
 - Model: `backend/hmis/apps/laboratory/models.py`
 - Tests: `backend/tests/test_lab_queue.py`
 - Migrations: `0003_labqueue.py`, `0004_alter_labqueue_options_and_more.py`
 
 **Implementation Details**:
+
 ```python
 class LabQueue(models.Model):
     """Lab queue entry for in-house processing."""
@@ -68,6 +71,7 @@ class LabQueue(models.Model):
 ```
 
 **Test Coverage**:
+
 - [x] Queue entry creation
 - [x] Auto-generated queue numbers (LAB-YYYYMMDD-XXXX format)
 - [x] Queue number uniqueness
@@ -83,6 +87,7 @@ class LabQueue(models.Model):
 - [x] Queue filtering by technician
 
 **Commits**:
+
 - `cf6e35a` - feat: Implement LabQueue model with tests (Phase 1.1)
 
 ---
@@ -93,6 +98,7 @@ class LabQueue(models.Model):
 **Status**: ✅ All tests passing
 **Tests**: 8/8 passing
 **Files**:
+
 - Model: `backend/hmis/apps/laboratory/models.py`
 - Tests: `backend/tests/test_lab_result_template.py`
 - Migration: `0005_labresulttemplate.py`
@@ -101,6 +107,7 @@ class LabQueue(models.Model):
 
 **Baseline Specification** (from deliverables doc):
 The implementation follows the code snippet provided in `docs/sprint-1.5-1.6-track-b-lab-workflow-deliverables.md` as the baseline specification.
+
 ```python
 class LabResultTemplate(models.Model):
     """Template for lab test parameters with reference ranges."""
@@ -128,6 +135,7 @@ class LabResultTemplate(models.Model):
 ```
 
 **Test Coverage**:
+
 - [x] Template creation with ranges
 - [x] Get reference range for adult male
 - [x] Get reference range for adult female
@@ -138,10 +146,12 @@ class LabResultTemplate(models.Model):
 - [x] Test code + parameter code uniqueness
 
 **Commits**:
+
 - `d417fab` - feat: Implement LabResultTemplate model with tests (Phase 1.2)
 - `7c4be4b` - feat: Add management command to load lab reference ranges
 
 **Data Population Command**: ✅ COMPLETE
+
 - **Command**: `load_lab_reference_ranges.py`
 - **Tests**: 11/11 passing
 - **Loads 7 lab panels with 30 parameters**:
@@ -163,6 +173,7 @@ class LabResultTemplate(models.Model):
 **Status**: ✅ All tests passing
 **Tests**: 15/15 passing
 **Files**:
+
 - Model: `backend/hmis/apps/laboratory/models.py` (extended existing LabResult)
 - Tests: `backend/tests/test_lab_result_extended.py`
 - Migration: `0006_add_extended_lab_result_fields.py`
@@ -173,6 +184,7 @@ class LabResultTemplate(models.Model):
 The implementation follows the code snippet provided in `docs/sprint-1.5-1.6-track-b-lab-workflow-deliverables.md` as the baseline specification. Extended the existing LabResult model to add:
 
 **Fields Added**:
+
 ```python
 class LabResult(models.Model):
     # Existing fields preserved...
@@ -198,12 +210,14 @@ class LabResult(models.Model):
 ```
 
 **Improvements over baseline**:
+
 1. Added comprehensive `help_text` to all new fields for better documentation
 2. Proper foreign key configuration with `related_name='amended_results'`
 3. Consistent decimal precision (12 digits, 4 decimal places) for reference ranges
 4. Clear separation of concerns: reference ranges, critical flags, amendments, methodology
 
 **Test Coverage**:
+
 - [x] Reference range tracking (reference_low, reference_high, reference_range_text)
 - [x] Flag assignment: Normal (within range)
 - [x] Flag assignment: High (above range)
@@ -221,6 +235,7 @@ class LabResult(models.Model):
 - [x] is_critical_result field functionality
 
 **Commits**:
+
 - `5511878` - feat: Extend LabResult model with enhanced fields (Phase 1.3)
 
 ---
@@ -231,6 +246,7 @@ class LabResult(models.Model):
 **Status**: ✅ All tests passing
 **Tests**: 11/11 passing
 **Files**:
+
 - Model: `backend/hmis/apps/laboratory/models.py` (LabResultAttachment)
 - Validators: `backend/hmis/apps/laboratory/validators.py` (new file)
 - Tests: `backend/tests/test_lab_result_attachment.py`
@@ -242,6 +258,7 @@ class LabResult(models.Model):
 The implementation follows the code snippet provided in `docs/sprint-1.5-1.6-track-b-lab-workflow-deliverables.md` as the baseline specification.
 
 **Model Implementation**:
+
 ```python
 class LabResultAttachment(models.Model):
     """Scanned or uploaded lab result document."""
@@ -275,11 +292,13 @@ class LabResultAttachment(models.Model):
 ```
 
 **Validation Rules** (validators.py):
+
 - **Allowed extensions**: `.pdf`, `.png`, `.jpg`, `.jpeg`, `.tiff`, `.tif`
 - **Max file size**: 10MB
 - **Allowed MIME types**: `application/pdf`, `image/png`, `image/jpeg`, `image/tiff`
 
 **Improvements over baseline**:
+
 1. Added comprehensive `help_text` to all fields for better documentation
 2. Added `verbose_name` and `verbose_name_plural` in Meta for Django admin
 3. Separate validators.py module for reusable file validation
@@ -288,6 +307,7 @@ class LabResultAttachment(models.Model):
 6. Explicit BigAutoField for consistency with other models
 
 **Test Coverage** (11 tests):
+
 - [x] Attachment upload and storage
 - [x] Attachment linked to lab order
 - [x] File metadata extracted automatically (size, type, filename)
@@ -301,6 +321,7 @@ class LabResultAttachment(models.Model):
 - [x] Ordering by upload date (newest first)
 
 **Commits**:
+
 - TBD - feat: Implement LabResultAttachment model with file validation (Phase 1.4)
 
 ---
@@ -310,6 +331,7 @@ class LabResultAttachment(models.Model):
 **Status**: ✅ All tests implemented
 **Tests**: 9/9 implemented
 **Files**:
+
 - Model: `backend/hmis/apps/core/models.py`
 - Tests: `backend/tests/test_notification_model.py`
 - Migration: `0008_add_notification_model.py`
@@ -320,6 +342,7 @@ class LabResultAttachment(models.Model):
 The implementation follows the code snippet provided in `docs/sprint-1.5-1.6-track-b-lab-workflow-deliverables.md` as the baseline specification.
 
 **Model Implementation**:
+
 ```python
 class Notification(models.Model):
     """In-app notification for users."""
@@ -361,6 +384,7 @@ class Notification(models.Model):
 ```
 
 **Improvements over baseline**:
+
 1. Added comprehensive `help_text` to all fields for documentation and Django admin
 2. Added `verbose_name` and `verbose_name_plural` in Meta for Django admin
 3. Database indexes optimized for common query patterns:
@@ -373,6 +397,7 @@ class Notification(models.Model):
 7. Default empty strings for optional CharField fields to avoid None/empty confusion
 
 **Test Coverage** (9 tests):
+
 - [x] Notification creation with all required fields
 - [x] Priority levels (low, normal, high, critical) support
 - [x] Critical notification creation with emoji in title
@@ -384,6 +409,7 @@ class Notification(models.Model):
 - [x] String representation for admin display
 
 **Database Schema**:
+
 - Primary key: BigAutoField for large-scale deployments
 - Foreign key to User with CASCADE delete (notifications deleted when user deleted)
 - Indexes on commonly filtered fields (user, is_read, priority, notification_type)
@@ -403,6 +429,7 @@ class Notification(models.Model):
 **Purpose**: Manage lab order state transitions with validation
 
 **Planned Implementation**:
+
 ```python
 class LabOrderWorkflow:
     """
@@ -433,6 +460,7 @@ class LabOrderWorkflow:
 ```
 
 **Test Plan**:
+
 - [ ] Valid transition: ordered → collected
 - [ ] Valid transition: collected → in_progress (in-house only)
 - [ ] Valid transition: in_progress → completed
@@ -456,6 +484,7 @@ class LabOrderWorkflow:
 **Dependencies**: WeasyPrint library (already in pyproject.toml)
 
 **Test Plan**:
+
 - [ ] Requisition only for external orders
 - [ ] PDF generation success (returns BytesIO buffer)
 - [ ] PDF contains patient info
@@ -468,6 +497,7 @@ class LabOrderWorkflow:
 - [ ] PDF filename format
 
 **User Input Required**:
+
 - Facility logo (PNG, 300x100px minimum)
 - Facility name
 - Facility address
@@ -483,6 +513,7 @@ class LabOrderWorkflow:
 **Status**: ⏳ Not Started
 
 **Test Plan**:
+
 - [ ] Notification created on result release
 - [ ] Critical notification priority for critical results
 - [ ] Standard notification title format
@@ -505,6 +536,7 @@ class LabOrderWorkflow:
 **Target**: 12 tests
 
 **New Endpoints**:
+
 ```
 POST   /api/lab/orders/{id}/collect/          # Record sample collection
 POST   /api/lab/orders/{id}/start-processing/ # Start processing
@@ -522,6 +554,7 @@ GET    /api/lab/queue/stats/                  # Queue statistics
 **Target**: 14 tests
 
 **New Endpoints**:
+
 ```
 GET    /api/lab/orders/{id}/results/                 # List results
 POST   /api/lab/orders/{id}/results/                 # Enter single result
@@ -541,6 +574,7 @@ GET    /api/lab/results/pending-verification/       # Unverified criticals
 ### 4.1 LabReportService 🔄 TODO
 
 **Reports to Implement**:
+
 - Turnaround time analysis (by test type, priority)
 - Workload statistics (tests per day, by type, by technician)
 - Critical values report (count, notification response time)
@@ -553,6 +587,7 @@ GET    /api/lab/results/pending-verification/       # Unverified criticals
 ### Baseline Specification Approach
 
 **All implementations follow the code snippets provided in the deliverables spec document as the baseline**:
+
 - Code snippets from `docs/sprint-1.5-1.6-track-b-lab-workflow-deliverables.md` serve as the foundation
 - Improvements are made while preserving the core structure and API
 - All baseline functionality is maintained and enhanced
@@ -560,7 +595,7 @@ GET    /api/lab/results/pending-verification/       # Unverified criticals
   - Better error handling and edge case coverage
   - Enhanced documentation (help_text, docstrings)
   - Performance optimizations (indexes, query optimization)
-  - Django best practices (verbose names, __str__ methods)
+  - Django best practices (verbose names, **str** methods)
   - Type safety and validation
 
 ### TDD Workflow (STRICTLY ENFORCED)
@@ -632,6 +667,7 @@ make test     # run all tests with coverage
 ## Success Criteria
 
 ### Phase 1 (Current)
+
 - [x] LabQueue model with 14 tests passing ✅
 - [x] LabResultTemplate model with 8 tests passing ✅
 - [x] Data loading command with 11 tests passing ✅
@@ -642,6 +678,7 @@ make test     # run all tests with coverage
 - [ ] ≥85% code coverage for new models
 
 ### Overall (All Phases)
+
 - [ ] All 112+ tests passing
 - [ ] ≥85% code coverage
 - [ ] Lab queue functional (assign, collect, process, release)
@@ -658,6 +695,7 @@ make test     # run all tests with coverage
 ## Change Log
 
 ### 2026-01-02 (Phase 1 COMPLETE 🎉)
+
 - **Phase 1.1 Complete**: Implemented LabQueue model with 14 tests (all passing) ✅
 - **Phase 1.2 Complete**: Implemented LabResultTemplate model with 8 tests (all passing) ✅
 - **Data Loading Command Complete**: Created load_lab_reference_ranges with 11 tests (all passing) ✅
@@ -673,6 +711,7 @@ make test     # run all tests with coverage
 - **Next**: Phase 2 - Services & Workflow
 
 ### 2026-01-02 (Earlier - Phase 1.4 Complete)
+
 - **Phase 1.1 Complete**: Implemented LabQueue model with 14 tests (all passing) ✅
 - **Phase 1.2 Complete**: Implemented LabResultTemplate model with 8 tests (all passing) ✅
 - **Data Loading Command Complete**: Created load_lab_reference_ranges with 11 tests (all passing) ✅
@@ -688,6 +727,7 @@ make test     # run all tests with coverage
 - **Next**: Notification model (Phase 1.5)
 
 ### 2026-01-02 (Phase 1.2 Complete)
+
 - **Phase 1.1 Complete**: Implemented LabQueue model with 14 tests (all passing) ✅
 - **Phase 1.2 Complete**: Implemented LabResultTemplate model with 8 tests (all passing) ✅
 - **Data Loading Command Complete**: Created load_lab_reference_ranges with 11 tests (all passing) ✅
@@ -701,6 +741,7 @@ make test     # run all tests with coverage
 - **Next**: Extended LabResult model (Phase 1.3)
 
 ### 2026-01-02 (Updated)
+
 - **Phase 1.1 Complete**: Implemented LabQueue model with 14 tests (all passing) ✅
 - **Phase 1.2 Complete**: Implemented LabResultTemplate model with 8 tests (all passing) ✅
 - Created migrations for both models
@@ -711,11 +752,13 @@ make test     # run all tests with coverage
 - **Next**: Extended LabResult model (Phase 1.3)
 
 ### 2026-01-02 (Initial)
+
 - Created initial implementation plan
 - Set up project structure
 - Defined 4-phase approach with 112 planned tests
 
 ### 2026-01-01
+
 - Sprint 1.5-1.6 Track B kickoff
 
 ---
@@ -723,10 +766,12 @@ make test     # run all tests with coverage
 ## Notes
 
 ### User Input Pending
+
 1. **Facility Branding** (Week 10): Logo, letterhead details for PDF requisitions
 2. **Kenya Lab Standards** (Optional): Kenya-specific reference ranges (will use WHO defaults if not provided)
 
 ### Dependencies Added
+
 - ✅ WeasyPrint (PDF generation)
 - ✅ Pillow (Image processing)
 - ✅ ReportLab (Already in pyproject.toml)

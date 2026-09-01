@@ -28,6 +28,7 @@ This report compares Vitora's SHA integration implementation against the **offic
 **Authentication Method**: Basic Auth → JWT Token
 
 **Required Credentials** (from collection variables):
+
 - `consumer_key`: API key (e.g., `1FL-DHABP05113`)
 - `secret`: Client secret for JWT signing
 - `username`: API username
@@ -36,12 +37,14 @@ This report compares Vitora's SHA integration implementation against the **offic
 ### Official Code Snippets (from SHA Developer Portal)
 
 #### cURL
+
 ```bash
 curl -X GET "{base_url}/v1/hie-auth?key=YOUR-CONSUMER-KEY" \
   -H "Authorization: Basic $(echo -n 'YOUR-USERNAME:YOUR-PASSWORD' | base64)"
 ```
 
 #### Python
+
 ```python
 import requests
 import base64
@@ -66,6 +69,7 @@ token = response.json()["token"]
 ```
 
 #### JavaScript (Node.js)
+
 ```javascript
 const base64 = require("base-64");
 
@@ -145,6 +149,7 @@ pm.collectionVariables.set("token", jwt);
 ```
 
 **Headers for Authenticated Requests**:
+
 ```
 Authorization: Bearer {{token}}
 Content-Type: application/json
@@ -244,18 +249,21 @@ class SHAAuthService:
 **Endpoint**: `GET /v2/eligibility`
 
 **Query Parameters**:
+
 | Parameter | Description | Example |
 |-----------|-------------|---------|
 | `doc_type` | Document type | `national_id`, `kra_pin`, `sha_number`, `cr_number` |
 | `doc_value` | Document value | `12345678` |
 
 **Example Request**:
+
 ```
 GET https://uat.dha.go.ke/v2/eligibility?doc_type=national_id&doc_value=12345678
 Authorization: Bearer {{token}}
 ```
 
 **Response Structure**:
+
 ```json
 {
     "IsSuccess": true,
@@ -311,12 +319,14 @@ SHA provides a Client Registry for patient lookup and registration.
 **Endpoint**: `GET /v3/client-registry/fetch-client`
 
 **Query Parameters**:
+
 | Parameter | Description | Example |
 |-----------|-------------|---------|
 | `doc_type` | Document type | `national_id`, `kra_pin`, `sha_number`, `cr_number`, `birth_certificate`, `nemis`, `driving_licence` |
 | `doc_value` | Document value | `12345678` |
 
 **Response**:
+
 ```json
 {
     "IsSuccess": true,
@@ -339,6 +349,7 @@ SHA provides a Client Registry for patient lookup and registration.
 **Endpoint**: `POST /v3/uat-cr-registration`
 
 **Request Body** (FHIR Patient resource):
+
 ```json
 {
     "resourceType": "Patient",
@@ -441,17 +452,20 @@ SHA_PASSWORD=your_password
 ## 7. Implementation Priority
 
 ### Phase 1 - Critical (Week 1)
+
 1. ✅ Create `SHAAuthService` with JWT generation
 2. ✅ Update eligibility endpoint to `GET /v2/eligibility`
 3. ✅ Update claims endpoint to `POST /v1/shr-med/bundle`
 4. ✅ Update test script with correct endpoints
 
 ### Phase 2 - High (Week 2)
+
 1. Implement Client Registry integration
 2. Add terminology service lookups
 3. Update FHIR bundle format if needed
 
 ### Phase 3 - Enhancement (Week 3+)
+
 1. Add caching for terminology lookups
 2. Implement pre-authorization flow
 3. Add facility search integration

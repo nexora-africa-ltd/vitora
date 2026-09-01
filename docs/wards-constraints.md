@@ -494,6 +494,7 @@ class AdmissionViewSet(viewsets.ModelViewSet):
 ### 4.1 Real-Time Notifications
 
 Use Django Channels to notify relevant clients when:
+
 - Ward constraints are updated
 - Constraint violations occur during admission
 - Capacity changes affect compatible bed availability
@@ -935,6 +936,7 @@ function SupervisorAlertPanel() {
 ```
 
 **Key features:**
+
 - Primary: WebSocket connection for real-time updates
 - Fallback: Automatic polling when WebSocket unavailable
 - Zod validation: All polling responses validated with schemas
@@ -1101,6 +1103,7 @@ AuditLog.log(
 ### 7.2 Reporting Dashboard
 
 Add a section to admin/quality dashboard showing:
+
 - Total admissions with constraint overrides (daily/weekly/monthly)
 - Most common override reasons
 - Wards with highest override rates
@@ -1281,6 +1284,7 @@ test('supervisor receives real-time alert for CRITICAL violations', async () => 
 ## 9. Implementation Phases
 
 ### Phase 1: Backend Foundation (4 days) ✅ COMPLETE
+
 - [x] Add Ward model fields (migration)
 - [x] Implement Ward model `save()` with auto-populate age defaults by ward type
 - [x] Create WardCompatibilityService
@@ -1293,6 +1297,7 @@ test('supervisor receives real-time alert for CRITICAL violations', async () => 
 - [x] Add `receive_critical_alerts` permission
 
 ### Phase 2: WebSocket & Polling + Supervisor Escalation (3 days) ✅ COMPLETE
+
 - [x] Create WardCompatibilityConsumer
 - [x] Create SupervisorAlertConsumer (for CRITICAL violations)
 - [x] Add signal handlers for real-time notifications
@@ -1303,6 +1308,7 @@ test('supervisor receives real-time alert for CRITICAL violations', async () => 
 - [x] Add Zod schemas for ward updates and supervisor alerts (`lib/schemas/inpatient.schema.ts`)
 
 ### Phase 3: Frontend Integration (3-4 days)
+
 - [x] Update ward form with constraint fields (auto-populated defaults shown)
 - [x] Add compatibility check to admission flow
 - [x] Create override warning dialog (`components/inpatient/compatibility-override-dialog.tsx`)
@@ -1314,6 +1320,7 @@ test('supervisor receives real-time alert for CRITICAL violations', async () => 
 - [x] Write frontend tests (`e2e/inpatient/inpatient.spec.ts`)
 
 ### Phase 4: Reporting & Refinement (2 days) ✅ COMPLETE
+
 - [x] Add override metrics to dashboard (`components/inpatient/constraint-override-metrics.tsx`)
 - [x] Create constraint violation report (metrics endpoint: `/api/inpatient/supervisor/alerts/metrics/`)
 - [x] Add supervisor alert acknowledgment UI (`components/inpatient/supervisor-alerts-panel.tsx`)
@@ -1325,6 +1332,7 @@ test('supervisor receives real-time alert for CRITICAL violations', async () => 
 - [ ] Performance testing with large patient volumes (deferred)
 
 ### Phase 5: PowerSync Offline Support (Future Sprint)
+
 - [ ] Set up PowerSync backend service
 - [ ] Define sync rules for ward/bed/admission data
 - [ ] Create SQLite schema for client-side storage
@@ -1332,6 +1340,7 @@ test('supervisor receives real-time alert for CRITICAL violations', async () => 
 - [ ] Test offline admission scenarios
 
 ### Phase 6: Insurance Tier Constraints (Future)
+
 - [ ] Add amenity ward type and tier field
 - [ ] Integrate with billing module for tier validation
 - [ ] UI for tier compatibility display

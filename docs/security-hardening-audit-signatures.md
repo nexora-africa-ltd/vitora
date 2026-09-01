@@ -137,6 +137,7 @@ class IntegrityResult:
 ```
 
 **Verification algorithm:**
+
 1. Load entries ordered by `sequence_number` ASC
 2. For each entry, recompute `compute_hash()` using stored fields
 3. Compare recomputed hash against stored `entry_hash`
@@ -252,6 +253,7 @@ python manage.py backfill_audit_hashes
 | `is_active` | Can be deactivated to stop new issuance |
 
 **X.509 Extensions:**
+
 - `BasicConstraints(ca=True, path_length=None)` — marks as CA
 - `KeyUsage(digital_signature=True, key_cert_sign=True, crl_sign=True)` — signing only
 
@@ -275,10 +277,12 @@ Each clinical user who needs to sign documents receives a certificate.
 | `revocation_reason` | One of: `KEY_COMPROMISE`, `AFFILIATION_CHANGED`, `SUPERSEDED`, `CESSATION`, `PRIVILEGE_WITHDRAWN` |
 
 **X.509 Extensions:**
+
 - `BasicConstraints(ca=False)` — not a CA
 - `KeyUsage(digital_signature=True, content_commitment=True)` — signing + non-repudiation
 
 **Properties:**
+
 - `is_expired` — `timezone.now() > valid_to`
 - `is_valid` — not revoked AND not expired AND CA is active
 
@@ -464,6 +468,7 @@ User or system requests verification
 Each document type has a dedicated content extractor that selects the clinically significant fields and serializes them to **canonical JSON** (`json.dumps(data, sort_keys=True, default=str)`).
 
 This ensures:
+
 - **Determinism** — same document always produces the same hash
 - **Stability** — non-clinical fields (timestamps on related objects, display names) are excluded
 - **Auditability** — any change to signed fields invalidates the signature
@@ -623,6 +628,7 @@ CELERY_BEAT_SCHEDULE = {
 ### Key Test Scenarios
 
 **Audit Integrity:**
+
 - Hash is computed on every `AuditLog.log()` call
 - Sequential entries chain correctly (N+1 references hash of N)
 - Tamper detection: modified details → `verify_chain()` returns failure
@@ -633,6 +639,7 @@ CELERY_BEAT_SCHEDULE = {
 - Backfill command is idempotent
 
 **Digital Signatures:**
+
 - CA generates valid X.509 certificate (self-signed)
 - User certificate issuance is signed by CA
 - Certificate revocation creates CRL entry
@@ -686,6 +693,7 @@ import { SignatureBadge } from '@/components/shared/signature-badge';
 ```
 
 States:
+
 - **Unsigned**: "Unsigned" badge with optional "Sign" button
 - **Signed**: Green "Signed by Dr. Smith" badge (clickable → opens verification dialog)
 - **Verification dialog**: Shows certificate validity, content integrity, RSA signature status

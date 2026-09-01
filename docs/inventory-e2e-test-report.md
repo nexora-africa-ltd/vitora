@@ -408,13 +408,13 @@ const isExpiringSoon = (expiryDate: string) => {
 
 ### 🟡 Medium Priority (Improves UX)
 
-4. **Filter Functionality** - Status and drug filters working
-5. **Missing Display Columns** - Days to expiry, supplier, selling price
+1. **Filter Functionality** - Status and drug filters working
+2. **Missing Display Columns** - Days to expiry, supplier, selling price
 
 ### 🟢 Low Priority (Enhancements)
 
-6. **Expiring Stock Warnings** - Visual indicators and filters
-7. **Location Tracking** - Filter and edit location features
+1. **Expiring Stock Warnings** - Visual indicators and filters
+2. **Location Tracking** - Filter and edit location features
 
 ---
 

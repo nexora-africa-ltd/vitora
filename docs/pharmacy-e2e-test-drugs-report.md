@@ -100,6 +100,7 @@ These tests confirm the foundational pharmacy UI is working:
 ```
 
 **Files to Create/Modify**:
+
 - `app/pharmacy/drugs/components/drug-filters.tsx` (new)
 - `app/pharmacy/drugs/page.tsx` (integrate filters)
 
@@ -133,6 +134,7 @@ These tests confirm the foundational pharmacy UI is working:
 ```
 
 **Files to Modify**:
+
 - `app/pharmacy/drugs/components/drug-table.tsx`
 
 ---
@@ -169,6 +171,7 @@ These tests confirm the foundational pharmacy UI is working:
 ```
 
 **Files to Create/Modify**:
+
 - `app/pharmacy/drugs/components/drug-pagination.tsx` (new)
 - `app/pharmacy/drugs/page.tsx` (integrate pagination)
 
@@ -247,6 +250,7 @@ export default function NewDrugPage() {
 ```
 
 **Files to Create**:
+
 - `app/pharmacy/drugs/new/page.tsx`
 - `app/pharmacy/drugs/components/drug-form.tsx`
 
@@ -323,6 +327,7 @@ export function DrugDetailDialog({ drug, open, onClose }) {
 ```
 
 **Files to Create**:
+
 - `app/pharmacy/drugs/components/drug-detail-dialog.tsx`
 - `app/pharmacy/drugs/[id]/page.tsx`
 
@@ -394,6 +399,7 @@ export function DrugDetailDialog({ drug, open, onClose }) {
 ```
 
 **Files to Modify**:
+
 - `app/pharmacy/drugs/components/drug-table.tsx`
 - `app/pharmacy/drugs/[id]/edit/page.tsx` (new)
 
@@ -415,22 +421,25 @@ export function DrugDetailDialog({ drug, open, onClose }) {
 ## Recommended Implementation Order
 
 ### Phase 1: Core Drug Management (Days 1-2)
+
 1. Create drug form with all required fields
 2. Add Kenya compliance fields (KEML, NHIF)
 3. Add status indicators to drug table
 4. Implement create drug API integration
 
 ### Phase 2: CRUD Operations (Days 3-4)
-5. Add row action menu (edit/delete)
-6. Create edit form with pre-filled data
-7. Implement delete with confirmation
-8. Add validation for deleting drugs with stock
+
+1. Add row action menu (edit/delete)
+2. Create edit form with pre-filled data
+3. Implement delete with confirmation
+4. Add validation for deleting drugs with stock
 
 ### Phase 3: Enhanced UX (Days 5-6)
-9. Add filter components
-10. Implement search functionality
-11. Add pagination
-12. Create drug detail dialog
+
+1. Add filter components
+2. Implement search functionality
+3. Add pagination
+4. Create drug detail dialog
 
 ---
 

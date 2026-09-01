@@ -6,6 +6,7 @@ Scope: X-ray, Ultrasound, CT, MRI, and other DICOM-capable modalities integratin
 ## 1) Purpose
 
 This runbook describes how to:
+
 - Set up imaging equipment for DICOM push into Vitora
 - Configure facility-level imaging integration settings in UI
 - Run and operate the DICOM C-STORE listener
@@ -31,6 +32,7 @@ This runbook describes how to:
 ## 4) UI Configuration (Facility Team)
 
 Use the new settings UI:
+
 - Path: `/imaging/settings`
 - Fields:
   - `Enable inbound C-STORE listener`
@@ -41,6 +43,7 @@ Use the new settings UI:
   - `Notes`
 
 Equipment registry UI:
+
 - List: `/imaging/equipment`
 - Add: `/imaging/equipment/new`
 - Capture AE title, station name, manufacturer, model, serial, room, calibration details.
@@ -85,6 +88,7 @@ Host format note:
 - If using a public DNS name, ensure it resolves and routes TCP `11112` to the listener host.
 
 Recommended naming:
+
 - `XR_ROOM1`, `US_ROOM2`, `CT_MAIN`, `MRI_1`
 
 Record each machine in equipment registry with matching AE title/station/serial.
@@ -191,21 +195,25 @@ Current backend controls for DICOM access paths:
 ## 10) Troubleshooting
 
 ### A. Study not appearing
+
 - Check listener process is running.
 - Check port and firewall (`11112/TCP` by default).
 - Confirm modality destination AE/host/port values.
 - Confirm patient match exists (PatientID -> MRN/national ID).
 
 ### B. Association rejected
+
 - Verify calling AE is in `DICOM_SCP_ALLOWED_PEERS` if allow-list enabled.
 - Confirm called AE title matches listener AE.
 
 ### C. File received but viewer fails
+
 - Confirm file exists on disk under `MEDIA_ROOT/dicom/...`.
 - Verify `DICOMInstance.file_path` points to existing file.
 - Check permissions for media directory.
 
 ### D. Equipment not linked
+
 - Verify DICOM tags contain AE/station/manufacturer/model/serial.
 - Confirm equipment record values match incoming metadata.
 
@@ -226,6 +234,7 @@ Current backend controls for DICOM access paths:
 ## 13) Change Log Template
 
 For each facility change, record:
+
 - Date/time
 - Facility/site
 - Machine name + calling AE

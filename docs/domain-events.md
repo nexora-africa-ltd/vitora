@@ -734,6 +734,7 @@ python manage.py replay_events --dry-run
 ```
 
 **Options**:
+
 - `--event-type`: Filter by event type (supports prefix matching)
 - `--aggregate-type`: Filter by aggregate type (e.g., `Invoice`)
 - `--facility-id`: Filter by facility
@@ -831,9 +832,9 @@ class PharmacyEvents:
     NEW_EVENT = "pharmacy.aggregate.action"
 ```
 
-2. **If it's a new class**, also update `hmis/apps/core/events/__init__.py` to export it.
+1. **If it's a new class**, also update `hmis/apps/core/events/__init__.py` to export it.
 
-3. **Add a naming convention test** in the appropriate test file.
+2. **Add a naming convention test** in the appropriate test file.
 
 ### Wiring a Signal Handler to Publish Events
 
@@ -843,7 +844,7 @@ class PharmacyEvents:
 from hmis.apps.core.events import SomeEvents, publish_event
 ```
 
-2. **Add the publish call** at the end of the handler's success path (inside the `try` block, after the primary operation):
+1. **Add the publish call** at the end of the handler's success path (inside the `try` block, after the primary operation):
 
 ```python
 @receiver(post_save, sender=MyModel)
@@ -867,7 +868,7 @@ def my_handler(sender, instance, created, **kwargs):
     )
 ```
 
-3. **Write a test** in `tests/core/test_signal_events_extended.py` following the pattern above.
+1. **Write a test** in `tests/core/test_signal_events_extended.py` following the pattern above.
 
 ### Adding a New Projection
 
@@ -883,7 +884,7 @@ class NewStats(models.Model):
         unique_together = [("facility_id", ...)]
 ```
 
-2. **Create the projection class** (e.g., `hmis/apps/core/projections/new_projection.py`):
+1. **Create the projection class** (e.g., `hmis/apps/core/projections/new_projection.py`):
 
 ```python
 from hmis.apps.core.projections.base import BaseProjection
@@ -900,9 +901,9 @@ class NewProjection(BaseProjection):
         NewStats.objects.filter(**filters).delete()
 ```
 
-3. **Register** in `ProjectionRegistry` so it gets wired at startup.
+1. **Register** in `ProjectionRegistry` so it gets wired at startup.
 
-4. **Run `makemigrations`** for the new model.
+2. **Run `makemigrations`** for the new model.
 
 ---
 
@@ -911,12 +912,14 @@ class NewProjection(BaseProjection):
 ### Why synchronous dispatch?
 
 The HMIS runs in environments with unreliable infrastructure. A synchronous, in-process event bus ensures:
+
 - **No additional infrastructure** (no Redis/RabbitMQ required for events)
 - **Transactional consistency** — projections update in the same request
 - **Simpler debugging** — stack traces flow through the handler chain
 - **Works offline** — the desktop app can run the same event system without a message broker
 
 The trade-off is that slow handlers block the response. This is acceptable because:
+
 - `publish_event` is best-effort; handler failures are caught
 - Projections do simple counter updates (microseconds)
 - Heavy work (email, external API calls) is delegated to Celery tasks
@@ -924,6 +927,7 @@ The trade-off is that slow handlers block the response. This is acceptable becau
 ### Why persist before dispatch?
 
 EventStore receives the event before any handler runs. This guarantees:
+
 - Events are never lost, even if handlers crash
 - Projections can be rebuilt from the store at any time
 - Audit trail is complete regardless of subscriber state
@@ -938,6 +942,7 @@ Both publish the same event type to the EventBus. Subscribers see one event (the
 ### Tenant scoping
 
 Every event carries `facility_id` and/or `organization_id` from the source model. This enables:
+
 - Projections scoped to a facility (e.g., ward occupancy for facility X)
 - Event replay filtered by tenant
 - Future: per-tenant event streams for multi-region deployment

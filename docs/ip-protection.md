@@ -45,10 +45,12 @@ native `.so` (Linux) / `.pyd` (Windows), and the `.py` source is removed
 from the shipped artifact.
 
 **Files**:
+
 - `backend/scripts/compile-hub.py` — compilation driver
 - `.github/workflows/build-hub.yml` — CI matrix (Linux + Windows)
 
 **What stays as plain Python** (and why):
+
 | Path / pattern | Reason |
 |----------------|--------|
 | `manage.py`, `wsgi.py`, `asgi.py` | Entry points read by gunicorn/uvicorn |
@@ -78,12 +80,14 @@ binds the install to a tenant organization and (optionally) the host's
 hardware fingerprint.
 
 **Files**:
+
 - `backend/hmis/apps/licensing/` — license token issuance + verification
 - `backend/hmis/apps/core/middleware.py::HubLicenseGuardMiddleware` — enforces a license is present and valid on every request
 - `backend/keys/license_public.pem` — public key shipped with the hub for offline verification of cloud-issued license tokens
 - License private key — held only by Nexora's cloud, never shipped
 
 **Enforcement points**:
+
 1. **Activation**: `install-hub.sh` / `install-hub-windows.ps1` calls
    `POST /api/licensing/activate` on the cloud, receives a signed JWT
    license token, stores it locally.
@@ -94,7 +98,7 @@ hardware fingerprint.
 4. **Periodic refresh**: Hub phones home to renew the license token on
    a configurable interval. Revocation propagates within one cycle.
 5. **Hardware binding** (optional): Hub fingerprints CPU + motherboard
-   + disk serial; cloud refuses to re-issue tokens for a fingerprint
+   - disk serial; cloud refuses to re-issue tokens for a fingerprint
    different from the one on file unless an operator approves a transfer.
 
 **Anti-tamper consideration**: The `HubLicenseGuardMiddleware` itself is
@@ -108,6 +112,7 @@ a tampered hub will detectably stop refreshing its license.
 ## Tier 3 — Legal layer (implemented)
 
 **Files**:
+
 - `LICENSE.md` (repository root) — proprietary license notice
 - `backend/scripts/HUB-EULA.txt` (bundled into every hub install) —
   customer-facing End-User License Agreement explicitly prohibiting
@@ -117,11 +122,13 @@ a tampered hub will detectably stop refreshing its license.
   on every source file
 
 **What this gives us**:
+
 - Clear evidence of trade-secret designation under Kenyan law
 - Enforceable basis for injunctive relief and damages
 - Removes any "I didn't know it was proprietary" defense
 
 **What this does NOT give us**:
+
 - Practical enforcement against actors outside our jurisdiction
 - Protection against employees who leave with knowledge in their heads
   (covered separately by employment contracts and NDAs)
@@ -191,6 +198,7 @@ prime candidates for server-side execution:
 ## Auditing this strategy
 
 Review annually or when:
+
 - A material breach is reported.
 - Cython, the CI runner OS, or CPython releases a major version that
   changes the build pipeline.

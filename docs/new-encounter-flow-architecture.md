@@ -98,6 +98,7 @@ interface NewEncounterSession {
 ## Tab Navigation
 
 The `NewEncounterTabs` component provides:
+
 - Visual step numbers with completion indicators (✓)
 - Active step highlighting
 - Required field indicators (*)
@@ -107,6 +108,7 @@ The `NewEncounterTabs` component provides:
 ## Draft Recovery
 
 Data is automatically persisted to localStorage via Zustand's `persist` middleware:
+
 - Session survives page refresh and browser close
 - Draft recovery banner shown if previous session exists
 - User can recover or discard draft
@@ -123,6 +125,7 @@ After creating an encounter:
 ## Browser Navigation
 
 The URL-based approach enables:
+
 - Browser back/forward navigation between steps
 - Bookmarkable step URLs
 - Refresh without losing current step (data in localStorage)

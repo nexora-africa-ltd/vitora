@@ -101,7 +101,7 @@ Establishes the substrate every later phase reuses.
 
 - `DHAError` hierarchy (`ValidationError`, `Unauthorized`, `NotFound`,
   `RateLimited`, `ClientError`, `Server`, `Timeout`, `Transport`, `Unknown`)
-  + `DHAError.from_status(status, payload)` factory.
+  - `DHAError.from_status(status, payload)` factory.
 - `IlmClient(get|post|put|patch|delete|post_multipart)`:
   - injects auth headers from `SHAAuthService`
   - retries transport / 5xx up to `ILM_MAX_RETRIES` with exponential backoff
@@ -222,6 +222,7 @@ emergency-room admissions, and EMT transport claims.
 | EMT | `POST /claims/emt` | Emergency medical transport claim |
 
 **New models**:
+
 - **`SHAPreauth`** (`FacilityScopedModel`): tracks `dha_external_id`,
   `status` (DRAFT/SUBMITTED/APPROVED/DENIED/CANCELLED), `request_payload`,
   `response_payload`, `correlation_id`, `claim` FK, `patient` FK,
@@ -344,6 +345,7 @@ Migration: `billing/0040_shaotprequest_shaotpwhitelistrequest_shaupload`.
 Local browse: `GET /api/sha/ilm/prescriptions/local/` (filters: `patient_pk`, `status`, `intervention_code`).
 
 Mounts under `/api/sha/ilm/prescriptions/...`:
+
 - `preview/`, `` (POST create), `dispenses/`, `doctors/` (DELETE), `local/`.
 
 ### 7b.2 Model

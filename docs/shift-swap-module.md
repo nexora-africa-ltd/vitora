@@ -127,6 +127,7 @@ All endpoints are scoped to the user's active facility via `TenantScopedViewMixi
 ```
 
 **Validation rules:**
+
 - `requesting_shift` must be in `SCHEDULED` status
 - If `is_partial` is true, `partial_start_time` and `partial_end_time` are required and must fall within the shift's time range
 - `expires_at` is auto-set to the earlier of: 48 hours from now, or 48 hours before the shift starts
@@ -177,6 +178,7 @@ The original shift is split:
 3. If the swapped segment is in the middle of the shift, the original is split into **two remaining shifts**.
 
 **Example**: Staff A has a 07:00–19:00 DAY shift. They swap 07:00–12:00 to Staff B.
+
 - Staff B gets a new shift: 07:00–12:00
 - Staff A's shift is adjusted to: 12:00–19:00
 

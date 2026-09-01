@@ -201,6 +201,7 @@ HL7_LIS_PORT = int(os.getenv("HL7_LIS_PORT", "2575"))
 **File**: `hmis/apps/hl7/admin.py`
 
 Features:
+
 - Message list with color-coded status badges
 - Filters: direction, message type, status, date
 - Search by control ID

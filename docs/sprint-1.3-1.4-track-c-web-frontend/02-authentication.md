@@ -16,6 +16,7 @@ This document covers JWT authentication implementation including login/logout fl
 ## 1. TypeScript Types
 
 **lib/types/auth.ts**:
+
 ```typescript
 export interface User {
   id: number;
@@ -62,6 +63,7 @@ export interface DecodedToken {
 ## 2. Token Storage
 
 **lib/auth/storage.ts**:
+
 ```typescript
 const ACCESS_TOKEN_KEY = 'vitora_access_token';
 const REFRESH_TOKEN_KEY = 'vitora_refresh_token';
@@ -149,6 +151,7 @@ export const tokenStorage = {
 ```
 
 **lib/auth/token-utils.ts**:
+
 ```typescript
 import { DecodedToken } from '@/lib/types/auth';
 
@@ -199,6 +202,7 @@ export function getTokenExpiryTime(token: string): number {
 ## 3. Auth API Client
 
 **lib/api/auth.ts**:
+
 ```typescript
 import axios from 'axios';
 import { LoginCredentials, LoginResponse, TokenPair, User } from '@/lib/types/auth';
@@ -268,6 +272,7 @@ export const authApi = {
 ## 4. Auth Zustand Store
 
 **lib/stores/auth-store.ts**:
+
 ```typescript
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
@@ -399,6 +404,7 @@ export const useAuthStore = create<AuthStore>()(
 ## 5. Auth Context & Provider
 
 **lib/auth/context.tsx**:
+
 ```typescript
 'use client';
 
@@ -481,6 +487,7 @@ export function useAuth(): AuthContextValue {
 ## 6. Auth Guard Component
 
 **lib/auth/guard.tsx**:
+
 ```typescript
 'use client';
 
@@ -561,6 +568,7 @@ export function useRequireRole(allowedRoles: string[]) {
 ## 7. Login Page
 
 **app/(auth)/layout.tsx**:
+
 ```typescript
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -572,6 +580,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
 ```
 
 **app/(auth)/login/page.tsx**:
+
 ```typescript
 'use client';
 
@@ -704,6 +713,7 @@ export default function LoginPage() {
 ## 8. Logout Handler
 
 **lib/auth/hooks.ts**:
+
 ```typescript
 import { useCallback } from 'react';
 import { useRouter } from 'next/navigation';
@@ -743,7 +753,8 @@ export function useIsAuthenticated() {
 
 ### 9.1 Token Storage Tests (6 tests)
 
-**__tests__/lib/auth/storage.test.ts**:
+****tests**/lib/auth/storage.test.ts**:
+
 ```typescript
 import { tokenStorage } from '@/lib/auth/storage';
 
@@ -793,7 +804,8 @@ describe('Token Storage', () => {
 
 ### 9.2 Token Utils Tests (4 tests)
 
-**__tests__/lib/auth/token-utils.test.ts**:
+****tests**/lib/auth/token-utils.test.ts**:
+
 ```typescript
 import { decodeToken, isTokenExpired, getTokenExpiryTime } from '@/lib/auth/token-utils';
 
@@ -831,7 +843,8 @@ describe('Token Utils', () => {
 
 ### 9.3 Auth Store Tests (8 tests)
 
-**__tests__/lib/stores/auth-store.test.ts**:
+****tests**/lib/stores/auth-store.test.ts**:
+
 ```typescript
 import { useAuthStore } from '@/lib/stores/auth-store';
 import { authApi } from '@/lib/api/auth';
@@ -935,7 +948,8 @@ describe('Auth Store', () => {
 
 ### 9.4 Login Page Tests (6 tests)
 
-**__tests__/app/auth/login.test.tsx**:
+****tests**/app/auth/login.test.tsx**:
+
 ```typescript
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -1025,7 +1039,8 @@ describe('Login Page', () => {
 
 ### 9.5 Auth Guard Tests (4 tests)
 
-**__tests__/lib/auth/guard.test.tsx**:
+****tests**/lib/auth/guard.test.tsx**:
+
 ```typescript
 import { render, screen } from '@testing-library/react';
 import { AuthGuard } from '@/lib/auth/guard';
@@ -1101,6 +1116,7 @@ describe('Auth Guard', () => {
 ## 10. Checklist
 
 ### Day 3: Auth Foundation
+
 - [ ] Create auth TypeScript types
 - [ ] Implement token storage utilities
 - [ ] Implement token decode/expiry utilities
@@ -1108,6 +1124,7 @@ describe('Auth Guard', () => {
 - [ ] Write 10 auth utility tests
 
 ### Day 4: Auth Flow
+
 - [ ] Implement auth Zustand store
 - [ ] Create AuthProvider and context
 - [ ] Implement AuthGuard component

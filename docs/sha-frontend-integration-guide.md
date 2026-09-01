@@ -47,6 +47,7 @@
 ## Flow 1: Patient Registration with CR Lookup
 
 ### When to Trigger
+
 - User enters National ID, Huduma Number, or Passport in registration form
 - Trigger on blur or "Verify" button click
 
@@ -128,6 +129,7 @@ async function handleIdVerify(nationalId: string) {
 ## Flow 2: Eligibility Check Before Service
 
 ### When to Trigger
+
 - When starting a new encounter for a patient
 - On patient arrival (check-in flow)
 - Before adding billable items
@@ -244,6 +246,7 @@ function EligibilityBanner({ patientId }: { patientId: number }) {
 ## Flow 3: Service Item Selection with SHA Validation
 
 ### When to Trigger
+
 - When adding diagnosis codes (ICD-11 validation)
 - When adding procedures (SHA intervention lookup)
 - When adding lab tests (LOINC validation)
@@ -345,6 +348,7 @@ function SHAInterventionSelect({
 ## Flow 4: Claim Submission
 
 ### When to Trigger
+
 - When encounter is marked as "completed"
 - When invoice is finalized
 - Manual "Submit to SHA" action
@@ -469,6 +473,7 @@ function ClaimSubmissionButton({ invoiceId, encounterId }: Props) {
 ## Flow 5: Facility Validation (Admin/Setup)
 
 ### When to Trigger
+
 - Facility setup/configuration
 - Before enabling SHA billing
 

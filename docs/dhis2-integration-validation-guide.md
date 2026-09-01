@@ -82,7 +82,7 @@ Wait for: `Server startup in XXXXX ms`
 
 ### 1.5 Access DHIS2 Web Interface
 
-- **URL**: http://localhost:8082
+- **URL**: <http://localhost:8082>
 - **Username**: `admin`
 - **Password**: `district`
 
@@ -150,6 +150,7 @@ Create these 24 data elements matching actual IDSR diseases from `backend/data/n
 > **Note**: This is a test subset. Production requires all 55 notifiable diseases (19 IMMEDIATE, 21 WEEKLY, 15 MONTHLY) from the diseases JSON.
 
 **Pro Tip**: Create Data Element Groups:
+
 - "IDSR Immediate Indicators" - Cholera, Measles, AFP/Polio
 - "IDSR Weekly Indicators" - Malaria, Typhoid, Dysentery
 
@@ -171,7 +172,8 @@ After creating data elements, query their UIDs via API:
 curl -u admin:district \
   "http://localhost:8082/api/dataElements.json?filter=name:ilike:IDSR&fields=id,name,shortName&paging=false"
 ```
-Or use session-based API access - while logged into the browser at http://localhost:8082, navigate directly to:
+
+Or use session-based API access - while logged into the browser at <http://localhost:8082>, navigate directly to:
 `http://localhost:8082/api/dataElements.json?filter=name:ilike:IDSR&fields=id,name,shortName&paging=false`
 Or export via UI: Maintenance → Data Elements → Export → JSON
 **Actual UIDs from local DHIS2** (retrieved February 23, 2026):
@@ -290,6 +292,7 @@ Manage mappings via Django admin without code changes:
    - **Is Active**: Toggle to enable/disable
 
 **Admin Features**:
+
 - **List editable**: Edit UIDs directly in list view
 - **Filter by**: Environment, indicator type, disease category
 - **Bulk actions**: Duplicate to production, export as JSON
@@ -360,6 +363,7 @@ python manage.py seed_surveillance_demo --cases 20 --regenerate
 ```
 
 This creates test patients, encounters, diagnoses, and notifiable cases with realistic distributions:
+
 - 30% under-5, 70% 5-and-above age distribution
 - Mix of IMMEDIATE (Cholera, Measles) and WEEKLY (Malaria, Typhoid, Dysentery) diseases
 - 40% lab-confirmed cases
@@ -553,6 +557,7 @@ curl -u admin:district \
 ### 7.1 Obtain KHIS Credentials
 
 Request access from county/MOH health records office:
+
 - KHIS username and password
 - Org unit UID for your facility
 - Data element UIDs for MOH 505/IDSR indicators
@@ -592,26 +597,31 @@ DHIS2_ORG_UNIT=<facility_org_unit_uid>
 ## Appendix A: DHIS2 API Quick Reference
 
 ### System Information
+
 ```
 GET /api/system/info
 ```
 
 ### Current User
+
 ```
 GET /api/me
 ```
 
 ### Organisation Units
+
 ```
 GET /api/organisationUnits?fields=id,name,level&paging=false
 ```
 
 ### Data Elements
+
 ```
 GET /api/dataElements?fields=id,name,valueType&paging=false
 ```
 
 ### Submit Data Values
+
 ```
 POST /api/dataValueSets
 Content-Type: application/json
@@ -628,6 +638,7 @@ Content-Type: application/json
 ```
 
 ### Check Import Status
+
 ```
 GET /api/system/tasks/DATAVALUE_IMPORT/{task_id}
 ```

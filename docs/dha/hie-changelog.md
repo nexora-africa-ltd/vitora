@@ -12,38 +12,27 @@
 
 # API Changelog
 
-
 All notable changes to the HIE API will be documented in this file.
-
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-
 ## [Unreleased] - 2026-04-24 (2)
 
-
 ### Changed
-
 
 - `POST /api/v1/claims/visit` — now documents two distinct visit creation strategies: **OTP** (provide `otp` along with `intervention_codes`, `patient_id`, and `service_type`) and **Biometrics** (provide `auth_guid` — the authorization identifier from a preceding biometric authorization — in place of `otp`).
 
-
 ## [Unreleased] - 2026-04-24
 
-
 ### Changed
-
 
 - `POST /api/v1/claims/authorize` — now documents two distinct authorization strategies: **OTP** (phone-based one-time password, requires `patient_id`, `service_type`, `otp`, and `interventions`) and **Biometrics** (eKYC or fingerprint via a registered hardware agent, requires device and agent context fields). Select the appropriate strategy based on the patient's consent method.
 - `GET /api/v1/claims/authorizations` — lookup parameters (`token`, `beneficiary_code`, `guid`) are now passed as **query parameters** instead of a request body.
 
-
 ## [Unreleased] - 2026-04-23
 
-
 ### Changed
-
 
 - `GET /api/v1/patients/benefits` — now accepts two optional query parameters: `fields` (comma-separated list of fields to include in the response, e.g. `parent_benefit,parent_benefit_code`) and `is_unique_benefit` (boolean to filter to unique benefits only).
 - `GET /api/v1/patients/benefits/interventions` — now requires a `sub_benefit_code` query parameter alongside `patient_id`; the endpoint returns the interventions for the given sub-benefit instead of all interventions across benefits.
@@ -62,12 +51,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Preauth responses — the legacy internal `replicated` flag has been removed from preauth-related resources (Contact, Preauth, PreauthAttachment, PreauthDiagnosis, PreauthDoctor, PreauthItem, PreauthNote).
 - Preauth authorization details — removed internal SHR push-tracking fields (`lastSuccessfulPushToShr`, `lastSuccessfulResponseFromShr`, `lastUnsuccessfulPushToShr`, `lastUnsuccessfulResponseFromShr`, `sentToShr`, `shrPushRetryCount`, `replicated`, `beneficiaryJoinDate`, `authAttachments`, `authorizationNotes`, `payerAuthorization`). Doctor profiles in preauth responses now expose `currencyCode`, `nationalIdentifier`, `suspended`, and `suspensionReason` in place of the legacy operational/institutional fields.
 
-
 ## [Unreleased] - 2026-04-07
 
-
 ### Added
-
 
 - `GET /api/v1/patients/contacts` — Retrieve contacts associated with a patient
 - `GET /api/v1/claims/authorizations` — Retrieve authorizations for a claim
@@ -107,9 +93,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `DELETE /clinical/service-requests/{id}` — Delete a service request
 - `PATCH /clinical/service-requests/{id}` — Partially update a service request
 
-
 ### Changed
-
 
 - `POST /api/v1/claims/attachments` — Now accepts file uploads via multipart form instead of JSON
 - `POST /api/v1/claims/emergency/protocols` — Now accepts file uploads via multipart form instead of JSON
@@ -118,37 +102,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `PATCH /clinical/appointments/{id}` — Now supports partial updates via PATCH
 - `PATCH /clinical/observations/{id}` — Now supports partial updates via PATCH
 
-
 ## [1.1.0] - 2026-01-30
 
-
 ### Added
-
 
 - **Preauth Polymorphism**: Enabled polymorphic request support for `POST /api/v1/preauths`, allowing submission of various preauthorization types (Normal, Surgical, Renal, Oncology, Optical, Imaging, Dental) via `multipart/form-data`.
 - **Preauth Schemas**: Added specialized request schemas for all preauthorization types.
 
-
 ### Changed
-
 
 - **Metadata Harmonization**: Updated summaries, descriptions, and tags for over 25 endpoints in Claims, Emergency, Interventions, and Patients services to align with legacy API documentation standards.
 - **Tag Alignment**: Standardized tags across the eClaims and Preauth API (e.g., `Billing`, `Claim Dispatch`, `Emergency`, `Preauths`, `Eligibility`) to match the `openapi.json` definitions.
 - **Parameter Preservation**: Harmonized metadata while explicitly preserving the new API's parameter structure, ensuring no breaking changes to request signatures.
 
-
 ### Fixed
-
 
 - **API Validation**: Fixed a missing path parameter definition in `api_v1_preauths_diagnoses_{icd_code}.json`.
 - **Tag Inconsistencies**: Corrected generic `Claims` tags to more specific functional categories (e.g., `Start Visit Consent`, `Claim Dispatch`, `Billing`).
 
-
 ## [1.0.0] - 2025-12-11
 
-
 ### Added
-
 
 - **New Endpoints**:
 
@@ -156,30 +130,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 /api/v1/patients/benefits (Get Benefits)
 /api/v1/claims/otp-discharge (Discharge OTP)
 /api/v1/claims/discharge (Discharge Patient)
+
 - **Metadata Restoration**: Restored legacy descriptions, tags, and parameters for 19 endpoints to ensure backward compatibility.
 
-
 ### Changed
-
 
 - **Directory Structure**:
 
 Migrated all OAS components to apis/components.
 Updated all $ref paths to point to the new shared components location.
+
 - **Endpoint Updates**:
 
 /api/v1/patients/sub-benefits: Restored legacy parameters (beneficiary_cr_id, applicable_schemes, facility_id, search).
 
-
 ### Fixed
-
 
 - **Bundling**: Fixed schema resolution errors during the bundling process by restoring missing legacy schemas.
 - **Schema References**: Corrected broken `$ref` paths in multiple endpoint files.
 
-
 ### Removed
-
 
 - **Unused Schemas**: Deleted 113 unused schema files to clean up the codebase.
 - **Temporary Directories**: Removed `HIE-Middlewar-OAS` directory after migration.

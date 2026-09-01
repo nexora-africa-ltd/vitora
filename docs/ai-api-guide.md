@@ -50,6 +50,7 @@ JWT must include `sub`, `iss`, `exp`, `aud: "tibabot-api"`. Custom claims (`tiba
 Check your status: `GET /rate-limit`
 
 Rate limit headers returned on `429`:
+
 - `retry_after_seconds` — seconds until reset
 - `limit` — your current limit
 - `remaining` — requests remaining
@@ -273,6 +274,7 @@ GET /health
 ```
 
 **Response:**
+
 ```json
 {
   "status": "healthy",
@@ -299,6 +301,7 @@ GET /build-info
 ```
 
 **Response:**
+
 ```json
 {
   "version": "1.0.0",
@@ -326,6 +329,7 @@ Content-Type: application/json
 ```
 
 **Request:**
+
 ```json
 {
   "message": "I have a headache and fever for 2 days",
@@ -351,6 +355,7 @@ Content-Type: application/json
 | `history` | array | No | Previous conversation messages |
 
 **Response:**
+
 ```json
 {
   "response": "Based on your symptoms of headache and fever...",
@@ -384,6 +389,7 @@ Content-Type: application/json
 **Cross-Store Reranking:**
 
 The `/chat` endpoint uses query-type-aware reranking to prioritize the most relevant sources:
+
 - **Clinical queries** (protocols, dosing, algorithms) → Kenya Clinical guidelines first
 - **Patient queries** ("I have a headache") → MedDialog conversational answers first
 - **Diagnostic queries** (ICD-10 coding) → ICD-10 codes first
@@ -392,6 +398,7 @@ The `/chat` endpoint uses query-type-aware reranking to prioritize the most rele
 When `provider_role` is set, additional role-specific boosts are applied (e.g., doctors see more international research, CHWs see more conversational guidance). Boost weights are configurable in `configs/reranking_weights.yaml`.
 
 **Risk Levels:**
+
 - `low` — General health information
 - `medium` — Warrants medical attention
 - `high` — Seek doctor soon
@@ -409,6 +416,7 @@ Content-Type: application/json
 ```
 
 **Request:**
+
 ```json
 {
   "symptoms": "headache, fever, and neck stiffness for 2 days",
@@ -426,6 +434,7 @@ Content-Type: application/json
 | `include_differentials` | bool | No | Include differential diagnoses |
 
 **Response:**
+
 ```json
 {
   "triage_level": "urgent",
@@ -462,6 +471,7 @@ Content-Type: application/json
 ```
 
 **Request:**
+
 ```json
 {
   "language": "en"
@@ -469,6 +479,7 @@ Content-Type: application/json
 ```
 
 **Response:**
+
 ```json
 {
   "session_id": "uuid",
@@ -490,6 +501,7 @@ Content-Type: application/json
 ```
 
 **Request:**
+
 ```json
 {
   "session_id": "uuid-from-start",
@@ -498,6 +510,7 @@ Content-Type: application/json
 ```
 
 **Response:**
+
 ```json
 {
   "session_id": "uuid",
@@ -522,6 +535,7 @@ Content-Type: application/json
 ```
 
 **Conversation States:**
+
 - `greeting` — Initial greeting
 - `collecting_symptoms` — Gathering symptom info
 - `collecting_duration` — Asking about timing
@@ -573,6 +587,7 @@ X-API-Key: your-api-key
 ```
 
 **Request:**
+
 ```json
 {
   "query": "First-line treatment for uncomplicated malaria in adult",
@@ -604,6 +619,7 @@ X-API-Key: your-api-key
 | `verbosity` | string | No | `"concise"`, `"standard"`, or `"educational"` |
 
 **Role-Aware Retrieval:** When `user_context.role` is set, the guideline retrieval adjusts:
+
 - **Budget allocation** — CHWs get more Kenya results (65%), doctors get more international (65%)
 - **Distance boosting** — Kenya/International relevance scores are adjusted per role
 - **Prompt calibration** — Language complexity adapts (accessible for CHWs/students, technical for consultants)
@@ -611,6 +627,7 @@ X-API-Key: your-api-key
 Boost weights are configurable in `configs/reranking_weights.yaml` under `clinical_provider_role_boosts`.
 
 **Response:**
+
 ```json
 {
   "recommendation": "For uncomplicated P. falciparum malaria in adults...",
@@ -643,6 +660,7 @@ X-API-Key: your-api-key
 ```
 
 **Request:**
+
 ```json
 {
   "message": "Patient with suspected TB, sputum smear positive",
@@ -663,6 +681,7 @@ X-API-Key: your-api-key
 ```
 
 **Response:**
+
 ```json
 {
   "response": "For sputum smear-positive TB...",
@@ -725,6 +744,7 @@ X-API-Key: your-api-key
 | `clerking_note` | Initial clerking/admission note |
 
 **Request:**
+
 ```json
 {
   "document_type": "discharge_summary",
@@ -799,6 +819,7 @@ X-API-Key: your-api-key
 | `condition_at_discharge` | string | No | Patient condition at discharge |
 
 **Response (`output_format: "structured"`):**
+
 ```json
 {
   "document_type": "discharge_summary",
@@ -936,6 +957,7 @@ Returns the same schema, plus a `fhir_resource` field containing a FHIR R4 `Comp
 | `clerking_note` | 11488-4 | Consultation note |
 
 **SOAP Note Example:**
+
 ```json
 {
   "document_type": "soap",
@@ -970,6 +992,7 @@ GET /icd10/search?q=malaria&limit=10
 ```
 
 **Response:**
+
 ```json
 {
   "results": [
@@ -991,6 +1014,7 @@ GET /icd10/suggest?q=malar&limit=5
 ```
 
 **Response:**
+
 ```json
 {
   "suggestions": [
@@ -1010,6 +1034,7 @@ Content-Type: application/json
 ```
 
 **Request:**
+
 ```json
 {
   "clinical_text": "Patient presents with high fever, chills, positive malaria RDT",
@@ -1020,6 +1045,7 @@ Content-Type: application/json
 ```
 
 **Response:**
+
 ```json
 {
   "codes": [
@@ -1042,6 +1068,7 @@ Content-Type: application/json
 ```
 
 **Request:**
+
 ```json
 {
   "items": [
@@ -1054,6 +1081,7 @@ Content-Type: application/json
 ```
 
 **Response:**
+
 ```json
 {
   "results": ["..."],
@@ -1074,6 +1102,7 @@ Content-Type: application/json
 ```
 
 **Request:**
+
 ```json
 {
   "codes": ["E11.9", "E10.9"]
@@ -1081,6 +1110,7 @@ Content-Type: application/json
 ```
 
 **Response:**
+
 ```json
 {
   "valid": false,
@@ -1101,6 +1131,7 @@ GET /icd10/lookup/B50.9
 ```
 
 **Response:**
+
 ```json
 {
   "found": true,
@@ -1129,6 +1160,7 @@ Content-Type: application/json
 ```
 
 **Request:**
+
 ```json
 {
   "age": 55,
@@ -1170,6 +1202,7 @@ Content-Type: application/json
 | `family_history` | int | Family history flag (0/1) |
 
 **Response:**
+
 ```json
 {
   "primary_condition": "Diabetes",
@@ -1210,6 +1243,7 @@ Content-Type: application/json
 ```
 
 **Request:**
+
 ```json
 {
   "heart_rate": 110,
@@ -1235,6 +1269,7 @@ Content-Type: application/json
 ```
 
 **Response:**
+
 ```json
 {
   "predictions": [
@@ -1307,6 +1342,7 @@ Content-Type: application/json
 ```
 
 **Request:**
+
 ```json
 {
   "identification_type": "ID",
@@ -1320,6 +1356,7 @@ Content-Type: application/json
 | `identification_number` | string (6-20) | National ID or passport number |
 
 **Response:**
+
 ```json
 {
   "status": "valid",
@@ -1356,6 +1393,7 @@ GET /i18n/languages
 ```
 
 **Response:**
+
 ```json
 {
   "languages": {"en": "English", "sw": "Swahili"},
@@ -1375,6 +1413,7 @@ Content-Type: application/json
 ```
 
 **Request:**
+
 ```json
 {
   "keys": ["symptom_checker.greeting", "triage.emergency"],
@@ -1402,6 +1441,7 @@ Content-Type: application/json
 ```
 
 **Request:**
+
 ```json
 {
   "message_id": "abc123",
@@ -1461,6 +1501,7 @@ Content-Type: application/json
 | `icd10` | `code`, `confidence`, `search_mode` |
 
 **Response:**
+
 ```json
 {
   "status": "received",
@@ -1479,6 +1520,7 @@ GET /feedback/stats?service=care_plan
 Optional query parameter `service` filters statistics to a single service type.
 
 **Response:**
+
 ```json
 {
   "total": 142,
@@ -1519,6 +1561,7 @@ GET /cds/health
 ```
 
 **Response:**
+
 ```json
 {
   "status": "healthy",
@@ -1542,6 +1585,7 @@ X-API-Key: your-api-key
 ```
 
 **Request:**
+
 ```json
 {
   "medications": ["warfarin", "aspirin", "metformin"],
@@ -1572,6 +1616,7 @@ X-API-Key: your-api-key
 | `facility_level` | string | No | `null` | Kenya facility level (`"H1"`-`"H5"`) |
 
 **Response:**
+
 ```json
 {
   "alerts": [
@@ -1626,6 +1671,7 @@ X-API-Key: your-api-key
 Optional query parameter: `?category=drug-interaction` to filter by category.
 
 **Response:**
+
 ```json
 {
   "total": 36,
@@ -1657,6 +1703,7 @@ GET /lab/health
 ```
 
 **Response:**
+
 ```json
 {
   "status": "healthy",
@@ -1674,6 +1721,7 @@ X-API-Key: your-api-key
 ```
 
 **Request:**
+
 ```json
 {
   "patient_age": 55,
@@ -1709,6 +1757,7 @@ X-API-Key: your-api-key
 | `timestamp` | datetime | No | When the sample was collected |
 
 **Response:**
+
 ```json
 {
   "flags": [
@@ -1790,6 +1839,7 @@ GET /discharge/health
 ```
 
 **Response:**
+
 ```json
 {
   "status": "healthy",
@@ -1809,6 +1859,7 @@ GET /discharge/conditions
 ```
 
 **Response:**
+
 ```json
 {
   "conditions": [
@@ -1828,6 +1879,7 @@ X-API-Key: your-api-key
 ```
 
 **Request:**
+
 ```json
 {
   "patient_age": 45,
@@ -1897,6 +1949,7 @@ X-API-Key: your-api-key
 | `oxygen_saturation` | float (0-100) | No | SpO2 (%) |
 
 **Response:**
+
 ```json
 {
   "readiness_score": 0.85,
@@ -1974,11 +2027,13 @@ X-API-Key: your-api-key
 | `notes` | string \| null | Additional clinical context |
 
 **Clinical array evaluation:** Every item in the request arrays is individually assessed:
+
 - **`lab_results`** — Each lab is evaluated against safe-for-discharge reference ranges (e.g. WBC 4-12, lactate 0-2). Labs without a known range are flagged for clinician review.
 - **`current_medications`** — Each medication is checked for IV route; IV meds are flagged as needing oral transition before discharge.
 - **`vitals_history`** — Each vital sign series is assessed for stability trend (stable/improving/unstable).
 
 **Readiness Levels:**
+
 - `ready` — All critical criteria met, safe to discharge
 - `near_ready` — Most criteria met, minor items outstanding
 - `not_ready` — Significant criteria unmet, not safe to discharge
@@ -2000,6 +2055,7 @@ GET /care-plan/health
 ```
 
 **Response:**
+
 ```json
 {
   "status": "healthy",
@@ -2020,6 +2076,7 @@ GET /care-plan/conditions
 ```
 
 **Response:**
+
 ```json
 {
   "conditions": [
@@ -2055,6 +2112,7 @@ X-API-Key: your-api-key
 ```
 
 **Request:**
+
 ```json
 {
   "primary_diagnosis": "Community-acquired pneumonia",
@@ -2091,6 +2149,7 @@ X-API-Key: your-api-key
 | `lab_results` | LabResult[] | No | `[]` | Recent lab results |
 
 **Response:**
+
 ```json
 {
   "primary_diagnosis": "Community-acquired pneumonia",
@@ -2200,6 +2259,7 @@ X-API-Key: your-api-key
 **Request:** Same as `/care-plan/generate`.
 
 **Response:** FHIR R4 `CarePlan` resource with:
+
 - `contained` Goal resources with priority and timeframes
 - `activity` entries coded with SNOMED CT per intervention category
 - `extension` fields for TibaBot metadata (generation mode, template, facility level)
@@ -2232,6 +2292,7 @@ GET /clerking/health
 ```
 
 **Response:**
+
 ```json
 {
   "status": "healthy",
@@ -2249,6 +2310,7 @@ GET /clerking/templates/clerking
 **Supported formats:** `clerking`, `soap`, `discharge_summary`
 
 **Response:**
+
 ```json
 {
   "format": "clerking",
@@ -2279,6 +2341,7 @@ X-API-Key: your-api-key
 ```
 
 **Request:**
+
 ```json
 {
   "current_text": "hea",
@@ -2298,6 +2361,7 @@ X-API-Key: your-api-key
 **Valid Section Names:** `presenting_complaint`, `hpi`, `pmh`, `drug_history`, `allergies`, `family_history`, `social_history`, `review_of_systems`, `examination`, `investigations`, `assessment`, `plan`
 
 **Response:**
+
 ```json
 {
   "suggestions": [
@@ -2355,6 +2419,7 @@ X-API-Key: your-api-key
 ```
 
 **Request:**
+
 ```json
 {
   "free_text": "45 year old male presents with 3 days of productive cough, fever, and right-sided chest pain. PMH: Type 2 DM on metformin. NKDA. Exam: Temp 38.5, HR 95, BP 130/85, SpO2 93% on RA. Reduced air entry right lower zone with bronchial breathing. Assessment: Community-acquired pneumonia. Plan: Admit, IV antibiotics, O2 therapy, blood cultures, CXR.",
@@ -2374,6 +2439,7 @@ X-API-Key: your-api-key
 | `output_format` | string | No | `"clerking"` | `"clerking"`, `"soap"`, or `"discharge_summary"` |
 
 **Response:**
+
 ```json
 {
   "structured_note": {
@@ -2425,6 +2491,7 @@ X-API-Key: your-api-key
 ```
 
 **Request:**
+
 ```json
 {
   "chief_complaint": "Fever and chills for 3 days",
@@ -2458,6 +2525,7 @@ X-API-Key: your-api-key
 | `max_suggestions` | int (1-50) | No | `15` | Maximum number of suggestions to return |
 
 **Response:**
+
 ```json
 {
   "suggestions": [
@@ -2587,6 +2655,7 @@ POST /webhooks/whatsapp
 Receives incoming WhatsApp messages. Supports both Meta and Twilio payload formats — automatically detected. Messages are processed in background tasks with per-phone-number rate limiting.
 
 **Meta payload format:**
+
 ```json
 {
   "object": "whatsapp_business_account",
@@ -2641,6 +2710,7 @@ GET /webhooks/whatsapp/stats
 ```
 
 **Response:**
+
 ```json
 {
   "rate_limits": {
@@ -2676,6 +2746,7 @@ GET /surgical/health
 ```
 
 **Response:**
+
 ```json
 {
   "status": "ok",
@@ -2695,6 +2766,7 @@ X-API-Key: your-api-key
 ```
 
 **Request:**
+
 ```json
 {
   "age": 65,
@@ -2731,6 +2803,7 @@ X-API-Key: your-api-key
 | `include_fhir` | bool | No | Include FHIR R4 `RiskAssessment` resource in response |
 
 **Response:**
+
 ```json
 {
   "risk_scores": {
@@ -2782,6 +2855,7 @@ X-API-Key: your-api-key
 Three-phase state machine: **Sign In** (before anaesthesia, 7 items) → **Time Out** (before incision, 7 items) → **Sign Out** (before leaving theatre, 5 items). Critical items must be checked to advance.
 
 **Start session:**
+
 ```http
 POST /surgical/checklist/start
 Content-Type: application/json
@@ -2795,6 +2869,7 @@ Content-Type: application/json
 ```
 
 **Advance phase:**
+
 ```http
 POST /surgical/checklist/{session_id}/advance
 Content-Type: application/json
@@ -2809,6 +2884,7 @@ Content-Type: application/json
 ```
 
 **Response:**
+
 ```json
 {
   "session": { "state": "time_out", "items": ["..."] },
@@ -2819,6 +2895,7 @@ Content-Type: application/json
 ```
 
 **Check status:**
+
 ```http
 GET /surgical/checklist/{session_id}/status
 ```
@@ -2847,6 +2924,7 @@ X-API-Key: your-api-key
 ```
 
 **Request:**
+
 ```json
 {
   "procedure_key": "appendectomy",
@@ -2874,6 +2952,7 @@ X-API-Key: your-api-key
 | `include_fhir` | bool | No | Include FHIR R4 `CarePlan` resource |
 
 **Response:**
+
 ```json
 {
   "procedure_key": "appendectomy",
@@ -3008,6 +3087,7 @@ When `TIBABOT_ENABLE_DOCS=true`:
 | `/openapi.json` | OpenAPI 3.0 spec |
 
 **Enable for development:**
+
 ```bash
 export TIBABOT_ENABLE_DOCS=true
 uvicorn src.api.main:app --reload
@@ -3449,6 +3529,6 @@ curl https://tibabot.vitora.nexora.africa/clerking/health
 
 ## Support
 
-- **Issues:** https://github.com/nexora-africa-ltd/tibabot/issues
-- **Docs:** https://tibabot.vitora.nexora.africa/docs (when enabled)
-- **Email:** support@nexora.africa
+- **Issues:** <https://github.com/nexora-africa-ltd/tibabot/issues>
+- **Docs:** <https://tibabot.vitora.nexora.africa/docs> (when enabled)
+- **Email:** <support@nexora.africa>

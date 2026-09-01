@@ -16,6 +16,7 @@ This document describes the testing infrastructure for Vitora HMIS, including Py
 ## Installed Tools
 
 ### Testing Framework
+
 - **Pytest** (7.4+): Modern testing framework
 - **pytest-django** (4.7+): Django integration for Pytest
 - **pytest-cov** (4.1+): Coverage plugin
@@ -23,27 +24,33 @@ This document describes the testing infrastructure for Vitora HMIS, including Py
 - **pytest-mock** (3.12+): Mocking support
 
 ### Test Data
+
 - **Faker** (22.0+): Generate fake data
 - **Factory Boy** (3.3+): Test fixtures and factories
 
 ### Linting & Formatting
+
 - **Ruff** (0.1+): Fast Python linter (replaces Flake8, isort, others)
 - **Black** (23.12+): Code formatter
 - **isort** (5.13+): Import sorter
 
 ### Type Checking
+
 - **mypy** (1.8+): Static type checker
 - **django-stubs** (4.2+): Django type stubs
 - **djangorestframework-stubs** (3.14+): DRF type stubs
 
 ### Security
+
 - **Bandit** (1.7+): Security issue scanner
 
 ### Documentation
+
 - **Sphinx** (7.2+): Documentation generator
 - **sphinx-rtd-theme** (2.0+): Read the Docs theme
 
 ### Development
+
 - **IPython** (8.20+): Enhanced Python shell
 - **ipdb** (0.13+): IPython debugger
 
@@ -52,6 +59,7 @@ This document describes the testing infrastructure for Vitora HMIS, including Py
 ## Installation
 
 ### Prerequisites
+
 - Python 3.12+
 - Poetry installed
 
@@ -90,28 +98,35 @@ mypy --version
 ### Running Tests
 
 #### All Tests with Coverage
+
 ```bash
 poetry run pytest
 ```
+
 This runs all tests with coverage reporting and fails if coverage < 80%.
 
 #### Fast Run (No Coverage)
+
 ```bash
 poetry run pytest -x
 ```
+
 Stops at first failure, useful during development.
 
 #### Specific Test File
+
 ```bash
 poetry run pytest tests/test_infrastructure.py
 ```
 
 #### Specific Test Function
+
 ```bash
 poetry run pytest tests/test_infrastructure.py::test_python_version
 ```
 
 #### By Marker
+
 ```bash
 # Unit tests only
 poetry run pytest -m unit
@@ -124,17 +139,21 @@ poetry run pytest -m "not slow"
 ```
 
 #### Parallel Execution
+
 ```bash
 poetry run pytest -n auto
 ```
+
 Runs tests in parallel using all CPU cores.
 
 #### Verbose Output
+
 ```bash
 poetry run pytest -vv
 ```
 
 #### With Print Statements
+
 ```bash
 poetry run pytest -s
 ```
@@ -142,6 +161,7 @@ poetry run pytest -s
 ### Code Quality
 
 #### Ruff Linter
+
 ```bash
 # Check for issues
 poetry run ruff check .
@@ -154,6 +174,7 @@ poetry run ruff check hmis/apps/patients/models.py
 ```
 
 **What Ruff Checks**:
+
 - Code style (PEP 8)
 - Import sorting
 - Unused variables/imports
@@ -163,6 +184,7 @@ poetry run ruff check hmis/apps/patients/models.py
 - And 600+ other rules
 
 #### Black Formatter
+
 ```bash
 # Check formatting
 poetry run black --check .
@@ -178,6 +200,7 @@ poetry run black --diff .
 ```
 
 #### isort Import Sorter
+
 ```bash
 # Check imports
 poetry run isort --check .
@@ -187,6 +210,7 @@ poetry run isort .
 ```
 
 #### All Formatting at Once
+
 ```bash
 poetry run black . && poetry run isort .
 ```
@@ -281,6 +305,7 @@ addopts = [
 ```
 
 **Key Settings**:
+
 - Minimum coverage: 80%
 - Test directory: `tests/`
 - Coverage reports: Terminal, HTML, XML
@@ -299,6 +324,7 @@ branch = true
 ```
 
 **Excluded from Coverage**:
+
 - Django migrations
 - Test files themselves
 - Virtual environments
@@ -314,6 +340,7 @@ ignore = ["E501", "S101", "DJ001"]
 ```
 
 **Selected Rules**:
+
 - E/W: pycodestyle
 - F: pyflakes
 - I: isort
@@ -441,6 +468,7 @@ def test_with_mock(mocker):
 ### Terminal Report
 
 Run tests and see coverage in terminal:
+
 ```bash
 poetry run pytest --cov=hmis --cov-report=term-missing
 ```
@@ -448,6 +476,7 @@ poetry run pytest --cov=hmis --cov-report=term-missing
 ### HTML Report
 
 Generate browseable HTML report:
+
 ```bash
 poetry run pytest --cov=hmis --cov-report=html
 open htmlcov/index.html
@@ -456,6 +485,7 @@ open htmlcov/index.html
 ### XML Report
 
 For CI/CD tools:
+
 ```bash
 poetry run pytest --cov=hmis --cov-report=xml
 ```
@@ -514,6 +544,7 @@ def test_patient_mrn_generation():
 ```
 
 Run test (should fail):
+
 ```bash
 poetry run pytest tests/test_patient.py::test_patient_mrn_generation
 ```
@@ -539,6 +570,7 @@ class Patient(models.Model):
 ```
 
 Run test again (should pass):
+
 ```bash
 poetry run pytest tests/test_patient.py::test_patient_mrn_generation
 ```
@@ -564,6 +596,7 @@ class Patient(models.Model):
 ```
 
 Run tests again (should still pass):
+
 ```bash
 poetry run pytest tests/test_patient.py
 ```
@@ -668,6 +701,7 @@ After Task 6 completion:
 ## Resources
 
 ### Documentation
+
 - [Pytest Documentation](https://docs.pytest.org/)
 - [Ruff Documentation](https://docs.astral.sh/ruff/)
 - [Black Documentation](https://black.readthedocs.io/)
@@ -675,6 +709,7 @@ After Task 6 completion:
 - [Coverage.py Documentation](https://coverage.readthedocs.io/)
 
 ### Tools
+
 - [Pytest](https://pytest.org/)
 - [Ruff](https://github.com/astral-sh/ruff)
 - [Black](https://github.com/psf/black)

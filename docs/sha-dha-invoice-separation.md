@@ -88,7 +88,7 @@ This prevents coupling claim lifecycle correctness to local invoice creation/lin
 python backend/manage.py migrate
 ```
 
-2. For in-flight claims with blank DHA invoice:
+1. For in-flight claims with blank DHA invoice:
 
 - Run **Preview claim** once in workflow UI.
 - Re-attempt submit.

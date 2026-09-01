@@ -792,6 +792,7 @@ class RadiologyReport(models.Model):
 #### Implementation Details (Sprint C.3)
 
 **Frontend Components:**
+
 - `components/imaging/dicom/DICOMViewer.tsx` — Main viewer with Cornerstone.js
 - `components/imaging/dicom/DICOMViewerToolbar.tsx` — Toolbar with zoom, pan, W/L, measurements
 - `components/imaging/dicom/DICOMSeriesPanel.tsx` — Series thumbnail sidebar
@@ -800,11 +801,13 @@ class RadiologyReport(models.Model):
 - `app/(dashboard)/imaging/studies/[studyUid]/page.tsx` — Study detail with viewer
 
 **Backend Endpoint:**
+
 - `GET /api/imaging/dicom/{sop_uid}/frame/` — Render DICOM as PNG
   - Query params: `size`, `frame`, `window_center`, `window_width`
   - 7 unit tests passing
 
 **Dependencies (installed):**
+
 - `@cornerstonejs/core` — Core rendering
 - `@cornerstonejs/tools` — Annotation and measurement tools
 - `@cornerstonejs/dicom-image-loader` — DICOM loading
@@ -1003,6 +1006,7 @@ class RadiologyReport(models.Model):
 ### Key Dependencies
 
 **Backend (pyproject.toml)**
+
 ```toml
 [tool.poetry.dependencies]
 pydicom = "^3.0.1"        # DICOM file parsing
@@ -1013,6 +1017,7 @@ weasyprint = "^60.0"      # PDF generation (or reportlab)
 ```
 
 **Frontend (package.json)**
+
 ```json
 {
   "dependencies": {

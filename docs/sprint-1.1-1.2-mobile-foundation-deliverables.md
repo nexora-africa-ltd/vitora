@@ -12,6 +12,7 @@
 Sprint 1.1-1.2 Track B establishes the React Native mobile application foundation for Vitora HMIS. Following Test-Driven Development (TDD) methodology, this sprint delivers an offline-capable mobile app targeting Android devices, enabling community health workers (CHWs) to access patient data in the field without internet connectivity.
 
 **Why Mobile Early?**
+
 - Kenya has higher smartphone penetration than desktop computers
 - Community Health Workers (CHWs) need field access for rural outreach
 - Backend API is ready (Phase 0 complete with 467+ tests)
@@ -40,6 +41,7 @@ Sprint 1.1-1.2 Track B establishes the React Native mobile application foundatio
 ### Week 1: Project Setup & Database Foundation
 
 #### Day 1-2: Project Scaffold
+
 - [x] Create `mobile-app/` directory in project root
 - [x] Initialize Expo project with TypeScript template (`npx create-expo-app`)
 - [x] Configure `tsconfig.json` with strict mode and path aliases
@@ -52,6 +54,7 @@ Sprint 1.1-1.2 Track B establishes the React Native mobile application foundatio
 - [x] ✅ **Checkpoint**: `npm test` passes, app launches on emulator
 
 #### Day 3-4: WatermelonDB Setup
+
 - [x] Install WatermelonDB and expo-sqlite dependencies
 - [x] Create `lib/db/schema.ts` with patients table schema
 - [x] Create `lib/db/schema.ts` with sync_queue table schema
@@ -64,6 +67,7 @@ Sprint 1.1-1.2 Track B establishes the React Native mobile application foundatio
 - [x] ✅ **Checkpoint**: Database initializes, models work
 
 #### Day 5: Patient Repository
+
 - [x] Create `lib/db/repositories/patientRepository.ts`
 - [x] Implement `getAll()` with pagination
 - [x] Implement `search()` by name/MRN/phone
@@ -78,6 +82,7 @@ Sprint 1.1-1.2 Track B establishes the React Native mobile application foundatio
 ### Week 2: Authentication & API Client
 
 #### Day 6-7: Secure Token Storage
+
 - [x] Install expo-secure-store
 - [x] Create `lib/auth/storage.ts` with token methods
 - [x] Implement `setTokens()` for access + refresh tokens
@@ -89,6 +94,7 @@ Sprint 1.1-1.2 Track B establishes the React Native mobile application foundatio
 - [x] ✅ **Checkpoint**: Tokens persist across app restarts
 
 #### Day 8-9: Auth Context & Login Flow
+
 - [x] Create `lib/auth/context.tsx` AuthProvider
 - [x] Implement `restoreSession()` on app start
 - [x] Implement `login(username, password)` method
@@ -100,6 +106,7 @@ Sprint 1.1-1.2 Track B establishes the React Native mobile application foundatio
 - [x] ✅ **Checkpoint**: Login works, session persists
 
 #### Day 10: API Client with Interceptors
+
 - [x] Install axios
 - [x] Create `lib/api/client.ts` with base configuration
 - [x] Implement request interceptor for auth header injection
@@ -113,6 +120,7 @@ Sprint 1.1-1.2 Track B establishes the React Native mobile application foundatio
 ### Week 3: Navigation & UI Components
 
 #### Day 11-12: Navigation Structure
+
 - [x] Install expo-router (already included in project)
 - [x] Create `app/_layout.tsx` root layout with providers
 - [x] Create `app/index.tsx` entry redirect
@@ -127,6 +135,7 @@ Sprint 1.1-1.2 Track B establishes the React Native mobile application foundatio
 - [x] ✅ **Checkpoint**: Navigation works with auth protection
 
 #### Day 13-14: Core UI Components
+
 - [x] Create `components/ui/Button.tsx` (primary/secondary/danger)
 - [x] Create `components/ui/Input.tsx` (text/phone/date)
 - [x] Create `components/ui/Card.tsx` base card
@@ -140,6 +149,7 @@ Sprint 1.1-1.2 Track B establishes the React Native mobile application foundatio
 - [x] ✅ **Checkpoint**: All UI components render correctly
 
 #### Day 15: Patient Components
+
 - [x] Create `components/patients/PatientCard.tsx`
 - [x] Create `components/patients/PatientList.tsx`
 - [x] Create `components/patients/PatientSearch.tsx`
@@ -154,6 +164,7 @@ Sprint 1.1-1.2 Track B establishes the React Native mobile application foundatio
 ### Week 4: Sync Foundation & Polish
 
 #### Day 16-17: Sync Queue
+
 - [x] Create `lib/sync/queue.ts` sync queue manager
 - [x] Implement `add()` for queuing operations
 - [x] Implement `getPending()` and `getPendingCount()`
@@ -165,6 +176,7 @@ Sprint 1.1-1.2 Track B establishes the React Native mobile application foundatio
 - [x] ✅ **Checkpoint**: Changes queue correctly for sync
 
 #### Day 18-19: Integration & Polish
+
 - [x] Integrate sync queue with patient repository
 - [x] Add offline indicator to all screens
 - [x] Add pull-to-refresh on patient list
@@ -176,6 +188,7 @@ Sprint 1.1-1.2 Track B establishes the React Native mobile application foundatio
 - [x] ✅ **Checkpoint**: Full offline/online flow works (229 tests)
 
 #### Day 20: Build & Documentation
+
 - [x] Configure `app.json` for Android build
 - [x] Configure `eas.json` with build profiles (development, preview, production)
 - [x] Run `eas build --platform android --profile preview` *(requires EAS account setup)*
@@ -195,6 +208,7 @@ Sprint 1.1-1.2 Track B establishes the React Native mobile application foundatio
 ### 🎯 Sprint Completion Checklist
 
 #### Code Quality
+
 - [x] All 388+ tests passing (target was 123+)
 - [x] Test coverage ≥ 80% (87.14% statements, 89.86% lines)
 - [x] No ESLint errors or warnings
@@ -202,6 +216,7 @@ Sprint 1.1-1.2 Track B establishes the React Native mobile application foundatio
 - [x] All components have prop types
 
 #### Functionality
+
 - [x] App launches on Android emulator
 - [x] App launches on physical Android device *(pending APK build)*
 - [x] Login flow works end-to-end
@@ -212,6 +227,7 @@ Sprint 1.1-1.2 Track B establishes the React Native mobile application foundatio
 - [x] Changes queue for sync when offline
 
 #### Performance
+
 - [x] App startup < 3 seconds *(pending APK testing)*
 - [x] Patient list loads < 500ms (100 patients)
 - [x] Search response < 200ms
@@ -224,6 +240,7 @@ Sprint 1.1-1.2 Track B establishes the React Native mobile application foundatio
 - - - Production AAB format will be smaller on device due to splitting
 
 #### Documentation
+
 - [x] README.md with comprehensive setup instructions
 - [x] All public functions have JSDoc comments
 - [x] Architecture decisions documented
@@ -236,6 +253,7 @@ Sprint 1.1-1.2 Track B establishes the React Native mobile application foundatio
 **Status**: ✅ COMPLETE (Pending EAS Build Verification)
 
 **Achievements**:
+
 - 388 tests passing (3x target of 123)
 - 87.14% code coverage (exceeds 80% target)
 - Full offline CRUD functionality
@@ -245,12 +263,14 @@ Sprint 1.1-1.2 Track B establishes the React Native mobile application foundatio
 - Comprehensive documentation
 
 **Remaining Items** (require Expo account):
+
 1. Run EAS build for Android APK
 2. Test on physical device
 3. Verify app size and startup time
 4. Create demo video
 
 **Test Count by Category**:
+
 | Category | Tests | Status |
 |----------|-------|--------|
 | Setup & Scaffold | 8 | ✅ |
@@ -273,6 +293,7 @@ Sprint 1.1-1.2 Track B establishes the React Native mobile application foundatio
 **Framework**: React Native with Expo (managed workflow)
 
 **Project Structure**:
+
 ```
 mobile-app/
 ├── app/                      # Expo Router app directory
@@ -344,6 +365,7 @@ mobile-app/
 ```
 
 **Dependencies**:
+
 ```json
 {
   "dependencies": {
@@ -369,6 +391,7 @@ mobile-app/
 ```
 
 **Test Coverage (8 tests)**:
+
 ```typescript
 // __tests__/setup/app.test.ts
 describe('React Native App Setup', () => {
@@ -390,6 +413,7 @@ describe('React Native App Setup', () => {
 **Module**: `lib/db/`
 
 **Schema Definition**:
+
 ```typescript
 // lib/db/schema.ts
 import { appSchema, tableSchema } from '@nozbe/watermelondb';
@@ -451,6 +475,7 @@ export const schema = appSchema({
 ```
 
 **Model Classes**:
+
 ```typescript
 // lib/db/models/Patient.ts
 import { Model } from '@nozbe/watermelondb';
@@ -493,6 +518,7 @@ export class Patient extends Model {
 ```
 
 **Test Coverage (15 tests)**:
+
 ```typescript
 // __tests__/lib/db.test.ts
 describe('WatermelonDB Setup', () => {
@@ -529,12 +555,14 @@ describe('WatermelonDB Setup', () => {
 **Module**: `lib/db/` and `hooks/usePatients.ts`
 
 **Features**:
+
 - CRUD operations on local SQLite database
 - Search by name, MRN, or phone number
 - Pagination for large patient lists
 - Automatic sync queue population on changes
 
 **Patient Repository**:
+
 ```typescript
 // lib/db/repositories/patientRepository.ts
 import { Q } from '@nozbe/watermelondb';
@@ -640,6 +668,7 @@ export const patientRepository = {
 ```
 
 **React Hook**:
+
 ```typescript
 // hooks/usePatients.ts
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -689,6 +718,7 @@ export function useUpdatePatient() {
 ```
 
 **Test Coverage (20 tests)**:
+
 ```typescript
 // __tests__/lib/patients.test.ts
 describe('Patient Storage', () => {
@@ -737,12 +767,14 @@ describe('Patient Storage', () => {
 **Module**: `lib/auth/`
 
 **Features**:
+
 - Secure token storage using Expo SecureStore
 - Automatic token refresh
 - Auth state persistence
 - Logout with token cleanup
 
 **Secure Storage**:
+
 ```typescript
 // lib/auth/storage.ts
 import * as SecureStore from 'expo-secure-store';
@@ -788,6 +820,7 @@ export const authStorage = {
 ```
 
 **Auth Context**:
+
 ```typescript
 // lib/auth/context.tsx
 import React, { createContext, useContext, useEffect, useState } from 'react';
@@ -889,6 +922,7 @@ export function useAuth() {
 ```
 
 **Test Coverage (18 tests)**:
+
 ```typescript
 // __tests__/lib/auth.test.ts
 describe('JWT Authentication', () => {
@@ -931,6 +965,7 @@ describe('JWT Authentication', () => {
 **Module**: `lib/api/`
 
 **Features**:
+
 - Axios instance with auth interceptors
 - Automatic token injection
 - Token refresh on 401 responses
@@ -938,6 +973,7 @@ describe('JWT Authentication', () => {
 - Request/response logging in development
 
 **API Client**:
+
 ```typescript
 // lib/api/client.ts
 import axios, { AxiosInstance, AxiosError } from 'axios';
@@ -1038,6 +1074,7 @@ export const apiClient = createApiClient();
 ```
 
 **Patient API**:
+
 ```typescript
 // lib/api/patients.ts
 import { apiClient } from './client';
@@ -1091,6 +1128,7 @@ export const patientsApi = {
 ```
 
 **Test Coverage (12 tests)**:
+
 ```typescript
 // __tests__/lib/api.test.ts
 describe('API Client', () => {
@@ -1124,6 +1162,7 @@ describe('API Client', () => {
 **Framework**: Expo Router (file-based routing)
 
 **Routes**:
+
 ```
 /                     → Redirect to /login or /(main)
 /(auth)/login         → Login screen
@@ -1134,6 +1173,7 @@ describe('API Client', () => {
 ```
 
 **Root Layout**:
+
 ```typescript
 // app/_layout.tsx
 import { Slot } from 'expo-router';
@@ -1164,6 +1204,7 @@ export default function RootLayout() {
 ```
 
 **Auth Guard**:
+
 ```typescript
 // app/(main)/_layout.tsx
 import { Redirect, Stack } from 'expo-router';
@@ -1193,6 +1234,7 @@ export default function MainLayout() {
 ```
 
 **Test Coverage (10 tests)**:
+
 ```typescript
 // __tests__/navigation.test.ts
 describe('Navigation', () => {
@@ -1222,6 +1264,7 @@ describe('Navigation', () => {
 ### 7. Core UI Components
 
 **Components**:
+
 - `Button` - Primary, secondary, danger variants
 - `Input` - Text, phone, date inputs with validation
 - `Card` - Patient card, summary card
@@ -1231,6 +1274,7 @@ describe('Navigation', () => {
 - `OfflineBanner` - Network status indicator
 
 **Patient List Screen**:
+
 ```typescript
 // app/(main)/patients/index.tsx
 import { useState } from 'react';
@@ -1282,6 +1326,7 @@ export default function PatientListScreen() {
 ```
 
 **Test Coverage (25 tests)**:
+
 ```typescript
 // __tests__/components/ui.test.tsx
 describe('UI Components', () => {
@@ -1337,12 +1382,14 @@ describe('UI Components', () => {
 **Module**: `lib/sync/`
 
 **Features**:
+
 - Queue local changes for sync
 - Track pending operations
 - Support CREATE, UPDATE, DELETE operations
 - Persist queue across app restarts
 
 **Sync Queue**:
+
 ```typescript
 // lib/sync/queue.ts
 import { database } from '../db';
@@ -1427,6 +1474,7 @@ export const syncQueue = {
 ```
 
 **Test Coverage (15 tests)**:
+
 ```typescript
 // __tests__/lib/sync.test.ts
 describe('Sync Queue', () => {
@@ -1468,6 +1516,7 @@ describe('Sync Queue', () => {
 **Decision**: Use Expo managed workflow with Expo SDK 50+
 
 **Rationale**:
+
 - Faster development cycle (no native builds for most changes)
 - OTA updates for quick bug fixes in the field
 - Built-in modules for secure storage, SQLite, etc.
@@ -1479,6 +1528,7 @@ describe('Sync Queue', () => {
 **Decision**: Use WatermelonDB on top of Expo SQLite
 
 **Rationale**:
+
 - Lazy loading for large datasets (performance)
 - Reactive queries with observable collections
 - Built-in sync primitives
@@ -1490,6 +1540,7 @@ describe('Sync Queue', () => {
 **Decision**: Use Zustand + TanStack Query
 
 **Rationale**:
+
 - Zustand: Lightweight global state (auth, settings)
 - TanStack Query: Server state caching & sync
 - Less boilerplate than Redux
@@ -1501,6 +1552,7 @@ describe('Sync Queue', () => {
 **Decision**: Use Expo Router (built on React Navigation)
 
 **Rationale**:
+
 - File-based routing (familiar to Next.js developers)
 - Type-safe routes
 - Deep linking out of the box
@@ -1512,6 +1564,7 @@ describe('Sync Queue', () => {
 **Decision**: Android-first development, iOS later
 
 **Rationale**:
+
 - 80%+ of Kenya smartphones are Android
 - Lower device cost for healthcare workers
 - Can add iOS support in Phase 2 without major refactoring
@@ -1593,6 +1646,7 @@ describe('Sync Queue', () => {
 ## Dependencies
 
 ### External Dependencies
+
 - Expo SDK 50+
 - React Native 0.73+
 - Node.js 20+
@@ -1600,12 +1654,14 @@ describe('Sync Queue', () => {
 - Backend API (Phase 0 complete ✅)
 
 ### Internal Dependencies
+
 - Backend patient API (`/api/patients/`)
 - Backend auth API (`/api/token/`)
 - Backend locations API (`/api/locations/`)
 - Sync infrastructure (Sprint 0.5 complete ✅)
 
 ### Team Dependencies
+
 - 1 Frontend Engineer (mobile focus)
 - 0.5 Backend Engineer (API support)
 - 0.5 QA Engineer (mobile testing)

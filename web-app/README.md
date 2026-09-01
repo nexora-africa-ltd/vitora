@@ -25,6 +25,7 @@ Next.js web frontend for Vitora Hospital Management Information System.
 ## ✨ Features
 
 ### Modules (40+ Dashboard Route Groups)
+
 | Module | Status | Description |
 |--------|--------|-------------|
 | **Dashboard** | ✅ | Overview stats, activity feed |
@@ -46,6 +47,7 @@ Next.js web frontend for Vitora Hospital Management Information System.
 | **Theatre** | ✅ | Theatre scheduling and case workflows |
 
 ### Technical Features
+
 - **App Router**: Next.js 16 with React 19
 - **Type Safety**: TypeScript throughout
 - **State Management**: TanStack Query 5 + Zustand 4
@@ -70,15 +72,20 @@ Next.js web frontend for Vitora Hospital Management Information System.
 ## 🚀 Quick Start
 
 \`\`\`bash
+
 # Install dependencies
+
 cd web-app
 npm install
 
 # Copy environment configuration
+
 cp .env.example .env.local
+
 # Edit .env.local with your backend URL
 
 # Start development server
+
 npm run dev
 \`\`\`
 
@@ -138,7 +145,7 @@ web-app/
 │   └── step-definitions/
 │
 ├── e2e/                        # Playwright E2E tests
-├── __tests__/                  # Jest unit tests
+├── **tests**/                  # Jest unit tests
 ├── public/                     # Static assets
 ├── package.json
 ├── next.config.js
@@ -152,26 +159,32 @@ web-app/
 ## 🛠 Development
 
 ### Start Development Server
+
 \`\`\`bash
-npm run dev                 # http://localhost:3009
+npm run dev                 # <http://localhost:3009>
 \`\`\`
 
 ### Backend Connection
+
 Ensure the Django backend is running with WebSocket support:
 \`\`\`bash
 cd ../backend
 poetry shell
 make api   # ASGI server with WebSocket support (recommended)
+
 # Or: python manage.py runserver  # WSGI only (no WebSocket)
+
 \`\`\`
 
 ### Build for Production
+
 \`\`\`bash
 npm run build
 npm start
 \`\`\`
 
 ### PWA Behavior
+
 The web app can be installed as a Progressive Web App in supported browsers. The service worker intentionally caches only static assets and the offline fallback page. Authenticated routes and API responses are not cached for offline replay, which avoids persisting clinical data in the browser cache beyond the app shell.
 
 ---
@@ -179,6 +192,7 @@ The web app can be installed as a Progressive Web App in supported browsers. The
 ## 🧪 Testing
 
 ### Unit Tests (Jest)
+
 \`\`\`bash
 npm test                    # Run all tests
 npm run test:watch          # Watch mode
@@ -186,12 +200,14 @@ npm run test:coverage       # With coverage report
 \`\`\`
 
 ### E2E Tests (Playwright)
+
 \`\`\`bash
 npm run e2e                 # Run E2E tests
 npm run e2e:ui              # With UI mode
 \`\`\`
 
 ### BDD Tests (Cucumber)
+
 \`\`\`bash
 npm run bdd:dry-run         # Validate features
 npm run bdd:e2e             # Run E2E with Playwright-BDD
@@ -227,6 +243,7 @@ All API clients are in \`lib/api/\` with Zod validation:
 | Triage | \`triage.ts\` | Triage assessments |
 
 ### API Client Pattern
+
 \`\`\`typescript
 import { parseResponse } from '@/lib/schemas/validation';
 import { PatientSchema } from '@/lib/schemas/patient.schema';
@@ -246,9 +263,12 @@ export const patientsApi = {
 ## ⚙️ Configuration
 
 ### Environment Variables
+
 \`\`\`bash
+
 # .env.local (development)
-NEXT_PUBLIC_API_URL=http://127.0.0.1:9088
+
+NEXT_PUBLIC_API_URL=<http://127.0.0.1:9088>
 NEXT_PUBLIC_APP_NAME=Vitora HMIS
 \`\`\`
 
@@ -260,31 +280,35 @@ The web app is deployed to **Vercel** and connects to the backend on Azure Conta
 
 | Resource | URL |
 |----------|-----|
-| Frontend | \`https://staging.vitora.digital\` (custom domain) |
-| Frontend | \`https://vitora-navy.vercel.app\` (Vercel default) |
-| Backend API | \`https://vitora-api.agreeabledune-6cc420cc.eastus.azurecontainerapps.io\` |
+| Frontend | \`<https://staging.vitora.digital\`> (custom domain) |
+| Frontend | \`<https://vitora-navy.vercel.app\`> (Vercel default) |
+| Backend API | \`<https://vitora-api.agreeabledune-6cc420cc.eastus.azurecontainerapps.io\`> |
 
 ### Vercel Environment Variables
+
 Set these in **Vercel → Project Settings → Environment Variables**:
 
 | Variable | Value | Notes |
 |----------|-------|-------|
-| \`NEXT_PUBLIC_API_URL\` | \`https://vitora-api.agreeabledune-6cc420cc.eastus.azurecontainerapps.io\` | Backend API base URL |
+| \`NEXT_PUBLIC_API_URL\` | \`<https://vitora-api.agreeabledune-6cc420cc.eastus.azurecontainerapps.io\`> | Backend API base URL |
 | \`NEXT_PUBLIC_APP_NAME\` | \`Vitora HMIS\` | App display name |
-| \`NEXT_PUBLIC_SHA_PROVIDER_PORTAL_URL\` | \`https://qa-mis.apeiro-digital.com\` (staging) / \`https://mis.apeiro-digital.com\` (prod) | External link for SHA Provider Portal in Settings |
-| \`NEXT_PUBLIC_SHA_CLAIMS_GUIDELINES_URL\` | \`https://hie-docs.dha.go.ke/docs/userJourney\` | External link for Claims Guidelines in Settings |
+| \`NEXT_PUBLIC_SHA_PROVIDER_PORTAL_URL\` | \`<https://qa-mis.apeiro-digital.com\`> (staging) / \`<https://mis.apeiro-digital.com\`> (prod) | External link for SHA Provider Portal in Settings |
+| \`NEXT_PUBLIC_SHA_CLAIMS_GUIDELINES_URL\` | \`<https://hie-docs.dha.go.ke/docs/userJourney\`> | External link for Claims Guidelines in Settings |
 
 ### Custom Domain (staging.vitora.digital)
+
 1. Add \`staging.vitora.digital\` in **Vercel → Project Settings → Domains**
 2. Add a DNS CNAME record: \`staging → cname.vercel-dns.com\`
 3. Vercel auto-provisions SSL after DNS propagates
 
 ### Deployment Flow
+
 1. Push to \`main\` auto-deploys to Vercel (production)
 2. PRs create preview deployments
 3. The frontend reads \`NEXT_PUBLIC_API_URL\` to connect to the backend
 
 ### Key Dependencies
+
 - **next**: ^16.1.1
 - **react**: ^19.2.3
 - **@tanstack/react-query**: ^5.17
@@ -300,9 +324,9 @@ Set these in **Vercel → Project Settings → Environment Variables**:
 
 \`\`\`css
 :root {
-  --primary: #3D000F;      /* Deep Burgundy */
+  --primary: #3D000F;      /*Deep Burgundy */
   --secondary: #1A4D5C;    /* Teal */
-  --accent: #D4A574;       /* Warm Gold */
+  --accent: #D4A574;       /* Warm Gold*/
 }
 \`\`\`
 

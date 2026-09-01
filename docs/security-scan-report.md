@@ -57,12 +57,14 @@ All 38 production files passed security scanning with zero findings:
 **CWE**: CWE-259 (Use of Hard-coded Password)
 
 **Locations**:
+
 - `tests/conftest.py:104` - `password="testpassword123"`
 - `tests/test_audit_log.py:38` - `password="auditpassword123"`
 
 **Assessment**: ✅ **ACCEPTABLE for test code**
 
 These are intentional hardcoded passwords in test fixtures. This is standard practice for:
+
 - Test user creation in pytest fixtures
 - Integration tests requiring authenticated users
 - Not used in production environments
@@ -82,6 +84,7 @@ These are intentional hardcoded passwords in test fixtures. This is standard pra
 **Assessment**: ✅ **ACCEPTABLE for test code**
 
 Bandit warns about `assert` statements because they are removed in optimized Python bytecode (`python -O`). However:
+
 - Tests are never run with optimization flags
 - `assert` is the standard pytest assertion mechanism
 - This is expected and intentional in test code

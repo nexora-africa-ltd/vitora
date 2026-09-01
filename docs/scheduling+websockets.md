@@ -1,10 +1,13 @@
 # Scheduling & Real-Time (WebSockets) Roadmap
+
 Vitora HMIS
 
 ## Purpose
+
 This roadmap defines how **scheduling** and **real-time updates (WebSockets)** are introduced across the entire HMIS in a safe, scalable, and healthcare-appropriate manner.
 
 Key principles:
+
 - Scheduling is **authoritative business logic**
 - WebSockets are **read-only, real-time projections**
 - Automatic assignment is **rule-based and auditable**
@@ -63,6 +66,7 @@ Current routing is module-specific, not facility-namespaced yet. The ASGI router
 ## Scope of Scheduling (App-Wide)
 
 Scheduling applies to:
+
 - Clinics & consultations
 - Diagnostic services (lab, radiology)
 - Theatre & procedures
@@ -81,9 +85,11 @@ Scheduling applies to:
 > **Location**: `backend/hmis/apps/scheduling/`
 
 ### Objectives
+
 Establish a single, authoritative scheduling engine.
 
 ### Deliverables ✅
+
 - Central `Schedule` domain model ✅
 - Time-slot abstraction (start, end, timezone-safe) ✅
 - Resource abstraction: ✅
@@ -100,6 +106,7 @@ Establish a single, authoritative scheduling engine.
   - NO_SHOW
 
 ### APIs ✅
+
 - Create / update / cancel schedules ✅
 - Query availability ✅
 - Conflict detection & prevention ✅
@@ -108,6 +115,7 @@ Establish a single, authoritative scheduling engine.
 ### Implementation Details
 
 #### Models Created
+
 | Model | Purpose |
 |-------|--------|
 | `Resource` | PERSON/PLACE/ASSET abstraction with staff profile linking |
@@ -117,6 +125,7 @@ Establish a single, authoritative scheduling engine.
 | `Appointment` | Full lifecycle with state machine transitions |
 
 #### API Endpoints
+
 | Endpoint | Methods |
 |----------|--------|
 | `/api/scheduling/resources/` | GET, POST, PATCH, DELETE |
@@ -134,13 +143,16 @@ Establish a single, authoritative scheduling engine.
 | `/api/scheduling/appointments/{id}/no-show/` | POST |
 
 #### Audit Tracking
+
 All appointment lifecycle actions are logged to `AuditLog` with:
+
 - User who performed action
 - IP address
 - Timestamp
 - Action type (`appointment_create`, `appointment_confirm`, etc.)
 
 ### Non-Goals (Deferred to Phase 2+)
+
 - No real-time push
 - No live dashboards
 - No background auto-assignment yet
@@ -154,9 +166,11 @@ All appointment lifecycle actions are logged to `AuditLog` with:
 > **Location**: `backend/hmis/apps/scheduling/services/assignment.py`
 
 ### Objectives
+
 Introduce deterministic, rule-based assignment.
 
 ### Assignment Types ✅
+
 - Doctor to appointment ✅
 - Nurse to clinic/ward shift ✅
 - Bed to inpatient admission ✅
@@ -164,6 +178,7 @@ Introduce deterministic, rule-based assignment.
 - Theatre slot to procedure ✅
 
 ### Rule Categories ✅
+
 - Availability (time-based) ✅
 - Qualification / specialization ✅
 - Load balancing ✅
@@ -171,17 +186,20 @@ Introduce deterministic, rule-based assignment.
 - Facility or department rules ✅
 
 ### Deliverables ✅
+
 - Assignment rules engine ✅
 - Assignment decision log ✅
 - Fallback logic (unassigned state) ✅
 - Manual reassignment with justification ✅
 
 ### Key Rule
+>
 > Automatic assignment suggests or assigns — humans can override.
 
 ### Implementation Details
 
 #### Models Created
+
 | Model | Purpose |
 |-------|--------|
 | `AssignmentRule` | Rule definitions with JSON DSL (constraints, scoring, fallback) |
@@ -189,12 +207,14 @@ Introduce deterministic, rule-based assignment.
 | `AssignmentOverride` | Manual override tracking with justification and approval workflow |
 
 #### Services Created
+
 | Service | Purpose |
 |---------|--------|
 | `RuleEvaluator` | Evaluates rules against candidates, calculates scores, logs decisions |
 | `AssignmentService` | High-level orchestration for auto-assign and manual override |
 
 #### API Endpoints
+
 | Endpoint | Methods | Description |
 |----------|---------|-------------|
 | `/api/scheduling/assignment-rules/` | GET, POST, PATCH, DELETE | CRUD for assignment rules |
@@ -208,6 +228,7 @@ Introduce deterministic, rule-based assignment.
 | `/api/scheduling/assignments/manual-override/` | POST | Manually override assignment |
 
 #### Rule DSL Structure
+
 ```json
 {
   "version": "1.0",
@@ -225,7 +246,9 @@ Introduce deterministic, rule-based assignment.
 ```
 
 #### Decision Explainability
+
 Every assignment decision logs:
+
 - All candidates evaluated with scores
 - Matched and failed constraints per candidate
 - Scoring breakdown (field, weight, contribution)
@@ -233,6 +256,7 @@ Every assignment decision logs:
 - User who triggered the assignment
 
 #### Override Workflow
+
 - Override reasons: PATIENT_REQUEST, STAFF_UNAVAILABLE, EMERGENCY, SPECIALIZATION_NEEDED, LOAD_BALANCING, ADMINISTRATIVE, OTHER
 - Justification required for all overrides
 - Optional approval workflow (PENDING → APPROVED/REJECTED)
@@ -247,6 +271,7 @@ Every assignment decision logs:
 > **Location**: `backend/hmis/apps/scheduling/`, `web-app/app/(dashboard)/scheduling/roster/`
 
 ### Objectives
+
 Provide a weekly duty roster for staff shift management with constraint-aware auto-fill, cross-facility conflict detection, and printable views.
 
 ### Models Added
@@ -296,6 +321,7 @@ Provide a weekly duty roster for staff shift management with constraint-aware au
 > **Location**: `backend/hmis/apps/scheduling/views.py`, `backend/hmis/apps/core/permissions.py`, `web-app/`
 
 ### Objectives
+
 Enable staff to clock in and out of shifts through a state machine lifecycle, enforce punctuality policies, gate roster management behind RBAC, and exempt administrative roles from active-shift enforcement.
 
 ### Shift Lifecycle State Machine
@@ -360,6 +386,7 @@ Enable staff to clock in and out of shifts through a state machine lifecycle, en
 > **Location**: `backend/hmis/apps/scheduling/`, `backend/hmis/apps/clinics/`, `web-app/`
 
 ### Objectives
+
 Enable staff to clock into specific rooms (PLACE resources) and clinics during shift start. Auto-manage ClinicSession lifecycle based on active shifts. Add department FK to Resource, Clinic, and Shift models so rooms can be assigned across all departments (triage, lab, pharmacy, imaging, wards — not just clinical).
 
 ### Models Changed
@@ -394,6 +421,7 @@ Enable staff to clock into specific rooms (PLACE resources) and clinics during s
 ### Schedule Scoping for Rooms
 
 The `room_or_linked_clinic` filter on `ShiftFilter` returns shifts where:
+
 - `room = {resource_id}` (staff clocked into this room), **OR**
 - `clinic_id IN (clinics linked to this room via ClinicRoom)`
 
@@ -440,9 +468,11 @@ This ensures the resource detail timeline shows all relevant shifts, not just po
 ## Phase 3: Internal Domain Events (No WebSockets Yet)
 
 ### Objectives
+
 Decouple scheduling logic from UI concerns.
 
 ### Events Emitted
+
 - `schedule.created`
 - `schedule.updated`
 - `schedule.cancelled`
@@ -452,11 +482,13 @@ Decouple scheduling logic from UI concerns.
 - `resource.unavailable`
 
 ### Characteristics
+
 - Internal-only
 - Durable (can be replayed)
 - Source for audit trails
 
 ### Overlap with Phase 4
+
 At the end of this phase (Sprint 9), build **one simple projection** (e.g., queue waiting count) as a "canary" to validate that event contracts are correct before committing to the full projection suite. This de-risks Phase 4 without merging the phases.
 
 ---
@@ -466,9 +498,11 @@ At the end of this phase (Sprint 9), build **one simple projection** (e.g., queu
 > **Note**: Sprint 9 overlaps with Phase 3 (canary projection only). Full work begins Sprint 10.
 
 ### Objectives
+
 Prepare data for real-time consumption.
 
 ### Deliverables
+
 - Queue views
 - Timetable views
 - Room/ward occupancy views
@@ -476,9 +510,11 @@ Prepare data for real-time consumption.
 - Today/Now/Next projections
 
 ### Important Rule
+
 Read models are **derived**, never authoritative.
 
 ### Implementation Approach
+
 1. **Sprint 9 (overlap)**: Validate canary projection, freeze event contracts
 2. **Sprints 10–11**: Build full projection suite with confidence
 
@@ -491,6 +527,7 @@ Read models are **derived**, never authoritative.
 > **Location**: `backend/hmis/asgi.py`, module routing/consumer files under `backend/hmis/apps/`
 
 ### Objectives
+
 Enable live updates without impacting core logic.
 
 ### Infrastructure Status ✅
@@ -504,11 +541,13 @@ Enable live updates without impacting core logic.
 | Auth Middleware | ✅ Configured | AuthMiddlewareStack wrapping URLRouter |
 
 ### WebSocket Responsibilities
+
 - Push schedule changes to clients
 - Update queues and boards
 - Notify users of state transitions
 
 ### WebSocket Event Families In Use
+
 - `queue.*` for clinic queue updates
 - `lab.*` for laboratory result and order notifications
 - `ward.*` and `supervisor.*` for inpatient compatibility/escalation flows
@@ -516,6 +555,7 @@ Enable live updates without impacting core logic.
 - `surveillance.*` for case, outbreak, and stats alerts
 
 ### Strict Constraints ✅ ENFORCED
+
 - WebSockets DO NOT:
   - Create schedules
   - Assign resources
@@ -535,6 +575,7 @@ Enable live updates without impacting core logic.
 **Consumer**: `ClinicQueueConsumer` (AsyncJsonWebsocketConsumer)
 
 **Events Broadcasted**:
+
 | Event | Trigger | Payload |
 |-------|---------|--------|
 | `patient_added` | New patient joins queue | visit_id, patient_name, queue_number, priority |
@@ -545,6 +586,7 @@ Enable live updates without impacting core logic.
 | `stats_updated` | Queue stats change | waiting_count, avg_wait_time, etc. |
 
 **Broadcast Helpers**:
+
 ```python
 # Async (for consumers/async views)
 from hmis.apps.clinics.websockets import broadcast_queue_event
@@ -564,21 +606,25 @@ broadcast_queue_stats(clinic_id, stats)
 ```
 
 ### Diagnostics
+
 ### Laboratory ✅ IMPLEMENTED
 
 > **Location**: `hmis.apps.laboratory`
 
 **WebSocket Endpoints**:
+
 - `ws://host/ws/lab/encounters/{encounter_id}/`
 - `ws://host/ws/lab/orders/{order_id}/`
 - `ws://host/ws/lab/clinician/`
 
 **Consumers**:
+
 - `LabEncounterConsumer`
 - `LabOrderConsumer`
 - `LabClinicianConsumer`
 
 **Verified Event Types in Code**:
+
 - `lab.result_entered`
 - `lab.result_verified`
 - `lab.result_rejected`
@@ -586,9 +632,11 @@ broadcast_queue_stats(clinic_id, stats)
 - `lab.order_completed`
 
 **Broadcast Source**:
+
 - `hmis.apps.laboratory.signals` triggers broadcasts on result verification and order completion.
 
 ### Theatre
+
 - Live procedure board
 - Delays and overruns broadcast
 
@@ -597,20 +645,24 @@ broadcast_queue_stats(clinic_id, stats)
 > **Location**: `hmis.apps.inpatient`
 
 **WebSocket Endpoints**:
+
 - `ws://host/ws/inpatient/wards/{ward_id}/`
 - `ws://host/ws/inpatient/supervisor/alerts/`
 
 **Consumers**:
+
 - `WardCompatibilityConsumer`
 - `SupervisorAlertConsumer`
 
 **Verified Event Types in Code**:
+
 - `ward.constraints_updated`
 - `ward.capacity_changed`
 - `ward.compatibility_violation`
 - `supervisor.critical_alert`
 
 **Fallbacks Also Implemented**:
+
 - `GET /api/inpatient/wards/{id}/updates/` polling fallback
 - `POST /api/inpatient/wards/{id}/generate_beds/` for backfilling bed records
 
@@ -623,6 +675,7 @@ broadcast_queue_stats(clinic_id, stats)
 **Consumer**: `EmergencyQueueConsumer`
 
 **Verified Behavior in Code**:
+
 - Periodic `state_update` payloads with critical patients and zone summaries
 - Group handlers for `emergency.critical_update`, `emergency.zones_update`, and patient events
 
@@ -635,6 +688,7 @@ broadcast_queue_stats(clinic_id, stats)
 **Consumer**: `LabourPartographConsumer`
 
 **Verified Event Type in Code**:
+
 - `partograph_update`
 
 ### Surveillance ✅ IMPLEMENTED
@@ -646,6 +700,7 @@ broadcast_queue_stats(clinic_id, stats)
 **Consumer**: `SurveillanceAlertConsumer`
 
 **Verified Event Types in Code**:
+
 - `surveillance.new_case`
 - `surveillance.immediate_alert`
 - `surveillance.outbreak_alert`
@@ -678,6 +733,7 @@ broadcast_queue_stats(clinic_id, stats)
 > **Implemented**: February 2026
 
 #### Algorithm
+
 ```
 1. Filter ward.beds where status = 'AVAILABLE'
 2. Lock rows with select_for_update(skip_locked=True)
@@ -687,6 +743,7 @@ broadcast_queue_stats(clinic_id, stats)
 ```
 
 #### Deliverables
+
 - [x] `inpatient/services/bed_assignment.py` — core service
 - [x] `auto_assign_bed()` function with atomic locking
 - [x] `get_available_beds()` query helper
@@ -695,10 +752,12 @@ broadcast_queue_stats(clinic_id, stats)
 - [x] Audit logging for auto-assignments
 
 **Verified Coverage**:
+
 - 13 service tests in `tests/inpatient/test_bed_assignment_service.py`
 - Admission API coverage for `auto_assign_bed=true` in `tests/inpatient/test_inpatient_api_admission.py`
 
 #### API Changes
+
 ```python
 # POST /api/inpatient/admissions/
 {
@@ -711,6 +770,7 @@ broadcast_queue_stats(clinic_id, stats)
 ```
 
 #### Service Interface
+
 ```python
 # hmis/apps/inpatient/services/bed_assignment.py
 @transaction.atomic
@@ -734,6 +794,7 @@ def auto_assign_bed(ward: Ward, user: User) -> Bed:
 > **Location**: `backend/hmis/apps/inpatient/services/bed_rules.py`
 
 #### Algorithm
+
 ```
 1. Load active BED_ASSIGNMENT rules for facility
 2. Evaluate candidates (available beds) against constraints:
@@ -763,6 +824,7 @@ def auto_assign_bed(ward: Ward, user: User) -> Bed:
 | Seed command | `python manage.py seed_bed_assignment_rules` (7 ward-type rules) |
 
 #### Rule DSL Example
+
 ```yaml
 rule_id: assign_bed_general_ward
 version: 1.0
@@ -800,11 +862,13 @@ fallback:
 | `/api/inpatient/admissions/{id}/override_bed/` | POST | Manual bed override with justification + `AssignmentOverride` logging |
 
 #### Admin UI
+
 - `AssignmentRuleAdmin` — manage JSON rule definitions, priorities, versioning
 - `AssignmentDecisionAdmin` — read-only audit log with color-coded outcome badges
 - `AssignmentOverrideAdmin` — manual override tracking with approval workflow
 
 #### Deliverables
+
 - [x] Integrate with existing `AssignmentRule` model
 - [x] Create `BedAssignmentRuleEvaluator` class
 - [x] Seed default rules for common ward types
@@ -833,6 +897,7 @@ fallback:
 | **Emergency Buffer** | Reserve percentage of beds for emergencies | ✅ |
 
 #### Algorithm (Implemented)
+
 ```
 1. Auto-detect infection risk from NursingKardex.isolation_required and critical lab results
 2. If non-emergency, enforce emergency buffer (Ward.emergency_buffer_percent)
@@ -844,6 +909,7 @@ fallback:
 ```
 
 #### Model Changes
+
 - `Ward.emergency_buffer_percent` — configurable 0-100% buffer for emergencies
 - `Admission.expected_discharge_date` — clinician-set expected discharge for bed planning
 
@@ -857,12 +923,14 @@ fallback:
 | `/api/inpatient/admissions/{id}/set_expected_discharge/` | POST | Set expected discharge date |
 
 #### Integration Points
+
 - Laboratory: Critical lab results (WBC, CRP, PCT, ESR, blood culture) inform isolation decisions
 - Nursing Kardex: `isolation_required` and `isolation_type` for infection control
 - Shift Handover: `critical_patients` and `total_patients` for workload scoring
 - Discharge model: Historical LOS for predictive estimation
 
 #### Deliverables
+
 - [x] Discharge prediction model integration (`get_predicted_discharges`)
 - [x] Infection risk assessment from Kardex + lab markers (`evaluate_infection_risk`)
 - [x] Cohort grouping scoring by ICD-10 chapter (`calculate_cohort_score`)
@@ -878,6 +946,7 @@ fallback:
 ### Current Inpatient WebSocket Surface
 
 **Endpoints Implemented Now**:
+
 - `ws://host/ws/inpatient/wards/{ward_id}/`
 - `ws://host/ws/inpatient/supervisor/alerts/`
 
@@ -889,11 +958,13 @@ fallback:
 | `supervisor.critical_alert` | Critical override/escalation | alert details |
 
 **Not Yet Implemented**:
+
 - A dedicated `ws/wards/{ward_id}/beds/` bed-board channel still remains future work.
 
 ---
 
 ### Finance & Billing
+
 - Payment status updates
 - Invoice state changes (view-only)
 
@@ -902,11 +973,13 @@ fallback:
 ## Phase 7: Scaling & Reliability
 
 ### Scaling Strategies
+
 - Namespace WebSocket channels per facility/module
 - Throttle non-critical updates
 - Snapshot + delta updates
 
 ### Failure Handling
+
 - Automatic reconnect
 - Client-side resync via REST
 - WebSocket health monitoring
@@ -970,9 +1043,9 @@ Sprint 1        Sprint 2        Sprint 3        Sprint 4        Sprint 5
 
 **Exit criteria** ✅
 
-* App fully usable without real-time ✅
-* Scheduling is deterministic and authoritative ✅
-* Conflicts are prevented, not detected late ✅
+- App fully usable without real-time ✅
+- Scheduling is deterministic and authoritative ✅
+- Conflicts are prevented, not detected late ✅
 
 **Completed**: February 7, 2026 | 70 tests | `hmis.apps.scheduling`
 
@@ -989,9 +1062,9 @@ Sprint 1        Sprint 2        Sprint 3        Sprint 4        Sprint 5
 
 **Exit criteria** ✅
 
-* Assignments are explainable ✅
-* Overrides require justification ✅
-* Zero hidden automation ✅
+- Assignments are explainable ✅
+- Overrides require justification ✅
+- Zero hidden automation ✅
 
 **Completed**: February 7, 2026 | 47 tests | `hmis.apps.scheduling.services.assignment`
 
@@ -1008,9 +1081,9 @@ Sprint 1        Sprint 2        Sprint 3        Sprint 4        Sprint 5
 
 **Exit criteria**
 
-* Scheduling logic no longer talks to UI directly
-* Events can be replayed
-* One simple projection validates event contracts (canary)
+- Scheduling logic no longer talks to UI directly
+- Events can be replayed
+- One simple projection validates event contracts (canary)
 
 **Overlap Strategy**
 
@@ -1051,9 +1124,9 @@ Sprint 9 (overlap)           Sprints 10–11 (full)
 
 **Exit criteria**
 
-* Fast, read-optimized views
-* No writes to projections
-* Event contracts frozen before full projection build
+- Fast, read-optimized views
+- No writes to projections
+- Event contracts frozen before full projection build
 
 ---
 
@@ -1071,8 +1144,8 @@ Sprint 9 (overlap)           Sprints 10–11 (full)
 
 **Exit criteria** ✅
 
-* Real-time UX without correctness dependency ✅
-* REST fallback works ✅
+- Real-time UX without correctness dependency ✅
+- REST fallback works ✅
 
 **Completed**: February 2026 | 16 ASGI routing tests plus module suites | Django Channels + Daphne
 
@@ -1092,10 +1165,10 @@ Sprint 9 (overlap)           Sprints 10–11 (full)
 
 ### Design Goals
 
-* Human-readable
-* Deterministic
-* Versioned
-* Auditable
+- Human-readable
+- Deterministic
+- Versioned
+- Auditable
 
 ---
 
@@ -1156,10 +1229,10 @@ audit:
 
 ### Key Safety Rules
 
-* Rules never mutate data
-* Rules only **suggest or assign**
-* Overrides always win
-* Every decision is logged
+- Rules never mutate data
+- Rules only **suggest or assign**
+- Overrides always win
+- Every decision is logged
 
 ---
 
@@ -1216,11 +1289,11 @@ These routes are read-only notification channels. Scheduling and assignment stil
 
 #### 1. Facility Isolation
 
-* Facility ID in:
+- Facility ID in:
 
-  * DB partitions
-  * Event streams
-  * WS namespaces
+  - DB partitions
+  - Event streams
+  - WS namespaces
 
 ✅ Prevents cross-facility leakage
 
@@ -1228,16 +1301,16 @@ These routes are read-only notification channels. Scheduling and assignment stil
 
 #### 2. Event Fan-Out Control
 
-* Aggregate low-priority events
-* Throttle non-clinical updates
-* Snapshot + delta updates
+- Aggregate low-priority events
+- Throttle non-clinical updates
+- Snapshot + delta updates
 
 ---
 
 #### 3. Stateless WebSocket Nodes
 
-* WS servers do not store state
-* Rehydrate via REST on reconnect
+- WS servers do not store state
+- Rehydrate via REST on reconnect
 
 ---
 
@@ -1253,10 +1326,10 @@ These routes are read-only notification channels. Scheduling and assignment stil
 
 ### Load Test Targets (Realistic)
 
-* 100 facilities
-* 50 concurrent users per facility
-* 10 events/sec/facility peak
-* <200ms WS fan-out latency
+- 100 facilities
+- 50 concurrent users per facility
+- 10 events/sec/facility peak
+- <200ms WS fan-out latency
 
 ---
 
@@ -1268,10 +1341,10 @@ These routes are read-only notification channels. Scheduling and assignment stil
 
 This design:
 
-* Survives scale
-* Passes audits
-* Avoids real-time fragility
-* Fits healthcare operational risk
+- Survives scale
+- Passes audits
+- Avoids real-time fragility
+- Fits healthcare operational risk
 
 ---
 
@@ -1309,10 +1382,10 @@ This design:
 
 **Key Notes:**
 
-* All apps **consume the same API** → no duplicate scheduling logic.
-* All apps **listen to WS / Event Stream** → real-time updates.
-* **Assignment Engine & Rules DSL** live inside the scheduling engine.
-* **Audit logs** capture every creation, update, or cancellation.
+- All apps **consume the same API** → no duplicate scheduling logic.
+- All apps **listen to WS / Event Stream** → real-time updates.
+- **Assignment Engine & Rules DSL** live inside the scheduling engine.
+- **Audit logs** capture every creation, update, or cancellation.
 
 ---
 
@@ -1320,63 +1393,63 @@ This design:
 
 ### **A) OPD / Clinics**
 
-* **Use case:** Schedule patient consultations with available doctors and nurses.
-* **Integration:**
+- **Use case:** Schedule patient consultations with available doctors and nurses.
+- **Integration:**
 
-  * POST `/appointments` → create consultation encounters
-  * GET `/appointments?facility={id}` → fetch schedule
-  * WS `channel: /ws/{facility}/scheduling/appointments`
-* **Automatic Assignment:** Assign clinician based on specialty, load, and availability.
-* **Conflict Handling:** Prevent overlapping patient bookings or double-booking staff.
+  - POST `/appointments` → create consultation encounters
+  - GET `/appointments?facility={id}` → fetch schedule
+  - WS `channel: /ws/{facility}/scheduling/appointments`
+- **Automatic Assignment:** Assign clinician based on specialty, load, and availability.
+- **Conflict Handling:** Prevent overlapping patient bookings or double-booking staff.
 
 ---
 
 ### **B) Theatre / Surgery**
 
-* **Use case:** Schedule pre-op, intra-op, and post-op theatre cases.
-* **Integration:**
+- **Use case:** Schedule pre-op, intra-op, and post-op theatre cases.
+- **Integration:**
 
-  * POST `/theatre_cases` → link patient encounter to theatre slot
-  * GET `/theatre_cases?date={YYYY-MM-DD}`
-  * WS `channel: /ws/{facility}/scheduling/theatre`
-* **Automatic Assignment:** Assign surgeon, anesthetist, nurse, and theatre room.
-* **Extra Features:**
+  - POST `/theatre_cases` → link patient encounter to theatre slot
+  - GET `/theatre_cases?date={YYYY-MM-DD}`
+  - WS `channel: /ws/{facility}/scheduling/theatre`
+- **Automatic Assignment:** Assign surgeon, anesthetist, nurse, and theatre room.
+- **Extra Features:**
 
-  * Capture preparation status (pre-op checklist)
-  * Lock theatre resources during procedure
+  - Capture preparation status (pre-op checklist)
+  - Lock theatre resources during procedure
 
 ---
 
 ### **C) Laboratory / Diagnostics**
 
-* **Use case:** Schedule lab tests, imaging appointments.
-* **Integration:**
+- **Use case:** Schedule lab tests, imaging appointments.
+- **Integration:**
 
-  * POST `/lab_appointments` → schedule tests
-  * GET `/lab_appointments?patient_id={id}`
-  * WS `channel: /ws/{facility}/scheduling/labs`
-* **Automatic Assignment:** Assign lab staff, machines, and priority based on urgency.
+  - POST `/lab_appointments` → schedule tests
+  - GET `/lab_appointments?patient_id={id}`
+  - WS `channel: /ws/{facility}/scheduling/labs`
+- **Automatic Assignment:** Assign lab staff, machines, and priority based on urgency.
 
 ---
 
 ### **D) Pharmacy**
 
-* **Use case:** Reserve medication pickup slots to prevent overcrowding.
-* **Integration:**
+- **Use case:** Reserve medication pickup slots to prevent overcrowding.
+- **Integration:**
 
-  * POST `/pharmacy_pickups`
-  * WS `channel: /ws/{facility}/scheduling/pharmacy`
-* **Automatic Assignment:** Assign pharmacist and pickup counter.
+  - POST `/pharmacy_pickups`
+  - WS `channel: /ws/{facility}/scheduling/pharmacy`
+- **Automatic Assignment:** Assign pharmacist and pickup counter.
 
 ---
 
 ### **E) Mobile / Remote Apps**
 
-* **Use case:** Display schedules, send reminders, allow rescheduling.
-* **Integration:**
+- **Use case:** Display schedules, send reminders, allow rescheduling.
+- **Integration:**
 
-  * Subscribe to WS channels for real-time updates
-  * Fetch schedule via API for offline support
+  - Subscribe to WS channels for real-time updates
+  - Fetch schedule via API for offline support
 
 ---
 
@@ -1418,27 +1491,27 @@ User creates / updates / cancels appointment
 
 ## **4️⃣ Automatic Assignment Engine & Rules DSL**
 
-* **DSL-driven rules:** Assign staff/resources based on:
+- **DSL-driven rules:** Assign staff/resources based on:
 
-  * Availability
-  * Specialty
-  * Load / number of concurrent appointments
-  * Facility / department
-* **Auditable outputs:** Every assignment includes:
+  - Availability
+  - Specialty
+  - Load / number of concurrent appointments
+  - Facility / department
+- **Auditable outputs:** Every assignment includes:
 
-  * Reason for selection
-  * Rule version
-  * Alternatives considered
-* **Fallback:** Manual override or notifications to supervisor
+  - Reason for selection
+  - Rule version
+  - Alternatives considered
+- **Fallback:** Manual override or notifications to supervisor
 
 ---
 
 ## **5️⃣ Multi-Facility & Scaling Considerations**
 
-* **Facility partitioning:** Each event and appointment tagged with `facility_id`
-* **Horizontal scaling:** Scheduling engine stateless; persistent data in DB
-* **Conflict resolution:** Centralized engine prevents cross-app double-booking
-* **Event fan-out:** Aggregate updates for low-priority events to reduce WS load
+- **Facility partitioning:** Each event and appointment tagged with `facility_id`
+- **Horizontal scaling:** Scheduling engine stateless; persistent data in DB
+- **Conflict resolution:** Centralized engine prevents cross-app double-booking
+- **Event fan-out:** Aggregate updates for low-priority events to reduce WS load
 
 ---
 

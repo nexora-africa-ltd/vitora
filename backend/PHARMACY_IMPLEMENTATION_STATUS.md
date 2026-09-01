@@ -30,6 +30,7 @@
 ### ✅ Phase 2: Drug Model (100% Complete - 13/13 tests passing)
 
 **Model Features Implemented:**
+
 - Drug catalog with KEML (Kenya Essential Medicines List) support
 
 - 15 drug forms (Tablet, Capsule, Syrup, Injection, etc.)
@@ -45,6 +46,7 @@
 - Active/inactive status tracking
 
 **Methods Implemented:**
+
 - `get_display_name()`: Returns formatted name with strength and form
 
 - `get_current_stock()`: Calculates total available stock across all batches
@@ -54,6 +56,7 @@
 ### ✅ Phase 3: StockBatch Model (100% Complete - 18/18 tests passing)
 
 **Model Features Implemented:**
+
 - Individual batch tracking with expiry dates
 
 - Quantity tracking (received, available, dispensed, damaged, expired)
@@ -69,6 +72,7 @@
 - User tracking for batch receipt
 
 **Methods Implemented:**
+
 - `is_expired()`: Checks if batch expired
 
 - `days_to_expiry()`: Calculates days until expiry
@@ -90,6 +94,7 @@
 ### ✅ Phase 4: StockAlert Model (100% Complete - 12/12 tests passing)
 
 **Model Features Implemented:**
+
 - 5 alert types (Low Stock, Out of Stock, Expiring Soon, Expired, Recalled)
 
 - 4 severity levels (Low, Medium, High, Critical)
@@ -99,6 +104,7 @@
 - Alert filtering and duplicate prevention
 
 **Methods Implemented:**
+
 - `acknowledge(user)`: Marks alert as acknowledged
 
 - `resolve(user, notes)`: Resolves alert with notes
@@ -112,6 +118,7 @@
 ### ✅ Phase 5: Prescription Models (100% Complete - 15/15 tests passing)
 
 **Prescription Model:**
+
 - Linked to encounters and patients
 
 - Prescriber tracking with authenticated user
@@ -125,6 +132,7 @@
 - Methods: `is_valid()`, `is_fully_dispensed()`, `get_remaining_items()`, `cancel(reason)`, `update_status()`
 
 **PrescriptionItem Model:**
+
 - Individual drug items within prescriptions
 
 - Dosage instructions (quantity, dosage, frequency, duration, route)
@@ -143,6 +151,7 @@
 ### ✅ Phase 6: Dispensing Model (100% Complete - 16/16 tests passing)
 
 **Model Features:**
+
 - Linked to prescription items or direct dispensing (OTC/emergency)
 
 - Batch traceability for recalls
@@ -156,6 +165,7 @@
 - Return processing with automatic stock restoration
 
 **Methods Implemented:**
+
 - `clean()`: Validates quantity against available stock
 
 - `save()`: Auto-reduces batch stock on dispensing
@@ -174,6 +184,7 @@
 ### ✅ Phase 7: StockAdjustment Model (100% Complete - 8/8 tests passing)
 
 **Model Features:**
+
 - 8 adjustment types: DAMAGE, LOSS, EXPIRED, RETURN_SUPPLIER, TRANSFER_OUT, TRANSFER_IN, COUNT_CORRECTION, SAMPLE
 
 - Positive/negative quantity tracking (positive = increase, negative = decrease)
@@ -185,6 +196,7 @@
 - Auto-updates batch stock on save
 
 **Methods Implemented:**
+
 - `clean()`: Validates adjustment won't make stock negative
 
 - `save()`: Auto-updates batch stock (increase/decrease)
@@ -197,6 +209,7 @@
 ### ✅ Phase 8: FEFO Dispensing Service (100% Complete - 10/10 tests passing)
 
 **Service Features:**
+
 - Automatic batch selection prioritizing earliest expiry dates
 
 - Multi-batch dispensing support for large quantities
@@ -206,6 +219,7 @@
 - Secondary ordering by received date when expiry dates match
 
 **Methods Implemented:**
+
 - `get_batches_for_dispensing(drug, quantity)`: Returns list of (batch, qty) tuples in FEFO order
 
 - `dispense(drug, quantity, dispensed_by, **kwargs)`: Creates dispensing records using FEFO logic
@@ -218,6 +232,7 @@
 ### ✅ Phase 9: API Endpoints (95.5% Complete - 21/22 tests passing)
 
 **Serializers Implemented (7 serializers):**
+
 - DrugSerializer (with display_name, current_stock computed fields)
 
 - StockBatchSerializer (with drug_name, days_to_expiry, is_expired, is_low_stock)
@@ -233,6 +248,7 @@
 - StockAdjustmentSerializer (with batch_number, drug_name, adjusted_by_name, approved_by_name)
 
 **ViewSets Implemented (6 viewsets):**
+
 - DrugViewSet - CRUD + search/filter
 
 - StockBatchViewSet - CRUD + by_drug action
@@ -246,6 +262,7 @@
 - StockAdjustmentViewSet - CRUD + approve action
 
 **API Features:**
+
 - Authentication required on all endpoints ✅
 
 - Search and filtering support ✅
@@ -265,6 +282,7 @@
 ### ✅ Phase 10: Reports (100% Complete - 10/10 tests passing)
 
 **Report Endpoints Implemented (4 reports):**
+
 - `GET /api/pharmacy/reports/stock-summary/` - Current inventory levels by drug
 
 - `GET /api/pharmacy/reports/expiry-report/?days=90` - Batches expiring soon
@@ -274,6 +292,7 @@
 - `GET /api/pharmacy/reports/movement/?start_date=&end_date=` - All stock movements
 
 **Report Features:**
+
 - Authentication required on all endpoints ✅
 
 - Stock summary with batch details and reorder levels ✅
@@ -418,7 +437,7 @@ All migrations created and tested:
 
 ## Summary
 
-**Sprint 1.3-1.4 Track A is COMPLETE! ✅**
+### Sprint 1.3-1.4 Track A is COMPLETE! ✅
 
 All core deliverables have been implemented, tested, and verified:
 

@@ -7,6 +7,7 @@
 ## 1. Azure Infrastructure
 
 - [x] **Production Container App** created: `vitora-api-prod` in `vitora-rg`
+
   ```bash
   az containerapp create -n vitora-api-prod -g vitora-rg \
     --environment vitora-env \
@@ -16,6 +17,7 @@
     --min-replicas 1 --max-replicas 5 \
     --cpu 1.0 --memory 2.0Gi
   ```
+
 - [x] **Web App** deployed to Vercel with `app.vitora.digital` custom domain
 - [ ] **Custom domain** for API:
   - `api.vitora.digital` → `vitora-api-prod` (FQDN: `vitora-api-prod.agreeabledune-6cc420cc.eastus.azurecontainerapps.io`)
@@ -35,6 +37,7 @@
 - [x] `DATABASE_URL` secret set in Azure Container App
 - [ ] Migrations tested against production schema: `python manage.py migrate --plan`
 - [ ] PowerSync publication created on production DB:
+
   ```sql
   ALTER PUBLICATION powersync ADD TABLE ...;
   ```

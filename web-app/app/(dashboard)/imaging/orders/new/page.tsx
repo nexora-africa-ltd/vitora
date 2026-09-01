@@ -41,21 +41,6 @@ export default function NewImagingOrderPage() {
   const { hasPermission } = usePermissions();
   const canCreateImagingOrder = hasPermission('imaging.add_imagingorder');
 
-  if (!canCreateImagingOrder) {
-    return (
-      <div className="p-4 sm:p-6">
-        <Card>
-          <CardContent className="p-6 text-center">
-            <p className="text-sm font-medium">Access denied</p>
-            <p className="text-sm text-muted-foreground mt-1">
-              You do not have permission to create imaging orders.
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
   const patientIdParam = searchParams.get('patient');
   const patientNameParam = searchParams.get('patientName');
   const encounterIdParam = searchParams.get('encounter');
@@ -76,15 +61,19 @@ export default function NewImagingOrderPage() {
   const { data: patientEncounters = [], isLoading: loadingPatientEncounters } = useQuery({
     queryKey: ['patients', selectedPatientId, 'encounters', 'new-imaging-order'],
     queryFn: () => patientsApi.getEncounters(selectedPatientId!),
-    enabled: !!selectedPatientId,
+    enabled: canCreateImagingOrder && !!selectedPatientId,
   });
 
   useEffect(() => {
+    if (!canCreateImagingOrder) {
+      return;
+    }
+
     if (!selectedEncounterId || patientEncounters.length === 0) return;
     if (!patientEncounters.some((encounter) => encounter.id === selectedEncounterId)) {
       setSelectedEncounterId(null);
     }
-  }, [patientEncounters, selectedEncounterId]);
+  }, [canCreateImagingOrder, patientEncounters, selectedEncounterId]);
 
   const selectedPatientRecord = selectedPatient ?? patientFromApi ?? null;
   const selectedEncounterRecord = useMemo<PatientEncounter | null>(() => {
@@ -106,6 +95,21 @@ export default function NewImagingOrderPage() {
       router.push(`/imaging/orders/${orderNumber}`);
     }
   };
+
+  if (!canCreateImagingOrder) {
+    return (
+      <div className="p-4 sm:p-6">
+        <Card>
+          <CardContent className="p-6 text-center">
+            <p className="text-sm font-medium">Access denied</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              You do not have permission to create imaging orders.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

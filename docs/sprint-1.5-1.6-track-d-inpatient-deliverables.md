@@ -12,6 +12,7 @@
 Sprint 1.5-1.6 Track D implements the foundational Inpatient Department (IPD) module for Vitora HMIS. This track enables seamless OPD → IPD transitions, bed management, ward rounds, nursing Kardex, and discharge workflows. The implementation follows Test-Driven Development (TDD) methodology and addresses requirements gathered from consultant stakeholder feedback.
 
 ### Business Value
+
 - **Eliminates duplicate registration**: Patients admitted directly from OPD without re-registration
 - **Improves care continuity**: Clinical notes flow seamlessly from OPD to IPD
 - **Enhances nursing efficiency**: Kardex provides shift-based care summaries
@@ -47,6 +48,7 @@ Sprint 1.5-1.6 Track D implements the foundational Inpatient Department (IPD) mo
 **Module**: `hmis/apps/inpatient/models.py`
 
 **Fields**:
+
 ```python
 class Ward(TimeStampedModel):
     """Hospital ward for inpatient care."""
@@ -80,6 +82,7 @@ class Ward(TimeStampedModel):
 ```
 
 **Test Coverage** (12 tests):
+
 - Ward creation with valid data
 - Ward type validation
 - Unique name constraint
@@ -100,6 +103,7 @@ class Ward(TimeStampedModel):
 **Module**: `hmis/apps/inpatient/models.py`
 
 **Fields**:
+
 ```python
 class Bed(TimeStampedModel):
     """Individual bed within a ward."""
@@ -138,6 +142,7 @@ class Bed(TimeStampedModel):
 ```
 
 **Test Coverage** (15 tests):
+
 - Bed creation with valid data
 - Unique bed number per ward
 - Status transitions: AVAILABLE → OCCUPIED
@@ -161,6 +166,7 @@ class Bed(TimeStampedModel):
 **Module**: `hmis/apps/inpatient/models.py`
 
 **Fields**:
+
 ```python
 class AdmissionRecommendation(TimeStampedModel):
     """Clinician recommendation for patient admission from OPD."""
@@ -206,6 +212,7 @@ class AdmissionRecommendation(TimeStampedModel):
 ```
 
 **Test Coverage** (10 tests):
+
 - Recommendation creation from OPD encounter
 - Encounter status update to ADMISSION_PENDING
 - Recommendation expiry after 24 hours
@@ -224,6 +231,7 @@ class AdmissionRecommendation(TimeStampedModel):
 **Module**: `hmis/apps/inpatient/models.py`
 
 **Fields**:
+
 ```python
 class Admission(TimeStampedModel):
     """Inpatient admission record."""
@@ -291,6 +299,7 @@ class Admission(TimeStampedModel):
 ```
 
 **Test Coverage** (18 tests):
+
 - Admission creation with bed assignment
 - Admission number auto-generation
 - Bed status update on admission (AVAILABLE → OCCUPIED)
@@ -317,6 +326,7 @@ class Admission(TimeStampedModel):
 **Module**: `hmis/apps/inpatient/models.py`
 
 **Fields**:
+
 ```python
 class WardRound(TimeStampedModel):
     """Daily ward round documentation."""
@@ -350,6 +360,7 @@ class WardRound(TimeStampedModel):
 ```
 
 **Test Coverage** (12 tests):
+
 - Ward round creation
 - SOAP note structure validation
 - Condition status transitions
@@ -370,6 +381,7 @@ class WardRound(TimeStampedModel):
 **Module**: `hmis/apps/inpatient/models.py`
 
 **Fields**:
+
 ```python
 class NursingKardex(TimeStampedModel):
     """Nursing Kardex for inpatient care coordination."""
@@ -427,6 +439,7 @@ class KardexHandoverNote(TimeStampedModel):
 ```
 
 **Test Coverage** (20 tests):
+
 - Kardex auto-creation on admission
 - Patient snapshot data (read-only computed)
 - Current orders auto-population from encounter
@@ -455,6 +468,7 @@ class KardexHandoverNote(TimeStampedModel):
 **Module**: `hmis/apps/inpatient/models.py`
 
 **Fields**:
+
 ```python
 class ShiftHandover(TimeStampedModel):
     """Formal shift handover record."""
@@ -483,6 +497,7 @@ class ShiftHandover(TimeStampedModel):
 ```
 
 **Test Coverage** (8 tests):
+
 - Handover creation
 - Auto-population of patient counts
 - Handover acknowledgment
@@ -499,6 +514,7 @@ class ShiftHandover(TimeStampedModel):
 **Module**: `hmis/apps/inpatient/models.py`
 
 **Fields**:
+
 ```python
 class Transfer(TimeStampedModel):
     """Patient transfer between wards."""
@@ -533,6 +549,7 @@ class Transfer(TimeStampedModel):
 ```
 
 **Test Coverage** (10 tests):
+
 - Transfer creation with bed availability check
 - Source bed status update (OCCUPIED → AVAILABLE)
 - Destination bed status update (AVAILABLE → OCCUPIED)
@@ -551,6 +568,7 @@ class Transfer(TimeStampedModel):
 **Module**: `hmis/apps/inpatient/models.py`
 
 **Fields**:
+
 ```python
 class Discharge(TimeStampedModel):
     """Patient discharge record."""
@@ -603,6 +621,7 @@ class Discharge(TimeStampedModel):
 ```
 
 **Test Coverage** (15 tests):
+
 - Discharge creation with clearances
 - Bed status update (OCCUPIED → AVAILABLE)
 - Admission status update (ACTIVE → DISCHARGED)
@@ -645,6 +664,7 @@ class Discharge(TimeStampedModel):
 | `/api/reports/bed-occupancy/` | GET | Bed occupancy dashboard data |
 
 **Test Coverage** (25 tests):
+
 - Authentication required on all endpoints
 - Permission checks per endpoint
 - Pagination and filtering
@@ -657,6 +677,7 @@ class Discharge(TimeStampedModel):
 ## Database Migrations
 
 ### Migration 0001: Create Inpatient Models
+
 ```python
 # hmis/apps/inpatient/migrations/0001_initial.py
 
@@ -674,6 +695,7 @@ class Discharge(TimeStampedModel):
 ```
 
 ### Migration 0002: Add Encounter Admission Status
+
 ```python
 # hmis/apps/encounters/migrations/XXXX_add_admission_status.py
 
@@ -686,27 +708,33 @@ class Discharge(TimeStampedModel):
 ## Integration Points
 
 ### 1. Encounter Model Updates
+
 - Add `admission_status` field
 - Add `admission_recommendation` relationship
 
 ### 2. Billing Integration
+
 - Bed charges per day (ward.daily_rate)
 - Admission billing item auto-creation
 - Discharge billing finalization
 
 ### 3. Pharmacy Integration
+
 - Discharge medications linked to dispensing
 - Pharmacy clearance flag
 
 ### 4. Laboratory Integration
+
 - Pending lab results acknowledgment
 - Lab results visibility in Kardex
 
 ### 5. Sync/Offline Support
+
 - All models inherit from SyncableModel
 - SyncQueue integration for offline admissions
 
 ### 6. Audit Logging
+
 - All CRUD operations logged
 - Bed status changes logged
 - Admission/discharge events logged
@@ -716,32 +744,38 @@ class Discharge(TimeStampedModel):
 ## UI Components (Web Dashboard)
 
 ### 1. Ward Overview Dashboard
+
 - Ward cards with occupancy percentage
 - Color-coded bed status grid
 - Quick admission action
 
 ### 2. Admission Pending Queue
+
 - List of pending recommendations
 - Accept/decline actions
 - Bed selection modal
 
 ### 3. Patient Admission Form
+
 - Patient search/link
 - Ward/bed selection
 - Insurance details
 - Admitting diagnosis
 
 ### 4. Ward Round Form
+
 - SOAP note structure
 - Condition status selector
 - Consultant review flag
 
 ### 5. Nursing Kardex View
+
 - Tabbed sections (Snapshot, Orders, Care Plan, Notes, Handover)
 - Add shift note modal
 - Handover generation
 
 ### 6. Discharge Form
+
 - Summary template
 - Clearance checklist
 - Medication list
@@ -769,6 +803,7 @@ class Discharge(TimeStampedModel):
 ## Dependencies
 
 ### Internal Dependencies
+
 - `hmis.apps.patients` - Patient model
 - `hmis.apps.encounters` - Encounter model
 - `hmis.apps.core` - AuditLog, SyncQueue, TimeStampedModel
@@ -776,6 +811,7 @@ class Discharge(TimeStampedModel):
 - `hmis.apps.billing` - Admission billing
 
 ### External Dependencies
+
 - Django 5.x
 - Django REST Framework
 - Celery (for notifications)
@@ -833,6 +869,7 @@ Encounter
 ## Appendix B: Status State Machines
 
 ### Bed Status
+
 ```
 AVAILABLE ──► RESERVED ──► OCCUPIED ──► AVAILABLE
     │              │            │
@@ -842,6 +879,7 @@ AVAILABLE ──► RESERVED ──► OCCUPIED ──► AVAILABLE
 ```
 
 ### Admission Status
+
 ```
          ┌────────────────────────────────────┐
          │                                    │
@@ -856,6 +894,7 @@ AVAILABLE ──► RESERVED ──► OCCUPIED ──► AVAILABLE
 ```
 
 ### Admission Recommendation Status
+
 ```
 PENDING ──► ACCEPTED ──► (Admission created)
     │

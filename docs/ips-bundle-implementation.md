@@ -33,6 +33,7 @@ GET /fhir/Patient/{id}/$summary
 ```
 
 Generates a complete IPS Bundle for the specified patient containing:
+
 - **Patient** resource
 - **Composition** (document structure with sections)
 - **Condition** resources (diagnoses)
@@ -332,6 +333,7 @@ poetry run python manage.py seed_fhir_test_data
 ```
 
 The command now prints IDs for:
+
 - Laboratory Observation
 - Alcohol use Observation
 - Tobacco use Observation
@@ -420,6 +422,7 @@ device_use_statement_id=5
 ### Query Limits
 
 To prevent oversized bundles:
+
 - Diagnoses: Last 10
 - Allergies: Up to 20
 - Prescriptions: Last 10 (all non-cancelled items included)

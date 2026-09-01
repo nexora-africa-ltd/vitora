@@ -18,7 +18,7 @@ Expo Router mobile client for Vitora HMIS. This app is being rebuilt by converti
 npm install
 ```
 
-2. Point the mobile app at the backend.
+1. Point the mobile app at the backend.
 
 Option A: set an environment variable before starting Expo.
 
@@ -34,7 +34,7 @@ Notes:
 - iOS simulator and web fallback: `http://127.0.0.1:9088`
 - Physical devices need your machine's LAN IP, for example `http://192.168.1.20:9088`
 
-3. Start the app.
+1. Start the app.
 
 ```bash
 npm start
@@ -88,16 +88,16 @@ If the production API host changes, regenerate the pin values before shipping:
 
 ```bash
 echo | openssl s_client -showcerts -servername api.vitora.nexora.africa -connect api.vitora.nexora.africa:443 2>/dev/null \
-	| awk 'BEGIN{c=0} /BEGIN CERTIFICATE/{c++} {print > ("/tmp/vitora-pin-" c ".pem")}'
+ | awk 'BEGIN{c=0} /BEGIN CERTIFICATE/{c++} {print > ("/tmp/vitora-pin-" c ".pem")}'
 
 for f in /tmp/vitora-pin-*.pem; do
-	if grep -q 'BEGIN CERTIFICATE' "$f"; then
-		printf '%s ' "$f"
-		openssl x509 -in "$f" -pubkey -noout \
-			| openssl pkey -pubin -outform DER \
-			| openssl dgst -sha256 -binary \
-			| openssl enc -base64
-	fi
+ if grep -q 'BEGIN CERTIFICATE' "$f"; then
+  printf '%s ' "$f"
+  openssl x509 -in "$f" -pubkey -noout \
+   | openssl pkey -pubin -outform DER \
+   | openssl dgst -sha256 -binary \
+   | openssl enc -base64
+ fi
 done
 ```
 

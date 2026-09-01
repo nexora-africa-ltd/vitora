@@ -214,6 +214,7 @@ Admin Panel (Cloud)          Installer                    Hub
 ### License Renewal
 
 The hub's Celery task `license_check_in` runs periodically:
+
 1. Calls cloud `/api/licensing/check-in/` with hub telemetry
 2. Cloud validates and returns a fresh license JWT
 3. Hub caches the new JWT at `HUB_LICENSE_TOKEN_PATH`
@@ -223,6 +224,7 @@ The hub's Celery task `license_check_in` runs periodically:
 ### Cloud-Only Features (Hub Mode)
 
 When running in hub mode, certain integrations route through the cloud:
+
 - **SHA Claims**: Submitted via cloud proxy (cloud holds DHA credentials)
 - **SHA Eligibility**: Checked via cloud proxy
 - **MOH/KHIS Reports**: Submitted via cloud relay
@@ -341,11 +343,13 @@ Key differences from cloud/production:
 #### Check Service Status
 
 **Linux:**
+
 ```bash
 systemctl status vitora-hub
 ```
 
 **Windows:**
+
 ```powershell
 Get-Service VitoraHub
 ```
@@ -353,6 +357,7 @@ Get-Service VitoraHub
 #### View Logs (Real-time)
 
 **Linux:**
+
 ```bash
 # Systemd journal
 journalctl -u vitora-hub -f
@@ -362,11 +367,13 @@ tail -f /var/log/vitora/hub.log
 ```
 
 **Windows:**
+
 ```powershell
 Get-Content C:\VitoraHub\logs\hub-stdout.log -Tail 50 -Wait
 ```
 
 **Docker:**
+
 ```bash
 cd /opt/vitora && docker compose logs -f hub
 ```
@@ -389,12 +396,14 @@ Hub cloud sync authenticates with the hub's activation/license identity. The wor
 Admins can also use the desktop app: Settings -> Desktop -> Hub Operations -> Sync Now. The Desktop tab is visible only in Tauri and only to admin roles.
 
 **Linux:**
+
 ```bash
 cd /opt/vitora
 sudo -u vitora /opt/vitora/venv/bin/python manage.py hub_sync
 ```
 
 **Windows:**
+
 ```powershell
 cd C:\VitoraHub
 .\hub-shell.ps1 hub_sync
@@ -436,6 +445,7 @@ If `enabled` is false after an update, confirm `C:\VitoraHub\.env` contains `TIB
 Use these utilities to rotate secrets without reinstalling the hub.
 
 **Windows:**
+
 ```powershell
 # Rebuild DPAPI secret bundle from current values and restart service
 powershell -ExecutionPolicy Bypass -File C:\VitoraHub\scripts\rotate-hub-secrets.ps1 -RestartService
@@ -446,6 +456,7 @@ powershell -ExecutionPolicy Bypass -File C:\VitoraHub\scripts\rotate-hub-secrets
 ```
 
 **Linux:**
+
 ```bash
 # Update secret keys in /opt/vitora/.env and restart
 sudo bash /opt/vitora/scripts/rotate-hub-secrets.sh --restart
@@ -458,7 +469,7 @@ sudo bash /opt/vitora/scripts/rotate-hub-secrets.sh \
 #### Check License Status
 
 ```bash
-curl http://localhost:9088/api/licensing/status/
+curl http://localhost:9099/api/licensing/status/
 # Shows: expiry date, grace period status, feature flags
 ```
 
@@ -467,6 +478,7 @@ curl http://localhost:9088/api/licensing/status/
 #### Start / Stop / Restart
 
 **Linux (systemd):**
+
 ```bash
 sudo systemctl start vitora-hub
 sudo systemctl stop vitora-hub
@@ -474,6 +486,7 @@ sudo systemctl restart vitora-hub
 ```
 
 **Windows (NSSM):**
+
 ```powershell
 Start-Service VitoraHub
 Stop-Service VitoraHub
@@ -491,6 +504,7 @@ sc.exe qc VitoraHub
 ```
 
 **Docker:**
+
 ```bash
 cd /opt/vitora
 docker compose restart hub
@@ -501,6 +515,7 @@ docker compose start hub
 #### Disable Auto-Start (Maintenance Mode)
 
 **Linux:**
+
 ```bash
 sudo systemctl disable vitora-hub
 sudo systemctl stop vitora-hub
@@ -510,6 +525,7 @@ sudo systemctl start vitora-hub
 ```
 
 **Windows:**
+
 ```powershell
 Set-Service VitoraHub -StartupType Disabled
 Stop-Service VitoraHub
@@ -607,6 +623,7 @@ python manage.py seed_demo_data
 ### Automatic Updates (Container Mode)
 
 The hub's update service periodically checks for new versions:
+
 1. Queries CDN for `latest.json`
 2. Pulls new container image
 3. Verifies cosign signature
@@ -624,6 +641,26 @@ When using the native updater scripts (`update-hub.sh` on Linux, `update-hub.ps1
 - Rollback restores from this snapshot if extraction/migration/service start fails
 
 This avoids unbounded growth from per-version backup folders while preserving a safe rollback point.
+
+#### Native Updater Commands (Recommended)
+
+Use these commands to run the packaged hub updater scripts directly:
+
+```bash
+# Linux: update to latest available hub release
+sudo bash /opt/vitora/scripts/update-hub.sh
+
+# Linux: update/pin to a specific version
+sudo bash /opt/vitora/scripts/update-hub.sh --version 1.0.4
+```
+
+```powershell
+# Windows: update to latest available hub release
+powershell -ExecutionPolicy Bypass -File C:\VitoraHub\scripts\update-hub-windows.ps1
+
+# Windows: update/pin to a specific version
+powershell -ExecutionPolicy Bypass -File C:\VitoraHub\scripts\update-hub-windows.ps1 -Version 1.0.4
+```
 
 ### Manual Update (Native Mode — Linux)
 
@@ -751,6 +788,7 @@ find "$BACKUP_DIR" -name "*.tar.gz" -mtime +7 -delete
 ```
 
 Add to cron:
+
 ```bash
 # Daily backup at 2am
 echo "0 2 * * * /opt/vitora/scripts/backup.sh" | sudo tee /etc/cron.d/vitora-backup
@@ -787,6 +825,7 @@ curl http://localhost:9088/api/hub/health/
 ```
 
 Returns:
+
 ```json
 {
   "status": "healthy",
@@ -830,6 +869,7 @@ curl http://localhost:9088/api/licensing/status/
 ### File Permissions
 
 **Linux:**
+
 ```
 /opt/vitora/           → root:vitora 750 (code — not writable by service user)
 /var/lib/vitora/       → vitora:vitora 700 (data — writable by service)
@@ -838,6 +878,7 @@ curl http://localhost:9088/api/licensing/status/
 ```
 
 **Windows:**
+
 ```
 C:\VitoraHub\          → Administrators: Full, SYSTEM: Full, Users: ReadAndExecute
 C:\VitoraHub\data\     → Service account writable
@@ -847,6 +888,7 @@ C:\VitoraHub\logs\     → Service account writable
 ### Systemd Security Hardening
 
 The service unit applies these restrictions:
+
 - `NoNewPrivileges=true` — cannot escalate
 - `ProtectSystem=strict` — filesystem read-only except allowed paths
 - `ProtectHome=true` — no access to /home
@@ -856,6 +898,7 @@ The service unit applies these restrictions:
 ### License Guard Middleware
 
 All API requests (except exempt paths) pass through `HubLicenseGuardMiddleware`:
+
 - Verifies the RS256-signed license JWT
 - Enforces tiered grace periods on expiry
 - Returns appropriate HTTP 403 codes for UI handling
@@ -863,6 +906,7 @@ All API requests (except exempt paths) pass through `HubLicenseGuardMiddleware`:
 ### PII Encryption
 
 The hub uses the same Fernet encryption key as the cloud for:
+
 - `Patient.national_id`
 - `Patient.phone_number`
 - `Patient.email`
@@ -892,11 +936,13 @@ The hub listens on **port 9088** on all interfaces (`0.0.0.0:9088`).
 ### Firewall Rules
 
 **Linux (ufw):**
+
 ```bash
 sudo ufw allow 9088/tcp comment "Vitora Hub"
 ```
 
 **Windows:**
+
 ```powershell
 # Already configured by installer (Private profile only)
 Get-NetFirewallRule -DisplayName "Vitora Hub*"
@@ -905,6 +951,7 @@ Get-NetFirewallRule -DisplayName "Vitora Hub*"
 ### mDNS Discovery (Raspberry Pi)
 
 On Raspberry Pi installations, the hub advertises via Avahi (mDNS):
+
 - Hostname: `vitora-hub.local`
 - Service: `_http._tcp` on port 9088
 - TXT records: `path=/api/hub/health/`, `version=0.4.0`
@@ -930,6 +977,7 @@ nmap -p 9088 192.168.1.0/24
 ### Desktop Client Connection
 
 When setting up the desktop app in "Facility Workstation" mode:
+
 1. Enter: `http://<hub-ip>:9088`
 2. The app validates via health check
 3. All subsequent API calls go to this URL
@@ -941,6 +989,7 @@ When setting up the desktop app in "Facility Workstation" mode:
 ### Service Won't Start
 
 **Check the logs first:**
+
 ```bash
 # Linux
 journalctl -u vitora-hub -n 50 --no-pager
@@ -1064,6 +1113,7 @@ cd C:\VitoraHub
 The data sync has already completed if the command also says `Hub sync complete`. Upgrade to hub-v0.6.9 to remove the non-ASCII arrow from runtime log messages on Windows consoles.
 
 **"database disk image is malformed":**
+
 ```bash
 sudo systemctl stop vitora-hub
 sqlite3 /var/lib/vitora/hub.sqlite3 ".recover" | sqlite3 /var/lib/vitora/hub-recovered.sqlite3
@@ -1074,6 +1124,7 @@ sudo systemctl start vitora-hub
 ```
 
 **WAL file growing too large:**
+
 ```bash
 sqlite3 /var/lib/vitora/hub.sqlite3 "PRAGMA wal_checkpoint(TRUNCATE);"
 ```
@@ -1081,11 +1132,13 @@ sqlite3 /var/lib/vitora/hub.sqlite3 "PRAGMA wal_checkpoint(TRUNCATE);"
 ### Raspberry Pi Specific
 
 **SD card wear:**
+
 - Journal is set to volatile (`Storage=volatile` in journald config)
 - SQLite WAL mode reduces write amplification
 - Monitor SD health: `cat /sys/block/mmcblk0/stat`
 
 **Overheating (throttling):**
+
 ```bash
 vcgencmd measure_temp
 # If >80°C, add a heatsink or fan
@@ -1159,6 +1212,7 @@ Remove-NetFirewallRule -DisplayName "Vitora Hub*" -ErrorAction SilentlyContinue
 ### Decommissioning Checklist
 
 Before decommissioning a hub, ensure:
+
 - [ ] All data has been synced to cloud (`last_sync` is recent)
 - [ ] Database backup taken and stored securely
 - [ ] Encryption key (`ENCRYPTION_KEY`) saved — needed to decrypt PII in backups

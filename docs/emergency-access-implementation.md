@@ -18,6 +18,7 @@ Emergency Access (also known as "break-glass") allows healthcare providers to by
 - Disaster response scenarios
 
 All emergency access invocations are:
+
 - **Time-limited** (15 minutes to 24 hours, default 4 hours)
 - **Logged to audit trail** with full details
 - **Subject to mandatory review** by administrators
@@ -129,6 +130,7 @@ Content-Type: application/json
 ```
 
 **Response (201 Created):**
+
 ```json
 {
     "id": 1,
@@ -162,6 +164,7 @@ Authorization: Bearer <token>
 ```
 
 **Query Parameters:**
+
 | Parameter | Description |
 |-----------|-------------|
 | `status` | Filter by status (ACTIVE, EXPIRED, REVOKED, REVIEWED) |
@@ -202,6 +205,7 @@ Authorization: Bearer <token>
 ```
 
 **Response:**
+
 ```json
 {
     "total_active": 2,
@@ -246,6 +250,7 @@ All emergency access actions are logged to `AuditLog`:
 | `emergency_access_revoked` | When admin revokes access |
 
 **Audit Log Details Include:**
+
 - User who invoked/reviewed
 - Patient MRN (if specific patient)
 - Reason and justification
@@ -264,6 +269,7 @@ When emergency access is invoked, the system automatically sends alerts to admin
 Subject: `🚨 ALERT: Emergency Access Invoked by {username}`
 
 Content includes:
+
 - User information
 - Patient details (if applicable)
 - Reason and detailed justification
@@ -276,6 +282,7 @@ Content includes:
 Brief message: `🚨 VITORA ALERT: Emergency access by {username}. Reason: {reason}. Review required.`
 
 **Recipients:** All active users who are either:
+
 - Superusers
 - Have `core.approve_emergency_access` permission
 
@@ -296,6 +303,7 @@ Brief message: `🚨 VITORA ALERT: Emergency access by {username}. Reason: {reas
 - **Action:** Update status to EXPIRED for records past expiration time
 
 **Celery Beat Configuration:**
+
 ```python
 # In hmis/celery.py
 app.conf.beat_schedule = {
@@ -314,6 +322,7 @@ Emergency access records are viewable in Django Admin at:
 `/admin/core/emergencyaccess/`
 
 Features:
+
 - Color-coded status badges
 - Filterable by status, reason, date
 - Searchable by username, patient MRN
@@ -381,12 +390,14 @@ console.log(`Pending Review: ${data.total_pending_review}`);
 **Test Count:** 29 tests
 
 **Test Categories:**
+
 - Model tests (11) - CRUD, status transitions, expiration
 - Serializer tests (3) - Validation, patient lookup
 - API tests (11) - All endpoints, permissions
 - Task tests (4) - Escalation, expiration
 
 **Run Tests:**
+
 ```bash
 cd backend
 poetry run pytest tests/test_emergency_access.py -v

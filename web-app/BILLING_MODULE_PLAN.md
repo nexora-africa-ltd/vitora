@@ -25,9 +25,11 @@ This document outlines the TDD + BDD test suite for the billing module in the Vi
 ## Test Files Created
 
 ### 1. Type Definitions
+
 **File**: `lib/types/billing.ts`
 
 Complete TypeScript interfaces for all billing entities:
+
 - `ServiceCategory`, `Service` - Billable service catalog
 - `Invoice`, `InvoiceItem` - Invoice management
 - `Payment` - Payment records with multiple methods
@@ -37,6 +39,7 @@ Complete TypeScript interfaces for all billing entities:
 - Report types for all financial reports
 
 ### 2. API Client Tests
+
 **File**: `__tests__/lib/api/billing.test.ts`
 
 **Test Count**: 50+ tests
@@ -53,6 +56,7 @@ Complete TypeScript interfaces for all billing entities:
 | Error Handling | 5 tests |
 
 ### 3. React Query Hooks Tests
+
 **File**: `__tests__/lib/hooks/billing.test.tsx`
 
 **Test Count**: 40+ tests
@@ -78,6 +82,7 @@ Complete TypeScript interfaces for all billing entities:
 | Report hooks | 5 tests |
 
 ### 4. Component Tests
+
 **File**: `__tests__/components/billing/billing-components.test.tsx`
 
 **Test Count**: 60+ tests
@@ -95,6 +100,7 @@ Complete TypeScript interfaces for all billing entities:
 | `PaymentList` | 4 tests |
 
 ### 5. E2E Tests
+
 **File**: `e2e/billing.spec.ts`
 
 **Test Count**: 30+ tests
@@ -109,6 +115,7 @@ Complete TypeScript interfaces for all billing entities:
 | Offline Support | 2 tests |
 
 ### 6. Store Tests
+
 **File**: `__tests__/lib/stores/billing.test.ts`
 
 **Test Count**: 30+ tests
@@ -180,9 +187,11 @@ Complete TypeScript interfaces for all billing entities:
 ### Backend API Endpoints (Already Implemented)
 
 All backend endpoints are available and documented in:
+
 - `backend/BILLING_IMPLEMENTATION_STATUS.md`
 
 Key endpoints:
+
 - `GET/POST /api/billing/invoices/`
 - `POST /api/billing/invoices/{id}/finalize/`
 - `POST /api/billing/invoices/{id}/cancel/`
@@ -194,6 +203,7 @@ Key endpoints:
 ### M-Pesa Integration
 
 The web app will use M-Pesa STK Push for mobile payments:
+
 1. User enters phone number
 2. Frontend calls `/api/billing/mpesa/initiate/`
 3. User receives push notification on phone
@@ -204,6 +214,7 @@ The web app will use M-Pesa STK Push for mobile payments:
 ### Kenyan Phone Number Validation
 
 Supported formats:
+
 - `07XXXXXXXX` (Safaricom)
 - `01XXXXXXXX` (Airtel)
 - `+254XXXXXXXXX`
@@ -232,6 +243,7 @@ npm run test:coverage -- billing
 ## Acceptance Criteria Traceability
 
 ### KE-CSH-001: Payment Processing
+
 - ✅ Multiple payment methods (Cash, M-Pesa, Card, Insurance)
 - ✅ M-Pesa STK push integration
 - ✅ Receipt generation with amount in words
@@ -239,6 +251,7 @@ npm run test:coverage -- billing
 - ✅ Offline payment recording support
 
 ### KE-CSH-002: Invoice Generation
+
 - ✅ Itemized breakdown with unit prices
 - ✅ Insurance coverage application
 - ✅ Patient co-pay calculation
@@ -246,11 +259,13 @@ npm run test:coverage -- billing
 - ✅ Print/email invoice option
 
 ### KE-BIL-001: Billing Reconciliation
+
 - ✅ Unbilled services dashboard
 - ✅ Discrepancy reports
 - ✅ End-of-day billing closure
 
 ### KE-CLM-003: Financial Performance Reports
+
 - ✅ Daily collections by payment method
 - ✅ Outstanding invoices
 - ✅ Revenue by department

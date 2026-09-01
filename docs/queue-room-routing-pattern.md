@@ -99,6 +99,7 @@ class LabQueue(models.Model):
 ```
 
 **Key points:**
+
 - FK to `scheduling.Resource` with `on_delete=SET_NULL` (room deletion shouldn't cascade)
 - `limit_choices_to={"resource_type": "PLACE"}` for admin validation
 - Unique `related_name` (used in the capacity annotation query)
@@ -194,6 +195,7 @@ def find_best_lab_room(facility):
 ```
 
 **The three things you customize:**
+
 1. Settings model class (`LabSettings`)
 2. Queue model related name (`lab_queue_entries`)
 3. Active status values in the filter (`["WAITING", "IN_PROGRESS"]`)
@@ -469,6 +471,7 @@ export function useUpdateLabSettings() {
 #### Queue UI Pattern
 
 The queue card shows:
+
 1. **Room badge** — `DoorOpen` icon + room name (when assigned)
 2. **Room dropdown** — `<Select>` with available rooms, showing `(load/capacity)` and staff status
 3. **Settings page tab** — toggle for auto-routing + room overview grid
@@ -568,6 +571,7 @@ class PublicLabQueueView(viewsets.ViewSet):
 ```
 
 **Key rules:**
+
 - `permission_classes = [AllowAny]` + `authentication_classes = []`
 - Expose ONLY: position number, status, room name, timestamps, priority hint
 - **NEVER** expose: patient name, MRN, age, gender, or any identifiers
@@ -594,6 +598,7 @@ web-app/app/{module}-display/[facilityId]/page.tsx  # Queue display page
 ```
 
 Layout (reuse the same dark theme):
+
 ```tsx
 export default function Layout({ children }: { children: React.ReactNode }) {
   return <div className="min-h-screen bg-slate-950 text-white">{children}</div>;
@@ -601,6 +606,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 ```
 
 Page pattern:
+
 - **Direct `fetch()`** to `API_BASE_URL` (not `apiClient` — no auth token)
 - **React Query** with `refetchInterval: 10_000` (10-second polling)
 - **LiveClock** component (local `setInterval`, `en-KE` locale)
@@ -613,6 +619,7 @@ See `web-app/app/triage-display/[facilityId]/page.tsx` for the reference.
 #### Centralized Displays Hub
 
 All public display URLs are managed from `/displays` (inside the dashboard):
+
 - Lists all available display types (triage queue, clinic queue, etc.)
 - Generates the correct URL using current facility context
 - Copy-to-clipboard and open-in-new-tab buttons
