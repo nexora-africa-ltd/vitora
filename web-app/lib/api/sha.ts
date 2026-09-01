@@ -219,7 +219,7 @@ const BeneficiaryContactsSchema = z.object({
       id: z.string(),
       value: z.string(),
       contact_type: z.string(),
-    }),
+    })
   ),
 });
 
@@ -236,7 +236,7 @@ const CapitationSummarySchema = z.object({
       intervention_name: z.string(),
       count: z.number(),
       total_tariff: z.string().nullable(),
-    }),
+    })
   ),
   monthly_breakdown: z.array(
     z.object({
@@ -245,7 +245,7 @@ const CapitationSummarySchema = z.object({
       claimed: z.string(),
       approved: z.string(),
       paid: z.string(),
-    }),
+    })
   ),
 });
 
@@ -254,9 +254,30 @@ const BatchValidationResultSchema = z.object({
   ready: z.number(),
   invalid: z.number(),
   missing_docs: z.number(),
-  ready_claims: z.array(z.object({ id: z.number(), claim_number: z.string(), patient_name: z.string(), claimed_amount: z.string() })),
-  invalid_claims: z.array(z.object({ id: z.number(), claim_number: z.string(), patient_name: z.string(), errors: z.array(z.string()) })),
-  missing_docs_claims: z.array(z.object({ id: z.number(), claim_number: z.string(), patient_name: z.string(), missing_documents: z.array(z.string()) })),
+  ready_claims: z.array(
+    z.object({
+      id: z.number(),
+      claim_number: z.string(),
+      patient_name: z.string(),
+      claimed_amount: z.string(),
+    })
+  ),
+  invalid_claims: z.array(
+    z.object({
+      id: z.number(),
+      claim_number: z.string(),
+      patient_name: z.string(),
+      errors: z.array(z.string()),
+    })
+  ),
+  missing_docs_claims: z.array(
+    z.object({
+      id: z.number(),
+      claim_number: z.string(),
+      patient_name: z.string(),
+      missing_documents: z.array(z.string()),
+    })
+  ),
   total_claimable_amount: z.string(),
 });
 
@@ -264,9 +285,13 @@ const BulkSubmitResultSchema = z.object({
   submitted: z.number(),
   failed: z.number(),
   skipped: z.number(),
-  submitted_claims: z.array(z.object({ id: z.number(), claim_number: z.string(), status: z.string() })),
+  submitted_claims: z.array(
+    z.object({ id: z.number(), claim_number: z.string(), status: z.string() })
+  ),
   failed_claims: z.array(z.object({ id: z.number(), claim_number: z.string(), error: z.string() })),
-  skipped_claims: z.array(z.object({ id: z.number(), claim_number: z.string(), errors: z.array(z.string()) })),
+  skipped_claims: z.array(
+    z.object({ id: z.number(), claim_number: z.string(), errors: z.array(z.string()) })
+  ),
 });
 
 const DailyDigestSchema = z.object({
@@ -282,7 +307,9 @@ const DailyDigestSchema = z.object({
     time_bar_risk_count: z.number(),
   }),
   action_items: z.object({
-    time_bar_risk: z.array(z.object({ id: z.number(), claim_number: z.string(), hours_remaining: z.number() })),
+    time_bar_risk: z.array(
+      z.object({ id: z.number(), claim_number: z.string(), hours_remaining: z.number() })
+    ),
     queries: z.array(z.object({ id: z.number(), claim_number: z.string(), patient: z.string() })),
     unsubmitted_drafts: z.number(),
   }),
@@ -317,21 +344,32 @@ const PaginatedRemittancesSchema = z.object({
   results: z.array(z.unknown()),
 });
 
-const RemittanceClaimsResponseSchema = z.object({ count: z.number(), results: z.array(z.unknown()) });
+const RemittanceClaimsResponseSchema = z.object({
+  count: z.number(),
+  results: z.array(z.unknown()),
+});
 const MessageCountResponseSchema = z.object({ message: z.string(), count: z.number() });
 
 const IlmPushLocalAttachmentsSchema = z.object({
   local_count: z.number(),
   uploaded: z.number(),
   failed: z.number(),
-  errors: z.array(z.object({ attachment_id: z.string(), attachment_name: z.string(), error: z.string() })).optional(),
+  errors: z
+    .array(z.object({ attachment_id: z.string(), attachment_name: z.string(), error: z.string() }))
+    .optional(),
   sync_status: z
     .object({
       local_count: z.number(),
       matched: z.number(),
       total: z.number(),
       all_matched: z.boolean(),
-      missing: z.array(z.object({ attachment_id: z.number(), attachment_name: z.string(), attachment_type: z.string() })),
+      missing: z.array(
+        z.object({
+          attachment_id: z.number(),
+          attachment_name: z.string(),
+          attachment_type: z.string(),
+        })
+      ),
       consent_token_present: z.boolean(),
     })
     .optional(),
@@ -350,10 +388,16 @@ const IlmAttachmentSyncStatusSchema = z.object({
         attachment_type: z.string(),
         remote_attachment_id: z.string(),
         intervention_code: z.string(),
-      }),
+      })
     )
     .optional(),
-  missing: z.array(z.object({ attachment_id: z.number(), attachment_name: z.string(), attachment_type: z.string() })),
+  missing: z.array(
+    z.object({
+      attachment_id: z.number(),
+      attachment_name: z.string(),
+      attachment_type: z.string(),
+    })
+  ),
   consent_token_present: z.boolean(),
 });
 
@@ -417,7 +461,9 @@ async function fetchFromClientRegistry(
   const params = cr_number ? { ...rest, client_number: cr_number } : rest;
   const queryString = buildQueryString(params);
   const response = await apiClient.get(`/api/billing/client-registry/fetch/?${queryString}`);
-  return parseResponse(ClientRegistryFetchResponseSchema, response.data, { context: 'shaApi.fetchFromClientRegistry' });
+  return parseResponse(ClientRegistryFetchResponseSchema, response.data, {
+    context: 'shaApi.fetchFromClientRegistry',
+  });
 }
 
 /**
@@ -427,7 +473,9 @@ async function registerInClientRegistry(
   data: ClientRegistryRegisterRequest
 ): Promise<ClientRegistryRegisterResponse> {
   const response = await apiClient.post('/api/billing/client-registry/register/', data);
-  return parseResponse(ClientRegistryRegisterResponseSchema, response.data, { context: 'shaApi.registerInClientRegistry' });
+  return parseResponse(ClientRegistryRegisterResponseSchema, response.data, {
+    context: 'shaApi.registerInClientRegistry',
+  });
 }
 
 /**
@@ -437,7 +485,9 @@ async function updateClientRegistry(
   data: ClientRegistryUpdateRequest
 ): Promise<ClientRegistryUpdateResponse> {
   const response = await apiClient.put('/api/billing/client-registry/update/', data);
-  return parseResponse(ClientRegistryUpdateResponseSchema, response.data, { context: 'shaApi.updateClientRegistry' });
+  return parseResponse(ClientRegistryUpdateResponseSchema, response.data, {
+    context: 'shaApi.updateClientRegistry',
+  });
 }
 
 // ============================================================================
@@ -453,7 +503,9 @@ async function getSHAMembers(params?: { patient?: number }): Promise<PaginatedSH
     ? `/api/billing/sha-members/?${queryString}`
     : '/api/billing/sha-members/';
   const response = await apiClient.get(url);
-  return parseResponse(PaginatedSHAMembersSchema, response.data, { context: 'shaApi.getSHAMembers' });
+  return parseResponse(PaginatedSHAMembersSchema, response.data, {
+    context: 'shaApi.getSHAMembers',
+  });
 }
 
 /**
@@ -470,7 +522,9 @@ async function getSHAMember(id: number): Promise<SHAMember> {
  */
 async function getSHAMemberDependents(memberId: number): Promise<PaginatedSHAMembers> {
   const response = await apiClient.get(`/api/billing/sha-members/${memberId}/dependents/`);
-  return parseResponse(PaginatedSHAMembersSchema, response.data, { context: 'shaApi.getSHAMemberDependents' });
+  return parseResponse(PaginatedSHAMembersSchema, response.data, {
+    context: 'shaApi.getSHAMemberDependents',
+  });
 }
 
 /**
@@ -514,7 +568,8 @@ async function ensureSHAMember(patientId: number): Promise<SHAMember | null> {
   }
 
   // Normalize SHA number
-  const rawShaNumber = patient.sha_number || eligibility.sha_number || eligibility.member_cr_number || '';
+  const rawShaNumber =
+    patient.sha_number || eligibility.sha_number || eligibility.member_cr_number || '';
   const shaNumber = rawShaNumber.startsWith('SHA-')
     ? rawShaNumber
     : rawShaNumber.startsWith('SHA')
@@ -528,10 +583,13 @@ async function ensureSHAMember(patientId: number): Promise<SHAMember | null> {
   const principalShaNumber = patient.principal_national_id
     ? (() => {
         const raw = eligibility.sha_number || eligibility.member_cr_number || '';
-        return raw.startsWith('SHA-') ? raw
-          : raw.startsWith('SHA') ? `SHA-${raw.slice(3)}`
-          : raw.startsWith('CR') ? `SHA-${raw.slice(2)}`
-          : `SHA-${raw}`;
+        return raw.startsWith('SHA-')
+          ? raw
+          : raw.startsWith('SHA')
+            ? `SHA-${raw.slice(3)}`
+            : raw.startsWith('CR')
+              ? `SHA-${raw.slice(2)}`
+              : `SHA-${raw}`;
       })()
     : undefined;
 
@@ -540,19 +598,23 @@ async function ensureSHAMember(patientId: number): Promise<SHAMember | null> {
     sha_number: shaNumber,
     national_id: patient.identification_number || patient.national_id || '',
     membership_type: patient.principal_national_id ? 'child' : 'principal',
-    coverage_start_date: eligibility.schemes?.[0]?.policy?.startDate || new Date().toISOString().split('T')[0],
+    coverage_start_date:
+      eligibility.schemes?.[0]?.policy?.startDate || new Date().toISOString().split('T')[0],
     coverage_end_date: eligibility.coverage_end_date || undefined,
   };
   if (principalShaNumber) {
     memberPayload.principal_sha_number = principalShaNumber;
   }
 
-  const createResponse = await apiClient.post('/api/billing/sha-members/', memberPayload)
+  const createResponse = await apiClient
+    .post('/api/billing/sha-members/', memberPayload)
     .catch(async (err) => {
       // If sha_number already exists (e.g. orphaned from a deleted patient),
       // try to find the existing member and reuse it
       if (err?.response?.status === 400 && err?.response?.data?.sha_number) {
-        const allMembers = await apiClient.get(`/api/billing/sha-members/?search=${encodeURIComponent(shaNumber)}`);
+        const allMembers = await apiClient.get(
+          `/api/billing/sha-members/?search=${encodeURIComponent(shaNumber)}`
+        );
         if (allMembers.data?.results?.length > 0) {
           return allMembers;
         }
@@ -592,11 +654,11 @@ async function ensureSHAMember(patientId: number): Promise<SHAMember | null> {
 /**
  * Check patient eligibility with SHA
  */
-async function checkEligibility(
-  data: EligibilityCheckRequest
-): Promise<EligibilityCheckResponse> {
+async function checkEligibility(data: EligibilityCheckRequest): Promise<EligibilityCheckResponse> {
   const response = await apiClient.post('/api/billing/eligibility/check/', data);
-  return parseResponse(EligibilityCheckResponseSchema, response.data, { context: 'shaApi.checkEligibility' });
+  return parseResponse(EligibilityCheckResponseSchema, response.data, {
+    context: 'shaApi.checkEligibility',
+  });
 }
 
 /**
@@ -614,10 +676,18 @@ async function checkPatientEligibility(
 
   if (!membersResponse.results.length) {
     // No SHA member record - try direct eligibility check
-    let patient: Record<string, any> | null = null;
+    type EligibilityLookupPatient = {
+      principal_national_id?: string | null;
+      identification_type?: string | null;
+      identification_number?: string | null;
+      national_id?: string | null;
+      sha_number?: string | null;
+    };
+
+    let patient: EligibilityLookupPatient | null = null;
     try {
       const patientResponse = await apiClient.get(`/api/patients/${patientId}/`);
-      patient = patientResponse.data;
+      patient = patientResponse.data as EligibilityLookupPatient;
 
       if (!patient) throw new Error('Patient not found');
 
@@ -637,7 +707,9 @@ async function checkPatientEligibility(
       } else if (patient.identification_type === 'cr_number' && patient.identification_number) {
         params.sha_number = patient.identification_number;
       } else if (patient.identification_number) {
-        params.identification_type = patient.identification_type;
+        if (patient.identification_type) {
+          params.identification_type = patient.identification_type;
+        }
         params.identification_number = patient.identification_number;
       }
 
@@ -672,10 +744,10 @@ async function checkPatientEligibility(
             whitelisted_for_otp: directResponse.whitelisted_for_otp,
             message: directResponse.is_eligible
               ? 'SHA coverage verified via direct lookup'
-              : directResponse.message
-                || directResponse.error
-                || directResponse.reason
-                || 'Patient is not eligible for SHA coverage',
+              : directResponse.message ||
+                directResponse.error ||
+                directResponse.reason ||
+                'Patient is not eligible for SHA coverage',
             detail: directResponse.detail || undefined,
             error: directResponse.error || undefined,
             error_code: directResponse.error_code || undefined,
@@ -688,7 +760,11 @@ async function checkPatientEligibility(
           const fallbackParams: DirectEligibilityCheckRequest = {};
           if (params.national_id && patient.sha_number) {
             fallbackParams.sha_number = patient.sha_number;
-          } else if (params.sha_number && patient.identification_type === 'national_id' && patient.identification_number) {
+          } else if (
+            params.sha_number &&
+            patient.identification_type === 'national_id' &&
+            patient.identification_number
+          ) {
             fallbackParams.national_id = patient.identification_number;
           }
 
@@ -704,10 +780,10 @@ async function checkPatientEligibility(
                 whitelisted_for_otp: fallbackResponse.whitelisted_for_otp,
                 message: fallbackResponse.is_eligible
                   ? 'SHA coverage verified via direct lookup'
-                  : fallbackResponse.message
-                    || fallbackResponse.error
-                    || fallbackResponse.reason
-                    || 'Patient is not eligible for SHA coverage',
+                  : fallbackResponse.message ||
+                    fallbackResponse.error ||
+                    fallbackResponse.reason ||
+                    'Patient is not eligible for SHA coverage',
                 detail: fallbackResponse.detail || undefined,
                 error: fallbackResponse.error || undefined,
                 error_code: fallbackResponse.error_code || undefined,
@@ -777,7 +853,9 @@ async function checkDirectEligibility(
 ): Promise<DirectEligibilityCheckResponse> {
   const queryString = buildQueryString(params);
   const response = await apiClient.get(`/api/billing/eligibility/direct/?${queryString}`);
-  return parseResponse(DirectEligibilityCheckResponseSchema, response.data, { context: 'shaApi.checkDirectEligibility' });
+  return parseResponse(DirectEligibilityCheckResponseSchema, response.data, {
+    context: 'shaApi.checkDirectEligibility',
+  });
 }
 
 // ============================================================================
@@ -811,7 +889,9 @@ async function searchInterventions(
     ? `/api/billing/terminology/interventions/?${queryString}`
     : '/api/billing/terminology/interventions/';
   const response = await apiClient.get(url);
-  return parseResponse(PaginatedSHAInterventionsSchema, response.data, { context: 'shaApi.searchInterventions' });
+  return parseResponse(PaginatedSHAInterventionsSchema, response.data, {
+    context: 'shaApi.searchInterventions',
+  });
 }
 
 /**
@@ -838,16 +918,18 @@ async function searchInterventionCodes(
     activeOnly?: boolean;
     patientGender?: 'M' | 'F';
   }
-): Promise<{
-  code: string;
-  name: string;
-  category?: string;
-  price?: number;
-  access_point?: string;
-  payment_mechanism?: string;
-  benefit_code?: string;
-  schemes?: string[];
-}[]> {
+): Promise<
+  {
+    code: string;
+    name: string;
+    category?: string;
+    price?: number;
+    access_point?: string;
+    payment_mechanism?: string;
+    benefit_code?: string;
+    schemes?: string[];
+  }[]
+> {
   // Backend allows empty search when facility_level OR payment_mechanism is set.
   if (search.length < 2 && !facilityLevel && !filters?.paymentMechanism) return [];
   const params = new URLSearchParams({ search, limit: String(limit) });
@@ -856,9 +938,7 @@ async function searchInterventionCodes(
   if (filters?.accessPoint) params.set('access_point', filters.accessPoint);
   if (filters?.activeOnly) params.set('active_only', 'true');
   if (filters?.patientGender) params.set('patient_gender', filters.patientGender);
-  const response = await apiClient.get(
-    `/api/sha/terminology/interventions/?${params.toString()}`
-  );
+  const response = await apiClient.get(`/api/sha/terminology/interventions/?${params.toString()}`);
   const data = response.data as { results?: Array<Record<string, unknown>> };
   return (data.results || []).map((r) => ({
     code: String(r.code || ''),
@@ -933,7 +1013,9 @@ async function searchDrugs(params?: DrugSearchParams): Promise<PaginatedDrugProd
     ? `/api/billing/terminology/drugs/?${queryString}`
     : '/api/billing/terminology/drugs/';
   const response = await apiClient.get(url);
-  return parseResponse(PaginatedDrugProductsSchema, response.data, { context: 'shaApi.searchDrugs' });
+  return parseResponse(PaginatedDrugProductsSchema, response.data, {
+    context: 'shaApi.searchDrugs',
+  });
 }
 
 /**
@@ -947,7 +1029,9 @@ async function searchActiveComponents(
     ? `/api/billing/terminology/active-components/?${queryString}`
     : '/api/billing/terminology/active-components/';
   const response = await apiClient.get(url);
-  return parseResponse(PaginatedActiveComponentsSchema, response.data, { context: 'shaApi.searchActiveComponents' });
+  return parseResponse(PaginatedActiveComponentsSchema, response.data, {
+    context: 'shaApi.searchActiveComponents',
+  });
 }
 
 // ============================================================================
@@ -959,9 +1043,7 @@ async function searchActiveComponents(
  */
 async function getClaims(params?: ClaimListParams): Promise<PaginatedClaims> {
   const queryString = params ? buildQueryString(params) : '';
-  const url = queryString
-    ? `/api/billing/claims/?${queryString}`
-    : '/api/billing/claims/';
+  const url = queryString ? `/api/billing/claims/?${queryString}` : '/api/billing/claims/';
   const response = await apiClient.get(url);
   return parseResponse(PaginatedClaimsSchema, response.data, { context: 'shaApi.getClaims' });
 }
@@ -990,7 +1072,9 @@ async function submitClaim(claimId: number): Promise<ClaimSubmitResponse> {
   return parseResponse(ClaimSubmitResponseSchema, response.data, { context: 'shaApi.submitClaim' });
 }
 
-async function validateClaimSubmission(claimId: number): Promise<{ is_valid: boolean; errors: string[] }> {
+async function validateClaimSubmission(
+  claimId: number
+): Promise<{ is_valid: boolean; errors: string[] }> {
   const response = await apiClient.post(`/api/billing/claims/${claimId}/validate/`);
   const raw = response.data as { is_valid?: unknown; errors?: unknown };
   return {
@@ -1006,7 +1090,9 @@ async function validateClaimSubmission(claimId: number): Promise<{ is_valid: boo
  */
 async function resubmitClaim(claimId: number): Promise<ClaimSubmitResponse> {
   const response = await apiClient.post(`/api/billing/claims/${claimId}/resubmit/`);
-  return parseResponse(ClaimSubmitResponseSchema, response.data, { context: 'shaApi.resubmitClaim' });
+  return parseResponse(ClaimSubmitResponseSchema, response.data, {
+    context: 'shaApi.resubmitClaim',
+  });
 }
 
 /**
@@ -1053,7 +1139,7 @@ async function getClaimAttachments(claimId: number): Promise<ClaimAttachment[]> 
 
 async function createClaimAttachment(
   claimId: number,
-  payload: ClaimAttachmentUpsertPayload,
+  payload: ClaimAttachmentUpsertPayload
 ): Promise<ClaimAttachment> {
   const formData = new FormData();
   formData.append('attachment_type', payload.attachment_type || 'other');
@@ -1076,7 +1162,7 @@ async function createClaimAttachment(
 async function updateClaimAttachment(
   claimId: number,
   attachmentId: number,
-  payload: ClaimAttachmentUpsertPayload,
+  payload: ClaimAttachmentUpsertPayload
 ): Promise<ClaimAttachment> {
   const formData = new FormData();
   if (typeof payload.attachment_type === 'string') {
@@ -1121,9 +1207,12 @@ export interface ClaimItemAllocationUpdateResponse {
 async function updateClaimItemAllocation(
   claimId: number,
   itemId: number,
-  payload: ClaimItemAllocationUpdateRequest,
+  payload: ClaimItemAllocationUpdateRequest
 ): Promise<ClaimItemAllocationUpdateResponse> {
-  const response = await apiClient.post(`/api/sha/claims/${claimId}/items/${itemId}/allocation/`, payload);
+  const response = await apiClient.post(
+    `/api/sha/claims/${claimId}/items/${itemId}/allocation/`,
+    payload
+  );
   return parseResponse(ClaimItemAllocationUpdateResponseSchema, response.data, {
     context: 'shaApi.updateClaimItemAllocation',
   }) as ClaimItemAllocationUpdateResponse;
@@ -1139,7 +1228,9 @@ async function updateClaimItemAllocation(
 async function validateFacility(
   data: FacilityValidationRequest
 ): Promise<FacilityValidationResponse> {
-  const response = await apiClient.get(`/api/sha/facility/validate/?facility_code=${encodeURIComponent(data.facility_code)}`);
+  const response = await apiClient.get(
+    `/api/sha/facility/validate/?facility_code=${encodeURIComponent(data.facility_code)}`
+  );
   // Transform backend shape {found, facility} to frontend shape {valid, facility, errors, warnings}
   const raw = response.data as { found: boolean; facility?: Record<string, unknown> };
   const transformed = {
@@ -1148,7 +1239,9 @@ async function validateFacility(
     errors: raw.found ? [] : ['Facility not found'],
     warnings: [],
   };
-  return parseResponse(FacilityValidationResponseSchema, transformed, { context: 'shaApi.validateFacility' });
+  return parseResponse(FacilityValidationResponseSchema, transformed, {
+    context: 'shaApi.validateFacility',
+  });
 }
 
 // ============================================================================
@@ -1174,7 +1267,9 @@ async function searchPractitioner(
 ): Promise<DHAPractitionerSearchResponse> {
   const queryString = buildQueryString(params);
   const response = await apiClient.get(`/api/sha/practitioner/validate/?${queryString}`);
-  return parseResponse(DHAPractitionerSearchResponseSchema, response.data, { context: 'shaApi.searchPractitioner' });
+  return parseResponse(DHAPractitionerSearchResponseSchema, response.data, {
+    context: 'shaApi.searchPractitioner',
+  });
 }
 
 /**
@@ -1194,7 +1289,9 @@ async function validatePractitioner(
     practitioner: raw.message || undefined,
     errors: raw.message ? [] : ['Practitioner not found'],
   };
-  return parseResponse(PractitionerValidationResponseSchema, transformed, { context: 'shaApi.validatePractitioner' });
+  return parseResponse(PractitionerValidationResponseSchema, transformed, {
+    context: 'shaApi.validatePractitioner',
+  });
 }
 
 // ============================================================================
@@ -1214,7 +1311,9 @@ async function sendConsentOTP(data: SendOTPRequest): Promise<SendOTPResponse> {
  */
 async function validateConsentOTP(data: ValidateOTPRequest): Promise<ValidateOTPResponse> {
   const response = await apiClient.post('/api/sha/consent/validate-otp/', data);
-  return parseResponse(ValidateOTPResponseSchema, response.data, { context: 'shaApi.validateConsentOTP' });
+  return parseResponse(ValidateOTPResponseSchema, response.data, {
+    context: 'shaApi.validateConsentOTP',
+  });
 }
 
 /**
@@ -1380,7 +1479,7 @@ export interface CapitationSummary {
  */
 async function validateCapitationProvider(
   shaMemberId: number,
-  claimId?: number,
+  claimId?: number
 ): Promise<CapitationValidationResult> {
   const body: Record<string, number> = { sha_member_id: shaMemberId };
   if (claimId) body.claim_id = claimId;
@@ -1393,7 +1492,7 @@ async function validateCapitationProvider(
       details: z.record(z.unknown()).optional(),
     }),
     response.data,
-    { context: 'shaApi.validateCapitationProvider' },
+    { context: 'shaApi.validateCapitationProvider' }
   );
 }
 
@@ -1403,7 +1502,7 @@ async function validateCapitationProvider(
  * patient's selected outpatient provider matches the current facility.
  */
 async function validateCapitationDirect(
-  eligibilityResponse: Record<string, unknown>,
+  eligibilityResponse: Record<string, unknown>
 ): Promise<CapitationValidationResult> {
   const response = await apiClient.post('/api/billing/capitation/validate-direct/', {
     eligibility_response: eligibilityResponse,
@@ -1416,7 +1515,7 @@ async function validateCapitationDirect(
       details: z.record(z.unknown()).optional(),
     }),
     response.data,
-    { context: 'shaApi.validateCapitationDirect' },
+    { context: 'shaApi.validateCapitationDirect' }
   );
 }
 
@@ -1434,7 +1533,9 @@ async function getCapitationSummary(params?: {
   const response = await apiClient.get(
     `/api/billing/claims/capitation-summary/${qs ? `?${qs}` : ''}`
   );
-  return parseResponse(CapitationSummarySchema, response.data, { context: 'shaApi.getCapitationSummary' });
+  return parseResponse(CapitationSummarySchema, response.data, {
+    context: 'shaApi.getCapitationSummary',
+  });
 }
 
 // ============================================================================
@@ -1447,9 +1548,24 @@ export interface BatchValidationResult {
   ready: number;
   invalid: number;
   missing_docs: number;
-  ready_claims: Array<{ id: number; claim_number: string; patient_name: string; claimed_amount: string }>;
-  invalid_claims: Array<{ id: number; claim_number: string; patient_name: string; errors: string[] }>;
-  missing_docs_claims: Array<{ id: number; claim_number: string; patient_name: string; missing_documents: string[] }>;
+  ready_claims: Array<{
+    id: number;
+    claim_number: string;
+    patient_name: string;
+    claimed_amount: string;
+  }>;
+  invalid_claims: Array<{
+    id: number;
+    claim_number: string;
+    patient_name: string;
+    errors: string[];
+  }>;
+  missing_docs_claims: Array<{
+    id: number;
+    claim_number: string;
+    patient_name: string;
+    missing_documents: string[];
+  }>;
   total_claimable_amount: string;
 }
 
@@ -1499,7 +1615,9 @@ export interface InterventionSuggestion {
  */
 async function batchValidateClaims(): Promise<BatchValidationResult> {
   const response = await apiClient.post('/api/sha/claims/batch-validate/');
-  return parseResponse(BatchValidationResultSchema, response.data, { context: 'shaApi.batchValidateClaims' });
+  return parseResponse(BatchValidationResultSchema, response.data, {
+    context: 'shaApi.batchValidateClaims',
+  });
 }
 
 /**
@@ -1509,7 +1627,9 @@ async function bulkSubmitClaims(claimIds: number[]): Promise<BulkSubmitResult> {
   const response = await apiClient.post('/api/sha/claims/bulk-submit/', {
     claim_ids: claimIds,
   });
-  return parseResponse(BulkSubmitResultSchema, response.data, { context: 'shaApi.bulkSubmitClaims' });
+  return parseResponse(BulkSubmitResultSchema, response.data, {
+    context: 'shaApi.bulkSubmitClaims',
+  });
 }
 
 /**
@@ -1538,7 +1658,13 @@ async function suggestInterventions(claimId: number): Promise<{
  */
 async function attachSuggestedInterventions(
   claimId: number,
-  interventions: Array<{ code: string; name: string; tariff?: string | null; source?: string; source_id?: number }>
+  interventions: Array<{
+    code: string;
+    name: string;
+    tariff?: string | null;
+    source?: string;
+    source_id?: number;
+  }>
 ): Promise<{ attached: number; skipped: number }> {
   const response = await apiClient.post(`/api/sha/claims/${claimId}/suggest-interventions/`, {
     interventions,
@@ -1551,7 +1677,9 @@ async function attachSuggestedInterventions(
 /**
  * Auto-attach existing digital documents to a claim.
  */
-async function autoAttachDocuments(claimId: number): Promise<{ attached: number; already_attached?: number; error?: string }> {
+async function autoAttachDocuments(
+  claimId: number
+): Promise<{ attached: number; already_attached?: number; error?: string }> {
   const response = await apiClient.post(`/api/sha/claims/${claimId}/auto-attach-documents/`);
   return parseResponse(AutoAttachDocumentsResponseSchema, response.data, {
     context: 'shaApi.autoAttachDocuments',
@@ -1561,7 +1689,9 @@ async function autoAttachDocuments(claimId: number): Promise<{ attached: number;
 /**
  * Trigger eligibility pre-check for a patient (background).
  */
-async function triggerEligibilityPreCheck(patientId: number): Promise<{ status: string; message?: string }> {
+async function triggerEligibilityPreCheck(
+  patientId: number
+): Promise<{ status: string; message?: string }> {
   const response = await apiClient.post('/api/sha/eligibility/pre-check/', {
     patient_id: patientId,
   });
@@ -1577,11 +1707,21 @@ async function triggerEligibilityPreCheck(patientId: number): Promise<{ status: 
 /**
  * Get list of remittances for the current facility
  */
-async function getRemittances(): Promise<{ count: number; next: string | null; previous: string | null; results: SHARemittanceType[] }> {
+async function getRemittances(): Promise<{
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: SHARemittanceType[];
+}> {
   const response = await apiClient.get('/api/sha/remittances/');
   return parseResponse(PaginatedRemittancesSchema, response.data, {
     context: 'shaApi.getRemittances',
-  }) as { count: number; next: string | null; previous: string | null; results: SHARemittanceType[] };
+  }) as {
+    count: number;
+    next: string | null;
+    previous: string | null;
+    results: SHARemittanceType[];
+  };
 }
 
 /**
@@ -1589,13 +1729,17 @@ async function getRemittances(): Promise<{ count: number; next: string | null; p
  */
 async function getRemittance(id: number): Promise<SHARemittanceType> {
   const response = await apiClient.get(`/api/sha/remittances/${id}/`);
-  return parseResponse(z.unknown(), response.data, { context: 'shaApi.getRemittance' }) as SHARemittanceType;
+  return parseResponse(z.unknown(), response.data, {
+    context: 'shaApi.getRemittance',
+  }) as SHARemittanceType;
 }
 
 /**
  * Get claims paid by a specific remittance
  */
-async function getRemittanceClaims(id: number): Promise<{ count: number; results: SHARemittanceLineType[] }> {
+async function getRemittanceClaims(
+  id: number
+): Promise<{ count: number; results: SHARemittanceLineType[] }> {
   const response = await apiClient.get(`/api/sha/remittances/${id}/claims/`);
   return parseResponse(RemittanceClaimsResponseSchema, response.data, {
     context: 'shaApi.getRemittanceClaims',
@@ -1621,7 +1765,9 @@ async function fetchRemittancesFromDHA(): Promise<{ message: string; count: numb
  */
 async function submitPreauth(data: SubmitPreauthRequest): Promise<SubmitPreauthResponse> {
   const response = await apiClient.post('/api/sha/preauth/submit/', data);
-  return parseResponse(SubmitPreauthResponseSchema, response.data, { context: 'shaApi.submitPreauth' });
+  return parseResponse(SubmitPreauthResponseSchema, response.data, {
+    context: 'shaApi.submitPreauth',
+  });
 }
 
 /**
@@ -1635,9 +1781,16 @@ async function getPreauthStatus(preauthId: number): Promise<PreauthRequest> {
 /**
  * Get list of pending pre-authorization requests
  */
-async function getPendingPreauths(): Promise<{ count: number; next: string | null; previous: string | null; results: PreauthRequest[] }> {
+async function getPendingPreauths(): Promise<{
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: PreauthRequest[];
+}> {
   const response = await apiClient.get('/api/sha/preauth/pending/');
-  return parseResponse(PaginatedPreauthRequestsSchema, response.data, { context: 'shaApi.getPendingPreauths' });
+  return parseResponse(PaginatedPreauthRequestsSchema, response.data, {
+    context: 'shaApi.getPendingPreauths',
+  });
 }
 
 // ============================================================================
@@ -1651,24 +1804,44 @@ async function ilmStartVisit(claimId: number, body: IlmStartVisitRequest): Promi
   return parseResponse(IlmCallResultSchema, response.data, { context: 'shaApi.ilmStartVisit' });
 }
 
-async function ilmAddIntervention(claimId: number, body: IlmInterventionRequest): Promise<IlmCallResult> {
+async function ilmAddIntervention(
+  claimId: number,
+  body: IlmInterventionRequest
+): Promise<IlmCallResult> {
   const response = await apiClient.post(`${ilmBase(claimId)}/interventions/add/`, body);
-  return parseResponse(IlmCallResultSchema, response.data, { context: 'shaApi.ilmAddIntervention' });
+  return parseResponse(IlmCallResultSchema, response.data, {
+    context: 'shaApi.ilmAddIntervention',
+  });
 }
 
-async function ilmSwitchIntervention(claimId: number, body: IlmSwitchInterventionRequest): Promise<IlmCallResult> {
+async function ilmSwitchIntervention(
+  claimId: number,
+  body: IlmSwitchInterventionRequest
+): Promise<IlmCallResult> {
   const response = await apiClient.post(`${ilmBase(claimId)}/interventions/switch/`, body);
-  return parseResponse(IlmCallResultSchema, response.data, { context: 'shaApi.ilmSwitchIntervention' });
+  return parseResponse(IlmCallResultSchema, response.data, {
+    context: 'shaApi.ilmSwitchIntervention',
+  });
 }
 
-async function ilmRestoreIntervention(claimId: number, body: IlmInterventionRequest): Promise<IlmCallResult> {
+async function ilmRestoreIntervention(
+  claimId: number,
+  body: IlmInterventionRequest
+): Promise<IlmCallResult> {
   const response = await apiClient.post(`${ilmBase(claimId)}/interventions/restore/`, body);
-  return parseResponse(IlmCallResultSchema, response.data, { context: 'shaApi.ilmRestoreIntervention' });
+  return parseResponse(IlmCallResultSchema, response.data, {
+    context: 'shaApi.ilmRestoreIntervention',
+  });
 }
 
-async function ilmRetireIntervention(claimId: number, body: IlmInterventionRequest): Promise<IlmCallResult> {
+async function ilmRetireIntervention(
+  claimId: number,
+  body: IlmInterventionRequest
+): Promise<IlmCallResult> {
   const response = await apiClient.post(`${ilmBase(claimId)}/interventions/retire/`, body);
-  return parseResponse(IlmCallResultSchema, response.data, { context: 'shaApi.ilmRetireIntervention' });
+  return parseResponse(IlmCallResultSchema, response.data, {
+    context: 'shaApi.ilmRetireIntervention',
+  });
 }
 
 async function ilmPurgeIntervention(claimId: number, body: IlmInterventionRequest): Promise<void> {
@@ -1682,25 +1855,33 @@ async function ilmPurgeIntervention(claimId: number, body: IlmInterventionReques
  */
 async function ilmAddVirtualClaimLine(
   claimId: number,
-  body: IlmVirtualClaimLineRequest,
+  body: IlmVirtualClaimLineRequest
 ): Promise<IlmCallResult> {
   const response = await apiClient.post(
     `${ilmBase(claimId)}/interventions/virtual-claim-line/`,
-    body,
+    body
   );
   return parseResponse(IlmCallResultSchema, response.data, {
     context: 'shaApi.ilmAddVirtualClaimLine',
   });
 }
 
-async function ilmAddDiagnosis(claimId: number, body: IlmAddDiagnosisRequest): Promise<IlmCallResult> {
+async function ilmAddDiagnosis(
+  claimId: number,
+  body: IlmAddDiagnosisRequest
+): Promise<IlmCallResult> {
   const response = await apiClient.post(`${ilmBase(claimId)}/diagnoses/add/`, body);
   return parseResponse(IlmCallResultSchema, response.data, { context: 'shaApi.ilmAddDiagnosis' });
 }
 
-async function ilmRemoveDiagnosis(claimId: number, body: IlmRemoveDiagnosisRequest): Promise<IlmCallResult> {
+async function ilmRemoveDiagnosis(
+  claimId: number,
+  body: IlmRemoveDiagnosisRequest
+): Promise<IlmCallResult> {
   const response = await apiClient.post(`${ilmBase(claimId)}/diagnoses/remove/`, body);
-  return parseResponse(IlmCallResultSchema, response.data, { context: 'shaApi.ilmRemoveDiagnosis' });
+  return parseResponse(IlmCallResultSchema, response.data, {
+    context: 'shaApi.ilmRemoveDiagnosis',
+  });
 }
 
 async function ilmAddLine(claimId: number, body: IlmAddLineRequest): Promise<IlmCallResult> {
@@ -1721,7 +1902,7 @@ async function ilmRemoveLine(claimId: number, body: IlmRemoveLineRequest): Promi
 async function ilmAddAttachment(
   claimId: number,
   files: File[],
-  extra?: Record<string, string>,
+  extra?: Record<string, string>
 ): Promise<IlmCallResult> {
   const form = new FormData();
   files.forEach((f) => form.append('files', f, f.name));
@@ -1736,9 +1917,14 @@ async function ilmAddAttachment(
   return parseResponse(IlmCallResultSchema, response.data, { context: 'shaApi.ilmAddAttachment' });
 }
 
-async function ilmRemoveAttachment(claimId: number, body: IlmRemoveAttachmentRequest): Promise<IlmCallResult> {
+async function ilmRemoveAttachment(
+  claimId: number,
+  body: IlmRemoveAttachmentRequest
+): Promise<IlmCallResult> {
   const response = await apiClient.post(`${ilmBase(claimId)}/attachments/remove/`, body);
-  return parseResponse(IlmCallResultSchema, response.data, { context: 'shaApi.ilmRemoveAttachment' });
+  return parseResponse(IlmCallResultSchema, response.data, {
+    context: 'shaApi.ilmRemoveAttachment',
+  });
 }
 
 async function ilmPushLocalAttachments(claimId: number): Promise<{
@@ -1786,7 +1972,7 @@ async function ilmPreview(claimId: number): Promise<IlmCallResult> {
   const response = await apiClient.post(
     `${ilmBase(claimId)}/preview/`,
     {},
-    { params: { _ts: Date.now() } },
+    { params: { _ts: Date.now() } }
   );
   return parseResponse(IlmCallResultSchema, response.data, { context: 'shaApi.ilmPreview' });
 }
@@ -1844,7 +2030,7 @@ export interface IlmMaterializePreviewInvoiceResponse {
 async function ilmApplyPreviewLines(
   claimId: number,
   payload: Record<string, unknown>,
-  replaceExisting = true,
+  replaceExisting = true
 ): Promise<IlmApplyPreviewLinesResponse> {
   const response = await apiClient.post(`${ilmBase(claimId)}/apply-preview-lines/`, {
     payload,
@@ -1857,7 +2043,7 @@ async function ilmApplyPreviewLines(
 
 async function ilmMaterializePreviewInvoice(
   claimId: number,
-  body?: { invoice_number?: string; replace_existing?: boolean },
+  body?: { invoice_number?: string; replace_existing?: boolean }
 ): Promise<IlmMaterializePreviewInvoiceResponse> {
   const response = await apiClient.post(`${ilmBase(claimId)}/materialize-preview-invoice/`, {
     replace_existing: body?.replace_existing ?? true,
@@ -1870,7 +2056,9 @@ async function ilmMaterializePreviewInvoice(
 
 async function ilmPreviewPayerClaim(claimId: number): Promise<IlmCallResult> {
   const response = await apiClient.post(`${ilmBase(claimId)}/preview-payer/`, {});
-  return parseResponse(IlmCallResultSchema, response.data, { context: 'shaApi.ilmPreviewPayerClaim' });
+  return parseResponse(IlmCallResultSchema, response.data, {
+    context: 'shaApi.ilmPreviewPayerClaim',
+  });
 }
 
 async function ilmSubmit(claimId: number, body: IlmSubmitRequest): Promise<IlmCallResult> {
@@ -2092,11 +2280,11 @@ async function ilmPreauthCancel(body: {
 
 async function ilmPreauthRemoveDiagnosis(
   icdCode: string,
-  body: { consent_token: string; intervention_code: string },
+  body: { consent_token: string; intervention_code: string }
 ): Promise<IlmPreauthResponse> {
   const response = await apiClient.delete(
     `${ILM_BASE}/preauth/diagnoses/${encodeURIComponent(icdCode)}/`,
-    { data: body },
+    { data: body }
   );
   return parseResponse(IlmPreauthResponseSchema, response.data, {
     context: 'shaApi.ilmPreauthRemoveDiagnosis',
@@ -2202,7 +2390,9 @@ async function ilmEmtCreate(body: {
   });
 }
 
-async function listLocalPreauths(params: { patient_pk?: number; consent_token?: string; claim_pk?: number; status?: string } = {}) {
+async function listLocalPreauths(
+  params: { patient_pk?: number; consent_token?: string; claim_pk?: number; status?: string } = {}
+) {
   const response = await apiClient.get(`${ILM_BASE}/preauth/local/`, { params });
   return parseResponse(SHAPreauthListSchema, response.data, {
     context: 'shaApi.listLocalPreauths',
@@ -2216,7 +2406,9 @@ async function getPreauthDetail(id: number): Promise<SHAPreauthType> {
   });
 }
 
-async function listLocalEmergencyClaims(params: { patient_pk?: number; kind?: 'emergency' | 'emt' } = {}) {
+async function listLocalEmergencyClaims(
+  params: { patient_pk?: number; kind?: 'emergency' | 'emt' } = {}
+) {
   const response = await apiClient.get(`${ILM_BASE}/emergency/local/`, { params });
   return parseResponse(SHAEmergencyClaimListSchema, response.data, {
     context: 'shaApi.listLocalEmergencyClaims',
@@ -2348,7 +2540,9 @@ async function ilmGetUploadUrl(fileId: string) {
   });
 }
 
-async function listLocalOtpRequests(params: { kind?: 'visit' | 'discharge'; patient_pk?: number } = {}) {
+async function listLocalOtpRequests(
+  params: { kind?: 'visit' | 'discharge'; patient_pk?: number } = {}
+) {
   const response = await apiClient.get(`${ILM_BASE}/lifecycle/otp/local/`, { params });
   return parseResponse(SHAOtpRequestListSchema, response.data, {
     context: 'shaApi.listLocalOtpRequests',
@@ -2399,7 +2593,11 @@ async function ilmCreatePrescription(body: {
 async function ilmDispensePrescription(body: {
   consent_token: string;
   intervention_code: string;
-  actual_products: Array<{ actual_product_code: string; medication_price: number; total_quantity: number }>;
+  actual_products: Array<{
+    actual_product_code: string;
+    medication_price: number;
+    total_quantity: number;
+  }>;
   doctors?: Array<{ identification_number: string; identification_type?: string }>;
   prescription_pk?: number;
 }) {
@@ -2421,7 +2619,7 @@ async function ilmRemovePrescriptionDoctor(body: {
 }
 
 async function listLocalDhaPrescriptions(
-  params: { patient_pk?: number; status?: string; intervention_code?: string } = {},
+  params: { patient_pk?: number; status?: string; intervention_code?: string } = {}
 ) {
   const response = await apiClient.get(`${ILM_BASE}/prescriptions/local/`, { params });
   return parseResponse(SHADhaPrescriptionListSchema, response.data, {

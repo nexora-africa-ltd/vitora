@@ -39,14 +39,17 @@ import {
 
 interface OpenAPISchema {
   components: {
-    schemas: Record<string, {
-      type?: string;
-      properties?: Record<string, unknown>;
-      required?: string[];
-      enum?: string[];
-      allOf?: Array<{ $ref?: string }>;
-      description?: string;
-    }>;
+    schemas: Record<
+      string,
+      {
+        type?: string;
+        properties?: Record<string, unknown>;
+        required?: string[];
+        enum?: string[];
+        allOf?: Array<{ $ref?: string }>;
+        description?: string;
+      }
+    >;
   };
 }
 
@@ -75,10 +78,7 @@ function getSchemaProperties(
 /**
  * Get enum values from a component schema.
  */
-function getSchemaEnumValues(
-  openapi: OpenAPISchema,
-  schemaName: string
-): string[] | null {
+function getSchemaEnumValues(openapi: OpenAPISchema, schemaName: string): string[] | null {
   const schema = openapi.components.schemas[schemaName];
   if (!schema || !schema.enum) return null;
   return schema.enum;
@@ -151,11 +151,7 @@ describe('Core Contract Tests', () => {
     it('should have all critical fields', () => {
       const zodFields = getZodSchemaFields(CountySchema);
 
-      const criticalFields = [
-        'id',
-        'code',
-        'name',
-      ];
+      const criticalFields = ['id', 'code', 'name'];
 
       const missing = criticalFields.filter((field) => !zodFields.includes(field));
       expect(missing).toEqual([]);
@@ -180,8 +176,8 @@ describe('Core Contract Tests', () => {
       }
 
       // Only fail on critical fields - county_name is optional display field
-      const criticalMissingFields = missingInZod.filter(
-        (field) => ['id', 'county', 'name'].includes(field)
+      const criticalMissingFields = missingInZod.filter((field) =>
+        ['id', 'county', 'name'].includes(field)
       );
 
       expect(criticalMissingFields).toEqual([]);
@@ -190,11 +186,7 @@ describe('Core Contract Tests', () => {
     it('should have all critical fields', () => {
       const zodFields = getZodSchemaFields(SubCountySchema);
 
-      const criticalFields = [
-        'id',
-        'county',
-        'name',
-      ];
+      const criticalFields = ['id', 'county', 'name'];
 
       const missing = criticalFields.filter((field) => !zodFields.includes(field));
       expect(missing).toEqual([]);
@@ -219,8 +211,8 @@ describe('Core Contract Tests', () => {
       }
 
       // Only fail on critical fields - sub_county_name is optional display field
-      const criticalMissingFields = missingInZod.filter(
-        (field) => ['id', 'sub_county', 'name'].includes(field)
+      const criticalMissingFields = missingInZod.filter((field) =>
+        ['id', 'sub_county', 'name'].includes(field)
       );
 
       expect(criticalMissingFields).toEqual([]);
@@ -229,11 +221,7 @@ describe('Core Contract Tests', () => {
     it('should have all critical fields', () => {
       const zodFields = getZodSchemaFields(LocationWardSchema);
 
-      const criticalFields = [
-        'id',
-        'sub_county',
-        'name',
-      ];
+      const criticalFields = ['id', 'sub_county', 'name'];
 
       const missing = criticalFields.filter((field) => !zodFields.includes(field));
       expect(missing).toEqual([]);
@@ -262,8 +250,8 @@ describe('Core Contract Tests', () => {
       }
 
       // Critical fields should cause test failure
-      const criticalMissingFields = missingInZod.filter(
-        (field) => ['id', 'notification_type', 'priority', 'title', 'message'].includes(field)
+      const criticalMissingFields = missingInZod.filter((field) =>
+        ['id', 'notification_type', 'priority', 'title', 'message'].includes(field)
       );
 
       expect(criticalMissingFields).toEqual([]);
@@ -289,12 +277,7 @@ describe('Core Contract Tests', () => {
     it('should include relation and action fields', () => {
       const zodFields = getZodSchemaFields(NotificationSchema);
 
-      const relationFields = [
-        'related_model',
-        'related_id',
-        'action_url',
-        'read_at',
-      ];
+      const relationFields = ['related_model', 'related_id', 'action_url', 'read_at'];
 
       const missing = relationFields.filter((field) => !zodFields.includes(field));
       expect(missing).toEqual([]);
@@ -321,12 +304,7 @@ describe('Core Contract Tests', () => {
     it('should include all priority levels', () => {
       const zodValues = getZodEnumValues(NotificationPrioritySchema);
 
-      const allPriorities = [
-        'low',
-        'normal',
-        'high',
-        'critical',
-      ];
+      const allPriorities = ['low', 'normal', 'high', 'critical'];
 
       const missing = allPriorities.filter((p) => !zodValues.includes(p));
       expect(missing).toEqual([]);
@@ -355,8 +333,8 @@ describe('Core Contract Tests', () => {
       }
 
       // Critical fields should cause test failure
-      const criticalMissingFields = missingInZod.filter(
-        (field) => ['id', 'name', 'template_type', 'content'].includes(field)
+      const criticalMissingFields = missingInZod.filter((field) =>
+        ['id', 'name', 'template_type', 'content'].includes(field)
       );
 
       expect(criticalMissingFields).toEqual([]);
@@ -385,12 +363,7 @@ describe('Core Contract Tests', () => {
     it('should include usage and authorship fields', () => {
       const zodFields = getZodSchemaFields(ClinicalTemplateSchema);
 
-      const authorshipFields = [
-        'usage_count',
-        'created_by',
-        'created_by_username',
-        'sections',
-      ];
+      const authorshipFields = ['usage_count', 'created_by', 'created_by_username', 'sections'];
 
       const missing = authorshipFields.filter((field) => !zodFields.includes(field));
       expect(missing).toEqual([]);
@@ -417,12 +390,7 @@ describe('Core Contract Tests', () => {
     it('should include all template types', () => {
       const zodValues = getZodEnumValues(TemplateTypeSchema);
 
-      const allTypes = [
-        'encounter',
-        'note',
-        'assessment',
-        'procedure',
-      ];
+      const allTypes = ['encounter', 'note', 'assessment', 'procedure'];
 
       const missing = allTypes.filter((t) => !zodValues.includes(t));
       expect(missing).toEqual([]);
@@ -465,11 +433,7 @@ describe('Core Contract Tests', () => {
       if (!apiProperties) return;
 
       // DPA compliance requires tracking patient access
-      const dpaFields = [
-        'patient_id',
-        'user_agent',
-        'username',
-      ];
+      const dpaFields = ['patient_id', 'user_agent', 'username'];
 
       const apiFields = Object.keys(apiProperties);
       const missingDPA = dpaFields.filter((f) => !apiFields.includes(f));

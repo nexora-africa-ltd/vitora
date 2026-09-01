@@ -85,7 +85,7 @@ const mockEncounter = {
 const mockDiagnosis = {
   id: 1,
   encounter: 1,
-  icd10_code: 456,  // This is a number FK in the schema
+  icd10_code: 456, // This is a number FK in the schema
   icd10_code_display: 'J06.9',
   icd10_display: 'J06.9 - Upper respiratory infection',
   icd10_description: 'Upper respiratory infection',
@@ -144,7 +144,12 @@ describe('Encounters API', () => {
           previous: null,
           results: [
             mockEncounter,
-            { ...mockEncounter, id: 2, encounter_type: 'EMERGENCY' as const, chief_complaint: 'Chest pain' },
+            {
+              ...mockEncounter,
+              id: 2,
+              encounter_type: 'EMERGENCY' as const,
+              chief_complaint: 'Chest pain',
+            },
           ],
         },
       };
@@ -213,7 +218,9 @@ describe('Encounters API', () => {
   describe('getDiagnoses', () => {
     it('should fetch diagnoses for an encounter', async () => {
       // API returns paginated result but getDiagnoses extracts .results
-      mockApiClient.get.mockResolvedValue({ data: { count: 1, next: null, previous: null, results: [mockDiagnosis] } });
+      mockApiClient.get.mockResolvedValue({
+        data: { count: 1, next: null, previous: null, results: [mockDiagnosis] },
+      });
 
       const result = await encountersApi.getDiagnoses(1);
 
@@ -245,7 +252,9 @@ describe('Encounters API', () => {
     it('should throw error for other failures', async () => {
       mockApiClient.get.mockRejectedValue({ response: { status: 500 } });
 
-      await expect(encountersApi.getTreatmentPlan(1)).rejects.toEqual({ response: { status: 500 } });
+      await expect(encountersApi.getTreatmentPlan(1)).rejects.toEqual({
+        response: { status: 500 },
+      });
     });
   });
 });

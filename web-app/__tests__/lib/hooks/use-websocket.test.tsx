@@ -3,7 +3,12 @@
  */
 import { renderHook, act } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useWebSocket, useClinicQueueSocket, getConnectionStatusText, getConnectionStatusColor } from '@/lib/hooks/use-websocket';
+import {
+  useWebSocket,
+  useClinicQueueSocket,
+  getConnectionStatusText,
+  getConnectionStatusColor,
+} from '@/lib/hooks/use-websocket';
 import { usePatientJourneyStore } from '@/lib/stores/patient-journey';
 import React from 'react';
 
@@ -88,10 +93,9 @@ function createWrapper() {
 
 describe('useWebSocket', () => {
   it('should connect to WebSocket when URL is provided', async () => {
-    const { result } = renderHook(
-      () => useWebSocket('ws://localhost/test'),
-      { wrapper: createWrapper() }
-    );
+    const { result } = renderHook(() => useWebSocket('ws://localhost/test'), {
+      wrapper: createWrapper(),
+    });
 
     expect(result.current.connectionState).toBe('connecting');
     expect(MockWebSocket.instances).toHaveLength(1);
@@ -99,20 +103,16 @@ describe('useWebSocket', () => {
   });
 
   it('should not connect when URL is null', () => {
-    const { result } = renderHook(
-      () => useWebSocket(null),
-      { wrapper: createWrapper() }
-    );
+    const { result } = renderHook(() => useWebSocket(null), { wrapper: createWrapper() });
 
     expect(result.current.connectionState).toBe('disconnected');
     expect(MockWebSocket.instances).toHaveLength(0);
   });
 
   it('should update state to connected on open', async () => {
-    const { result } = renderHook(
-      () => useWebSocket('ws://localhost/test'),
-      { wrapper: createWrapper() }
-    );
+    const { result } = renderHook(() => useWebSocket('ws://localhost/test'), {
+      wrapper: createWrapper(),
+    });
 
     act(() => {
       MockWebSocket.instances[0].simulateOpen();
@@ -125,10 +125,9 @@ describe('useWebSocket', () => {
   it('should call onMessage when message received', async () => {
     const onMessage = jest.fn();
 
-    renderHook(
-      () => useWebSocket('ws://localhost/test', { onMessage }),
-      { wrapper: createWrapper() }
-    );
+    renderHook(() => useWebSocket('ws://localhost/test', { onMessage }), {
+      wrapper: createWrapper(),
+    });
 
     act(() => {
       MockWebSocket.instances[0].simulateOpen();
@@ -142,10 +141,9 @@ describe('useWebSocket', () => {
   });
 
   it('should disconnect when disconnect() is called', () => {
-    const { result } = renderHook(
-      () => useWebSocket('ws://localhost/test'),
-      { wrapper: createWrapper() }
-    );
+    const { result } = renderHook(() => useWebSocket('ws://localhost/test'), {
+      wrapper: createWrapper(),
+    });
 
     act(() => {
       MockWebSocket.instances[0].simulateOpen();
@@ -161,20 +159,14 @@ describe('useWebSocket', () => {
 
 describe('useClinicQueueSocket', () => {
   it('should connect to clinic queue WebSocket', () => {
-    renderHook(
-      () => useClinicQueueSocket(123),
-      { wrapper: createWrapper() }
-    );
+    renderHook(() => useClinicQueueSocket(123), { wrapper: createWrapper() });
 
     expect(MockWebSocket.instances).toHaveLength(1);
     expect(MockWebSocket.instances[0].url).toContain('/ws/clinics/123/queue/');
   });
 
   it('should not connect when clinicId is null', () => {
-    renderHook(
-      () => useClinicQueueSocket(null),
-      { wrapper: createWrapper() }
-    );
+    renderHook(() => useClinicQueueSocket(null), { wrapper: createWrapper() });
 
     expect(MockWebSocket.instances).toHaveLength(0);
   });
@@ -187,10 +179,7 @@ describe('useClinicQueueSocket', () => {
       name: 'Test Patient',
     });
 
-    renderHook(
-      () => useClinicQueueSocket(123),
-      { wrapper: createWrapper() }
-    );
+    renderHook(() => useClinicQueueSocket(123), { wrapper: createWrapper() });
 
     act(() => {
       MockWebSocket.instances[0].simulateOpen();
@@ -219,10 +208,7 @@ describe('useClinicQueueSocket', () => {
     store.registerPatient({ id: 2, mrn: 'MRN-002', name: 'Test Patient 2' });
     store.checkInPatient(2);
 
-    renderHook(
-      () => useClinicQueueSocket(123),
-      { wrapper: createWrapper() }
-    );
+    renderHook(() => useClinicQueueSocket(123), { wrapper: createWrapper() });
 
     act(() => {
       MockWebSocket.instances[0].simulateOpen();

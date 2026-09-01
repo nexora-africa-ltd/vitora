@@ -5,7 +5,9 @@ import { useAuth } from '@/lib/auth/context';
 
 const mockLogout = jest.fn();
 const mockUseAuth = useAuth as jest.MockedFunction<typeof useAuth>;
-const mockValidatePractitioner = shaApi.validatePractitioner as jest.MockedFunction<typeof shaApi.validatePractitioner>;
+const mockValidatePractitioner = shaApi.validatePractitioner as jest.MockedFunction<
+  typeof shaApi.validatePractitioner
+>;
 
 const mockPractitioner = {
   membership: {
@@ -106,7 +108,11 @@ jest.mock('@/lib/api/sha', () => ({
 }));
 
 jest.mock('@/components/sha', () => ({
-  DHAPractitionerSearch: ({ onSelect }: { onSelect?: (practitioner: typeof mockPractitioner) => void }) => (
+  DHAPractitionerSearch: ({
+    onSelect,
+  }: {
+    onSelect?: (practitioner: typeof mockPractitioner) => void;
+  }) => (
     <button type="button" onClick={() => onSelect?.(mockPractitioner)}>
       Mock HWR Search
     </button>
@@ -170,8 +176,14 @@ describe('ProfilePage', () => {
 
     await screen.findByText('HWR-12345');
 
-    expect(screen.getByRole('link', { name: /open settings/i })).toHaveAttribute('href', '/settings');
-    expect(screen.getByRole('link', { name: /go to settings/i })).toHaveAttribute('href', '/settings');
+    expect(screen.getByRole('link', { name: /open settings/i })).toHaveAttribute(
+      'href',
+      '/settings'
+    );
+    expect(screen.getByRole('link', { name: /go to settings/i })).toHaveAttribute(
+      'href',
+      '/settings'
+    );
     expect(screen.getByText('Patients / View Patient')).toBeInTheDocument();
     expect(screen.getByText('Encounters / Add Encounter')).toBeInTheDocument();
     expect(screen.getByText('Showing 1-8 of 10')).toBeInTheDocument();

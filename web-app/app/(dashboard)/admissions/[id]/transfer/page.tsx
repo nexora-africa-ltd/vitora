@@ -35,18 +35,20 @@ import {
   useCheckWardCompatibility,
   useCreateTransfer,
   useInpatientWards,
-  useTransfers
+  useTransfers,
 } from '@/lib/hooks/use-inpatient';
 import { useUser } from '@/lib/auth';
 import { useToast } from '@/lib/hooks/use-toast';
 import { formatDateTime } from '@/lib/utils/format';
 import type {
+  Bed,
   CompatibilityCheckResult,
   CompatibleWardInfo,
   IncompatibleWardInfo,
   InpatientWard,
   InpatientWardType,
-  TransferReason
+  Transfer,
+  TransferReason,
 } from '@/lib/types/inpatient';
 
 const TRANSFER_REASONS: { value: TransferReason; label: string }[] = [
@@ -80,7 +82,17 @@ const WARD_TYPE_LABELS: Record<InpatientWardType, string> = {
   ICU: 'ICU',
 };
 
-function deriveTransitionReason(source?: InpatientWardType, destination?: InpatientWardType): TransferReason | null {
+type TransferHistoryItem = Transfer & {
+  from_ward_name?: string;
+  to_ward_name?: string;
+  clinical_notes?: string;
+  transferred_by_name?: string;
+};
+
+function deriveTransitionReason(
+  source?: InpatientWardType,
+  destination?: InpatientWardType
+): TransferReason | null {
   if (!source || !destination) return null;
   const sourceScore = CARE_LEVEL_SCORE[source] ?? 1;
   const destinationScore = CARE_LEVEL_SCORE[destination] ?? 1;
@@ -110,7 +122,9 @@ export default function TransferPage() {
   const [clinicalJustification, setClinicalJustification] = useState('');
 
   // Compatibility state - single ward check
-  const [compatibilityResult, setCompatibilityResult] = useState<CompatibilityCheckResult | null>(null);
+  const [compatibilityResult, setCompatibilityResult] = useState<CompatibilityCheckResult | null>(
+    null
+  );
   const [compatibilityOverridden, setCompatibilityOverridden] = useState(false);
   const [showCompatibilityWarning, setShowCompatibilityWarning] = useState(false);
 
@@ -119,10 +133,14 @@ export default function TransferPage() {
   const [incompatibleWards, setIncompatibleWards] = useState<IncompatibleWardInfo[]>([]);
   const [bulkCheckComplete, setBulkCheckComplete] = useState(false);
 
-  const selectedWardId = useMemo(() => (targetWardId ? Number(targetWardId) : undefined), [targetWardId]);
-  const wardsList = useMemo<InpatientWard[]>(() => (
-    Array.isArray(wards) ? wards : (wards?.results ?? [])
-  ), [wards]);
+  const selectedWardId = useMemo(
+    () => (targetWardId ? Number(targetWardId) : undefined),
+    [targetWardId]
+  );
+  const wardsList = useMemo<InpatientWard[]>(
+    () => (Array.isArray(wards) ? wards : (wards?.results ?? [])),
+    [wards]
+  );
   const wardById = useMemo(() => {
     const lookup: Record<number, InpatientWard> = {};
     for (const ward of wardsList) lookup[ward.id] = ward;
@@ -132,19 +150,34 @@ export default function TransferPage() {
     if (!admission) return undefined;
     return admission.ward_type ?? wardById[admission.ward]?.ward_type;
   }, [admission, wardById]);
-  const selectedWardType = useMemo<InpatientWardType | undefined>(() => (
-    selectedWardId ? wardById[selectedWardId]?.ward_type : undefined
-  ), [selectedWardId, wardById]);
-  const suggestedReason = useMemo(() => deriveTransitionReason(sourceWardType, selectedWardType), [sourceWardType, selectedWardType]);
+  const selectedWardType = useMemo<InpatientWardType | undefined>(
+    () => (selectedWardId ? wardById[selectedWardId]?.ward_type : undefined),
+    [selectedWardId, wardById]
+  );
+  const suggestedReason = useMemo(
+    () => deriveTransitionReason(sourceWardType, selectedWardType),
+    [sourceWardType, selectedWardType]
+  );
   const { data: beds } = useBeds({ ward: selectedWardId, status: 'AVAILABLE' });
 
   // Get transfers list from paginated response
-  const transfers = Array.isArray(transfersData) ? transfersData : transfersData?.results ?? [];
+  const transfers = useMemo<TransferHistoryItem[]>(
+    () =>
+      (Array.isArray(transfersData)
+        ? transfersData
+        : (transfersData?.results ?? [])) as TransferHistoryItem[],
+    [transfersData]
+  );
+  const availableBeds: Bed[] = useMemo(
+    () => (Array.isArray(beds) ? beds : (beds?.results ?? [])),
+    [beds]
+  );
 
   // Trigger bulk compatibility check immediately when admission loads
   useEffect(() => {
     if (admission?.patient && !bulkCheckComplete && !bulkCheckCompatibility.isPending) {
-      bulkCheckCompatibility.mutateAsync({ patientIds: [admission.patient] })
+      bulkCheckCompatibility
+        .mutateAsync({ patientIds: [admission.patient] })
         .then((result) => {
           const patientResult = result.results[0];
           if (patientResult) {
@@ -166,37 +199,40 @@ export default function TransferPage() {
   }, [admission?.patient, admission?.ward, bulkCheckComplete, bulkCheckCompatibility]);
 
   // Check compatibility when ward changes
-  const handleWardChange = useCallback(async (wardId: string) => {
-    setTargetWardId(wardId);
-    setTargetBedId('');
-    setCompatibilityResult(null);
-    setCompatibilityOverridden(false);
+  const handleWardChange = useCallback(
+    async (wardId: string) => {
+      setTargetWardId(wardId);
+      setTargetBedId('');
+      setCompatibilityResult(null);
+      setCompatibilityOverridden(false);
 
-    if (wardId) {
-      const destinationWardType = wardById[Number(wardId)]?.ward_type;
-      const transitionReason = deriveTransitionReason(sourceWardType, destinationWardType);
-      if (transitionReason) {
-        setTransferReason(transitionReason);
+      if (wardId) {
+        const destinationWardType = wardById[Number(wardId)]?.ward_type;
+        const transitionReason = deriveTransitionReason(sourceWardType, destinationWardType);
+        if (transitionReason) {
+          setTransferReason(transitionReason);
+        }
       }
-    }
 
-    if (!wardId || !admission?.patient) return;
+      if (!wardId || !admission?.patient) return;
 
-    try {
-      const result = await checkCompatibility.mutateAsync({
-        wardId: Number(wardId),
-        patientId: admission.patient,
-      });
-      setCompatibilityResult(result);
+      try {
+        const result = await checkCompatibility.mutateAsync({
+          wardId: Number(wardId),
+          patientId: admission.patient,
+        });
+        setCompatibilityResult(result);
 
-      // Show warning dialog if incompatible
-      if (!result.compatible) {
-        setShowCompatibilityWarning(true);
+        // Show warning dialog if incompatible
+        if (!result.compatible) {
+          setShowCompatibilityWarning(true);
+        }
+      } catch (error) {
+        console.error('Failed to check compatibility:', error);
       }
-    } catch (error) {
-      console.error('Failed to check compatibility:', error);
-    }
-  }, [admission?.patient, checkCompatibility, sourceWardType, wardById]);
+    },
+    [admission?.patient, checkCompatibility, sourceWardType, wardById]
+  );
 
   const handleSubmit = async () => {
     if (!admission || !targetWardId || !targetBedId || !clinicalJustification) {
@@ -250,7 +286,7 @@ export default function TransferPage() {
     return (
       <div className="container mx-auto py-12 text-center">
         <p className="text-xl font-semibold">Admission not found</p>
-        <p className="text-muted-foreground mt-2">
+        <p className="mt-2 text-muted-foreground">
           Cannot transfer a patient without an active admission.
         </p>
         <Button onClick={() => router.push('/admissions')} className="mt-4">
@@ -264,9 +300,7 @@ export default function TransferPage() {
     return (
       <div className="container mx-auto py-12 text-center">
         <p className="text-xl font-semibold">Cannot Transfer</p>
-        <p className="text-muted-foreground mt-2">
-          Only active admissions can be transferred.
-        </p>
+        <p className="mt-2 text-muted-foreground">Only active admissions can be transferred.</p>
         <Button onClick={() => router.push(`/admissions/${admissionId}`)} className="mt-4">
           View Admission Details
         </Button>
@@ -275,7 +309,7 @@ export default function TransferPage() {
   }
 
   return (
-    <div className="container mx-auto py-6 space-y-4 sm:space-y-6">
+    <div className="container mx-auto space-y-4 py-6 sm:space-y-6">
       <PageHeader
         title="Transfer Patient"
         helpContent={`Transfer ${admission.patient_name} to a different ward/bed.`}
@@ -297,7 +331,9 @@ export default function TransferPage() {
               <div className="flex items-center gap-2">
                 <p className="font-medium">{admission.ward_name}</p>
                 {sourceWardType && (
-                  <Badge variant="outline" className="text-xs">{WARD_TYPE_LABELS[sourceWardType]}</Badge>
+                  <Badge variant="outline" className="text-xs">
+                    {WARD_TYPE_LABELS[sourceWardType]}
+                  </Badge>
                 )}
               </div>
             </div>
@@ -307,14 +343,18 @@ export default function TransferPage() {
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Admission Date</p>
-              <p className="font-medium">{new Date(admission.admission_date).toLocaleDateString()}</p>
+              <p className="font-medium">
+                {new Date(admission.admission_date).toLocaleDateString()}
+              </p>
             </div>
           </div>
           {admission.mch_registration && (
             <div className="mt-4 rounded-md border border-amber-200 bg-amber-50/70 p-3 text-sm">
               <p className="font-medium text-amber-950">Maternity Episode</p>
               <p className="mt-1 text-amber-900">
-                This transfer stays within {admission.mch_registration_number || `MCH #${admission.mch_registration}`}. Use handover notes to document postpartum continuity.
+                This transfer stays within{' '}
+                {admission.mch_registration_number || `MCH #${admission.mch_registration}`}. Use
+                handover notes to document postpartum continuity.
               </p>
               <Button asChild variant="link" className="mt-1 h-auto p-0 text-amber-900">
                 <Link href={`/mch/${admission.mch_registration}`}>Open MCH registration</Link>
@@ -351,7 +391,10 @@ export default function TransferPage() {
               <AlertDescription>
                 {compatibleWards.length} recommended ward{compatibleWards.length !== 1 ? 's' : ''}
                 {incompatibleWards.length > 0 && (
-                  <>, {incompatibleWards.length} other ward{incompatibleWards.length !== 1 ? 's' : ''} with restrictions</>
+                  <>
+                    , {incompatibleWards.length} other ward
+                    {incompatibleWards.length !== 1 ? 's' : ''} with restrictions
+                  </>
                 )}
               </AlertDescription>
             </Alert>
@@ -367,7 +410,9 @@ export default function TransferPage() {
                 disabled={!bulkCheckComplete}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder={bulkCheckComplete ? 'Select ward' : 'Checking compatibility...'} />
+                  <SelectValue
+                    placeholder={bulkCheckComplete ? 'Select ward' : 'Checking compatibility...'}
+                  />
                 </SelectTrigger>
                 <SelectContent>
                   {/* Recommended wards first */}
@@ -379,12 +424,15 @@ export default function TransferPage() {
                   {compatibleWards.map((w) => (
                     <SelectItem key={w.ward_id} value={String(w.ward_id)}>
                       <div className="flex items-center gap-2">
-                        <CheckCircle2 className="h-4 w-4 text-green-600 shrink-0" />
+                        <CheckCircle2 className="h-4 w-4 shrink-0 text-green-600" />
                         <span>{w.ward_name}</span>
                         <Badge variant="outline" className="text-xs">
                           {WARD_TYPE_LABELS[w.ward_type]}
                         </Badge>
-                        <Badge variant="outline" className="text-xs ml-auto bg-green-50 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-300 dark:border-green-800">
+                        <Badge
+                          variant="outline"
+                          className="ml-auto border-green-200 bg-green-50 text-xs text-green-700 dark:border-green-800 dark:bg-green-950 dark:text-green-300"
+                        >
                           {w.available_beds} beds
                         </Badge>
                       </div>
@@ -392,19 +440,22 @@ export default function TransferPage() {
                   ))}
                   {/* Other wards with restrictions */}
                   {incompatibleWards.length > 0 && (
-                    <div className="px-2 py-1.5 text-xs font-semibold text-amber-600 dark:text-amber-400 mt-2">
+                    <div className="mt-2 px-2 py-1.5 text-xs font-semibold text-amber-600 dark:text-amber-400">
                       Other Wards (restrictions apply)
                     </div>
                   )}
                   {incompatibleWards.map((w) => (
                     <SelectItem key={w.ward_id} value={String(w.ward_id)}>
                       <div className="flex items-center gap-2">
-                        <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0" />
+                        <AlertTriangle className="h-4 w-4 shrink-0 text-amber-500" />
                         <span>{w.ward_name}</span>
                         <Badge variant="outline" className="text-xs">
                           {WARD_TYPE_LABELS[w.ward_type]}
                         </Badge>
-                        <Badge variant="secondary" className="text-xs ml-auto bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300">
+                        <Badge
+                          variant="secondary"
+                          className="ml-auto bg-amber-100 text-xs text-amber-700 dark:bg-amber-900 dark:text-amber-300"
+                        >
                           {w.violations.length} restriction{w.violations.length !== 1 ? 's' : ''}
                         </Badge>
                       </div>
@@ -422,16 +473,12 @@ export default function TransferPage() {
 
             <div className="space-y-2">
               <Label>Target Bed *</Label>
-              <Select
-                value={targetBedId}
-                onValueChange={setTargetBedId}
-                disabled={!targetWardId}
-              >
+              <Select value={targetBedId} onValueChange={setTargetBedId} disabled={!targetWardId}>
                 <SelectTrigger>
                   <SelectValue placeholder={targetWardId ? 'Select bed' : 'Select a ward first'} />
                 </SelectTrigger>
                 <SelectContent>
-                  {(Array.isArray(beds) ? beds : beds?.results ?? []).map((b: any) => (
+                  {availableBeds.map((b) => (
                     <SelectItem key={b.id} value={String(b.id)}>
                       {b.bed_number}
                     </SelectItem>
@@ -458,18 +505,20 @@ export default function TransferPage() {
               </AlertTitle>
               <AlertDescription>
                 {compatibilityResult.compatible ? (
-                  <span className="text-green-600">Patient is compatible with the selected ward.</span>
+                  <span className="text-green-600">
+                    Patient is compatible with the selected ward.
+                  </span>
                 ) : (
                   <div className="space-y-2">
                     <p className="text-amber-600">
                       This ward has the following restrictions for this patient:
                     </p>
-                    <ul className="list-disc list-inside space-y-1">
+                    <ul className="list-inside list-disc space-y-1">
                       {compatibilityResult.violations.map((v, i) => (
                         <li key={i} className="flex items-start gap-2">
                           <Badge
                             variant="secondary"
-                            className={`text-xs shrink-0 ${
+                            className={`shrink-0 text-xs ${
                               v.severity === 'CRITICAL'
                                 ? 'bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300'
                                 : 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300'
@@ -482,7 +531,7 @@ export default function TransferPage() {
                       ))}
                     </ul>
                     {compatibilityOverridden && (
-                      <p className="text-sm font-medium mt-2 text-green-600">
+                      <p className="mt-2 text-sm font-medium text-green-600">
                         ✓ Restrictions acknowledged
                       </p>
                     )}
@@ -497,10 +546,16 @@ export default function TransferPage() {
             <Label>Transfer Reason *</Label>
             {suggestedReason && (
               <p className="text-xs text-muted-foreground">
-                Suggested from ward acuity: <span className="font-medium">{suggestedReason === 'STEP_UP' ? 'Step Up Care' : 'Step Down Care'}</span>
+                Suggested from ward acuity:{' '}
+                <span className="font-medium">
+                  {suggestedReason === 'STEP_UP' ? 'Step Up Care' : 'Step Down Care'}
+                </span>
               </p>
             )}
-            <Select value={transferReason} onValueChange={(v) => setTransferReason(v as TransferReason)}>
+            <Select
+              value={transferReason}
+              onValueChange={(v) => setTransferReason(v as TransferReason)}
+            >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
@@ -532,7 +587,7 @@ export default function TransferPage() {
       {transfers.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-lg">
               <Clock className="h-5 w-5" />
               Transfer History
             </CardTitle>
@@ -540,22 +595,23 @@ export default function TransferPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {transfers.map((transfer: any) => (
-                <div
-                  key={transfer.id}
-                  className="flex items-start gap-4 p-4 border rounded-lg"
-                >
+              {transfers.map((transfer) => (
+                <div key={transfer.id} className="flex items-start gap-4 rounded-lg border p-4">
                   <div className="flex-1 space-y-2">
                     <div className="flex items-center gap-2">
-                      <span className="font-medium">{transfer.source_ward_name || transfer.from_ward_name}</span>
+                      <span className="font-medium">
+                        {transfer.source_ward_name || transfer.from_ward_name}
+                      </span>
                       <MoveRight className="h-4 w-4 text-muted-foreground" />
-                      <span className="font-medium">{transfer.destination_ward_name || transfer.to_ward_name}</span>
-                      <Badge variant="outline">
-                        {transfer.reason_display || transfer.reason}
-                      </Badge>
+                      <span className="font-medium">
+                        {transfer.destination_ward_name || transfer.to_ward_name}
+                      </span>
+                      <Badge variant="outline">{transfer.reason_display || transfer.reason}</Badge>
                     </div>
                     <p className="text-sm text-muted-foreground">
-                      {transfer.clinical_handover_notes || transfer.clinical_notes || transfer.reason_details}
+                      {transfer.clinical_handover_notes ||
+                        transfer.clinical_notes ||
+                        transfer.reason_details}
                     </p>
                     <div className="flex items-center gap-4 text-xs text-muted-foreground">
                       <span className="flex items-center gap-1">
@@ -579,9 +635,11 @@ export default function TransferPage() {
       <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
         <Button
           onClick={handleSubmit}
-          disabled={createTransfer.isPending || !targetWardId || !targetBedId || !clinicalJustification}
+          disabled={
+            createTransfer.isPending || !targetWardId || !targetBedId || !clinicalJustification
+          }
         >
-          <MoveRight className="h-4 w-4 mr-2" />
+          <MoveRight className="mr-2 h-4 w-4" />
           {createTransfer.isPending ? 'Transferring...' : 'Confirm Transfer'}
         </Button>
       </div>
@@ -595,14 +653,14 @@ export default function TransferPage() {
               Review Ward Restrictions
             </DialogTitle>
             <DialogDescription>
-              The selected ward has some restrictions that may not match this patient.
-              Please review before proceeding.
+              The selected ward has some restrictions that may not match this patient. Please review
+              before proceeding.
             </DialogDescription>
           </DialogHeader>
 
           {compatibilityResult && !compatibilityResult.compatible && (
             <div className="space-y-4">
-              <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 p-4 space-y-2">
+              <div className="space-y-2 rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950/30">
                 <p className="font-medium text-amber-700 dark:text-amber-300">Restrictions:</p>
                 <ul className="space-y-2">
                   {compatibilityResult.violations.map((v, i) => (
@@ -620,7 +678,7 @@ export default function TransferPage() {
                       <div>
                         <p className="text-sm text-foreground">{v.message}</p>
                         {v.severity === 'CRITICAL' && !v.override_allowed && (
-                          <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                          <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
                             This restriction cannot be bypassed
                           </p>
                         )}
@@ -634,7 +692,8 @@ export default function TransferPage() {
                 <Alert className="border-amber-200 dark:border-amber-800">
                   <AlertTriangle className="h-4 w-4 text-amber-500" />
                   <AlertDescription className="text-amber-700 dark:text-amber-300">
-                    This ward has important restrictions. Ensure this transfer is clinically appropriate.
+                    This ward has important restrictions. Ensure this transfer is clinically
+                    appropriate.
                   </AlertDescription>
                 </Alert>
               )}
@@ -642,10 +701,7 @@ export default function TransferPage() {
           )}
 
           <DialogFooter className="flex-col gap-2 sm:flex-row">
-            <Button
-              variant="outline"
-              onClick={() => setShowCompatibilityWarning(false)}
-            >
+            <Button variant="outline" onClick={() => setShowCompatibilityWarning(false)}>
               Go Back
             </Button>
             <Button
@@ -653,9 +709,9 @@ export default function TransferPage() {
                 setCompatibilityOverridden(true);
                 setShowCompatibilityWarning(false);
               }}
-              disabled={
-                compatibilityResult?.violations.some((v) => v.severity === 'CRITICAL' && !v.override_allowed)
-              }
+              disabled={compatibilityResult?.violations.some(
+                (v) => v.severity === 'CRITICAL' && !v.override_allowed
+              )}
             >
               Acknowledge & Continue
             </Button>
@@ -668,7 +724,7 @@ export default function TransferPage() {
 
 function TransferSkeleton() {
   return (
-    <div className="container mx-auto py-6 space-y-6">
+    <div className="container mx-auto space-y-6 py-6">
       <div className="flex items-center gap-4">
         <Skeleton className="h-10 w-10" />
         <Skeleton className="h-4 w-32" />

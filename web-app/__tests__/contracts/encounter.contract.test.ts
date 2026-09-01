@@ -37,14 +37,17 @@ import {
 
 interface OpenAPISchema {
   components: {
-    schemas: Record<string, {
-      type?: string;
-      properties?: Record<string, unknown>;
-      required?: string[];
-      enum?: string[];
-      allOf?: Array<{ $ref?: string }>;
-      description?: string;
-    }>;
+    schemas: Record<
+      string,
+      {
+        type?: string;
+        properties?: Record<string, unknown>;
+        required?: string[];
+        enum?: string[];
+        allOf?: Array<{ $ref?: string }>;
+        description?: string;
+      }
+    >;
   };
 }
 
@@ -73,10 +76,7 @@ function getSchemaProperties(
 /**
  * Get enum values from a component schema.
  */
-function getSchemaEnumValues(
-  openapi: OpenAPISchema,
-  schemaName: string
-): string[] | null {
+function getSchemaEnumValues(openapi: OpenAPISchema, schemaName: string): string[] | null {
   const schema = openapi.components.schemas[schemaName];
   if (!schema || !schema.enum) return null;
   return schema.enum;
@@ -111,7 +111,10 @@ function getZodEnumValues(zodSchema: unknown): string[] {
       return (jsonSchema as { enum: string[] }).enum;
     }
     // Union type (oneOf/anyOf) - extract enums from nested schemas
-    const schemaObj = jsonSchema as { oneOf?: Array<{ enum?: string[] }>; anyOf?: Array<{ enum?: string[] }> };
+    const schemaObj = jsonSchema as {
+      oneOf?: Array<{ enum?: string[] }>;
+      anyOf?: Array<{ enum?: string[] }>;
+    };
     const unionSchemas = schemaObj.oneOf || schemaObj.anyOf;
     if (unionSchemas) {
       const allEnums: string[] = [];
@@ -121,7 +124,7 @@ function getZodEnumValues(zodSchema: unknown): string[] {
         }
       }
       // Filter out empty string if present (used for optional/nullable)
-      return allEnums.filter(v => v !== '');
+      return allEnums.filter((v) => v !== '');
     }
   }
   return [];
@@ -160,11 +163,11 @@ describe('Encounter Contract Tests', () => {
 
       // Allow some tolerance for optional computed fields, but flag as warning
       // Critical fields should cause test failure
-      const criticalMissingFields = missingInZod.filter(
-        (field) =>
-          // These are critical fields that must be in the Zod schema
-          ['id', 'patient', 'encounter_type', 'encounter_date', 'chief_complaint', 'status']
-            .includes(field)
+      const criticalMissingFields = missingInZod.filter((field) =>
+        // These are critical fields that must be in the Zod schema
+        ['id', 'patient', 'encounter_type', 'encounter_date', 'chief_complaint', 'status'].includes(
+          field
+        )
       );
 
       expect(criticalMissingFields).toEqual([]);

@@ -22,7 +22,7 @@ jest.mock('next/link', () => {
 
 // Mock EmptyState
 jest.mock('@/components/shared/empty-state', () => ({
-  EmptyState: ({ title, description, icon }: any) => (
+  EmptyState: ({ title, description, icon }: unknown) => (
     <div data-testid="empty-state">
       <span data-testid="empty-title">{title}</span>
       {description && <span data-testid="empty-description">{description}</span>}
@@ -51,7 +51,9 @@ jest.mock('@/lib/utils/constants', () => ({
 
 import { usePatientEncounters } from '@/lib/hooks/use-patients';
 
-const mockUsePatientEncounters = usePatientEncounters as jest.MockedFunction<typeof usePatientEncounters>;
+const mockUsePatientEncounters = usePatientEncounters as jest.MockedFunction<
+  typeof usePatientEncounters
+>;
 
 describe('PatientEncounters Component', () => {
   beforeEach(() => {
@@ -63,7 +65,7 @@ describe('PatientEncounters Component', () => {
       data: undefined,
       isLoading: true,
       error: null,
-    } as any);
+    } as unknown);
 
     const { container } = render(<PatientEncounters patientId={1} />);
 
@@ -77,7 +79,7 @@ describe('PatientEncounters Component', () => {
       data: undefined,
       isLoading: false,
       error: new Error('Failed to load'),
-    } as any);
+    } as unknown);
 
     render(<PatientEncounters patientId={1} />);
 
@@ -90,7 +92,7 @@ describe('PatientEncounters Component', () => {
       data: [],
       isLoading: false,
       error: null,
-    } as any);
+    } as unknown);
 
     render(<PatientEncounters patientId={1} />);
 
@@ -122,7 +124,7 @@ describe('PatientEncounters Component', () => {
       data: mockEncounters,
       isLoading: false,
       error: null,
-    } as any);
+    } as unknown);
 
     render(<PatientEncounters patientId={1} />);
 
@@ -146,7 +148,7 @@ describe('PatientEncounters Component', () => {
       data: mockEncounters,
       isLoading: false,
       error: null,
-    } as any);
+    } as unknown);
 
     render(<PatientEncounters patientId={1} />);
 
@@ -169,7 +171,7 @@ describe('PatientEncounters Component', () => {
       data: mockEncounters,
       isLoading: false,
       error: null,
-    } as any);
+    } as unknown);
 
     render(<PatientEncounters patientId={1} />);
 
@@ -192,7 +194,7 @@ describe('PatientEncounters Component', () => {
       data: mockEncounters,
       isLoading: false,
       error: null,
-    } as any);
+    } as unknown);
 
     render(<PatientEncounters patientId={1} />);
 
@@ -216,7 +218,7 @@ describe('PatientEncounters Component', () => {
       data: mockEncounters,
       isLoading: false,
       error: null,
-    } as any);
+    } as unknown);
 
     render(<PatientEncounters patientId={1} />);
 
@@ -239,7 +241,7 @@ describe('PatientEncounters Component', () => {
       data: mockEncounters,
       isLoading: false,
       error: null,
-    } as any);
+    } as unknown);
 
     render(<PatientEncounters patientId={1} />);
 
@@ -251,7 +253,7 @@ describe('PatientEncounters Component', () => {
       data: [],
       isLoading: false,
       error: null,
-    } as any);
+    } as unknown);
 
     render(<PatientEncounters patientId={42} />);
 

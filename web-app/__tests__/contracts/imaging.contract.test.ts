@@ -33,14 +33,17 @@ import {
 
 interface OpenAPISchema {
   components: {
-    schemas: Record<string, {
-      type?: string;
-      properties?: Record<string, unknown>;
-      required?: string[];
-      enum?: string[];
-      allOf?: Array<{ $ref?: string }>;
-      description?: string;
-    }>;
+    schemas: Record<
+      string,
+      {
+        type?: string;
+        properties?: Record<string, unknown>;
+        required?: string[];
+        enum?: string[];
+        allOf?: Array<{ $ref?: string }>;
+        description?: string;
+      }
+    >;
   };
 }
 
@@ -69,10 +72,7 @@ function getSchemaProperties(
 /**
  * Get enum values from a component schema.
  */
-function getSchemaEnumValues(
-  openapi: OpenAPISchema,
-  schemaName: string
-): string[] | null {
+function getSchemaEnumValues(openapi: OpenAPISchema, schemaName: string): string[] | null {
   const schema = openapi.components.schemas[schemaName];
   if (!schema || !schema.enum) return null;
   return schema.enum;
@@ -139,9 +139,8 @@ describe('Imaging Contract Tests', () => {
       }
 
       // Critical fields should cause test failure
-      const criticalMissingFields = missingInZod.filter(
-        (field) =>
-          ['id', 'code', 'name', 'modality', 'body_region'].includes(field)
+      const criticalMissingFields = missingInZod.filter((field) =>
+        ['id', 'code', 'name', 'modality', 'body_region'].includes(field)
       );
 
       expect(criticalMissingFields).toEqual([]);
@@ -184,9 +183,16 @@ describe('Imaging Contract Tests', () => {
       }
 
       // Critical fields should cause test failure
-      const criticalMissingFields = missingInZod.filter(
-        (field) =>
-          ['id', 'code', 'name', 'modality', 'body_region', 'requires_contrast', 'requires_sedation'].includes(field)
+      const criticalMissingFields = missingInZod.filter((field) =>
+        [
+          'id',
+          'code',
+          'name',
+          'modality',
+          'body_region',
+          'requires_contrast',
+          'requires_sedation',
+        ].includes(field)
       );
 
       expect(criticalMissingFields).toEqual([]);
@@ -231,8 +237,8 @@ describe('Imaging Contract Tests', () => {
       }
 
       // Critical fields should cause test failure
-      const criticalMissing = missingInZod.filter(
-        (field) => ['id', 'order_number', 'patient', 'encounter', 'status', 'priority'].includes(field)
+      const criticalMissing = missingInZod.filter((field) =>
+        ['id', 'order_number', 'patient', 'encounter', 'status', 'priority'].includes(field)
       );
       expect(criticalMissing).toEqual([]);
     });
@@ -278,8 +284,8 @@ describe('Imaging Contract Tests', () => {
       }
 
       // Critical fields should cause test failure
-      const criticalMissing = missingInZod.filter(
-        (field) => ['id', 'procedure', 'procedure_name', 'laterality'].includes(field)
+      const criticalMissing = missingInZod.filter((field) =>
+        ['id', 'procedure', 'procedure_name', 'laterality'].includes(field)
       );
       expect(criticalMissing).toEqual([]);
     });
@@ -321,8 +327,8 @@ describe('Imaging Contract Tests', () => {
       }
 
       // Critical fields should cause test failure
-      const criticalMissing = missingInZod.filter(
-        (field) => ['id', 'name', 'code', 'resource_type', 'is_active'].includes(field)
+      const criticalMissing = missingInZod.filter((field) =>
+        ['id', 'name', 'code', 'resource_type', 'is_active'].includes(field)
       );
       expect(criticalMissing).toEqual([]);
     });
@@ -330,14 +336,7 @@ describe('Imaging Contract Tests', () => {
     it('should have critical required fields', () => {
       const zodFields = getZodSchemaFields(ImagingResourceSchema);
 
-      const criticalFields = [
-        'id',
-        'name',
-        'code',
-        'resource_type',
-        'is_active',
-        'metadata',
-      ];
+      const criticalFields = ['id', 'name', 'code', 'resource_type', 'is_active', 'metadata'];
 
       const missing = criticalFields.filter((field) => !zodFields.includes(field));
       expect(missing).toEqual([]);
@@ -402,8 +401,16 @@ describe('Imaging Contract Tests', () => {
       const zodValues = getZodEnumValues(ImagingBodyRegionSchema);
 
       const expectedRegions = [
-        'HEAD', 'NECK', 'CHEST', 'ABDOMEN', 'PELVIS',
-        'SPINE', 'UPPER_EXTREMITY', 'LOWER_EXTREMITY', 'WHOLE_BODY', 'OTHER',
+        'HEAD',
+        'NECK',
+        'CHEST',
+        'ABDOMEN',
+        'PELVIS',
+        'SPINE',
+        'UPPER_EXTREMITY',
+        'LOWER_EXTREMITY',
+        'WHOLE_BODY',
+        'OTHER',
       ];
       const missing = expectedRegions.filter((r) => !zodValues.includes(r));
 
@@ -435,8 +442,13 @@ describe('Imaging Contract Tests', () => {
       const zodValues = getZodEnumValues(ImagingOrderStatusSchema);
 
       const expectedStatuses = [
-        'DRAFT', 'ORDERED', 'SCHEDULED', 'IN_PROGRESS',
-        'COMPLETED', 'REPORTED', 'CANCELLED',
+        'DRAFT',
+        'ORDERED',
+        'SCHEDULED',
+        'IN_PROGRESS',
+        'COMPLETED',
+        'REPORTED',
+        'CANCELLED',
       ];
       const missing = expectedStatuses.filter((s) => !zodValues.includes(s));
 

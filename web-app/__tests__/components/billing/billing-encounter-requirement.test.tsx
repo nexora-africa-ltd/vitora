@@ -52,17 +52,14 @@ jest.mock('@/lib/api/billing', () => ({
 jest.mock('@/lib/auth/context', () => ({
   useAuth: jest.fn(() => ({
     user: { id: 1, username: 'billing1', role: 'BILLING_CLERK', permissions: ['create_invoice'] },
-    isAuthenticated: true
+    isAuthenticated: true,
   })),
 }));
 
 import { patientsApi } from '@/lib/api/patients';
 import { encountersApi } from '@/lib/api/encounters';
 import { billingApi } from '@/lib/api/billing';
-import {
-  mockPatient,
-  mockEncounter,
-} from '../../fixtures/patient-shell-fixtures';
+import { mockPatient, mockEncounter } from '../../fixtures/patient-shell-fixtures';
 import type { InvoiceCreateData } from '@/lib/types/billing';
 
 const mockPatientsApi = patientsApi as jest.Mocked<typeof patientsApi>;
@@ -79,11 +76,7 @@ function createWrapper() {
     },
   });
   return function Wrapper({ children }: { children: React.ReactNode }) {
-    return (
-      <QueryClientProvider client={queryClient}>
-        {children}
-      </QueryClientProvider>
-    );
+    return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
   };
 }
 
@@ -96,7 +89,10 @@ describe('Billing Encounter Requirement', () => {
     jest.clearAllMocks();
     mockPatientsApi.getPatient.mockResolvedValue(mockPatient);
     mockEncountersApi.get.mockResolvedValue(mockEncounter);
-    mockBillingApi.createInvoice.mockResolvedValue({ id: 1, invoice_number: 'INV-001' } as ReturnType<typeof mockBillingApi.createInvoice> extends Promise<infer T> ? T : never);
+    mockBillingApi.createInvoice.mockResolvedValue({
+      id: 1,
+      invoice_number: 'INV-001',
+    } as ReturnType<typeof mockBillingApi.createInvoice> extends Promise<infer T> ? T : never);
   });
 
   // ===========================================================================
@@ -161,8 +157,8 @@ describe('Billing Encounter Requirement', () => {
       await waitFor(() => {
         expect(
           screen.getByText(/encounter.*required/i) ||
-          screen.getByText(/select.*encounter/i) ||
-          screen.getByText(/no active encounter/i)
+            screen.getByText(/select.*encounter/i) ||
+            screen.getByText(/no active encounter/i)
         ).toBeInTheDocument();
       });
     });
@@ -224,8 +220,8 @@ describe('Billing Encounter Requirement', () => {
 
       await waitFor(() => {
         // Encounter should be auto-populated
-        const encounterField = screen.getByTestId('encounter-field') ||
-                               screen.getByLabelText(/encounter/i);
+        const encounterField =
+          screen.getByTestId('encounter-field') || screen.getByLabelText(/encounter/i);
         expect(encounterField).toHaveValue(mockEncounter.id.toString());
       });
     });
@@ -248,9 +244,9 @@ describe('Billing Encounter Requirement', () => {
         // Should show warning about billing without encounter
         expect(
           screen.getByRole('alert') ||
-          screen.getByText(/no active encounter/i) ||
-          screen.getByText(/encounter required/i) ||
-          screen.getByText(/sha.*reject/i)
+            screen.getByText(/no active encounter/i) ||
+            screen.getByText(/encounter required/i) ||
+            screen.getByText(/sha.*reject/i)
         ).toBeInTheDocument();
       });
     });
@@ -262,9 +258,9 @@ describe('Billing Encounter Requirement', () => {
   describe('SHA Claims Encounter Requirement', () => {
     it('should prevent SHA claim submission without encounter', async () => {
       // Mock SHA claims API
-      const mockSubmitClaim = jest.fn().mockRejectedValue(
-        new Error('SHA claims require an active encounter')
-      );
+      const mockSubmitClaim = jest
+        .fn()
+        .mockRejectedValue(new Error('SHA claims require an active encounter'));
 
       const claimData = {
         patient_id: mockPatient.id,
@@ -327,7 +323,9 @@ describe('Billing Encounter Requirement', () => {
       render(<BillingNewPage searchParams={{ patient: String(mockPatient.id) }} />);
 
       await waitFor(() => {
-        expect(redirect).toHaveBeenCalledWith(`/transactions/invoices/new?patient=${mockPatient.id}`);
+        expect(redirect).toHaveBeenCalledWith(
+          `/transactions/invoices/new?patient=${mockPatient.id}`
+        );
       });
     });
   });

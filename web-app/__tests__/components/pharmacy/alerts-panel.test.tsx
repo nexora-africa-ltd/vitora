@@ -65,7 +65,9 @@ describe('AlertsPanel', () => {
       render(<AlertsPanel {...defaultProps} />);
 
       // Check for alert messages in the component
-      expect(screen.getByText(/amoxicillin 500mg stock is below reorder level/i)).toBeInTheDocument();
+      expect(
+        screen.getByText(/amoxicillin 500mg stock is below reorder level/i)
+      ).toBeInTheDocument();
       expect(screen.getByText(/metformin 500mg is out of stock/i)).toBeInTheDocument();
     });
 

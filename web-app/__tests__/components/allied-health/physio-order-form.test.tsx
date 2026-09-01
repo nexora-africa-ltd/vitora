@@ -49,7 +49,11 @@ jest.mock('@/lib/hooks/use-encounters', () => ({
   useEncounter: jest.fn(),
 }));
 
-import { usePhysioTreatmentTypes, useCreatePhysioOrder, useUpdatePhysioOrder } from '@/lib/hooks/use-physiotherapy';
+import {
+  usePhysioTreatmentTypes,
+  useCreatePhysioOrder,
+  useUpdatePhysioOrder,
+} from '@/lib/hooks/use-physiotherapy';
 import { usePatients, usePatient } from '@/lib/hooks/use-patients';
 import { useEncounter } from '@/lib/hooks/use-encounters';
 
@@ -171,11 +175,7 @@ const createTestQueryClient = () =>
 const createWrapper = () => {
   const queryClient = createTestQueryClient();
   return function Wrapper({ children }: { children: React.ReactNode }) {
-    return (
-      <QueryClientProvider client={queryClient}>
-        {children}
-      </QueryClientProvider>
-    );
+    return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
   };
 };
 
@@ -525,7 +525,9 @@ describe('PhysioOrderForm - Edit Mode', () => {
   it('should pre-populate form fields with existing order data', () => {
     renderWithWrapper(<PhysioOrderForm order={existingOrder} />);
 
-    expect(screen.getByLabelText(/clinical indication/i)).toHaveValue('Existing clinical indication');
+    expect(screen.getByLabelText(/clinical indication/i)).toHaveValue(
+      'Existing clinical indication'
+    );
     expect(screen.getByLabelText(/total sessions/i)).toHaveValue(12);
     expect(screen.getByLabelText(/frequency/i)).toHaveValue('3x per week');
     expect(screen.getByLabelText(/treatment goals/i)).toHaveValue('Existing goals');

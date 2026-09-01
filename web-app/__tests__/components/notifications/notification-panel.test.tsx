@@ -141,7 +141,11 @@ describe('NotificationPanel Component', () => {
     it('should display notification list when opened', async () => {
       const notifications = [
         createMockNotification({ id: 1, title: 'Lab Results Ready' }),
-        createMockNotification({ id: 2, title: 'Appointment Reminder', notification_type: 'appointment' }),
+        createMockNotification({
+          id: 2,
+          title: 'Appointment Reminder',
+          notification_type: 'appointment',
+        }),
       ];
       mockNotificationApi.listNotifications.mockResolvedValue(mockListResponse(notifications));
       mockNotificationApi.getUnreadCount.mockResolvedValue({ unread_count: 2 });
@@ -186,7 +190,9 @@ describe('NotificationPanel Component', () => {
       });
 
       // Click the notification item (or mark read button)
-      const notificationItem = screen.getByText('Lab Results Ready').closest('[data-testid="notification-item"]');
+      const notificationItem = screen
+        .getByText('Lab Results Ready')
+        .closest('[data-testid="notification-item"]');
       if (notificationItem) {
         await userEvent.click(notificationItem);
       }
@@ -197,10 +203,7 @@ describe('NotificationPanel Component', () => {
     });
 
     it('should have mark all as read button', async () => {
-      const notifications = [
-        createMockNotification({ id: 1 }),
-        createMockNotification({ id: 2 }),
-      ];
+      const notifications = [createMockNotification({ id: 1 }), createMockNotification({ id: 2 })];
       mockNotificationApi.listNotifications.mockResolvedValue(mockListResponse(notifications));
       mockNotificationApi.getUnreadCount.mockResolvedValue({ unread_count: 2 });
 
@@ -214,10 +217,7 @@ describe('NotificationPanel Component', () => {
     });
 
     it('should call markAllAsRead when mark all button is clicked', async () => {
-      const notifications = [
-        createMockNotification({ id: 1 }),
-        createMockNotification({ id: 2 }),
-      ];
+      const notifications = [createMockNotification({ id: 1 }), createMockNotification({ id: 2 })];
       mockNotificationApi.listNotifications.mockResolvedValue(mockListResponse(notifications));
       mockNotificationApi.getUnreadCount.mockResolvedValue({ unread_count: 2 });
       mockNotificationApi.markAllAsRead.mockResolvedValue({ marked_count: 2 });
@@ -244,7 +244,9 @@ describe('NotificationPanel Component', () => {
         priority: 'critical',
         title: 'Critical Alert',
       });
-      mockNotificationApi.listNotifications.mockResolvedValue(mockListResponse([criticalNotification]));
+      mockNotificationApi.listNotifications.mockResolvedValue(
+        mockListResponse([criticalNotification])
+      );
       mockNotificationApi.getUnreadCount.mockResolvedValue({ unread_count: 1 });
 
       render(<NotificationPanel />, { wrapper: Wrapper });
@@ -252,7 +254,9 @@ describe('NotificationPanel Component', () => {
       await userEvent.click(screen.getByRole('button', { name: /notifications/i }));
 
       await waitFor(() => {
-        const notificationItem = screen.getByText('Critical Alert').closest('[data-testid="notification-item"]');
+        const notificationItem = screen
+          .getByText('Critical Alert')
+          .closest('[data-testid="notification-item"]');
         expect(notificationItem).toHaveAttribute('data-priority', 'critical');
       });
     });

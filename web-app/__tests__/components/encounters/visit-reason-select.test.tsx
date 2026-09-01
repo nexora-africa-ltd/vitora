@@ -16,20 +16,13 @@ describe('VisitReasonSelect', () => {
   });
 
   it('renders with placeholder text', () => {
-    render(
-      <VisitReasonSelect onValueChange={mockOnValueChange} />
-    );
+    render(<VisitReasonSelect onValueChange={mockOnValueChange} />);
 
     expect(screen.getByText('Select visit reason')).toBeInTheDocument();
   });
 
   it('renders selected value', () => {
-    render(
-      <VisitReasonSelect
-        value="CHRONIC_CARE"
-        onValueChange={mockOnValueChange}
-      />
-    );
+    render(<VisitReasonSelect value="CHRONIC_CARE" onValueChange={mockOnValueChange} />);
 
     expect(screen.getByText('Chronic Care Review')).toBeInTheDocument();
   });
@@ -84,11 +77,7 @@ describe('VisitReasonSelect', () => {
 
   it('renders in disabled state', () => {
     render(
-      <VisitReasonSelect
-        value="FOLLOW_UP"
-        onValueChange={mockOnValueChange}
-        disabled={true}
-      />
+      <VisitReasonSelect value="FOLLOW_UP" onValueChange={mockOnValueChange} disabled={true} />
     );
 
     // The trigger should have disabled styling (Radix Select uses data-disabled)

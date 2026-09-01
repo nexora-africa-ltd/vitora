@@ -4,6 +4,7 @@ import type {
   ExternalProcedureOrderRequest,
   ProcedureAvailableSlotsResponse,
   ProcedureCatalogDetail,
+  ProcedureOrder,
   ProcedureOrderListItem,
 } from '@/lib/types/procedure';
 import type { PaginatedResponse } from '@/lib/types';
@@ -30,7 +31,15 @@ const ProcedureOrderDetailSchema = z.object({
     }),
   ]),
   patient: z.number(),
-  status: z.enum(['ORDERED', 'CONSENT_PENDING', 'SCHEDULED', 'READY', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED']),
+  status: z.enum([
+    'ORDERED',
+    'CONSENT_PENDING',
+    'SCHEDULED',
+    'READY',
+    'IN_PROGRESS',
+    'COMPLETED',
+    'CANCELLED',
+  ]),
   priority: z.enum(['EMERGENCY', 'URGENT', 'ROUTINE', 'ELECTIVE']),
   indication: z.string().optional().default(''),
   clinical_notes: z.string().optional().default(''),
@@ -82,15 +91,17 @@ const ProcedureOutcomeSchema = z.object({
 });
 
 const ProcedureAvailableSlotsResponseSchema = z.object({
-  slots: z.array(z.object({
-    clinic_id: z.number(),
-    clinic_name: z.string(),
-    date: z.string(),
-    start_time: z.string(),
-    end_time: z.string(),
-    duration_minutes: z.number(),
-    available: z.boolean(),
-  })),
+  slots: z.array(
+    z.object({
+      clinic_id: z.number(),
+      clinic_name: z.string(),
+      date: z.string(),
+      start_time: z.string(),
+      end_time: z.string(),
+      duration_minutes: z.number(),
+      available: z.boolean(),
+    })
+  ),
   message: z.string().optional(),
 });
 
@@ -117,7 +128,10 @@ export const proceduresApi = {
     });
   },
 
-  updateCatalogEntry: async (id: number, data: Record<string, unknown>): Promise<ProcedureCatalogDetail> => {
+  updateCatalogEntry: async (
+    id: number,
+    data: Record<string, unknown>
+  ): Promise<ProcedureCatalogDetail> => {
     const response = await apiClient.patch(`/api/procedures/catalog/${id}/`, data);
     return parseResponse(ProcedureCatalogDetailSchema, response.data, {
       context: 'proceduresApi.updateCatalogEntry',
@@ -134,11 +148,11 @@ export const proceduresApi = {
     });
   },
 
-  createOrder: async (data: Record<string, unknown>) => {
+  createOrder: async (data: Record<string, unknown>): Promise<ProcedureOrder> => {
     const response = await apiClient.post('/api/procedures/orders/', data);
     return parseResponse(ProcedureOrderDetailSchema, response.data, {
       context: 'proceduresApi.createOrder',
-    }) as any;
+    }) as unknown as ProcedureOrder;
   },
 
   // ---- External Requests ----
@@ -151,7 +165,9 @@ export const proceduresApi = {
     });
   },
 
-  createExternalRequest: async (data: Record<string, unknown>): Promise<ExternalProcedureOrderRequest> => {
+  createExternalRequest: async (
+    data: Record<string, unknown>
+  ): Promise<ExternalProcedureOrderRequest> => {
     const response = await apiClient.post('/api/procedures/external-requests/', data);
     return parseResponse(ExternalProcedureOrderRequestSchema, response.data, {
       context: 'proceduresApi.createExternalRequest',
@@ -165,7 +181,10 @@ export const proceduresApi = {
     });
   },
 
-  rejectExternalRequest: async (id: number, reason: string): Promise<ExternalProcedureOrderRequest> => {
+  rejectExternalRequest: async (
+    id: number,
+    reason: string
+  ): Promise<ExternalProcedureOrderRequest> => {
     const response = await apiClient.post(`/api/procedures/external-requests/${id}/reject/`, {
       reason,
     });
@@ -174,75 +193,68 @@ export const proceduresApi = {
     });
   },
 
-  getOrder: async (id: number) => {
+  getOrder: async (id: number): Promise<ProcedureOrder> => {
     const response = await apiClient.get(`/api/procedures/orders/${id}/`);
     return parseResponse(ProcedureOrderDetailSchema, response.data, {
       context: 'proceduresApi.getOrder',
-    }) as any;
+    }) as unknown as ProcedureOrder;
   },
 
   // ---- Workflow Actions ----
   scheduleOrder: async (
     id: number,
-    data: { scheduled_date: string; scheduled_time?: string; scheduled_location?: string; scheduled_clinic?: number | null },
-  ) => {
-    const response = await apiClient.post(
-      `/api/procedures/orders/${id}/schedule/`,
-      data,
-    );
+    data: {
+      scheduled_date: string;
+      scheduled_time?: string;
+      scheduled_location?: string;
+      scheduled_clinic?: number | null;
+    }
+  ): Promise<ProcedureOrder> => {
+    const response = await apiClient.post(`/api/procedures/orders/${id}/schedule/`, data);
     return parseResponse(ProcedureOrderDetailSchema, response.data, {
       context: 'proceduresApi.scheduleOrder',
-    }) as any;
+    }) as unknown as ProcedureOrder;
   },
 
   rescheduleOrder: async (
     id: number,
-    data: { scheduled_date: string; scheduled_time?: string; scheduled_location?: string; scheduled_clinic?: number | null },
-  ) => {
-    const response = await apiClient.post(
-      `/api/procedures/orders/${id}/reschedule/`,
-      data,
-    );
+    data: {
+      scheduled_date: string;
+      scheduled_time?: string;
+      scheduled_location?: string;
+      scheduled_clinic?: number | null;
+    }
+  ): Promise<ProcedureOrder> => {
+    const response = await apiClient.post(`/api/procedures/orders/${id}/reschedule/`, data);
     return parseResponse(ProcedureOrderDetailSchema, response.data, {
       context: 'proceduresApi.rescheduleOrder',
-    }) as any;
+    }) as unknown as ProcedureOrder;
   },
 
-  startProcedure: async (id: number, data?: { location?: string }) => {
-    const response = await apiClient.post(
-      `/api/procedures/orders/${id}/start/`,
-      data || {},
-    );
+  startProcedure: async (id: number, data?: { location?: string }): Promise<ProcedureOrder> => {
+    const response = await apiClient.post(`/api/procedures/orders/${id}/start/`, data || {});
     return parseResponse(ProcedureOrderDetailSchema, response.data, {
       context: 'proceduresApi.startProcedure',
-    }) as any;
+    }) as unknown as ProcedureOrder;
   },
 
-  completeProcedure: async (id: number, data: Record<string, unknown>) => {
-    const response = await apiClient.post(
-      `/api/procedures/orders/${id}/complete/`,
-      data,
-    );
+  completeProcedure: async (id: number, data: Record<string, unknown>): Promise<ProcedureOrder> => {
+    const response = await apiClient.post(`/api/procedures/orders/${id}/complete/`, data);
     return parseResponse(ProcedureOrderDetailSchema, response.data, {
       context: 'proceduresApi.completeProcedure',
-    }) as any;
+    }) as unknown as ProcedureOrder;
   },
 
-  cancelOrder: async (id: number, reason: string) => {
-    const response = await apiClient.post(
-      `/api/procedures/orders/${id}/cancel/`,
-      { reason },
-    );
+  cancelOrder: async (id: number, reason: string): Promise<ProcedureOrder> => {
+    const response = await apiClient.post(`/api/procedures/orders/${id}/cancel/`, { reason });
     return parseResponse(ProcedureOrderDetailSchema, response.data, {
       context: 'proceduresApi.cancelOrder',
-    }) as any;
+    }) as unknown as ProcedureOrder;
   },
 
   // ---- Consent ----
   getConsent: async (orderId: number) => {
-    const response = await apiClient.get(
-      `/api/procedures/orders/${orderId}/consent/`,
-    );
+    const response = await apiClient.get(`/api/procedures/orders/${orderId}/consent/`);
     return parseResponse(ProcedureConsentSchema, response.data, {
       context: 'proceduresApi.getConsent',
     });
@@ -251,7 +263,7 @@ export const proceduresApi = {
   createConsent: async (orderId: number, data: Record<string, unknown>) => {
     const response = await apiClient.post(
       `/api/procedures/orders/${orderId}/consent/create/`,
-      data,
+      data
     );
     return parseResponse(ProcedureConsentSchema, response.data, {
       context: 'proceduresApi.createConsent',
@@ -259,19 +271,16 @@ export const proceduresApi = {
   },
 
   signConsent: async (orderId: number) => {
-    const response = await apiClient.post(
-      `/api/procedures/orders/${orderId}/consent/sign/`,
-    );
+    const response = await apiClient.post(`/api/procedures/orders/${orderId}/consent/sign/`);
     return parseResponse(ProcedureConsentSchema, response.data, {
       context: 'proceduresApi.signConsent',
     });
   },
 
   declineConsent: async (orderId: number, reason?: string) => {
-    const response = await apiClient.post(
-      `/api/procedures/orders/${orderId}/consent/decline/`,
-      { reason: reason || '' },
-    );
+    const response = await apiClient.post(`/api/procedures/orders/${orderId}/consent/decline/`, {
+      reason: reason || '',
+    });
     return parseResponse(ProcedureConsentSchema, response.data, {
       context: 'proceduresApi.declineConsent',
     });
@@ -279,9 +288,7 @@ export const proceduresApi = {
 
   // ---- Consumables ----
   listConsumables: async (orderId: number) => {
-    const response = await apiClient.get(
-      `/api/procedures/orders/${orderId}/consumables/`,
-    );
+    const response = await apiClient.get(`/api/procedures/orders/${orderId}/consumables/`);
     return parseResponse(z.array(ProcedureConsumableSchema), response.data, {
       context: 'proceduresApi.listConsumables',
     });
@@ -290,7 +297,7 @@ export const proceduresApi = {
   addConsumable: async (orderId: number, data: Record<string, unknown>) => {
     const response = await apiClient.post(
       `/api/procedures/orders/${orderId}/consumables/add/`,
-      data,
+      data
     );
     return parseResponse(ProcedureConsumableSchema, response.data, {
       context: 'proceduresApi.addConsumable',
@@ -299,19 +306,14 @@ export const proceduresApi = {
 
   // ---- Outcomes ----
   listOutcomes: async (orderId: number) => {
-    const response = await apiClient.get(
-      `/api/procedures/orders/${orderId}/outcomes/`,
-    );
+    const response = await apiClient.get(`/api/procedures/orders/${orderId}/outcomes/`);
     return parseResponse(z.array(ProcedureOutcomeSchema), response.data, {
       context: 'proceduresApi.listOutcomes',
     });
   },
 
   addOutcome: async (orderId: number, data: Record<string, unknown>) => {
-    const response = await apiClient.post(
-      `/api/procedures/orders/${orderId}/outcomes/add/`,
-      data,
-    );
+    const response = await apiClient.post(`/api/procedures/orders/${orderId}/outcomes/add/`, data);
     return parseResponse(ProcedureOutcomeSchema, response.data, {
       context: 'proceduresApi.addOutcome',
     });
@@ -326,11 +328,13 @@ export const proceduresApi = {
   },
 
   // ---- Slot Discovery ----
-  getAvailableSlots: async (catalogId: number, date: string): Promise<ProcedureAvailableSlotsResponse> => {
-    const response = await apiClient.get(
-      `/api/procedures/catalog/${catalogId}/available-slots/`,
-      { params: { date } },
-    );
+  getAvailableSlots: async (
+    catalogId: number,
+    date: string
+  ): Promise<ProcedureAvailableSlotsResponse> => {
+    const response = await apiClient.get(`/api/procedures/catalog/${catalogId}/available-slots/`, {
+      params: { date },
+    });
     return parseResponse(ProcedureAvailableSlotsResponseSchema, response.data, {
       context: 'proceduresApi.getAvailableSlots',
     });

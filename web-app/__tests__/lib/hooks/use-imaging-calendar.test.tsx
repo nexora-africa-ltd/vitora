@@ -40,11 +40,7 @@ const createWrapper = () => {
   });
 
   return function TestWrapper({ children }: { children: React.ReactNode }) {
-    return (
-      <QueryClientProvider client={queryClient}>
-        {children}
-      </QueryClientProvider>
-    );
+    return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
   };
 };
 
@@ -193,10 +189,9 @@ describe('Imaging Calendar Hooks', () => {
     it('fetches resource availability', async () => {
       mockImagingApi.getResourceAvailability.mockResolvedValueOnce(mockSlots);
 
-      const { result } = renderHook(
-        () => useResourceAvailability(1, { date: '2026-02-07' }),
-        { wrapper: createWrapper() }
-      );
+      const { result } = renderHook(() => useResourceAvailability(1, { date: '2026-02-07' }), {
+        wrapper: createWrapper(),
+      });
 
       await waitFor(() => {
         expect(result.current.isSuccess).toBe(true);
@@ -207,10 +202,7 @@ describe('Imaging Calendar Hooks', () => {
     });
 
     it('does not fetch when resourceId is 0', async () => {
-      const { result } = renderHook(
-        () => useResourceAvailability(0),
-        { wrapper: createWrapper() }
-      );
+      const { result } = renderHook(() => useResourceAvailability(0), { wrapper: createWrapper() });
 
       expect(result.current.isFetching).toBe(false);
       expect(mockImagingApi.getResourceAvailability).not.toHaveBeenCalled();
@@ -238,10 +230,9 @@ describe('Imaging Calendar Hooks', () => {
     it('fetches weekly availability', async () => {
       mockImagingApi.getResourceWeeklyAvailability.mockResolvedValueOnce(mockWeeklyData);
 
-      const { result } = renderHook(
-        () => useResourceWeeklyAvailability(1),
-        { wrapper: createWrapper() }
-      );
+      const { result } = renderHook(() => useResourceWeeklyAvailability(1), {
+        wrapper: createWrapper(),
+      });
 
       await waitFor(() => {
         expect(result.current.isSuccess).toBe(true);
@@ -284,10 +275,9 @@ describe('Imaging Calendar Hooks', () => {
     it('fetches imaging calendar', async () => {
       mockImagingApi.getCalendar.mockResolvedValueOnce(mockCalendarData);
 
-      const { result } = renderHook(
-        () => useImagingCalendar({ date: '2026-02-07' }),
-        { wrapper: createWrapper() }
-      );
+      const { result } = renderHook(() => useImagingCalendar({ date: '2026-02-07' }), {
+        wrapper: createWrapper(),
+      });
 
       await waitFor(() => {
         expect(result.current.isSuccess).toBe(true);
@@ -318,10 +308,7 @@ describe('Imaging Calendar Hooks', () => {
     it('handles errors gracefully', async () => {
       mockImagingApi.getCalendar.mockRejectedValueOnce(new Error('Server error'));
 
-      const { result } = renderHook(
-        () => useImagingCalendar(),
-        { wrapper: createWrapper() }
-      );
+      const { result } = renderHook(() => useImagingCalendar(), { wrapper: createWrapper() });
 
       await waitFor(() => {
         expect(result.current.isError).toBe(true);

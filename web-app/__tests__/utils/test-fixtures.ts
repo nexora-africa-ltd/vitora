@@ -118,7 +118,7 @@ export function createMockEncounters(count: number, overrides?: Partial<Encounte
 /**
  * Create mock ICD-10 diagnosis
  */
-export function createMockDiagnosis(overrides?: Partial<any>) {
+export function createMockDiagnosis(overrides?: Partial<Record<string, unknown>>) {
   return {
     id: 1,
     encounter: 1,
@@ -134,7 +134,7 @@ export function createMockDiagnosis(overrides?: Partial<any>) {
 /**
  * Create mock treatment plan
  */
-export function createMockTreatmentPlan(overrides?: Partial<any>) {
+export function createMockTreatmentPlan(overrides?: Partial<Record<string, unknown>>) {
   return {
     id: 1,
     encounter: 1,
@@ -163,7 +163,7 @@ export function createMockTreatmentPlan(overrides?: Partial<any>) {
 /**
  * Create mock Kenya county
  */
-export function createMockCounty(overrides?: Partial<any>) {
+export function createMockCounty(overrides?: Partial<Record<string, unknown>>) {
   return {
     id: 1,
     code: 47,
@@ -175,7 +175,7 @@ export function createMockCounty(overrides?: Partial<any>) {
 /**
  * Create mock Kenya sub-county
  */
-export function createMockSubCounty(overrides?: Partial<any>) {
+export function createMockSubCounty(overrides?: Partial<Record<string, unknown>>) {
   return {
     id: 1,
     county: 1,
@@ -187,7 +187,7 @@ export function createMockSubCounty(overrides?: Partial<any>) {
 /**
  * Create mock Kenya ward
  */
-export function createMockWard(overrides?: Partial<any>) {
+export function createMockWard(overrides?: Partial<Record<string, unknown>>) {
   return {
     id: 1,
     sub_county: 1,
@@ -199,7 +199,7 @@ export function createMockWard(overrides?: Partial<any>) {
 /**
  * Create mock user
  */
-export function createMockUser(overrides?: Partial<any>) {
+export function createMockUser(overrides?: Partial<Record<string, unknown>>) {
   return {
     id: 1,
     username: 'testuser',

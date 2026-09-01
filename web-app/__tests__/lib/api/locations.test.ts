@@ -58,10 +58,9 @@ describe('Locations API', () => {
 
       const result = await locationsApi.getSubCounties(1);
 
-      expect(mockApiClient.get).toHaveBeenCalledWith(
-        '/api/locations/sub-counties/',
-        { params: { county: 1 } }
-      );
+      expect(mockApiClient.get).toHaveBeenCalledWith('/api/locations/sub-counties/', {
+        params: { county: 1 },
+      });
       expect(result).toEqual(mockSubCounties);
     });
 
@@ -70,10 +69,9 @@ describe('Locations API', () => {
 
       await locationsApi.getSubCounties(47);
 
-      expect(mockApiClient.get).toHaveBeenCalledWith(
-        '/api/locations/sub-counties/',
-        { params: { county: 47 } }
-      );
+      expect(mockApiClient.get).toHaveBeenCalledWith('/api/locations/sub-counties/', {
+        params: { county: 47 },
+      });
     });
 
     it('should return empty array for county with no sub-counties', async () => {
@@ -104,10 +102,9 @@ describe('Locations API', () => {
 
       const result = await locationsApi.getWards(101);
 
-      expect(mockApiClient.get).toHaveBeenCalledWith(
-        '/api/locations/wards/',
-        { params: { sub_county: 101 } }
-      );
+      expect(mockApiClient.get).toHaveBeenCalledWith('/api/locations/wards/', {
+        params: { sub_county: 101 },
+      });
       expect(result).toEqual(mockWards);
     });
 
@@ -116,10 +113,9 @@ describe('Locations API', () => {
 
       await locationsApi.getWards(202);
 
-      expect(mockApiClient.get).toHaveBeenCalledWith(
-        '/api/locations/wards/',
-        { params: { sub_county: 202 } }
-      );
+      expect(mockApiClient.get).toHaveBeenCalledWith('/api/locations/wards/', {
+        params: { sub_county: 202 },
+      });
     });
 
     it('should return empty array for sub-county with no wards', async () => {

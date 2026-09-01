@@ -40,14 +40,17 @@ import {
 
 interface OpenAPISchema {
   components: {
-    schemas: Record<string, {
-      type?: string;
-      properties?: Record<string, unknown>;
-      required?: string[];
-      enum?: string[];
-      allOf?: Array<{ $ref?: string }>;
-      description?: string;
-    }>;
+    schemas: Record<
+      string,
+      {
+        type?: string;
+        properties?: Record<string, unknown>;
+        required?: string[];
+        enum?: string[];
+        allOf?: Array<{ $ref?: string }>;
+        description?: string;
+      }
+    >;
   };
 }
 
@@ -76,10 +79,7 @@ function getSchemaProperties(
 /**
  * Get enum values from a component schema.
  */
-function getSchemaEnumValues(
-  openapi: OpenAPISchema,
-  schemaName: string
-): string[] | null {
+function getSchemaEnumValues(openapi: OpenAPISchema, schemaName: string): string[] | null {
   const schema = openapi.components.schemas[schemaName];
   if (!schema || !schema.enum) return null;
   return schema.enum;
@@ -144,9 +144,8 @@ describe('Pharmacy Contract Tests', () => {
       }
 
       // Critical fields should cause test failure
-      const criticalMissingFields = missingInZod.filter(
-        (field) =>
-          ['id', 'code', 'generic_name', 'form', 'strength', 'unit'].includes(field)
+      const criticalMissingFields = missingInZod.filter((field) =>
+        ['id', 'code', 'generic_name', 'form', 'strength', 'unit'].includes(field)
       );
 
       expect(criticalMissingFields).toEqual([]);
@@ -216,8 +215,8 @@ describe('Pharmacy Contract Tests', () => {
       }
 
       // Critical fields
-      const criticalMissing = missingInZod.filter(
-        (field) => ['id', 'drug', 'batch_number', 'quantity_available', 'expiry_date'].includes(field)
+      const criticalMissing = missingInZod.filter((field) =>
+        ['id', 'drug', 'batch_number', 'quantity_available', 'expiry_date'].includes(field)
       );
       expect(criticalMissing).toEqual([]);
     });
@@ -243,8 +242,8 @@ describe('Pharmacy Contract Tests', () => {
       }
 
       // Critical fields
-      const criticalMissing = missingInZod.filter(
-        (field) => ['id', 'drug', 'alert_type', 'severity'].includes(field)
+      const criticalMissing = missingInZod.filter((field) =>
+        ['id', 'drug', 'alert_type', 'severity'].includes(field)
       );
       expect(criticalMissing).toEqual([]);
     });
@@ -268,8 +267,8 @@ describe('Pharmacy Contract Tests', () => {
       }
 
       // Critical fields
-      const criticalMissing = missingInZod.filter(
-        (field) => ['id', 'prescription_number', 'patient', 'prescriber', 'status'].includes(field)
+      const criticalMissing = missingInZod.filter((field) =>
+        ['id', 'prescription_number', 'patient', 'prescriber', 'status'].includes(field)
       );
       expect(criticalMissing).toEqual([]);
     });
@@ -295,8 +294,8 @@ describe('Pharmacy Contract Tests', () => {
       }
 
       // Critical fields
-      const criticalMissing = missingInZod.filter(
-        (field) => ['id', 'prescription', 'drug', 'quantity_prescribed'].includes(field)
+      const criticalMissing = missingInZod.filter((field) =>
+        ['id', 'prescription', 'drug', 'quantity_prescribed'].includes(field)
       );
       expect(criticalMissing).toEqual([]);
     });
@@ -320,8 +319,8 @@ describe('Pharmacy Contract Tests', () => {
       }
 
       // Critical fields
-      const criticalMissing = missingInZod.filter(
-        (field) => ['id', 'drug', 'stock_batch', 'quantity', 'dispensed_by'].includes(field)
+      const criticalMissing = missingInZod.filter((field) =>
+        ['id', 'drug', 'stock_batch', 'quantity', 'dispensed_by'].includes(field)
       );
       expect(criticalMissing).toEqual([]);
     });
@@ -347,8 +346,8 @@ describe('Pharmacy Contract Tests', () => {
       }
 
       // Critical fields
-      const criticalMissing = missingInZod.filter(
-        (field) => ['id', 'stock_batch', 'adjustment_type', 'quantity'].includes(field)
+      const criticalMissing = missingInZod.filter((field) =>
+        ['id', 'stock_batch', 'adjustment_type', 'quantity'].includes(field)
       );
       expect(criticalMissing).toEqual([]);
     });

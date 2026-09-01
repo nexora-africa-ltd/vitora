@@ -56,10 +56,7 @@ function loadOpenAPISchema(): OpenAPISchema {
 /**
  * Get enum values from a component schema.
  */
-function getSchemaEnumValues(
-  openapi: OpenAPISchema,
-  schemaName: string
-): string[] | null {
+function getSchemaEnumValues(openapi: OpenAPISchema, schemaName: string): string[] | null {
   const schema = openapi.components.schemas[schemaName];
   if (!schema || !schema.enum) return null;
   return schema.enum;
@@ -68,9 +65,7 @@ function getSchemaEnumValues(
 /**
  * Get the property keys from a Zod enum schema.
  */
-function getZodEnumValues<T extends [string, ...string[]]>(
-  schema: ZodEnum<T>
-): string[] {
+function getZodEnumValues<T extends [string, ...string[]]>(schema: ZodEnum<T>): string[] {
   return schema.options as unknown as string[];
 }
 

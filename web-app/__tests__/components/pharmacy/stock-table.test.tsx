@@ -88,7 +88,7 @@ describe('StockTable', () => {
 
       // BATCH003 is expired - find the desktop table row
       const batch003Elements = screen.getAllByText('BATCH003');
-      const batch003Row = batch003Elements.find(el => el.closest('tr'))?.closest('tr');
+      const batch003Row = batch003Elements.find((el) => el.closest('tr'))?.closest('tr');
       // If expired-indicator test ID exists in the row
       if (batch003Row) {
         const indicator = within(batch003Row).queryByTestId('expired-indicator');
@@ -123,10 +123,12 @@ describe('StockTable', () => {
 
       // The actions are in a dropdown menu - find the desktop table row
       const batch001Elements = screen.getAllByText('BATCH001');
-      const batch001Row = batch001Elements.find(el => el.closest('tr'))?.closest('tr');
+      const batch001Row = batch001Elements.find((el) => el.closest('tr'))?.closest('tr');
       if (batch001Row) {
         // Look for the "More actions" button that opens the dropdown
-        expect(within(batch001Row).getByRole('button', { name: /more actions/i })).toBeInTheDocument();
+        expect(
+          within(batch001Row).getByRole('button', { name: /more actions/i })
+        ).toBeInTheDocument();
       } else {
         // In mobile view, look for any more actions button
         expect(screen.getAllByRole('button', { name: /more actions/i }).length).toBeGreaterThan(0);
@@ -137,10 +139,12 @@ describe('StockTable', () => {
       render(<StockTable {...defaultProps} />);
 
       const batch003Elements = screen.getAllByText('BATCH003');
-      const batch003Row = batch003Elements.find(el => el.closest('tr'))?.closest('tr');
+      const batch003Row = batch003Elements.find((el) => el.closest('tr'))?.closest('tr');
       if (batch003Row) {
         // Expired batches should not have the actions dropdown
-        expect(within(batch003Row).queryByRole('button', { name: /more actions/i })).not.toBeInTheDocument();
+        expect(
+          within(batch003Row).queryByRole('button', { name: /more actions/i })
+        ).not.toBeInTheDocument();
       } else {
         // Skip in mobile view - implementation may differ
         expect(true).toBe(true);

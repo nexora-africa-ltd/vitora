@@ -1,5 +1,9 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { FALLBACK_HINT_DELAY_MS, InstallPromptBanner, INSTALL_PROMPT_STORAGE_KEY } from '@/components/shared/install-prompt-banner';
+import {
+  FALLBACK_HINT_DELAY_MS,
+  InstallPromptBanner,
+  INSTALL_PROMPT_STORAGE_KEY,
+} from '@/components/shared/install-prompt-banner';
 
 describe('InstallPromptBanner', () => {
   let getItemSpy: jest.SpyInstance;
@@ -31,7 +35,8 @@ describe('InstallPromptBanner', () => {
     const event = new Event('beforeinstallprompt') as BeforeInstallPromptEvent;
     event.preventDefault = jest.fn();
     event.prompt = overrides?.prompt ?? jest.fn().mockResolvedValue(undefined);
-    event.userChoice = overrides?.userChoice ?? Promise.resolve({ outcome: 'accepted', platform: 'web' });
+    event.userChoice =
+      overrides?.userChoice ?? Promise.resolve({ outcome: 'accepted', platform: 'web' });
     await act(async () => {
       window.dispatchEvent(event);
     });
@@ -88,7 +93,8 @@ describe('InstallPromptBanner', () => {
   it('shows a fallback install hint when the browser never fires beforeinstallprompt', async () => {
     Object.defineProperty(window.navigator, 'userAgent', {
       configurable: true,
-      value: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
+      value:
+        'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
     });
 
     render(<InstallPromptBanner />);
@@ -97,7 +103,9 @@ describe('InstallPromptBanner', () => {
       jest.advanceTimersByTime(FALLBACK_HINT_DELAY_MS + 10);
     });
 
-    expect(await screen.findByText(/tap Share, then choose Add to Home Screen/i)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/tap Share, then choose Add to Home Screen/i)
+    ).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /install vitora/i })).not.toBeInTheDocument();
     expect(setItemSpy).toHaveBeenCalledWith(INSTALL_PROMPT_STORAGE_KEY, 'seen');
   });
@@ -105,7 +113,8 @@ describe('InstallPromptBanner', () => {
   it('does not show the fallback hint on Chrome while waiting for beforeinstallprompt', async () => {
     Object.defineProperty(window.navigator, 'userAgent', {
       configurable: true,
-      value: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36',
+      value:
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36',
     });
 
     render(<InstallPromptBanner />);
@@ -121,7 +130,8 @@ describe('InstallPromptBanner', () => {
   it('shows the install prompt on Chrome without first rendering the fallback hint', async () => {
     Object.defineProperty(window.navigator, 'userAgent', {
       configurable: true,
-      value: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36',
+      value:
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36',
     });
 
     render(<InstallPromptBanner />);

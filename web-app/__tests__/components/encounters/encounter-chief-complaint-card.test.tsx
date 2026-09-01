@@ -27,22 +27,23 @@ jest.mock('@/lib/hooks/use-encounters', () => ({
 }));
 
 jest.mock('@/components/encounters/chief-complaint-edit-dialog', () => ({
-  ChiefComplaintEditDialog: ({ open, onConfirm }: any) => (
+  ChiefComplaintEditDialog: ({ open, onConfirm }: unknown) =>
     open ? (
       <div data-testid="chief-complaint-edit-dialog">
         <button
           type="button"
-          onClick={() => onConfirm({
-            chief_complaint: 'Updated complaint',
-            edit_reason: 'CLARIFICATION',
-            edit_reason_other: '',
-          })}
+          onClick={() =>
+            onConfirm({
+              chief_complaint: 'Updated complaint',
+              edit_reason: 'CLARIFICATION',
+              edit_reason_other: '',
+            })
+          }
         >
           Confirm Edit
         </button>
       </div>
-    ) : null
-  ),
+    ) : null,
 }));
 
 const mockEncounter: Encounter = {
@@ -98,9 +99,7 @@ describe('EncounterChiefComplaintCard', () => {
 
   it('hides edit action when encounter triage is not completed', () => {
     render(
-      <EncounterChiefComplaintCard
-        encounter={{ ...mockEncounter, triage_status: 'PENDING' }}
-      />
+      <EncounterChiefComplaintCard encounter={{ ...mockEncounter, triage_status: 'PENDING' }} />
     );
 
     expect(screen.queryByRole('button', { name: /edit/i })).not.toBeInTheDocument();

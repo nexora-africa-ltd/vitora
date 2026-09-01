@@ -242,7 +242,7 @@ describe('TriageReportsPage - Volume Reports', () => {
 
       // Percentages are not rendered in the donut chart mock; validate totals indirectly.
       const chartData = JSON.parse(screen.getByTestId('donut-chart-data').textContent || '[]');
-      const total = chartData.reduce((sum: number, item: any) => sum + (item.value || 0), 0);
+      const total = chartData.reduce((sum: number, item: unknown) => sum + (item.value || 0), 0);
       expect(total).toBe(523);
     });
   });
@@ -311,9 +311,7 @@ describe('TriageReportsPage - Date Range Selection', () => {
     it('should call onDateRangeChange when range is selected', async () => {
       const user = userEvent.setup();
       const handleDateRangeChange = jest.fn();
-      render(
-        <TriageReportsPage {...defaultProps} onDateRangeChange={handleDateRangeChange} />
-      );
+      render(<TriageReportsPage {...defaultProps} onDateRangeChange={handleDateRangeChange} />);
 
       const dateSelector = screen.getByLabelText(/date range/i);
       await user.click(dateSelector);

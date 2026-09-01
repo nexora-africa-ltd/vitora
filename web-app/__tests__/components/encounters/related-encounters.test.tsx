@@ -19,7 +19,9 @@ jest.mock('@/lib/api/encounters', () => ({
 jest.mock('next/link', () => ({
   __esModule: true,
   default: ({ href, children, ...props }: { href: string; children: React.ReactNode }) => (
-    <a href={href} {...props}>{children}</a>
+    <a href={href} {...props}>
+      {children}
+    </a>
   ),
 }));
 

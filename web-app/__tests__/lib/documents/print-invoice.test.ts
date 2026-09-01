@@ -30,11 +30,7 @@ import {
   previewInvoice,
   type PrintInvoiceOptions,
 } from '@/lib/documents/print-invoice';
-import {
-  renderDocumentAsync,
-  buildPrintDocument,
-  openPrintWindow,
-} from '@/lib/documents/renderer';
+import { renderDocumentAsync, buildPrintDocument, openPrintWindow } from '@/lib/documents/renderer';
 import { getInvoiceQRContent } from '@/lib/utils/qr';
 
 // =============================================================================

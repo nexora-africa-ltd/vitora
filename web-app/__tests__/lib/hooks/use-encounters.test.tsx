@@ -48,7 +48,7 @@ describe('useEncounters', () => {
         { id: 2, encounter_type: 'EMERGENCY', chief_complaint: 'Chest pain' },
       ],
     };
-    mockEncountersApi.list.mockResolvedValue(mockData as any);
+    mockEncountersApi.list.mockResolvedValue(mockData as unknown);
 
     const { result } = renderHook(() => useEncounters(), { wrapper: createWrapper() });
 
@@ -60,10 +60,9 @@ describe('useEncounters', () => {
   it('should pass params to API', async () => {
     mockEncountersApi.list.mockResolvedValue({ count: 0, results: [], next: null, previous: null });
 
-    renderHook(
-      () => useEncounters({ patient: 123, status: 'CLOSED' }),
-      { wrapper: createWrapper() }
-    );
+    renderHook(() => useEncounters({ patient: 123, status: 'CLOSED' }), {
+      wrapper: createWrapper(),
+    });
 
     await waitFor(() => expect(mockEncountersApi.list).toHaveBeenCalled());
 
@@ -78,7 +77,7 @@ describe('useEncounter', () => {
 
   it('should fetch a single encounter', async () => {
     const mockEncounter = { id: 1, encounter_type: 'OPD', chief_complaint: 'Headache' };
-    mockEncountersApi.get.mockResolvedValue(mockEncounter as any);
+    mockEncountersApi.get.mockResolvedValue(mockEncounter as unknown);
 
     const { result } = renderHook(() => useEncounter(1), { wrapper: createWrapper() });
 
@@ -102,7 +101,7 @@ describe('useEncounterDiagnoses', () => {
 
   it('should fetch diagnoses for encounter', async () => {
     const mockDiagnoses = [{ id: 1, icd10_code: 'J06.9' }];
-    mockEncountersApi.getDiagnoses.mockResolvedValue(mockDiagnoses as any);
+    mockEncountersApi.getDiagnoses.mockResolvedValue(mockDiagnoses as unknown);
 
     const { result } = renderHook(() => useEncounterDiagnoses(1), { wrapper: createWrapper() });
 
@@ -119,7 +118,7 @@ describe('useEncounterTreatmentPlan', () => {
 
   it('should fetch treatment plan for encounter', async () => {
     const mockPlan = { id: 1, plan_text: 'Rest and fluids' };
-    mockEncountersApi.getTreatmentPlan.mockResolvedValue(mockPlan as any);
+    mockEncountersApi.getTreatmentPlan.mockResolvedValue(mockPlan as unknown);
 
     const { result } = renderHook(() => useEncounterTreatmentPlan(1), { wrapper: createWrapper() });
 
@@ -147,12 +146,12 @@ describe('useCreateEncounter', () => {
   it('should create an encounter', async () => {
     const newEncounter = { patient: 1, encounter_type: 'OPD' as const, chief_complaint: 'Fever' };
     const createdEncounter = { id: 1, ...newEncounter };
-    mockEncountersApi.create.mockResolvedValue(createdEncounter as any);
+    mockEncountersApi.create.mockResolvedValue(createdEncounter as unknown);
 
     const { result } = renderHook(() => useCreateEncounter(), { wrapper: createWrapper() });
 
     await act(async () => {
-      await result.current.mutateAsync(newEncounter as any);
+      await result.current.mutateAsync(newEncounter as unknown);
     });
 
     expect(mockEncountersApi.create).toHaveBeenCalledWith(newEncounter);
@@ -167,7 +166,7 @@ describe('useUpdateEncounter', () => {
   it('should update an encounter', async () => {
     const updateData = { chief_complaint: 'Updated complaint' };
     const updatedEncounter = { id: 1, ...updateData };
-    mockEncountersApi.update.mockResolvedValue(updatedEncounter as any);
+    mockEncountersApi.update.mockResolvedValue(updatedEncounter as unknown);
 
     const { result } = renderHook(() => useUpdateEncounter(), { wrapper: createWrapper() });
 

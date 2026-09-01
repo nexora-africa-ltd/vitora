@@ -3,7 +3,12 @@
  * Tests JWT decoding and validation functions
  */
 
-import { decodeToken, isTokenExpired, getTokenExpiration, getUserIdFromToken } from '@/lib/auth/token-utils';
+import {
+  decodeToken,
+  isTokenExpired,
+  getTokenExpiration,
+  getUserIdFromToken,
+} from '@/lib/auth/token-utils';
 
 // Helper to create a valid JWT-like token
 function createMockToken(payload: object): string {

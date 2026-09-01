@@ -30,7 +30,7 @@ Object.defineProperty(window, 'localStorage', { value: mockLocalStorage });
 
 // Mock useDebounce to return value immediately
 jest.mock('@/lib/hooks/use-debounce', () => ({
-  useDebounce: <T,>(value: T, _delay: number) => value,
+  useDebounce: <T>(value: T, _delay: number) => value,
 }));
 
 describe('useDraftSave', () => {

@@ -113,8 +113,15 @@ export interface ProcedureConsent {
   questions_answered: boolean;
   signed_by_patient: boolean;
   patient_signed_at: string | null;
+  patient_signature?: string;
   signed_by_guardian: boolean;
   guardian_name: string;
+  guardian_relationship?: string;
+  guardian_id_number?: string;
+  guardian_signature?: string;
+  witness_required?: boolean;
+  witness_name?: string;
+  witness_signature?: string;
   obtained_by: number;
   obtained_at: string | null;
 }

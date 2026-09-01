@@ -9,7 +9,7 @@ import type { TreatmentPlan } from '@/lib/types/encounter';
 
 // Mock EmptyState
 jest.mock('@/components/shared/empty-state', () => ({
-  EmptyState: ({ title, description }: any) => (
+  EmptyState: ({ title, description }: unknown) => (
     <div data-testid="empty-state">
       <h2>{title}</h2>
       <p>{description}</p>

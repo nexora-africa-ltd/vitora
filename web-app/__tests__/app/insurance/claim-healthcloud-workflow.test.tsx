@@ -150,7 +150,13 @@ jest.mock('@/lib/hooks/use-insurance', () => {
               schemeName: 'Muungano Scheme',
               status: 'LIVE',
             },
-            benefits: [{ benefitCode: 'BEN/001', benefitType: 'OUTPATIENT', benefitName: 'Outpatient Shared' }],
+            benefits: [
+              {
+                benefitCode: 'BEN/001',
+                benefitType: 'OUTPATIENT',
+                benefitName: 'Outpatient Shared',
+              },
+            ],
           },
         },
       }),

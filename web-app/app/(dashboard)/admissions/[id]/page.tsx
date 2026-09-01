@@ -62,7 +62,12 @@ import {
   useAddCarePlanEntry,
 } from '@/lib/hooks/use-inpatient';
 import { useEncounter } from '@/lib/hooks/use-encounters';
-import { AdmissionOrdersTab, ICURiskAssessmentPanel, DischargeReadinessPanel, ConsumableUsagePanel } from '@/components/inpatient';
+import {
+  AdmissionOrdersTab,
+  ICURiskAssessmentPanel,
+  DischargeReadinessPanel,
+  ConsumableUsagePanel,
+} from '@/components/inpatient';
 import { CarePlanPanel } from '@/components/encounters/care-plan-panel';
 import { InvestigationSuggestionsPanel } from '@/components/encounters/investigation-suggestions-panel';
 import { TPRChart } from '@/components/inpatient/tpr-chart';
@@ -79,7 +84,10 @@ import { PartographTab } from '@/components/mch/partograph-tab';
 import { DeliveryTab } from '@/components/mch/delivery-tab';
 import { HelpPopover } from '@/components/shared/help-popover';
 import { formatDate, formatDateTime } from '@/lib/utils/format';
-import { buildAdmissionAIClinicalNotes, getLatestWardRound } from '@/lib/utils/inpatient-ai-context';
+import {
+  buildAdmissionAIClinicalNotes,
+  getLatestWardRound,
+} from '@/lib/utils/inpatient-ai-context';
 import { useToast } from '@/lib/hooks/use-toast';
 import { useAuth } from '@/lib/auth/context';
 import { usePermissions } from '@/lib/hooks/use-permissions';
@@ -88,7 +96,14 @@ import { useCommentCount } from '@/lib/hooks/use-comment-count';
 import { useInterfacilityTransfersEnabled } from '@/lib/hooks/use-interfacility-transfers-enabled';
 import { CommentThread } from '@/components/comments';
 import { resolveCanAmbulate, resolveCanTolerateOral } from '@/lib/utils/kardex-status';
-import type { BedOverrideRequest, NursingCarePlanEntryCreateData, OverrideReason, ReviewType, ReviewUrgency } from '@/lib/types/inpatient';
+import type {
+  Bed as InpatientBed,
+  BedOverrideRequest,
+  NursingCarePlanEntryCreateData,
+  OverrideReason,
+  ReviewType,
+  ReviewUrgency,
+} from '@/lib/types/inpatient';
 import type { AIQuickAction } from '@/lib/types/ai';
 
 const OVERRIDE_REASON_OPTIONS: { value: OverrideReason; label: string }[] = [
@@ -123,7 +138,7 @@ const INPATIENT_QUICK_ACTIONS: AIQuickAction[] = [
     id: 'inpatient-icu-risk',
     label: 'ICU escalation risk',
     query:
-      'Based on this admitted patient\'s current vitals, ward round condition status, diagnosis, and length of stay, assess the risk of requiring ICU escalation. Consider SOFA/qSOFA criteria and provide early warning signs to monitor.',
+      "Based on this admitted patient's current vitals, ward round condition status, diagnosis, and length of stay, assess the risk of requiring ICU escalation. Consider SOFA/qSOFA criteria and provide early warning signs to monitor.",
     userMessage: '🏥 Assessing ICU escalation risk...',
   },
   {
@@ -137,7 +152,7 @@ const INPATIENT_QUICK_ACTIONS: AIQuickAction[] = [
     id: 'inpatient-complications',
     label: 'Anticipated complications',
     query:
-      'Based on this patient\'s admitting diagnosis, current condition, length of stay, and vital signs, what complications should we anticipate? Include hospital-acquired infection risk, DVT risk, and condition-specific complications.',
+      "Based on this patient's admitting diagnosis, current condition, length of stay, and vital signs, what complications should we anticipate? Include hospital-acquired infection risk, DVT risk, and condition-specific complications.",
     userMessage: '⚠️ Reviewing anticipated complications...',
   },
   {
@@ -180,16 +195,19 @@ export default function AdmissionDetailPage() {
 
   const { data: admission, isLoading, error } = useAdmission(admissionRouteId);
   const admissionId = admission?.id ?? 0;
-  const { data: clinicalSummary, isLoading: isClinicalSummaryLoading } = useAdmissionClinicalSummary(admissionId || undefined);
+  const { data: clinicalSummary, isLoading: isClinicalSummaryLoading } =
+    useAdmissionClinicalSummary(admissionId || undefined);
   const admissionCommentCount = useCommentCount('admission', admissionId);
   const { data: wardRounds, isLoading: wardRoundsLoading } = useAdmissionWardRounds(admissionId);
   const sourceEncounterId = admission?.source_encounter ?? admission?.opd_encounter ?? 0;
   const { data: sourceEncounter } = useEncounter(sourceEncounterId);
   const { data: kardex, isLoading: kardexLoading } = useKardexByAdmission(admissionId);
-  const { data: reviewRequests, isLoading: reviewRequestsLoading } = useAdmissionReviewRequests(admissionId);
+  const { data: reviewRequests, isLoading: reviewRequestsLoading } =
+    useAdmissionReviewRequests(admissionId);
   const { data: availableBeds } = useBeds({ ward: admission?.ward, status: 'AVAILABLE' });
   const { data: vitalsHistory, isLoading: isLoadingVitals } = usePatientVitalsHistory(
-    admission?.patient ?? 0, 'all'
+    admission?.patient ?? 0,
+    'all'
   );
 
   // Fetch latest verified lab values for ICU risk scoring
@@ -201,10 +219,9 @@ export default function AdmissionDetailPage() {
   );
 
   // Maternity case: show partograph tab for maternity ward OR linked MCH registration
-  const isMaternityCase = admission?.ward_type === 'MATERNITY' || Boolean(admission?.mch_registration);
-  const { data: mchRegistration } = useMCHRegistration(
-    admission?.mch_registration ?? undefined
-  );
+  const isMaternityCase =
+    admission?.ward_type === 'MATERNITY' || Boolean(admission?.mch_registration);
+  const { data: mchRegistration } = useMCHRegistration(admission?.mch_registration ?? undefined);
 
   const createReviewRequest = useCreateReviewRequest();
   const setExpectedDischarge = useSetExpectedDischarge();
@@ -276,7 +293,14 @@ export default function AdmissionDetailPage() {
       spo2?: number;
     } = {};
 
-    const VITAL_KEYS = ['temperature', 'heart_rate', 'systolic_bp', 'diastolic_bp', 'respiratory_rate', 'spo2'] as const;
+    const VITAL_KEYS = [
+      'temperature',
+      'heart_rate',
+      'systolic_bp',
+      'diastolic_bp',
+      'respiratory_rate',
+      'spo2',
+    ] as const;
 
     if (vitalsHistory && vitalsHistory.length > 0) {
       // Walk backwards (most recent first) and fill gaps
@@ -339,11 +363,18 @@ export default function AdmissionDetailPage() {
         await addCarePlanEntry.mutateAsync({ kardexId: kardex.id, data: entry });
       }
       setAppliedAIToKardex(true);
-      toast({ title: 'Care plan applied', description: `${entries.length} ADPIE entr${entries.length === 1 ? 'y' : 'ies'} created from AI care plan.` });
+      toast({
+        title: 'Care plan applied',
+        description: `${entries.length} ADPIE entr${entries.length === 1 ? 'y' : 'ies'} created from AI care plan.`,
+      });
       // Reset after the panel has had time to clear itself
       setTimeout(() => setAppliedAIToKardex(false), 500);
     } catch {
-      toast({ title: 'Failed to apply', description: 'Some entries may not have been created.', variant: 'destructive' });
+      toast({
+        title: 'Failed to apply',
+        description: 'Some entries may not have been created.',
+        variant: 'destructive',
+      });
     } finally {
       setIsApplyingAIToKardex(false);
     }
@@ -368,49 +399,61 @@ export default function AdmissionDetailPage() {
         {
           patient_age: admission.patient_age ?? 0,
           patient_sex: admission.patient_gender ?? 'O',
-          allergies: Array.from(new Set([
-            ...(admission.clinical_context?.allergies_structured ?? []),
-            ...(sourceEncounter?.allergies
-              ? sourceEncounter.allergies.split(/[\n,]/).map((item) => item.trim()).filter(Boolean)
-              : []),
-          ])),
-          comorbidities: Array.from(new Set([
-            ...(admission.clinical_context?.comorbidities ?? []),
-            ...(sourceEncounter?.chronic_conditions
-              ? sourceEncounter.chronic_conditions.split(/[\n,]/).map((item) => item.trim()).filter(Boolean)
-              : []),
-          ])),
-          current_medications: Array.from(new Set([
-            ...(admission.clinical_context?.current_medications ?? []),
-            ...(sourceEncounter?.current_medications
-              ? sourceEncounter.current_medications.split(/[\n,]/).map((item) => item.trim()).filter(Boolean)
-              : []),
-          ])),
+          allergies: Array.from(
+            new Set([
+              ...(admission.clinical_context?.allergies_structured ?? []),
+              ...(sourceEncounter?.allergies
+                ? sourceEncounter.allergies
+                    .split(/[\n,]/)
+                    .map((item) => item.trim())
+                    .filter(Boolean)
+                : []),
+            ])
+          ),
+          comorbidities: Array.from(
+            new Set([
+              ...(admission.clinical_context?.comorbidities ?? []),
+              ...(sourceEncounter?.chronic_conditions
+                ? sourceEncounter.chronic_conditions
+                    .split(/[\n,]/)
+                    .map((item) => item.trim())
+                    .filter(Boolean)
+                : []),
+            ])
+          ),
+          current_medications: Array.from(
+            new Set([
+              ...(admission.clinical_context?.current_medications ?? []),
+              ...(sourceEncounter?.current_medications
+                ? sourceEncounter.current_medications
+                    .split(/[\n,]/)
+                    .map((item) => item.trim())
+                    .filter(Boolean)
+                : []),
+            ])
+          ),
         },
         // Encounter context — enriched with inpatient fields
         {
           chief_complaint:
-            sourceEncounter?.chief_complaint
-            || admission.admitting_diagnosis_text
-            || admission.admitting_diagnosis
-            || undefined,
+            sourceEncounter?.chief_complaint ||
+            admission.admitting_diagnosis_text ||
+            admission.admitting_diagnosis ||
+            undefined,
           clinical_notes: admissionClinicalNotes || undefined,
           vitals: vitalSource
             ? {
                 spo2: vitalSource.spo2 != null ? Number(vitalSource.spo2) : undefined,
                 pulse: vitalSource.pulse ?? undefined,
-                temperature: vitalSource.temperature != null
-                  ? Number(vitalSource.temperature)
-                  : undefined,
+                temperature:
+                  vitalSource.temperature != null ? Number(vitalSource.temperature) : undefined,
                 rr: vitalSource.respiratory_rate ?? undefined,
                 map: parseBPToMAP(typeof bp === 'string' ? bp : undefined),
               }
             : undefined,
           // Inpatient-specific context
           admission_diagnosis:
-            admission.admitting_diagnosis_text
-            || admission.admitting_diagnosis
-            || undefined,
+            admission.admitting_diagnosis_text || admission.admitting_diagnosis || undefined,
           ward_name: admission.ward_name ?? undefined,
           bed_number: admission.bed_number ?? undefined,
           admission_status: admission.admission_status ?? undefined,
@@ -425,7 +468,13 @@ export default function AdmissionDetailPage() {
     return () => {
       setEncounterAwareContext(null, null);
     };
-  }, [admission, latestWardRound, sourceEncounter, admissionClinicalNotes, setEncounterAwareContext]);
+  }, [
+    admission,
+    latestWardRound,
+    sourceEncounter,
+    admissionClinicalNotes,
+    setEncounterAwareContext,
+  ]);
 
   // Register inpatient-specific quick actions
   useEffect(() => {
@@ -437,9 +486,9 @@ export default function AdmissionDetailPage() {
   }, [setQuickActions]);
 
   // Filter pending review requests
-  const pendingReviews = reviewRequests?.results?.filter(
-    (r) => r.status === 'PENDING' || r.status === 'IN_PROGRESS'
-  ) || [];
+  const pendingReviews =
+    reviewRequests?.results?.filter((r) => r.status === 'PENDING' || r.status === 'IN_PROGRESS') ||
+    [];
 
   // Review request dialog state
   const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
@@ -527,7 +576,10 @@ export default function AdmissionDetailPage() {
     } catch (mutationError) {
       toast({
         title: 'Update failed',
-        description: mutationError instanceof Error ? mutationError.message : 'Unable to save expected discharge date.',
+        description:
+          mutationError instanceof Error
+            ? mutationError.message
+            : 'Unable to save expected discharge date.',
         variant: 'destructive',
       });
     }
@@ -563,7 +615,10 @@ export default function AdmissionDetailPage() {
     } catch (mutationError) {
       toast({
         title: 'Override failed',
-        description: mutationError instanceof Error ? mutationError.message : 'Unable to override the current bed assignment.',
+        description:
+          mutationError instanceof Error
+            ? mutationError.message
+            : 'Unable to override the current bed assignment.',
         variant: 'destructive',
       });
     }
@@ -577,7 +632,7 @@ export default function AdmissionDetailPage() {
     return (
       <div className="container mx-auto py-12 text-center">
         <p className="text-xl font-semibold">Admission not found</p>
-        <p className="text-muted-foreground mt-2">
+        <p className="mt-2 text-muted-foreground">
           The admission record you&apos;re looking for doesn&apos;t exist or has been removed.
         </p>
         <Button onClick={() => router.push('/admissions')} className="mt-4">
@@ -592,20 +647,18 @@ export default function AdmissionDetailPage() {
   );
 
   return (
-    <div className="container mx-auto py-6 space-y-4 sm:space-y-6">
+    <div className="container mx-auto space-y-4 py-6 sm:space-y-6">
       {/* Summary Bar */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center p-3 sm:p-4 rounded-lg bg-muted/50">
-        <div className="flex flex-col gap-1 min-w-0">
-          <p className="text-lg sm:text-xl font-bold truncate">
-            {admission.admission_number}
-          </p>
-          <p className="text-sm text-muted-foreground truncate">
+      <div className="flex flex-col gap-3 rounded-lg bg-muted/50 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
+        <div className="flex min-w-0 flex-col gap-1">
+          <p className="truncate text-lg font-bold sm:text-xl">{admission.admission_number}</p>
+          <p className="truncate text-sm text-muted-foreground">
             Patient: <span className="font-medium">{admission.patient_name}</span>
           </p>
         </div>
         <Badge
           variant={getStatusVariant(admission.admission_status)}
-          className="shrink-0 w-fit self-start sm:self-auto"
+          className="w-fit shrink-0 self-start sm:self-auto"
         >
           {admission.admission_status_display || admission.admission_status}
         </Badge>
@@ -615,20 +668,20 @@ export default function AdmissionDetailPage() {
       {admission.admission_status === 'ACTIVE' && (
         <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
           <Button variant="outline" onClick={() => setExpectedDischargeDialogOpen(true)}>
-            <CalendarClock className="h-4 w-4 mr-2" />
+            <CalendarClock className="mr-2 h-4 w-4" />
             <span className="sm:hidden">Discharge ETA</span>
             <span className="hidden sm:inline">Expected Discharge</span>
           </Button>
 
           <Button variant="outline" onClick={() => setBedOverrideDialogOpen(true)}>
-            <Shuffle className="h-4 w-4 mr-2" />
+            <Shuffle className="mr-2 h-4 w-4" />
             <span className="sm:hidden">Override Bed</span>
             <span className="hidden sm:inline">Override Bed</span>
           </Button>
 
           <Button variant="outline" asChild>
             <Link href={`/admissions/${admission.id}/ward-round/new`}>
-              <Stethoscope className="h-4 w-4 mr-2" />
+              <Stethoscope className="mr-2 h-4 w-4" />
               Ward Round
             </Link>
           </Button>
@@ -637,7 +690,7 @@ export default function AdmissionDetailPage() {
           <Dialog open={reviewDialogOpen} onOpenChange={setReviewDialogOpen}>
             <DialogTrigger asChild>
               <Button variant="outline">
-                <AlertTriangle className="h-4 w-4 mr-2" />
+                <AlertTriangle className="mr-2 h-4 w-4" />
                 <span className="sm:hidden">Review</span>
                 <span className="hidden sm:inline">Request Review</span>
               </Button>
@@ -646,13 +699,17 @@ export default function AdmissionDetailPage() {
               <DialogHeader>
                 <DialogTitle>Request Patient Review</DialogTitle>
                 <DialogDescription>
-                  Submit a review request for this patient. Urgent and STAT requests will be prioritized.
+                  Submit a review request for this patient. Urgent and STAT requests will be
+                  prioritized.
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
                   <Label htmlFor="review-type">Review Type</Label>
-                  <Select value={reviewType} onValueChange={(v) => setReviewType(v as Exclude<ReviewType, 'WARD_ROUND'>)}>
+                  <Select
+                    value={reviewType}
+                    onValueChange={(v) => setReviewType(v as Exclude<ReviewType, 'WARD_ROUND'>)}
+                  >
                     <SelectTrigger id="review-type">
                       <SelectValue />
                     </SelectTrigger>
@@ -668,7 +725,10 @@ export default function AdmissionDetailPage() {
 
                 <div className="space-y-2">
                   <Label htmlFor="urgency">Urgency</Label>
-                  <Select value={reviewUrgency} onValueChange={(v) => setReviewUrgency(v as ReviewUrgency)}>
+                  <Select
+                    value={reviewUrgency}
+                    onValueChange={(v) => setReviewUrgency(v as ReviewUrgency)}
+                  >
                     <SelectTrigger id="urgency">
                       <SelectValue />
                     </SelectTrigger>
@@ -743,22 +803,22 @@ export default function AdmissionDetailPage() {
           </Dialog>
 
           <PermissionGate action="inpatient.transfer">
-          <Button variant="outline" asChild>
-            <Link href={`/admissions/${admission.id}/transfer`}>
-              <MoveRight className="h-4 w-4 mr-2" />
-              Transfer
-            </Link>
-          </Button>
+            <Button variant="outline" asChild>
+              <Link href={`/admissions/${admission.id}/transfer`}>
+                <MoveRight className="mr-2 h-4 w-4" />
+                Transfer
+              </Link>
+            </Button>
           </PermissionGate>
 
           {interfacilityTransfersEnabled && (
             <PermissionGate action="inpatient.submit_interfacility_transfer">
-            <Button variant="outline" asChild>
-              <Link href={`/admissions/${admission.id}/inter-facility-transfer`}>
-                <MoveRight className="h-4 w-4 mr-2" />
-                Inter-Facility Transfer
-              </Link>
-            </Button>
+              <Button variant="outline" asChild>
+                <Link href={`/admissions/${admission.id}/inter-facility-transfer`}>
+                  <MoveRight className="mr-2 h-4 w-4" />
+                  Inter-Facility Transfer
+                </Link>
+              </Button>
             </PermissionGate>
           )}
 
@@ -766,7 +826,7 @@ export default function AdmissionDetailPage() {
           {hasModule('blood_bank') && (
             <Button variant="outline" asChild>
               <Link href={`/blood-bank/requests/new?patient=${admission.patient}`}>
-                <Droplets className="h-4 w-4 mr-2" />
+                <Droplets className="mr-2 h-4 w-4" />
                 Request Blood
               </Link>
             </Button>
@@ -776,19 +836,19 @@ export default function AdmissionDetailPage() {
           {hasModule('dialysis') && (
             <Button variant="outline" asChild>
               <Link href={`/dialysis/orders/new?patient=${admission.patient}`}>
-                <CircleDot className="h-4 w-4 mr-2" />
+                <CircleDot className="mr-2 h-4 w-4" />
                 Dialysis Order
               </Link>
             </Button>
           )}
 
           <PermissionGate action="inpatient.discharge">
-          <Button variant="default" asChild>
-            <Link href={`/admissions/${admission.id}/discharge`}>
-              <LogOut className="h-4 w-4 mr-2" />
-              Discharge
-            </Link>
-          </Button>
+            <Button variant="default" asChild>
+              <Link href={`/admissions/${admission.id}/discharge`}>
+                <LogOut className="mr-2 h-4 w-4" />
+                Discharge
+              </Link>
+            </Button>
           </PermissionGate>
         </div>
       )}
@@ -798,7 +858,7 @@ export default function AdmissionDetailPage() {
         <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
           <Button variant="default" asChild>
             <Link href={`/admissions/${admission.id}/discharge-details`}>
-              <FileText className="h-4 w-4 mr-2" />
+              <FileText className="mr-2 h-4 w-4" />
               View Discharge Details
             </Link>
           </Button>
@@ -806,58 +866,64 @@ export default function AdmissionDetailPage() {
       )}
 
       {/* Quick Stats */}
-      <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 md:grid-cols-4">
         <Card>
-          <CardContent className="p-3 sm:pt-6 sm:p-6">
+          <CardContent className="p-3 sm:p-6 sm:pt-6">
             <div className="flex items-center gap-2 sm:gap-3">
-              <div className="p-1.5 sm:p-2 rounded-lg bg-blue-100 dark:bg-blue-900 shrink-0">
-                <Building2 className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 dark:text-blue-400" />
+              <div className="shrink-0 rounded-lg bg-blue-100 p-1.5 dark:bg-blue-900 sm:p-2">
+                <Building2 className="h-4 w-4 text-blue-600 dark:text-blue-400 sm:h-5 sm:w-5" />
               </div>
               <div className="min-w-0">
-                <p className="text-xs sm:text-sm text-accent-foreground">Ward</p>
-                <p className="font-semibold text-sm sm:text-base truncate">{admission.ward_name}</p>
+                <p className="text-xs text-accent-foreground sm:text-sm">Ward</p>
+                <p className="truncate text-sm font-semibold sm:text-base">{admission.ward_name}</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardContent className="p-3 sm:pt-6 sm:p-6">
+          <CardContent className="p-3 sm:p-6 sm:pt-6">
             <div className="flex items-center gap-2 sm:gap-3">
-              <div className="p-1.5 sm:p-2 rounded-lg bg-green-100 dark:bg-green-900 shrink-0">
-                <Bed className="h-4 w-4 sm:h-5 sm:w-5 text-green-600 dark:text-green-400" />
+              <div className="shrink-0 rounded-lg bg-green-100 p-1.5 dark:bg-green-900 sm:p-2">
+                <Bed className="h-4 w-4 text-green-600 dark:text-green-400 sm:h-5 sm:w-5" />
               </div>
               <div className="min-w-0">
-                <p className="text-xs sm:text-sm text-accent-foreground">Bed</p>
-                <p className="font-semibold text-sm sm:text-base truncate">{admission.bed_number}</p>
+                <p className="text-xs text-accent-foreground sm:text-sm">Bed</p>
+                <p className="truncate text-sm font-semibold sm:text-base">
+                  {admission.bed_number}
+                </p>
               </div>
             </div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardContent className="p-3 sm:pt-6 sm:p-6">
+          <CardContent className="p-3 sm:p-6 sm:pt-6">
             <div className="flex items-center gap-2 sm:gap-3">
-              <div className="p-1.5 sm:p-2 rounded-lg bg-purple-100 dark:bg-purple-900 shrink-0">
-                <Calendar className="h-4 w-4 sm:h-5 sm:w-5 text-purple-600 dark:text-purple-400" />
+              <div className="shrink-0 rounded-lg bg-purple-100 p-1.5 dark:bg-purple-900 sm:p-2">
+                <Calendar className="h-4 w-4 text-purple-600 dark:text-purple-400 sm:h-5 sm:w-5" />
               </div>
               <div className="min-w-0">
-                <p className="text-xs sm:text-sm text-accent-foreground">Admitted</p>
-                <p className="font-semibold text-sm sm:text-base truncate">{formatDate(admission.admission_date)}</p>
+                <p className="text-xs text-accent-foreground sm:text-sm">Admitted</p>
+                <p className="truncate text-sm font-semibold sm:text-base">
+                  {formatDate(admission.admission_date)}
+                </p>
               </div>
             </div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardContent className="p-3 sm:pt-6 sm:p-6">
+          <CardContent className="p-3 sm:p-6 sm:pt-6">
             <div className="flex items-center gap-2 sm:gap-3">
-              <div className="p-1.5 sm:p-2 rounded-lg bg-orange-100 dark:bg-orange-900 shrink-0">
-                <Clock className="h-4 w-4 sm:h-5 sm:w-5 text-orange-600 dark:text-orange-400" />
+              <div className="shrink-0 rounded-lg bg-orange-100 p-1.5 dark:bg-orange-900 sm:p-2">
+                <Clock className="h-4 w-4 text-orange-600 dark:text-orange-400 sm:h-5 sm:w-5" />
               </div>
               <div className="min-w-0">
-                <p className="text-xs sm:text-sm text-accent-foreground">Days</p>
-                <p className="font-semibold text-sm sm:text-base">{daysAdmitted} day{daysAdmitted !== 1 ? 's' : ''}</p>
+                <p className="text-xs text-accent-foreground sm:text-sm">Days</p>
+                <p className="text-sm font-semibold sm:text-base">
+                  {daysAdmitted} day{daysAdmitted !== 1 ? 's' : ''}
+                </p>
               </div>
             </div>
           </CardContent>
@@ -866,42 +932,70 @@ export default function AdmissionDetailPage() {
 
       {/* Tabs */}
       <Tabs defaultValue="overview" className="space-y-4">
-        <TabsList className={`w-full grid h-auto ${isMaternityCase ? 'grid-cols-8' : 'grid-cols-6'}`}>
-          <TabsTrigger value="overview" className="text-xs sm:text-sm md:text-base md:data-[state=active]:text-lg md:data-[state=active]:font-semibold transition-all">
+        <TabsList
+          className={`grid h-auto w-full ${isMaternityCase ? 'grid-cols-8' : 'grid-cols-6'}`}
+        >
+          <TabsTrigger
+            value="overview"
+            className="text-xs transition-all sm:text-sm md:text-base md:data-[state=active]:text-lg md:data-[state=active]:font-semibold"
+          >
             <span className="sm:hidden">Info</span>
             <span className="hidden sm:inline">Overview</span>
           </TabsTrigger>
-          <TabsTrigger value="ward-rounds" className="text-xs sm:text-sm md:text-base md:data-[state=active]:text-lg md:data-[state=active]:font-semibold transition-all">
+          <TabsTrigger
+            value="ward-rounds"
+            className="text-xs transition-all sm:text-sm md:text-base md:data-[state=active]:text-lg md:data-[state=active]:font-semibold"
+          >
             <span className="sm:hidden">Rounds</span>
             <span className="hidden sm:inline">Ward Rounds</span>
           </TabsTrigger>
-          <TabsTrigger value="charts" className="text-xs sm:text-sm md:text-base md:data-[state=active]:text-lg md:data-[state=active]:font-semibold transition-all">
+          <TabsTrigger
+            value="charts"
+            className="text-xs transition-all sm:text-sm md:text-base md:data-[state=active]:text-lg md:data-[state=active]:font-semibold"
+          >
             <span className="sm:hidden">Charts</span>
             <span className="hidden sm:inline">Observations</span>
           </TabsTrigger>
-          <TabsTrigger value="kardex" className="text-xs sm:text-sm md:text-base md:data-[state=active]:text-lg md:data-[state=active]:font-semibold transition-all">
+          <TabsTrigger
+            value="kardex"
+            className="text-xs transition-all sm:text-sm md:text-base md:data-[state=active]:text-lg md:data-[state=active]:font-semibold"
+          >
             <span className="sm:hidden">Kardex</span>
             <span className="hidden sm:inline">Nursing Kardex</span>
           </TabsTrigger>
-          <TabsTrigger value="orders" className="text-xs sm:text-sm md:text-base md:data-[state=active]:text-lg md:data-[state=active]:font-semibold transition-all">Orders</TabsTrigger>
-          <TabsTrigger value="comments" className="text-xs sm:text-sm md:text-base md:data-[state=active]:text-lg md:data-[state=active]:font-semibold transition-all">
-            <MessageCircle className="h-3.5 w-3.5 mr-1 hidden sm:inline" />
+          <TabsTrigger
+            value="orders"
+            className="text-xs transition-all sm:text-sm md:text-base md:data-[state=active]:text-lg md:data-[state=active]:font-semibold"
+          >
+            Orders
+          </TabsTrigger>
+          <TabsTrigger
+            value="comments"
+            className="text-xs transition-all sm:text-sm md:text-base md:data-[state=active]:text-lg md:data-[state=active]:font-semibold"
+          >
+            <MessageCircle className="mr-1 hidden h-3.5 w-3.5 sm:inline" />
             <span className="sm:hidden">Notes</span>
             <span className="hidden sm:inline">Comments</span>
             {admissionCommentCount > 0 && (
-              <Badge variant="secondary" className="ml-1 h-4 min-w-4 px-1 text-[10px] rounded-full">
+              <Badge variant="secondary" className="ml-1 h-4 min-w-4 rounded-full px-1 text-[10px]">
                 {admissionCommentCount}
               </Badge>
             )}
           </TabsTrigger>
           {isMaternityCase && (
-            <TabsTrigger value="partograph" className="text-xs sm:text-sm md:text-base md:data-[state=active]:text-lg md:data-[state=active]:font-semibold transition-all">
+            <TabsTrigger
+              value="partograph"
+              className="text-xs transition-all sm:text-sm md:text-base md:data-[state=active]:text-lg md:data-[state=active]:font-semibold"
+            >
               <span className="sm:hidden">Parto</span>
               <span className="hidden sm:inline">Partograph</span>
             </TabsTrigger>
           )}
           {isMaternityCase && (
-            <TabsTrigger value="delivery" className="text-xs sm:text-sm md:text-base md:data-[state=active]:text-lg md:data-[state=active]:font-semibold transition-all">
+            <TabsTrigger
+              value="delivery"
+              className="text-xs transition-all sm:text-sm md:text-base md:data-[state=active]:text-lg md:data-[state=active]:font-semibold"
+            >
               <span className="sm:hidden">Delivery</span>
               <span className="hidden sm:inline">Delivery</span>
             </TabsTrigger>
@@ -927,12 +1021,18 @@ export default function AdmissionDetailPage() {
                   {pendingReviews.map((review) => (
                     <div
                       key={review.id}
-                      className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between p-3 rounded-lg bg-background border"
+                      className="flex flex-col gap-2 rounded-lg border bg-background p-3 sm:flex-row sm:items-center sm:justify-between"
                     >
                       <div className="space-y-1">
                         <div className="flex items-center gap-2">
                           <Badge
-                            variant={review.urgency === 'STAT' ? 'destructive' : review.urgency === 'URGENT' ? 'warning' : 'secondary'}
+                            variant={
+                              review.urgency === 'STAT'
+                                ? 'destructive'
+                                : review.urgency === 'URGENT'
+                                  ? 'warning'
+                                  : 'secondary'
+                            }
                           >
                             {review.urgency_display || review.urgency}
                           </Badge>
@@ -940,20 +1040,23 @@ export default function AdmissionDetailPage() {
                             {review.review_type_display || review.review_type.replace('_', ' ')}
                           </span>
                           {review.status === 'IN_PROGRESS' && (
-                            <Badge variant="info" className="text-xs">In Progress</Badge>
+                            <Badge variant="info" className="text-xs">
+                              In Progress
+                            </Badge>
                           )}
                         </div>
-                        <p className="text-sm text-muted-foreground line-clamp-1">{review.reason}</p>
+                        <p className="line-clamp-1 text-sm text-muted-foreground">
+                          {review.reason}
+                        </p>
                         <p className="text-xs text-muted-foreground">
-                          Requested by {review.requested_by_username} • {formatDateTime(review.requested_at)}
+                          Requested by {review.requested_by_username} •{' '}
+                          {formatDateTime(review.requested_at)}
                         </p>
                       </div>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        asChild
-                      >
-                        <Link href={`/admissions/${admission.id}/ward-round/new?review_request=${review.id}&review_type=${review.review_type}`}>
+                      <Button size="sm" variant="outline" asChild>
+                        <Link
+                          href={`/admissions/${admission.id}/ward-round/new?review_request=${review.id}&review_type=${review.review_type}`}
+                        >
                           Conduct Review
                         </Link>
                       </Button>
@@ -1000,7 +1103,11 @@ export default function AdmissionDetailPage() {
                 <InfoRow
                   icon={CalendarClock}
                   label="Expected Discharge"
-                  value={admission.expected_discharge_date ? formatDateTime(admission.expected_discharge_date) : 'Not set'}
+                  value={
+                    admission.expected_discharge_date
+                      ? formatDateTime(admission.expected_discharge_date)
+                      : 'Not set'
+                  }
                 />
                 {admission.constraint_override && (
                   <InfoRow
@@ -1023,7 +1130,7 @@ export default function AdmissionDetailPage() {
                 )}
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-accent-foreground whitespace-pre-wrap break-words">
+                <p className="whitespace-pre-wrap break-words text-sm text-accent-foreground">
                   {latestClinicalNotes || 'No clinical notes recorded.'}
                 </p>
               </CardContent>
@@ -1045,16 +1152,23 @@ export default function AdmissionDetailPage() {
                   <Skeleton className="h-16 w-full" />
                 </div>
               ) : !clinicalSummary || clinicalSummary.entries.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No clinical summary entries available for this admission.</p>
+                <p className="text-sm text-muted-foreground">
+                  No clinical summary entries available for this admission.
+                </p>
               ) : (
                 <div className="space-y-3">
                   {clinicalSummary.entries.map((entry, index) => (
-                    <div key={`${entry.timestamp}-${entry.source}-${index}`} className="rounded-md border p-3">
+                    <div
+                      key={`${entry.timestamp}-${entry.source}-${index}`}
+                      className="rounded-md border p-3"
+                    >
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <Badge variant="outline">{entry.source}</Badge>
-                        <span className="text-xs text-muted-foreground">{formatDateTime(entry.timestamp)}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {formatDateTime(entry.timestamp)}
+                        </span>
                       </div>
-                      <p className="mt-2 text-sm whitespace-pre-wrap">{entry.content}</p>
+                      <p className="mt-2 whitespace-pre-wrap text-sm">{entry.content}</p>
                       <p className="mt-1 text-xs text-muted-foreground">By {entry.author}</p>
                     </div>
                   ))}
@@ -1070,7 +1184,7 @@ export default function AdmissionDetailPage() {
                 <CardTitle className="text-lg">Diet</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-sm break-words">
+                <p className="break-words text-sm">
                   {admission.diet || 'Regular diet (no restrictions specified)'}
                 </p>
               </CardContent>
@@ -1081,7 +1195,7 @@ export default function AdmissionDetailPage() {
                 <CardTitle className="text-lg">Special Instructions</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-accent-foreground break-words">
+                <p className="break-words text-sm text-accent-foreground">
                   {admission.special_instructions || 'No special instructions.'}
                 </p>
               </CardContent>
@@ -1100,11 +1214,15 @@ export default function AdmissionDetailPage() {
               onVasopressors={icuReadiness?.on_vasopressors ?? undefined}
               onMechanicalVentilation={icuReadiness?.on_mechanical_ventilation ?? undefined}
               urineOutputMlDay={icuReadiness?.urine_output_ml_day ?? undefined}
-              readinessPreflight={icuReadiness ? {
-                missingRequired: icuReadiness.missing_required,
-                missingAdvisory: icuReadiness.missing_advisory,
-                canRunPredict: icuReadiness.can_run_predict,
-              } : undefined}
+              readinessPreflight={
+                icuReadiness
+                  ? {
+                      missingRequired: icuReadiness.missing_required,
+                      missingAdvisory: icuReadiness.missing_advisory,
+                      canRunPredict: icuReadiness.can_run_predict,
+                    }
+                  : undefined
+              }
               admissionDiagnosis={
                 admission.admitting_diagnosis_text || admission.admitting_diagnosis
               }
@@ -1121,29 +1239,38 @@ export default function AdmissionDetailPage() {
                 admission.admitting_diagnosis_text || admission.admitting_diagnosis || ''
               }
               admissionType={
-                admission.ward_type === 'SURGICAL' ? 'surgical'
-                  : admission.ward_type === 'MATERNITY' ? 'obstetric'
-                  : admission.ward_type === 'PEDIATRIC' ? 'pediatric'
-                  : 'medical'
+                admission.ward_type === 'SURGICAL'
+                  ? 'surgical'
+                  : admission.ward_type === 'MATERNITY'
+                    ? 'obstetric'
+                    : admission.ward_type === 'PEDIATRIC'
+                      ? 'pediatric'
+                      : 'medical'
               }
               daysAdmitted={daysAdmitted}
-              vitalsHistory={wardRounds?.results?.map((wr) => {
-                const v = wr.vital_signs ?? wr;
-                const bpStr = typeof v.blood_pressure === 'string' ? v.blood_pressure : undefined;
-                const bp = bpStr?.split('/').map(Number);
-                return {
-                  timestamp: `${wr.round_date}T${wr.round_time || '00:00:00'}`,
-                  heart_rate: v.pulse ?? null,
-                  systolic_bp: bp?.[0] ?? null,
-                  diastolic_bp: bp?.[1] ?? null,
-                  temperature: v.temperature != null ? Number(v.temperature) : null,
-                  respiratory_rate: v.respiratory_rate ?? null,
-                  oxygen_saturation: v.spo2 != null ? Number(v.spo2) : null,
-                };
-              }).filter((v) =>
-                v.heart_rate != null || v.temperature != null || v.oxygen_saturation != null ||
-                v.systolic_bp != null || v.respiratory_rate != null
-              )}
+              vitalsHistory={wardRounds?.results
+                ?.map((wr) => {
+                  const v = wr.vital_signs ?? wr;
+                  const bpStr = typeof v.blood_pressure === 'string' ? v.blood_pressure : undefined;
+                  const bp = bpStr?.split('/').map(Number);
+                  return {
+                    timestamp: `${wr.round_date}T${wr.round_time || '00:00:00'}`,
+                    heart_rate: v.pulse ?? null,
+                    systolic_bp: bp?.[0] ?? null,
+                    diastolic_bp: bp?.[1] ?? null,
+                    temperature: v.temperature != null ? Number(v.temperature) : null,
+                    respiratory_rate: v.respiratory_rate ?? null,
+                    oxygen_saturation: v.spo2 != null ? Number(v.spo2) : null,
+                  };
+                })
+                .filter(
+                  (v) =>
+                    v.heart_rate != null ||
+                    v.temperature != null ||
+                    v.oxygen_saturation != null ||
+                    v.systolic_bp != null ||
+                    v.respiratory_rate != null
+                )}
               currentMedications={admission.clinical_context?.current_medications}
               canAmbulate={resolveCanAmbulate(kardex?.mobility_status)}
               canTolerateOral={resolveCanTolerateOral(kardex?.dietary_requirements)}
@@ -1162,9 +1289,7 @@ export default function AdmissionDetailPage() {
                 admission.admitting_diagnosis_text || admission.admitting_diagnosis || undefined
               }
               patientAge={admission.patient_age ?? 0}
-              patientSex={
-                admission.patient_gender === 'F' ? 'female' : 'male'
-              }
+              patientSex={admission.patient_gender === 'F' ? 'female' : 'male'}
               comorbidities={admission.clinical_context?.comorbidities}
               currentMedications={admission.clinical_context?.current_medications}
               labResults={admission.clinical_context?.lab_results_summary}
@@ -1181,7 +1306,10 @@ export default function AdmissionDetailPage() {
               allergies={
                 admission.clinical_context?.allergies_structured?.length
                   ? admission.clinical_context.allergies_structured
-                  : kardex?.allergies?.split(',').map((s: string) => s.trim()).filter(Boolean)
+                  : kardex?.allergies
+                      ?.split(',')
+                      .map((s: string) => s.trim())
+                      .filter(Boolean)
               }
               autoTrigger={autoTriggerCarePlan}
               onAutoTriggerConsumed={() => setAutoTriggerCarePlan(false)}
@@ -1204,8 +1332,11 @@ export default function AdmissionDetailPage() {
               ].filter(Boolean)}
               patientAge={admission.patient_age ?? undefined}
               patientSex={
-                admission.patient_gender === 'F' ? 'F' :
-                admission.patient_gender === 'M' ? 'M' : undefined
+                admission.patient_gender === 'F'
+                  ? 'F'
+                  : admission.patient_gender === 'M'
+                    ? 'M'
+                    : undefined
               }
               autoTrigger={autoTriggerInvestigations}
               onAutoTriggerConsumed={() => setAutoTriggerInvestigations(false)}
@@ -1215,12 +1346,12 @@ export default function AdmissionDetailPage() {
 
         {/* Ward Rounds Tab */}
         <TabsContent value="ward-rounds" className="space-y-4">
-          <div className="flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-center">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <h3 className="text-lg font-semibold">Ward Round History</h3>
             {admission.admission_status === 'ACTIVE' && (
               <Button asChild className="w-full sm:w-auto">
                 <Link href={`/admissions/${admission.id}/ward-round/new`}>
-                  <Plus className="h-4 w-4 mr-2" />
+                  <Plus className="mr-2 h-4 w-4" />
                   <span className="sm:hidden">New Round</span>
                   <span className="hidden sm:inline">New Ward Round</span>
                 </Link>
@@ -1233,7 +1364,7 @@ export default function AdmissionDetailPage() {
           ) : (wardRounds?.results?.length ?? 0) === 0 ? (
             <Card>
               <CardContent className="py-8 text-center">
-                <Stethoscope className="h-12 w-12 mx-auto text-accent-foreground mb-4" />
+                <Stethoscope className="mx-auto mb-4 h-12 w-12 text-accent-foreground" />
                 <p className="text-accent-foreground">No ward rounds recorded yet.</p>
               </CardContent>
             </Card>
@@ -1241,27 +1372,31 @@ export default function AdmissionDetailPage() {
             <div className="space-y-4">
               {wardRounds?.results?.map((round) => (
                 <Link key={round.id} href={`/admissions/${admission.id}/ward-round/${round.id}`}>
-                  <Card className="cursor-pointer hover:bg-muted/50 transition-colors">
+                  <Card className="cursor-pointer transition-colors hover:bg-muted/50">
                     <CardHeader className="pb-2">
                       <div className="flex items-center justify-between">
                         <CardTitle className="text-base">
                           {formatDateTime(round.round_date)}
                         </CardTitle>
-                        <Badge variant="outline">{round.condition_status_display || round.condition_status}</Badge>
+                        <Badge variant="outline">
+                          {round.condition_status_display || round.condition_status}
+                        </Badge>
                       </div>
-                      <CardDescription>
-                        Conducted by {round.conducted_by_username}
-                      </CardDescription>
+                      <CardDescription>Conducted by {round.conducted_by_username}</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-2">
                       <div>
                         <p className="text-sm font-medium">Clinical Notes</p>
-                        <p className="text-sm text-accent-foreground line-clamp-2">{round.clinical_notes}</p>
+                        <p className="line-clamp-2 text-sm text-accent-foreground">
+                          {round.clinical_notes}
+                        </p>
                       </div>
                       {round.plan && (
                         <div>
                           <p className="text-sm font-medium">Plan</p>
-                          <p className="text-sm text-accent-foreground line-clamp-2">{round.plan}</p>
+                          <p className="line-clamp-2 text-sm text-accent-foreground">
+                            {round.plan}
+                          </p>
                         </div>
                       )}
                     </CardContent>
@@ -1279,12 +1414,12 @@ export default function AdmissionDetailPage() {
             isActive={admission.admission_status === 'ACTIVE'}
           />
 
-          <div className="flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-center">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <h3 className="text-lg font-semibold">Nursing Kardex</h3>
             {kardex && (
               <Button variant="outline" size="sm" asChild className="w-full sm:w-auto">
                 <Link href={`/admissions/${admission.id}/kardex`}>
-                  <ClipboardList className="h-4 w-4 mr-2" />
+                  <ClipboardList className="mr-2 h-4 w-4" />
                   <span className="sm:hidden">View Kardex</span>
                   <span className="hidden sm:inline">View Full Kardex</span>
                 </Link>
@@ -1297,9 +1432,9 @@ export default function AdmissionDetailPage() {
           ) : !kardex ? (
             <Card>
               <CardContent className="py-8 text-center">
-                <ClipboardList className="h-12 w-12 mx-auto text-accent-foreground mb-4" />
+                <ClipboardList className="mx-auto mb-4 h-12 w-12 text-accent-foreground" />
                 <p className="text-accent-foreground">No nursing kardex found.</p>
-                <p className="text-sm text-accent-foreground mt-1">
+                <p className="mt-1 text-sm text-accent-foreground">
                   A kardex is automatically created when a patient is admitted.
                 </p>
               </CardContent>
@@ -1314,7 +1449,9 @@ export default function AdmissionDetailPage() {
                   <CardContent className="space-y-3">
                     <div>
                       <p className="text-sm font-medium">Mobility Status</p>
-                      <p className="text-sm text-accent-foreground">{kardex.mobility_status || 'Not specified'}</p>
+                      <p className="text-sm text-accent-foreground">
+                        {kardex.mobility_status || 'Not specified'}
+                      </p>
                     </div>
                     <div>
                       <p className="text-sm font-medium">Diet</p>
@@ -1322,7 +1459,9 @@ export default function AdmissionDetailPage() {
                     </div>
                     <div>
                       <p className="text-sm font-medium">Allergies</p>
-                      <p className="text-sm text-accent-foreground">{kardex.allergies || 'None known'}</p>
+                      <p className="text-sm text-accent-foreground">
+                        {kardex.allergies || 'None known'}
+                      </p>
                     </div>
                     <div className="flex gap-4">
                       <div>
@@ -1333,7 +1472,13 @@ export default function AdmissionDetailPage() {
                       </div>
                       <div>
                         <p className="text-sm font-medium">Pressure Sore Risk</p>
-                        <Badge variant={kardex.pressure_sore_risk && kardex.pressure_sore_risk !== 'LOW' ? 'warning' : 'secondary'}>
+                        <Badge
+                          variant={
+                            kardex.pressure_sore_risk && kardex.pressure_sore_risk !== 'LOW'
+                              ? 'warning'
+                              : 'secondary'
+                          }
+                        >
                           {kardex.pressure_sore_risk || 'Low'}
                         </Badge>
                       </div>
@@ -1349,8 +1494,9 @@ export default function AdmissionDetailPage() {
                     {kardex.shift_notes && kardex.shift_notes.length > 0 ? (
                       <div className="space-y-2">
                         {kardex.shift_notes.slice(0, 3).map((note) => (
-                          <p key={note.id} className="text-sm text-accent-foreground line-clamp-2">
-                            <span className="font-medium">{note.nurse_username}:</span> {note.content || note.notes}
+                          <p key={note.id} className="line-clamp-2 text-sm text-accent-foreground">
+                            <span className="font-medium">{note.nurse_username}:</span>{' '}
+                            {note.content || note.notes}
                           </p>
                         ))}
                       </div>
@@ -1370,7 +1516,8 @@ export default function AdmissionDetailPage() {
                       <div className="flex items-center gap-2">
                         {(() => {
                           const activeCount = kardex.care_plan_entries.filter(
-                            (e: { status: string }) => e.status === 'ACTIVE' || e.status === 'ONGOING'
+                            (e: { status: string }) =>
+                              e.status === 'ACTIVE' || e.status === 'ONGOING'
                           ).length;
                           return activeCount > 0 ? (
                             <Badge variant="default">{activeCount} active</Badge>
@@ -1379,36 +1526,54 @@ export default function AdmissionDetailPage() {
                           );
                         })()}
                         <Button variant="outline" size="sm" asChild>
-                          <Link href={`/admissions/${admission.id}/kardex`}>
-                            Manage
-                          </Link>
+                          <Link href={`/admissions/${admission.id}/kardex`}>Manage</Link>
                         </Button>
                       </div>
                     </div>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-2">
-                      {kardex.care_plan_entries.slice(0, 4).map((entry: { id: number; status: string; status_display?: string; nursing_diagnosis: string; recorded_at: string }) => (
-                        <div key={entry.id} className={`flex items-start justify-between gap-2 py-1.5 ${entry.status === 'RESOLVED' || entry.status === 'DISCONTINUED' ? 'opacity-60' : ''}`}>
-                          <div className="min-w-0 flex-1">
-                            <p className="text-sm font-medium truncate">{entry.nursing_diagnosis}</p>
-                            <p className="text-xs text-muted-foreground">{formatDateTime(entry.recorded_at)}</p>
-                          </div>
-                          <Badge
-                            variant={
-                              entry.status === 'ACTIVE' ? 'default'
-                              : entry.status === 'RESOLVED' ? 'success'
-                              : entry.status === 'DISCONTINUED' ? 'destructive'
-                              : 'warning'
-                            }
-                            className="shrink-0 text-xs"
-                          >
-                            {entry.status_display || entry.status}
-                          </Badge>
-                        </div>
-                      ))}
+                      {kardex.care_plan_entries
+                        .slice(0, 4)
+                        .map(
+                          (entry: {
+                            id: number;
+                            status: string;
+                            status_display?: string;
+                            nursing_diagnosis: string;
+                            recorded_at: string;
+                          }) => (
+                            <div
+                              key={entry.id}
+                              className={`flex items-start justify-between gap-2 py-1.5 ${entry.status === 'RESOLVED' || entry.status === 'DISCONTINUED' ? 'opacity-60' : ''}`}
+                            >
+                              <div className="min-w-0 flex-1">
+                                <p className="truncate text-sm font-medium">
+                                  {entry.nursing_diagnosis}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  {formatDateTime(entry.recorded_at)}
+                                </p>
+                              </div>
+                              <Badge
+                                variant={
+                                  entry.status === 'ACTIVE'
+                                    ? 'default'
+                                    : entry.status === 'RESOLVED'
+                                      ? 'success'
+                                      : entry.status === 'DISCONTINUED'
+                                        ? 'destructive'
+                                        : 'warning'
+                                }
+                                className="shrink-0 text-xs"
+                              >
+                                {entry.status_display || entry.status}
+                              </Badge>
+                            </div>
+                          )
+                        )}
                       {kardex.care_plan_entries.length > 4 && (
-                        <p className="text-xs text-muted-foreground text-center pt-1">
+                        <p className="pt-1 text-center text-xs text-muted-foreground">
                           +{kardex.care_plan_entries.length - 4} more entries —{' '}
                           <Link href={`/admissions/${admission.id}/kardex`} className="underline">
                             View all
@@ -1436,8 +1601,8 @@ export default function AdmissionDetailPage() {
         {/* Comments Tab */}
         <TabsContent value="comments" className="space-y-4">
           <Card>
-            <CardHeader className="px-3 sm:px-6 py-3 sm:py-4">
-              <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+            <CardHeader className="px-3 py-3 sm:px-6 sm:py-4">
+              <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
                 <MessageCircle className="h-4 w-4 text-muted-foreground" />
                 Clinical Comments
               </CardTitle>
@@ -1492,10 +1657,11 @@ export default function AdmissionDetailPage() {
             ) : (
               <Card>
                 <CardContent className="py-8 text-center">
-                  <Activity className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                  <Activity className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
                   <p className="font-medium">MCH Registration Required</p>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    A partograph requires a linked MCH registration. Create an MCH registration for this patient and link it to this admission.
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    A partograph requires a linked MCH registration. Create an MCH registration for
+                    this patient and link it to this admission.
                   </p>
                   <Button variant="outline" className="mt-4" asChild>
                     <Link href={`/mch/new?patient=${admission.patient}`}>
@@ -1516,10 +1682,11 @@ export default function AdmissionDetailPage() {
             ) : (
               <Card>
                 <CardContent className="py-8 text-center">
-                  <Activity className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                  <Activity className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
                   <p className="font-medium">MCH Registration Required</p>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    A delivery record requires a linked MCH registration. Create an MCH registration for this patient first.
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    A delivery record requires a linked MCH registration. Create an MCH registration
+                    for this patient first.
                   </p>
                   <Button variant="outline" className="mt-4" asChild>
                     <Link href={`/mch/new?patient=${admission.patient}`}>
@@ -1538,7 +1705,8 @@ export default function AdmissionDetailPage() {
           <DialogHeader>
             <DialogTitle>Set expected discharge</DialogTitle>
             <DialogDescription>
-              Record the expected discharge date so the bed board can plan upcoming releases and allocation pressure.
+              Record the expected discharge date so the bed board can plan upcoming releases and
+              allocation pressure.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
@@ -1552,7 +1720,8 @@ export default function AdmissionDetailPage() {
               />
             </div>
             <div className="rounded-lg border bg-muted/30 p-3 text-sm text-muted-foreground">
-              Use this for realistic planning. If the patient’s readiness changes after rounds, update the time so the bed board stays accurate.
+              Use this for realistic planning. If the patient’s readiness changes after rounds,
+              update the time so the bed board stays accurate.
             </div>
           </div>
           <DialogFooter>
@@ -1571,7 +1740,8 @@ export default function AdmissionDetailPage() {
           <DialogHeader>
             <DialogTitle>Override bed assignment</DialogTitle>
             <DialogDescription>
-              Reassign this admission to another available bed in the current ward. Use the transfer workflow for a ward change.
+              Reassign this admission to another available bed in the current ward. Use the transfer
+              workflow for a ward change.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
@@ -1582,7 +1752,7 @@ export default function AdmissionDetailPage() {
                   <SelectValue placeholder="Select a replacement bed" />
                 </SelectTrigger>
                 <SelectContent>
-                  {((availableBeds as any)?.results ?? availableBeds ?? []).map((bed: any) => (
+                  {((availableBeds?.results ?? []) as InpatientBed[]).map((bed) => (
                     <SelectItem key={bed.id} value={String(bed.id)}>
                       {bed.bed_number}
                     </SelectItem>
@@ -1593,7 +1763,10 @@ export default function AdmissionDetailPage() {
 
             <div className="space-y-2">
               <Label htmlFor="override-reason">Override reason</Label>
-              <Select value={overrideReason} onValueChange={(value) => setOverrideReason(value as OverrideReason)}>
+              <Select
+                value={overrideReason}
+                onValueChange={(value) => setOverrideReason(value as OverrideReason)}
+              >
                 <SelectTrigger id="override-reason">
                   <SelectValue />
                 </SelectTrigger>
@@ -1647,7 +1820,7 @@ function InfoRow({
   icon: Icon,
   label,
   value,
-  link
+  link,
 }: {
   icon: React.ComponentType<{ className?: string }>;
   label: string;
@@ -1655,11 +1828,13 @@ function InfoRow({
   link?: string;
 }) {
   const content = (
-    <div className="flex items-start gap-3 min-w-0">
-      <Icon className="h-4 w-4 mt-0.5 text-accent-foreground shrink-0" />
-      <div className="flex-1 min-w-0 overflow-hidden">
+    <div className="flex min-w-0 items-start gap-3">
+      <Icon className="mt-0.5 h-4 w-4 shrink-0 text-accent-foreground" />
+      <div className="min-w-0 flex-1 overflow-hidden">
         <p className="text-sm text-accent-foreground">{label}</p>
-        <p className={`text-sm font-medium break-words ${link ? 'text-primary hover:underline' : ''}`}>
+        <p
+          className={`break-words text-sm font-medium ${link ? 'text-primary hover:underline' : ''}`}
+        >
           {value || '—'}
         </p>
       </div>
@@ -1674,7 +1849,7 @@ function InfoRow({
 
 function AdmissionDetailSkeleton() {
   return (
-    <div className="container mx-auto py-6 space-y-6">
+    <div className="container mx-auto space-y-6 py-6">
       <div className="flex items-center gap-4">
         <Skeleton className="h-10 w-10" />
         <div className="space-y-2">
@@ -1714,7 +1889,9 @@ function KardexSkeleton() {
 /**
  * Get badge variant based on admission status
  */
-function getStatusVariant(status: string): 'default' | 'secondary' | 'destructive' | 'outline' | 'success' | 'warning' {
+function getStatusVariant(
+  status: string
+): 'default' | 'secondary' | 'destructive' | 'outline' | 'success' | 'warning' {
   switch (status) {
     case 'ACTIVE':
       return 'success';

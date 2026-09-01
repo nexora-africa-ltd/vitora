@@ -9,10 +9,10 @@ import { AuthProvider, useAuth } from '@/lib/auth/context';
 
 // Polyfill clearImmediate and setImmediate for JSDOM environment
 if (typeof global.clearImmediate === 'undefined') {
-  (global as any).clearImmediate = (id: any) => clearTimeout(id);
+  (global as unknown).clearImmediate = (id: unknown) => clearTimeout(id);
 }
 if (typeof global.setImmediate === 'undefined') {
-  (global as any).setImmediate = (fn: () => void) => setTimeout(fn, 0);
+  (global as unknown).setImmediate = (fn: () => void) => setTimeout(fn, 0);
 }
 
 // Mock fetch using jest.spyOn for better compatibility with JSDOM
@@ -55,9 +55,9 @@ describe('AuthProvider', () => {
     localStorageStore = {};
     localStorageMock.getItem.mockImplementation((key: string) => localStorageStore[key] || null);
     // Set up fetch mock before each test
-    mockFetch = jest.spyOn(global, 'fetch').mockImplementation(() =>
-      Promise.reject(new Error('Unmocked fetch call'))
-    );
+    mockFetch = jest
+      .spyOn(global, 'fetch')
+      .mockImplementation(() => Promise.reject(new Error('Unmocked fetch call')));
   });
 
   afterEach(() => {
@@ -140,11 +140,12 @@ describe('AuthProvider', () => {
       mockFetch.mockImplementationOnce(() =>
         Promise.resolve({
           ok: true,
-          json: () => Promise.resolve({
-            access: 'access_token',
-            refresh: 'refresh_token',
-            user: mockUser,
-          }),
+          json: () =>
+            Promise.resolve({
+              access: 'access_token',
+              refresh: 'refresh_token',
+              user: mockUser,
+            }),
         })
       );
 
@@ -164,10 +165,7 @@ describe('AuthProvider', () => {
         expect(screen.getByTestId('authenticated')).toHaveTextContent('true');
       });
       expect(screen.getByTestId('user')).toHaveTextContent('testuser');
-      expect(localStorageMock.setItem).toHaveBeenCalledWith(
-        'vitora_access_token',
-        'access_token'
-      );
+      expect(localStorageMock.setItem).toHaveBeenCalledWith('vitora_access_token', 'access_token');
     });
 
     it('should throw error on failed login', async () => {
@@ -211,9 +209,12 @@ describe('AuthProvider', () => {
       });
 
       // Allow time for the async error handling flow
-      await waitFor(() => {
-        expect(screen.getByTestId('error')).toBeInTheDocument();
-      }, { timeout: 5000 });
+      await waitFor(
+        () => {
+          expect(screen.getByTestId('error')).toBeInTheDocument();
+        },
+        { timeout: 5000 }
+      );
 
       // The error message should contain the detail from the failed response
       expect(screen.getByTestId('error')).toHaveTextContent('Invalid credentials');
@@ -271,9 +272,7 @@ describe('useAuth', () => {
     // Suppress console.error for this test
     const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
 
-    expect(() => render(<TestComponent />)).toThrow(
-      'useAuth must be used within an AuthProvider'
-    );
+    expect(() => render(<TestComponent />)).toThrow('useAuth must be used within an AuthProvider');
 
     consoleSpy.mockRestore();
   });

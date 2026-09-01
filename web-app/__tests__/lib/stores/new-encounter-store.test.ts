@@ -34,8 +34,12 @@ describe('useNewEncounterStore', () => {
     });
     useNewEncounterStore.getState().setRecordVitalsNow(true);
     useNewEncounterStore.getState().setVitals({ temperature: 38.5, pulse: 120, spo2: 93 });
-    useNewEncounterStore.getState().setHistory({ allergies: 'Penicillin', social_history: 'Smoker' });
-    useNewEncounterStore.getState().setNotes({ assessment: 'Likely infection', notes: 'Urgent review' });
+    useNewEncounterStore
+      .getState()
+      .setHistory({ allergies: 'Penicillin', social_history: 'Smoker' });
+    useNewEncounterStore
+      .getState()
+      .setNotes({ assessment: 'Likely infection', notes: 'Urgent review' });
 
     expect(useNewEncounterStore.getState().getPatient().id).toBe(1);
     expect(useNewEncounterStore.getState().getDetails()).toEqual({
@@ -54,9 +58,15 @@ describe('useNewEncounterStore', () => {
   it('manages diagnoses and section completion', () => {
     useNewEncounterStore.getState().initSession();
 
-    useNewEncounterStore.getState().addDiagnosis({ icd10_code: 'A01', diagnosis_text: 'Typhoid' } as never);
-    useNewEncounterStore.getState().addDiagnosis({ icd10_code: 'B02', diagnosis_text: 'Zoster' } as never);
-    useNewEncounterStore.getState().updateDiagnosis(1, { icd10_code: 'B03', diagnosis_text: 'Updated' } as never);
+    useNewEncounterStore
+      .getState()
+      .addDiagnosis({ icd10_code: 'A01', diagnosis_text: 'Typhoid' } as never);
+    useNewEncounterStore
+      .getState()
+      .addDiagnosis({ icd10_code: 'B02', diagnosis_text: 'Zoster' } as never);
+    useNewEncounterStore
+      .getState()
+      .updateDiagnosis(1, { icd10_code: 'B03', diagnosis_text: 'Updated' } as never);
     useNewEncounterStore.getState().removeDiagnosis(0);
     useNewEncounterStore.getState().markSectionComplete('patient');
     useNewEncounterStore.getState().markSectionComplete('details');
@@ -85,7 +95,9 @@ describe('useNewEncounterStore', () => {
       encounter_date: '2026-03-15',
     });
     useNewEncounterStore.getState().setVitals({ temperature: 37.2, weight: 70 });
-    useNewEncounterStore.getState().setHistory({ allergies: 'Dust', current_medications: 'Paracetamol' });
+    useNewEncounterStore
+      .getState()
+      .setHistory({ allergies: 'Dust', current_medications: 'Paracetamol' });
     useNewEncounterStore.getState().setNotes({
       history_of_present_illness: 'Started two days ago',
       clinical_template: 2,

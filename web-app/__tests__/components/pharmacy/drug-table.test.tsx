@@ -96,7 +96,7 @@ describe('DrugTable', () => {
       // Amoxicillin has 25 stock, reorder level 50 - look for warning icon or low stock text
       // The component uses AlertTriangle icon which has amber/yellow color
       const amoxElements = screen.getAllByText('AMOX500');
-      const amoxRow = amoxElements.find(el => el.closest('tr'))?.closest('tr');
+      const amoxRow = amoxElements.find((el) => el.closest('tr'))?.closest('tr');
       if (amoxRow) {
         // Check for amber/yellow colored element indicating low stock
         const lowStockIndicator = amoxRow.querySelector('[class*="amber"], [class*="yellow"]');
@@ -113,7 +113,7 @@ describe('DrugTable', () => {
 
       // Metformin has 0 stock - look for destructive/red colored element
       const metElements = screen.getAllByText('MET500');
-      const metRow = metElements.find(el => el.closest('tr'))?.closest('tr');
+      const metRow = metElements.find((el) => el.closest('tr'))?.closest('tr');
       if (metRow) {
         // Check for destructive colored element indicating out of stock
         const outOfStockIndicator = metRow.querySelector('[class*="destructive"]');

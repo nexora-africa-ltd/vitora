@@ -144,15 +144,16 @@ describe('usePreTriageQueue', () => {
   it('should filter by triage_requirement', async () => {
     const mandatoryOnly: PaginatedResponse<PreTriageQueueItem> = {
       ...mockPreTriageQueue,
-      results: mockPreTriageQueue.results.filter((r: PreTriageQueueItem) => r.triage_requirement === 'MANDATORY'),
+      results: mockPreTriageQueue.results.filter(
+        (r: PreTriageQueueItem) => r.triage_requirement === 'MANDATORY'
+      ),
       count: 2,
     };
     mockedApi.getPreTriageQueue.mockResolvedValueOnce(mandatoryOnly);
 
-    const { result } = renderHook(
-      () => usePreTriageQueue({ triage_requirement: 'MANDATORY' }),
-      { wrapper: createWrapper() }
-    );
+    const { result } = renderHook(() => usePreTriageQueue({ triage_requirement: 'MANDATORY' }), {
+      wrapper: createWrapper(),
+    });
 
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false);
@@ -160,9 +161,9 @@ describe('usePreTriageQueue', () => {
 
     // Should only have MANDATORY encounters
     expect(result.current.data?.results?.length).toBe(2);
-    expect(
-      result.current.data?.results?.every(r => r.triage_requirement === 'MANDATORY')
-    ).toBe(true);
+    expect(result.current.data?.results?.every((r) => r.triage_requirement === 'MANDATORY')).toBe(
+      true
+    );
 
     // Verify API was called with filter
     expect(mockedApi.getPreTriageQueue).toHaveBeenCalledWith(

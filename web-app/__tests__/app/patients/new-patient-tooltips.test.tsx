@@ -126,9 +126,7 @@ const createTestQueryClient = () =>
 
 const renderWithQueryClient = (ui: React.ReactElement) => {
   const queryClient = createTestQueryClient();
-  return render(
-    <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>
-  );
+  return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>);
 };
 
 describe('NewPatientPage tooltips', () => {

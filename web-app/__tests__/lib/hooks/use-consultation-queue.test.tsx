@@ -57,11 +57,7 @@ const createTestQueryClient = () =>
 const createWrapper = () => {
   const queryClient = createTestQueryClient();
   return function Wrapper({ children }: { children: React.ReactNode }) {
-    return (
-      <QueryClientProvider client={queryClient}>
-        {children}
-      </QueryClientProvider>
-    );
+    return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
   };
 };
 
@@ -158,7 +154,7 @@ describe('useConsultationQueue', () => {
         consultation_status: 'CALLED',
         called_at: new Date().toISOString(),
       };
-      mockedApi.callPatient.mockResolvedValueOnce(calledEncounter as any);
+      mockedApi.callPatient.mockResolvedValueOnce(calledEncounter as unknown);
 
       const { result } = renderHook(() => useCallPatient(), {
         wrapper: createWrapper(),
@@ -203,14 +199,12 @@ describe('useConsultationQueue', () => {
         consultation_status: 'CALLED',
         called_at: new Date().toISOString(),
       };
-      mockedApi.callPatient.mockResolvedValueOnce(calledEncounter as any);
+      mockedApi.callPatient.mockResolvedValueOnce(calledEncounter as unknown);
       mockedApi.getQueue.mockResolvedValue({ results: [mockQueueItem], count: 1 });
 
       const queryClient = createTestQueryClient();
       const wrapper = ({ children }: { children: React.ReactNode }) => (
-        <QueryClientProvider client={queryClient}>
-          {children}
-        </QueryClientProvider>
+        <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
       );
 
       // First, populate the cache
@@ -245,7 +239,7 @@ describe('useConsultationQueue', () => {
         consultation_status: 'IN_PROGRESS',
         consultation_started_at: new Date().toISOString(),
       };
-      mockedApi.startConsultation.mockResolvedValueOnce(inProgressEncounter as any);
+      mockedApi.startConsultation.mockResolvedValueOnce(inProgressEncounter as unknown);
 
       const { result } = renderHook(() => useStartConsultation(), {
         wrapper: createWrapper(),
@@ -296,7 +290,7 @@ describe('useConsultationQueue', () => {
         triage_status: 'BYPASSED',
         triage_bypass_reason: 'STABLE_FOLLOW_UP',
       };
-      mockedApi.bypassTriage.mockResolvedValueOnce(bypassedEncounter as any);
+      mockedApi.bypassTriage.mockResolvedValueOnce(bypassedEncounter as unknown);
 
       const { result } = renderHook(() => useBypassTriage(), {
         wrapper: createWrapper(),
@@ -305,7 +299,7 @@ describe('useConsultationQueue', () => {
       await act(async () => {
         await result.current.mutateAsync({
           encounterId: 1,
-          reason: 'STABLE_FOLLOW_UP'
+          reason: 'STABLE_FOLLOW_UP',
         });
       });
 
@@ -322,7 +316,7 @@ describe('useConsultationQueue', () => {
         triage_status: 'BYPASSED',
         triage_bypass_reason: 'OTHER',
       };
-      mockedApi.bypassTriage.mockResolvedValueOnce(bypassedEncounter as any);
+      mockedApi.bypassTriage.mockResolvedValueOnce(bypassedEncounter as unknown);
 
       const { result } = renderHook(() => useBypassTriage(), {
         wrapper: createWrapper(),
@@ -332,7 +326,7 @@ describe('useConsultationQueue', () => {
         await result.current.mutateAsync({
           encounterId: 1,
           reason: 'OTHER',
-          notes: 'Patient requested direct consultation'
+          notes: 'Patient requested direct consultation',
         });
       });
 
@@ -344,9 +338,7 @@ describe('useConsultationQueue', () => {
     });
 
     it('should handle bypass error for mandatory triage', async () => {
-      mockedApi.bypassTriage.mockRejectedValueOnce(
-        new Error('Cannot bypass mandatory triage')
-      );
+      mockedApi.bypassTriage.mockRejectedValueOnce(new Error('Cannot bypass mandatory triage'));
 
       const { result } = renderHook(() => useBypassTriage(), {
         wrapper: createWrapper(),
@@ -356,7 +348,7 @@ describe('useConsultationQueue', () => {
         try {
           await result.current.mutateAsync({
             encounterId: 1,
-            reason: 'STABLE_FOLLOW_UP'
+            reason: 'STABLE_FOLLOW_UP',
           });
         } catch {
           // Expected error

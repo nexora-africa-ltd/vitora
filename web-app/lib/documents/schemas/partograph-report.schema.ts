@@ -7,7 +7,7 @@
 import type { DocumentDefinition } from '../types';
 
 export const partographReportSchema: DocumentDefinition = {
-  document_type: 'partograph_report' as any,
+  document_type: 'partograph_report',
   version: '1.0',
   layout: 'a4',
   template: 'partograph-report.html',

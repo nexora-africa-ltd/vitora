@@ -116,7 +116,10 @@ describe('pharmacy hooks', () => {
     mockPharmacyApi.listAlerts.mockResolvedValue({ count: 1, results: [{ id: 3 }] } as never);
     mockPharmacyApi.getLowStockAlerts.mockResolvedValue([{ id: 3 }] as never);
     mockPharmacyApi.getExpiringAlerts.mockResolvedValue([{ id: 4 }] as never);
-    mockPharmacyApi.listPrescriptions.mockResolvedValue({ count: 1, results: [{ id: 5 }] } as never);
+    mockPharmacyApi.listPrescriptions.mockResolvedValue({
+      count: 1,
+      results: [{ id: 5 }],
+    } as never);
     mockPharmacyApi.getPrescription.mockResolvedValue({ id: 5 } as never);
     mockPharmacyApi.getPatientPrescriptions.mockResolvedValue([{ id: 5 }] as never);
     mockPharmacyApi.getEncounterPrescriptions.mockResolvedValue([{ id: 5 }] as never);
@@ -169,22 +172,118 @@ describe('pharmacy hooks', () => {
 
   it('invalidates correct queries for pharmacy mutations', async () => {
     const cases = [
-      { useHook: useCreateDrug, api: mockPharmacyApi.createDrug, input: { name: 'Amox' }, called: [{ name: 'Amox' }], keys: [['drugs']] },
-      { useHook: useUpdateDrug, api: mockPharmacyApi.updateDrug, input: { id: 1, data: { name: 'Amox+' } }, called: [1, { name: 'Amox+' }], keys: [['drugs'], ['drugs', 1]] },
-      { useHook: useDeleteDrug, api: mockPharmacyApi.deleteDrug, input: 1, called: [1], keys: [['drugs']] },
-      { useHook: useCreateStockBatch, api: mockPharmacyApi.createStockBatch, input: { drug: 1, quantity_received: 100 }, called: [{ drug: 1, quantity_received: 100 }], keys: [['stock-batches'], ['drugs', 1, 'stock-batches'], ['stock-alerts']] },
-      { useHook: useUpdateStockBatch, api: mockPharmacyApi.updateStockBatch, input: { id: 2, data: { unit_cost: 12 } }, called: [2, { unit_cost: 12 }], keys: [['stock-batches'], ['stock-batches', 2]] },
-      { useHook: useAcknowledgeAlert, api: mockPharmacyApi.acknowledgeAlert, input: 3, called: [3], keys: [['stock-alerts']] },
-      { useHook: useResolveAlert, api: mockPharmacyApi.resolveAlert, input: { id: 3, notes: 'Handled' }, called: [3, 'Handled'], keys: [['stock-alerts']] },
-      { useHook: useCreatePrescription, api: mockPharmacyApi.createPrescription, input: { patient: 1 }, called: [{ patient: 1 }], keys: [['prescriptions'], ['patients', 1, 'prescriptions']] },
-      { useHook: useCancelPrescription, api: mockPharmacyApi.cancelPrescription, input: { id: 5, reason: 'Changed' }, called: [5, 'Changed'], keys: [['prescriptions']] },
-      { useHook: useCreateDispensing, api: mockPharmacyApi.createDispensing, input: { patient: 1 }, called: [{ patient: 1 }], keys: [['dispensings'], ['prescriptions'], ['stock-batches'], ['stock-alerts']] },
-      { useHook: useDispenseFromPrescription, api: mockPharmacyApi.dispenseFromPrescription, input: { drug_id: 1, quantity: 10, patient_id: 1 }, called: [{ drug_id: 1, quantity: 10, patient_id: 1 }], keys: [['dispensings'], ['prescriptions'], ['stock-batches'], ['stock-alerts'], ['drugs']] },
-      { useHook: useReturnDispensing, api: mockPharmacyApi.returnDispensing, input: { id: 6, quantity: 2, reason: 'Unused' }, called: [6, 2, 'Unused'], keys: [['dispensings'], ['prescriptions'], ['stock-batches']] },
-      { useHook: useReturnStock, api: mockPharmacyApi.returnDispensing, input: { dispensing_id: 6, quantity: 1, reason: 'Correction' }, called: [6, 1, 'Correction'], keys: [['dispensings'], ['prescriptions'], ['stock-batches'], ['stock-alerts']] },
-      { useHook: useVerifyDispensing, api: mockPharmacyApi.verifyDispensing, input: 6, called: [6], keys: [['dispensings']] },
-      { useHook: useCreateStockAdjustment, api: mockPharmacyApi.createAdjustment, input: { stock_batch: 2, quantity: -5 }, called: [{ stock_batch: 2, quantity: -5 }], keys: [['stock-adjustments'], ['stock-batches'], ['stock-alerts']] },
-      { useHook: useUpdateAlertSettings, api: mockPharmacyApi.updateAlertSettings, input: { low_stock_threshold: 5 }, called: [{ low_stock_threshold: 5 }], keys: [['alert-settings'], ['stock-alerts']] },
+      {
+        useHook: useCreateDrug,
+        api: mockPharmacyApi.createDrug,
+        input: { name: 'Amox' },
+        called: [{ name: 'Amox' }],
+        keys: [['drugs']],
+      },
+      {
+        useHook: useUpdateDrug,
+        api: mockPharmacyApi.updateDrug,
+        input: { id: 1, data: { name: 'Amox+' } },
+        called: [1, { name: 'Amox+' }],
+        keys: [['drugs'], ['drugs', 1]],
+      },
+      {
+        useHook: useDeleteDrug,
+        api: mockPharmacyApi.deleteDrug,
+        input: 1,
+        called: [1],
+        keys: [['drugs']],
+      },
+      {
+        useHook: useCreateStockBatch,
+        api: mockPharmacyApi.createStockBatch,
+        input: { drug: 1, quantity_received: 100 },
+        called: [{ drug: 1, quantity_received: 100 }],
+        keys: [['stock-batches'], ['drugs', 1, 'stock-batches'], ['stock-alerts']],
+      },
+      {
+        useHook: useUpdateStockBatch,
+        api: mockPharmacyApi.updateStockBatch,
+        input: { id: 2, data: { unit_cost: 12 } },
+        called: [2, { unit_cost: 12 }],
+        keys: [['stock-batches'], ['stock-batches', 2]],
+      },
+      {
+        useHook: useAcknowledgeAlert,
+        api: mockPharmacyApi.acknowledgeAlert,
+        input: 3,
+        called: [3],
+        keys: [['stock-alerts']],
+      },
+      {
+        useHook: useResolveAlert,
+        api: mockPharmacyApi.resolveAlert,
+        input: { id: 3, notes: 'Handled' },
+        called: [3, 'Handled'],
+        keys: [['stock-alerts']],
+      },
+      {
+        useHook: useCreatePrescription,
+        api: mockPharmacyApi.createPrescription,
+        input: { patient: 1 },
+        called: [{ patient: 1 }],
+        keys: [['prescriptions'], ['patients', 1, 'prescriptions']],
+      },
+      {
+        useHook: useCancelPrescription,
+        api: mockPharmacyApi.cancelPrescription,
+        input: { id: 5, reason: 'Changed' },
+        called: [5, 'Changed'],
+        keys: [['prescriptions']],
+      },
+      {
+        useHook: useCreateDispensing,
+        api: mockPharmacyApi.createDispensing,
+        input: { patient: 1 },
+        called: [{ patient: 1 }],
+        keys: [['dispensings'], ['prescriptions'], ['stock-batches'], ['stock-alerts']],
+      },
+      {
+        useHook: useDispenseFromPrescription,
+        api: mockPharmacyApi.dispenseFromPrescription,
+        input: { drug_id: 1, quantity: 10, patient_id: 1 },
+        called: [{ drug_id: 1, quantity: 10, patient_id: 1 }],
+        keys: [['dispensings'], ['prescriptions'], ['stock-batches'], ['stock-alerts'], ['drugs']],
+      },
+      {
+        useHook: useReturnDispensing,
+        api: mockPharmacyApi.returnDispensing,
+        input: { id: 6, quantity: 2, reason: 'Unused' },
+        called: [6, 2, 'Unused'],
+        keys: [['dispensings'], ['prescriptions'], ['stock-batches']],
+      },
+      {
+        useHook: useReturnStock,
+        api: mockPharmacyApi.returnDispensing,
+        input: { dispensing_id: 6, quantity: 1, reason: 'Correction' },
+        called: [6, 1, 'Correction'],
+        keys: [['dispensings'], ['prescriptions'], ['stock-batches'], ['stock-alerts']],
+      },
+      {
+        useHook: useVerifyDispensing,
+        api: mockPharmacyApi.verifyDispensing,
+        input: 6,
+        called: [6],
+        keys: [['dispensings']],
+      },
+      {
+        useHook: useCreateStockAdjustment,
+        api: mockPharmacyApi.createAdjustment,
+        input: { stock_batch: 2, quantity: -5 },
+        called: [{ stock_batch: 2, quantity: -5 }],
+        keys: [['stock-adjustments'], ['stock-batches'], ['stock-alerts']],
+      },
+      {
+        useHook: useUpdateAlertSettings,
+        api: mockPharmacyApi.updateAlertSettings,
+        input: { low_stock_threshold: 5 },
+        called: [{ low_stock_threshold: 5 }],
+        keys: [['alert-settings'], ['stock-alerts']],
+      },
     ];
 
     for (const item of cases) {
@@ -195,7 +294,9 @@ describe('pharmacy hooks', () => {
         await result.current.mutateAsync(item.input as never);
       });
       expect(item.api).toHaveBeenCalledWith(...(item.called as []));
-      item.keys.forEach((key) => expect(ctx.invalidateQueries).toHaveBeenCalledWith({ queryKey: key }));
+      item.keys.forEach((key) =>
+        expect(ctx.invalidateQueries).toHaveBeenCalledWith({ queryKey: key })
+      );
     }
   });
 });

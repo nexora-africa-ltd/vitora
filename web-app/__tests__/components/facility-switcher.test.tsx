@@ -12,7 +12,16 @@ const mockFacility = {
   id: 1,
   name: 'Main Clinic',
   mfl_code: '12345',
-  modules: { outpatient: true, inpatient: true, pharmacy: true, laboratory: true, imaging: false, theatre: false, emergency: false, maternity: false },
+  modules: {
+    outpatient: true,
+    inpatient: true,
+    pharmacy: true,
+    laboratory: true,
+    imaging: false,
+    theatre: false,
+    emergency: false,
+    maternity: false,
+  },
 };
 
 const mockOrganization = { id: 10, name: 'Demo Health Group' };
@@ -33,7 +42,16 @@ jest.mock('@/lib/api/facilities', () => ({
       level: 3,
       organization: 10,
       organization_name: 'Demo Health Group',
-      modules: { outpatient: true, inpatient: false, pharmacy: true, laboratory: false, imaging: false, theatre: false, emergency: false, maternity: false },
+      modules: {
+        outpatient: true,
+        inpatient: false,
+        pharmacy: true,
+        laboratory: false,
+        imaging: false,
+        theatre: false,
+        emergency: false,
+        maternity: false,
+      },
     }),
   },
   toUserFacility: jest.fn((detail: Record<string, unknown>) => ({
@@ -187,7 +205,7 @@ describe('FacilitySwitcher', () => {
 
     await waitFor(() => {
       expect(mockSwitchFacility).toHaveBeenCalledWith(
-        expect.objectContaining({ id: 2, name: 'Branch Clinic' }),
+        expect.objectContaining({ id: 2, name: 'Branch Clinic' })
       );
     });
   });

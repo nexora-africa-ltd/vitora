@@ -71,9 +71,11 @@ jest.mock('@/lib/stores/patient-journey', () => ({
 
 // Mock Radix UI components to avoid portals/state issues in tests
 jest.mock('@/components/ui/scroll-area', () => {
-  const MockScrollArea = React.forwardRef<HTMLDivElement, { children: React.ReactNode; className?: string }>(
-    ({ children, className }, ref) =>
-      React.createElement('div', { ref, 'data-testid': 'scroll-area', className }, children)
+  const MockScrollArea = React.forwardRef<
+    HTMLDivElement,
+    { children: React.ReactNode; className?: string }
+  >(({ children, className }, ref) =>
+    React.createElement('div', { ref, 'data-testid': 'scroll-area', className }, children)
   );
   MockScrollArea.displayName = 'MockScrollArea';
   return { ScrollArea: MockScrollArea };
@@ -97,16 +99,14 @@ jest.mock('@/components/ui/popover', () => ({
 
 jest.mock('@/components/ui/collapsible', () => {
   const React = require('react');
-  function Collapsible({
-    children,
-    open,
-  }: {
-    children: React.ReactNode;
-    open?: boolean;
-  }) {
-    return React.createElement('div', { 'data-testid': 'collapsible', 'data-open': open }, children);
+  function Collapsible({ children, open }: { children: React.ReactNode; open?: boolean }) {
+    return React.createElement(
+      'div',
+      { 'data-testid': 'collapsible', 'data-open': open },
+      children
+    );
   }
-  function CollapsibleTrigger({ children, asChild }: { children: any; asChild?: boolean }) {
+  function CollapsibleTrigger({ children, asChild }: { children: unknown; asChild?: boolean }) {
     if (asChild && React.isValidElement(children)) return children;
     return React.createElement('button', null, children);
   }

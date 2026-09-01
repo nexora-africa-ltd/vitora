@@ -47,12 +47,7 @@ interface ReturnDialogProps {
   onSuccess?: () => void;
 }
 
-export function ReturnDialog({
-  isOpen,
-  onClose,
-  dispensing,
-  onSuccess,
-}: ReturnDialogProps) {
+export function ReturnDialog({ isOpen, onClose, dispensing, onSuccess }: ReturnDialogProps) {
   const { toast } = useToast();
 
   // Return mutation
@@ -104,10 +99,11 @@ export function ReturnDialog({
 
       handleClose();
       onSuccess?.();
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const apiError = error as { response?: { data?: { error?: string } }; message?: string };
       toast({
         title: 'Return Failed',
-        description: error.response?.data?.error || error.message || 'An error occurred',
+        description: apiError.response?.data?.error || apiError.message || 'An error occurred',
         variant: 'destructive',
       });
     }
@@ -138,7 +134,7 @@ export function ReturnDialog({
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           {/* Dispensing Info */}
-          <div className="p-3 bg-muted/50 rounded-md space-y-2">
+          <div className="space-y-2 rounded-md bg-muted/50 p-3">
             <div className="flex justify-between">
               <span className="text-sm text-muted-foreground">Drug:</span>
               <span className="font-medium">{dispensing.drug_name}</span>
@@ -160,13 +156,7 @@ export function ReturnDialog({
           {/* Quantity */}
           <div className="space-y-2">
             <Label htmlFor="quantity">Quantity to Return *</Label>
-            <Input
-              id="quantity"
-              type="number"
-              min={1}
-              max={maxReturn}
-              {...register('quantity')}
-            />
+            <Input id="quantity" type="number" min={1} max={maxReturn} {...register('quantity')} />
             {errors.quantity && (
               <p className="text-sm text-destructive">{errors.quantity.message}</p>
             )}
@@ -178,9 +168,7 @@ export function ReturnDialog({
                 </AlertDescription>
               </Alert>
             )}
-            <p className="text-xs text-muted-foreground">
-              Maximum: {maxReturn} units
-            </p>
+            <p className="text-xs text-muted-foreground">Maximum: {maxReturn} units</p>
           </div>
 
           {/* Reason */}
@@ -191,9 +179,7 @@ export function ReturnDialog({
               placeholder="e.g., Patient adverse reaction, Wrong medication, Excess quantity..."
               {...register('reason')}
             />
-            {errors.reason && (
-              <p className="text-sm text-destructive">{errors.reason.message}</p>
-            )}
+            {errors.reason && <p className="text-sm text-destructive">{errors.reason.message}</p>}
           </div>
 
           {/* Stock Restoration Notice */}
@@ -213,13 +199,10 @@ export function ReturnDialog({
             >
               Cancel
             </Button>
-            <Button
-              type="submit"
-              disabled={returnStock.isPending || quantity > maxReturn}
-            >
+            <Button type="submit" disabled={returnStock.isPending || quantity > maxReturn}>
               {returnStock.isPending ? (
                 <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Processing...
                 </>
               ) : (

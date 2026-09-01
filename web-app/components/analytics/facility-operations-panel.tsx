@@ -11,6 +11,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { usePharmacyQueueProjection, useWardOccupancyProjection } from '@/lib/hooks/use-analytics';
 import { useInpatientWards } from '@/lib/hooks/use-inpatient';
 import type { WardOccupancyProjectionRow } from '@/lib/types/analytics';
+import type { InpatientWard } from '@/lib/types/inpatient';
 
 function getOccupancyTone(rate: number) {
   if (rate >= 90) return 'text-destructive';
@@ -24,7 +25,7 @@ export function FacilityOperationsPanel() {
   const { data: pharmacyRows = [], isLoading: pharmacyLoading } = usePharmacyQueueProjection();
 
   const wardNameById = useMemo(() => {
-    const rows = ((inpatientWards as any)?.results ?? inpatientWards ?? []) as Array<{ id: number; name: string }>;
+    const rows: InpatientWard[] = inpatientWards?.results ?? [];
     return new Map(rows.map((row) => [row.id, row.name]));
   }, [inpatientWards]);
 
@@ -48,9 +49,10 @@ export function FacilityOperationsPanel() {
     );
   }, [wards]);
 
-  const averageOccupancy = wardSummary.totalBeds > 0
-    ? Number(((wardSummary.occupiedBeds / wardSummary.totalBeds) * 100).toFixed(1))
-    : 0;
+  const averageOccupancy =
+    wardSummary.totalBeds > 0
+      ? Number(((wardSummary.occupiedBeds / wardSummary.totalBeds) * 100).toFixed(1))
+      : 0;
 
   const pharmacy = pharmacyRows[0];
 
@@ -63,7 +65,7 @@ export function FacilityOperationsPanel() {
         </p>
       </div>
 
-      <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <StatsCard
           title="Avg Ward Occupancy"
           value={wardsLoading ? '—' : `${averageOccupancy}%`}
@@ -87,7 +89,7 @@ export function FacilityOperationsPanel() {
         />
         <StatsCard
           title="Pending Prescriptions"
-          value={pharmacyLoading ? '—' : pharmacy?.pending_prescriptions ?? 0}
+          value={pharmacyLoading ? '—' : (pharmacy?.pending_prescriptions ?? 0)}
           meta={pharmacyLoading ? undefined : `${pharmacy?.dispensed_today ?? 0} dispensed today`}
           description="Current pharmacy dispensing queue"
           icon={FileClock}
@@ -98,7 +100,7 @@ export function FacilityOperationsPanel() {
         />
         <StatsCard
           title="Critical Stock Alerts"
-          value={pharmacyLoading ? '—' : pharmacy?.critical_stock_count ?? 0}
+          value={pharmacyLoading ? '—' : (pharmacy?.critical_stock_count ?? 0)}
           meta={pharmacyLoading ? undefined : `${pharmacy?.low_stock_count ?? 0} low stock items`}
           description="Items needing urgent pharmacy action"
           icon={AlertTriangle}
@@ -129,7 +131,10 @@ export function FacilityOperationsPanel() {
                   cell: (ward) => {
                     const wardName = wardNameById.get(ward.ward_id) ?? `Ward ${ward.ward_id}`;
                     return (
-                      <Link href={`/wards/${ward.ward_id}`} className="font-medium text-primary hover:underline">
+                      <Link
+                        href={`/wards/${ward.ward_id}`}
+                        className="font-medium text-primary hover:underline"
+                      >
                         {wardName}
                       </Link>
                     );
@@ -143,8 +148,12 @@ export function FacilityOperationsPanel() {
                   cell: (ward) => (
                     <div className="min-w-[9rem] space-y-1">
                       <div className="flex items-center justify-between gap-2 text-xs">
-                        <span className={getOccupancyTone(ward.occupancy_rate)}>{ward.occupancy_rate}%</span>
-                        <span className="font-medium">{ward.occupied_beds}/{ward.total_beds}</span>
+                        <span className={getOccupancyTone(ward.occupancy_rate)}>
+                          {ward.occupancy_rate}%
+                        </span>
+                        <span className="font-medium">
+                          {ward.occupied_beds}/{ward.total_beds}
+                        </span>
                       </div>
                       <Progress value={ward.occupancy_rate} className="h-2" />
                     </div>
@@ -175,14 +184,19 @@ export function FacilityOperationsPanel() {
                   <div className="space-y-3">
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <Link href={`/wards/${ward.ward_id}`} className="font-medium text-primary hover:underline">
+                        <Link
+                          href={`/wards/${ward.ward_id}`}
+                          className="font-medium text-primary hover:underline"
+                        >
                           {wardNameById.get(ward.ward_id) ?? `Ward ${ward.ward_id}`}
                         </Link>
                         <div className="text-xs text-muted-foreground">
                           {ward.occupied_beds} occupied of {ward.total_beds}
                         </div>
                       </div>
-                      <span className={`text-xs font-medium ${getOccupancyTone(ward.occupancy_rate)}`}>
+                      <span
+                        className={`text-xs font-medium ${getOccupancyTone(ward.occupancy_rate)}`}
+                      >
                         {ward.occupancy_rate}%
                       </span>
                     </div>
@@ -220,29 +234,41 @@ export function FacilityOperationsPanel() {
               </div>
             ) : !pharmacy ? (
               <p className="text-sm text-muted-foreground">
-                Pharmacy queue metrics will appear once dispensing activity starts publishing projections.
+                Pharmacy queue metrics will appear once dispensing activity starts publishing
+                projections.
               </p>
             ) : (
               <>
                 <div className="rounded-lg border border-border/60 p-4">
-                  <div className="text-xs uppercase tracking-wide text-muted-foreground">Dispensing backlog</div>
-                  <div className="mt-2 text-3xl font-semibold">{pharmacy.pending_prescriptions}</div>
+                  <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                    Dispensing backlog
+                  </div>
+                  <div className="mt-2 text-3xl font-semibold">
+                    {pharmacy.pending_prescriptions}
+                  </div>
                   <div className="mt-1 text-sm text-muted-foreground">
                     {pharmacy.dispensed_today} prescriptions dispensed today
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="rounded-lg border border-border/60 p-4">
-                    <div className="text-xs uppercase tracking-wide text-muted-foreground">Critical stock</div>
-                    <div className="mt-2 text-2xl font-semibold text-destructive">{pharmacy.critical_stock_count}</div>
+                    <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                      Critical stock
+                    </div>
+                    <div className="mt-2 text-2xl font-semibold text-destructive">
+                      {pharmacy.critical_stock_count}
+                    </div>
                   </div>
                   <div className="rounded-lg border border-border/60 p-4">
-                    <div className="text-xs uppercase tracking-wide text-muted-foreground">Low stock</div>
+                    <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                      Low stock
+                    </div>
                     <div className="mt-2 text-2xl font-semibold">{pharmacy.low_stock_count}</div>
                   </div>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Projection updated {new Date(pharmacy.last_updated).toLocaleTimeString('en-KE', {
+                  Projection updated{' '}
+                  {new Date(pharmacy.last_updated).toLocaleTimeString('en-KE', {
                     hour: '2-digit',
                     minute: '2-digit',
                   })}

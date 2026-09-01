@@ -1,9 +1,4 @@
-import type {
-  Admission,
-  AdmissionRecommendation,
-  Bed,
-  InpatientWard,
-} from '@/lib/types/inpatient';
+import type { Admission, AdmissionRecommendation, Bed, InpatientWard } from '@/lib/types/inpatient';
 
 export const mockInpatientWards: InpatientWard[] = [
   {

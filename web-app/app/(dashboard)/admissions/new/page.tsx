@@ -3,7 +3,23 @@
 import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { Save, X, AlertCircle, User, UserPlus, AlertTriangle, Sparkles, ChevronDown, CheckCircle2, Bed, Stethoscope, Shield, ShieldCheck, CreditCard, Baby } from 'lucide-react';
+import {
+  Save,
+  X,
+  AlertCircle,
+  User,
+  UserPlus,
+  AlertTriangle,
+  Sparkles,
+  ChevronDown,
+  CheckCircle2,
+  Bed,
+  Stethoscope,
+  Shield,
+  ShieldCheck,
+  CreditCard,
+  Baby,
+} from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { PageHeader } from '@/components/shared/page-header';
 import { HelpPopover } from '@/components/shared/help-popover';
@@ -56,21 +72,36 @@ import { shaApi } from '@/lib/api/sha';
 import { useQuery } from '@tanstack/react-query';
 import { emptyDiagnosisCodeValue } from '@/components/shared/diagnosis-code-input';
 import type { DiagnosisCodeValue } from '@/components/shared/diagnosis-code-input';
-import { MultiDiagnosisInput, type DiagnosisEntry } from '@/components/shared/multi-diagnosis-input';
-import { BedRecommendationCard, CompatibilityOverrideDialog, BedSelectionGrid } from '@/components/inpatient';
+import {
+  MultiDiagnosisInput,
+  type DiagnosisEntry,
+} from '@/components/shared/multi-diagnosis-input';
+import {
+  BedRecommendationCard,
+  CompatibilityOverrideDialog,
+  BedSelectionGrid,
+} from '@/components/inpatient';
 import { getApiErrorMessage } from '@/lib/api/client';
 import { cn } from '@/lib/utils/cn';
 import type {
+  Bed as InpatientBed,
   CompatibilityViolation,
   CompatibilityCheckResult,
   SmartAdmissionType,
   AdmissionRecommendation,
+  InpatientWard,
 } from '@/lib/types/inpatient';
 import type { Encounter } from '@/lib/types/encounter';
 import { useMCHRegistrations } from '@/lib/hooks/use-mch';
 import type { MCHRegistrationListItem } from '@/lib/types/mch';
 
 type BedAssignmentStrategy = 'SMART' | 'RULES' | 'MANUAL';
+type AdmissionPayerType = 'CASH' | 'SHA' | 'CORPORATE';
+
+type PendingAdmissionEncounter = Encounter & {
+  patient_name?: string;
+  patient_mrn?: string;
+};
 
 export default function NewAdmissionPage() {
   const router = useRouter();
@@ -86,7 +117,8 @@ export default function NewAdmissionPage() {
 
   // Fetch patient details if patient ID is provided
   const { data: patientData } = usePatient(patientId || 0);
-  const { data: activeAdmission, isLoading: activeAdmissionCheckLoading } = useActiveAdmissionForPatient(patientId);
+  const { data: activeAdmission, isLoading: activeAdmissionCheckLoading } =
+    useActiveAdmissionForPatient(patientId);
   const {
     data: orgActiveAdmissionConflict,
     isLoading: orgActiveAdmissionCheckLoading,
@@ -103,8 +135,8 @@ export default function NewAdmissionPage() {
     : null;
   const hasOrgActiveAdmissionConflict = !!orgActiveAdmission;
   const orgConflictIsDifferentAdmission = !!(
-    orgActiveAdmission
-    && (!activeAdmission || activeAdmission.id !== orgActiveAdmission.id)
+    orgActiveAdmission &&
+    (!activeAdmission || activeAdmission.id !== orgActiveAdmission.id)
   );
 
   // Form state
@@ -116,7 +148,7 @@ export default function NewAdmissionPage() {
   const [requiresIsolation, setRequiresIsolation] = useState(false);
   const [requiresOxygen, setRequiresOxygen] = useState(false);
   const [requiresVentilator, setRequiresVentilator] = useState(false);
-  const [payerType, setPayerType] = useState<'CASH' | 'SHA' | 'CORPORATE'>('CASH');
+  const [payerType, setPayerType] = useState<AdmissionPayerType>('CASH');
   const [mchRegistrationId, setMchRegistrationId] = useState(initialMchRegistrationParam || '');
   const [mchManualMode, setMchManualMode] = useState(false);
   const [mchManualSearch, setMchManualSearch] = useState('');
@@ -130,16 +162,19 @@ export default function NewAdmissionPage() {
   const { data: encounterDiagnoses } = useEncounterDiagnoses(encounterId || 0);
 
   // Pending admissions: recommendations + IPD encounters without admissions
-  const { data: pendingRecsResponse } = useAdmissionRecommendations({ status: 'PENDING', page_size: 10 });
+  const { data: pendingRecsResponse } = useAdmissionRecommendations({
+    status: 'PENDING',
+    page_size: 10,
+  });
   const { data: pendingAdmissionsResponse } = usePendingAdmissions();
   const pendingRecs: AdmissionRecommendation[] = useMemo(
-    () => (pendingRecsResponse as any)?.results ?? [],
+    () => pendingRecsResponse?.results ?? [],
     [pendingRecsResponse]
   );
-  const ipdEncounters: Encounter[] = useMemo(
-    () => (pendingAdmissionsResponse as any)?.results ?? pendingAdmissionsResponse ?? [],
-    [pendingAdmissionsResponse]
-  );
+  const ipdEncounters: PendingAdmissionEncounter[] = useMemo(() => {
+    const results = pendingAdmissionsResponse?.results;
+    return Array.isArray(results) ? (results as unknown as PendingAdmissionEncounter[]) : [];
+  }, [pendingAdmissionsResponse]);
   const hasPendingItems = pendingRecs.length > 0 || ipdEncounters.length > 0;
 
   // SHA eligibility check when payer type is SHA
@@ -168,13 +203,14 @@ export default function NewAdmissionPage() {
         if (!result.is_eligible) {
           setShaEligibility({
             status: 'ineligible',
-            message: 'Patient is not SHA-eligible. Claims will be rejected. Consider using Cash payment.',
+            message:
+              'Patient is not SHA-eligible. Claims will be rejected. Consider using Cash payment.',
           });
           return;
         }
-        const coverageBlocked = (result as any).response_data?.coverage_blocked;
-        const coverageCaveat = (result as any).response_data?.coverage_caveat;
-        const shaNumber = (result as any).sha_number || patientData?.sha_number || undefined;
+        const coverageBlocked = result.coverage_blocked;
+        const coverageCaveat = result.coverage_caveat;
+        const shaNumber = result.sha_number || patientData?.sha_number || undefined;
         if (coverageBlocked && coverageCaveat) {
           setShaEligibility({ status: 'blocked', message: coverageCaveat, shaNumber });
         } else {
@@ -199,10 +235,7 @@ export default function NewAdmissionPage() {
     if (patientData.sha_number) return patientData.sha_number;
 
     const idType = String(patientData.identification_type || '').toLowerCase();
-    if (
-      patientData.identification_number &&
-      (idType.includes('sha') || idType.includes('cr'))
-    ) {
+    if (patientData.identification_number && (idType.includes('sha') || idType.includes('cr'))) {
       return patientData.identification_number;
     }
 
@@ -216,8 +249,14 @@ export default function NewAdmissionPage() {
     error: benefitsErr,
   } = useBenefitsAvailable(shaNumber, shaEligibility.status === 'eligible');
   const benefitsState = useMemo(
-    () => deriveBenefitsState(benefitsData, benefitsLoading, benefitsError, benefitsErr as Error | null),
-    [benefitsData, benefitsLoading, benefitsError, benefitsErr],
+    () =>
+      deriveBenefitsState(
+        benefitsData,
+        benefitsLoading,
+        benefitsError,
+        benefitsErr as Error | null
+      ),
+    [benefitsData, benefitsLoading, benefitsError, benefitsErr]
   );
 
   // Fetch wards and beds
@@ -230,23 +269,22 @@ export default function NewAdmissionPage() {
   const smartRecommendBed = useSmartRecommendBed();
   const wardRecommendation = useRecommendWard();
   const generateBeds = useGenerateWardBeds();
+  const wardsList = useMemo<InpatientWard[]>(() => wards?.results ?? [], [wards]);
 
   // Get selected ward's capacity from wards list
   const selectedWardCapacity = useMemo(() => {
-    const wardsList = (wards as any)?.results ?? wards ?? [];
-    const ward = wardsList.find((w: any) => String(w.id) === wardId);
+    const ward = wardsList.find((w) => String(w.id) === wardId);
     return ward?.capacity || 0;
-  }, [wards, wardId]);
+  }, [wardsList, wardId]);
   const selectedWard = useMemo(() => {
-    const wardsList = (wards as any)?.results ?? wards ?? [];
-    return wardsList.find((w: any) => String(w.id) === wardId) ?? null;
-  }, [wards, wardId]);
+    return wardsList.find((w) => String(w.id) === wardId) ?? null;
+  }, [wardsList, wardId]);
   const isMaternityWard = selectedWard?.ward_type === 'MATERNITY';
 
   // --- MCH registration linking (must come after isMaternityWard) ---
   // Fetch active MCH registrations for the selected patient
   const { data: mchRegistrationsResponse, isLoading: mchLoading } = useMCHRegistrations(
-    { mother: patientId ?? undefined, status: 'ACTIVE' as any, page_size: 20 },
+    { mother: patientId ?? undefined, status: 'ACTIVE', page_size: 20 },
     !!patientId && isMaternityWard
   );
   const mchRegistrations: MCHRegistrationListItem[] = useMemo(
@@ -286,11 +324,11 @@ export default function NewAdmissionPage() {
   const mchRegistrationData: MCHRegistrationListItem | undefined = useMemo(() => {
     if (!mchRegistrationId) return undefined;
     const id = Number(mchRegistrationId);
-    return mchRegistrations.find((r) => r.id === id)
-      ?? mchSearchResults.find((r) => r.id === id);
+    return mchRegistrations.find((r) => r.id === id) ?? mchSearchResults.find((r) => r.id === id);
   }, [mchRegistrationId, mchRegistrations, mchSearchResults]);
 
-  const mchRegistrationMatchesPatient = !mchRegistrationData || !patientId || mchRegistrationData.mother === patientId;
+  const mchRegistrationMatchesPatient =
+    !mchRegistrationData || !patientId || mchRegistrationData.mother === patientId;
 
   // Show toast on generate beds success/error
   useEffect(() => {
@@ -306,29 +344,35 @@ export default function NewAdmissionPage() {
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
   // Compatibility state
-  const [compatibilityViolations, setCompatibilityViolations] = useState<CompatibilityViolation[]>([]);
-  const [compatibilityResult, setCompatibilityResult] = useState<CompatibilityCheckResult | null>(null);
+  const [compatibilityViolations, setCompatibilityViolations] = useState<CompatibilityViolation[]>(
+    []
+  );
+  const [compatibilityResult, setCompatibilityResult] = useState<CompatibilityCheckResult | null>(
+    null
+  );
   const [showCompatibilityDialog, setShowCompatibilityDialog] = useState(false);
   const [overrideReason, setOverrideReason] = useState<string | null>(null);
   const checkCompatibility = useCheckWardCompatibility();
 
   // Selected ward name for dialog
   const selectedWardName = useMemo(() => {
-    const wardsList = (wards as any)?.results ?? wards ?? [];
-    const ward = wardsList.find((w: any) => String(w.id) === wardId);
+    const ward = wardsList.find((w) => String(w.id) === wardId);
     return ward?.name || '';
-  }, [wards, wardId]);
+  }, [wardsList, wardId]);
 
   // Handle ward selection with compatibility check
-  const handleWardChange = useCallback((newWardId: string) => {
-    setWardId(newWardId);
-    setBedId('');
-    setCompatibilityViolations([]);
-    setCompatibilityResult(null);
-    setOverrideReason(null);
-    recommendBed.reset();
-    smartRecommendBed.reset();
-  }, [recommendBed, smartRecommendBed]);
+  const handleWardChange = useCallback(
+    (newWardId: string) => {
+      setWardId(newWardId);
+      setBedId('');
+      setCompatibilityViolations([]);
+      setCompatibilityResult(null);
+      setOverrideReason(null);
+      recommendBed.reset();
+      smartRecommendBed.reset();
+    },
+    [recommendBed, smartRecommendBed]
+  );
 
   // Handle compatibility override
   const handleCompatibilityOverride = useCallback((reason: string) => {
@@ -347,7 +391,8 @@ export default function NewAdmissionPage() {
   }, [recommendBed, smartRecommendBed]);
 
   // Auto-trigger ward recommendation when patient is available
-  const [wardRecommendationData, setWardRecommendationData] = useState<typeof wardRecommendation.data>(undefined);
+  const [wardRecommendationData, setWardRecommendationData] =
+    useState<typeof wardRecommendation.data>(undefined);
   const [wardRecommendationLoading, setWardRecommendationLoading] = useState(false);
   const [wardRecommendationError, setWardRecommendationError] = useState(false);
   const [hasRunWardRecommendation, setHasRunWardRecommendation] = useState(false);
@@ -365,7 +410,7 @@ export default function NewAdmissionPage() {
     setWardRecommendationData(undefined);
     recommendBed.reset();
     smartRecommendBed.reset();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeAdmission?.id]);
 
   useEffect(() => {
@@ -379,40 +424,51 @@ export default function NewAdmissionPage() {
     setWardRecommendationError(false);
     setWardRecommendationData(undefined);
 
-    wardRecommendation.mutateAsync({
-      patient_id: patientId,
-      requires_isolation: requiresIsolation,
-      requires_oxygen: requiresOxygen,
-      requires_ventilator: requiresVentilator,
-      admission_type: admissionType,
-    }).then((result) => {
-      if (!isCancelled) {
-        setWardRecommendationData(result);
-        setWardRecommendationLoading(false);
-        setHasRunWardRecommendation(true);
+    wardRecommendation
+      .mutateAsync({
+        patient_id: patientId,
+        requires_isolation: requiresIsolation,
+        requires_oxygen: requiresOxygen,
+        requires_ventilator: requiresVentilator,
+        admission_type: admissionType,
+      })
+      .then((result) => {
+        if (!isCancelled) {
+          setWardRecommendationData(result);
+          setWardRecommendationLoading(false);
+          setHasRunWardRecommendation(true);
 
-        if (isRetrigger) {
-          if (result.success) {
-            toast.info(`Ward recommendation updated — ${result.recommended_ward_name}`, {
-              description: `${result.ranked_wards.length} compatible ward${result.ranked_wards.length !== 1 ? 's' : ''}, ${result.incompatible_wards.length} excluded`,
-            });
-          } else {
-            toast.warning('No compatible wards match the updated requirements');
+          if (isRetrigger) {
+            if (result.success) {
+              toast.info(`Ward recommendation updated — ${result.recommended_ward_name}`, {
+                description: `${result.ranked_wards.length} compatible ward${result.ranked_wards.length !== 1 ? 's' : ''}, ${result.incompatible_wards.length} excluded`,
+              });
+            } else {
+              toast.warning('No compatible wards match the updated requirements');
+            }
           }
         }
-      }
-    }).catch(() => {
-      if (!isCancelled) {
-        setWardRecommendationError(true);
-        setWardRecommendationLoading(false);
-      }
-    });
+      })
+      .catch(() => {
+        if (!isCancelled) {
+          setWardRecommendationError(true);
+          setWardRecommendationLoading(false);
+        }
+      });
 
     return () => {
       isCancelled = true;
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [patientId, wardAssignmentMode, activeAdmission, requiresIsolation, requiresOxygen, requiresVentilator, admissionType]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    patientId,
+    wardAssignmentMode,
+    activeAdmission,
+    requiresIsolation,
+    requiresOxygen,
+    requiresVentilator,
+    admissionType,
+  ]);
 
   // Auto-select the top recommended ward
   useEffect(() => {
@@ -428,9 +484,8 @@ export default function NewAdmissionPage() {
       return;
     }
 
-    const wardsList = (wards as any)?.results ?? wards ?? [];
     const recommendedId = String(wardRecommendationData.recommended_ward_id);
-    const wardIsAccessible = wardsList.some((w: any) => String(w.id) === recommendedId);
+    const wardIsAccessible = wardsList.some((w) => String(w.id) === recommendedId);
 
     if (!wardIsAccessible) {
       toast.warning('Recommended ward is outside your active facility scope');
@@ -440,7 +495,7 @@ export default function NewAdmissionPage() {
     if (wardId !== recommendedId) {
       handleWardChange(recommendedId);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [wardRecommendationData, wardAssignmentMode, wards]);
 
   useEffect(() => {
@@ -454,35 +509,45 @@ export default function NewAdmissionPage() {
     setCompatibilityResult(null);
     setOverrideReason(null);
 
-    checkCompatibility.mutateAsync({
-      wardId: selectedWardId,
-      patientId,
-      requiresIsolation,
-      requiresOxygen,
-      requiresVentilator,
-    }).then((result) => {
-      if (isCancelled) {
-        return;
-      }
+    checkCompatibility
+      .mutateAsync({
+        wardId: selectedWardId,
+        patientId,
+        requiresIsolation,
+        requiresOxygen,
+        requiresVentilator,
+      })
+      .then((result) => {
+        if (isCancelled) {
+          return;
+        }
 
-      setCompatibilityResult(result);
+        setCompatibilityResult(result);
 
-      if (!result.compatible && result.violations?.length > 0) {
-        setCompatibilityViolations(result.violations);
-        setShowCompatibilityDialog(true);
-      }
-    }).catch(() => {
-      if (!isCancelled) {
-        console.warn('Compatibility check failed, allowing admission');
-        setCompatibilityResult(null);
-      }
-    });
+        if (!result.compatible && result.violations?.length > 0) {
+          setCompatibilityViolations(result.violations);
+          setShowCompatibilityDialog(true);
+        }
+      })
+      .catch(() => {
+        if (!isCancelled) {
+          console.warn('Compatibility check failed, allowing admission');
+          setCompatibilityResult(null);
+        }
+      });
 
     return () => {
       isCancelled = true;
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [patientId, selectedWardId, activeAdmission, requiresIsolation, requiresOxygen, requiresVentilator]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    patientId,
+    selectedWardId,
+    activeAdmission,
+    requiresIsolation,
+    requiresOxygen,
+    requiresVentilator,
+  ]);
 
   useEffect(() => {
     if (!patientId || !selectedWardId || assignmentStrategy === 'MANUAL' || !!activeAdmission) {
@@ -505,7 +570,7 @@ export default function NewAdmissionPage() {
 
     smartRecommendBed.reset();
     recommendBed.mutate({ wardId: selectedWardId, data: payload });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     patientId,
     selectedWardId,
@@ -521,10 +586,14 @@ export default function NewAdmissionPage() {
     if (encounterDiagnoses && !diagnosisPrefilled) {
       const entries: DiagnosisEntry[] = [];
       for (const d of encounterDiagnoses) {
-        const role = d.diagnosis_type === 'PRIMARY' ? 'PRIMARY' as const : 'SECONDARY' as const;
+        const role = d.diagnosis_type === 'PRIMARY' ? ('PRIMARY' as const) : ('SECONDARY' as const);
         let code: DiagnosisCodeValue = emptyDiagnosisCodeValue();
         if (d.icd11_code) {
-          code = { ...code, icd11Code: d.icd11_code, icd11Display: `${d.icd11_code} - ${d.icd11_display || d.free_text_diagnosis || ''}` };
+          code = {
+            ...code,
+            icd11Code: d.icd11_code,
+            icd11Display: `${d.icd11_code} - ${d.icd11_display || d.free_text_diagnosis || ''}`,
+          };
         } else if (d.icd10_code || d.icd10_display) {
           const display = d.icd10_display || '';
           const codeStr = display.split(' - ')[0] || String(d.icd10_code || '');
@@ -537,11 +606,16 @@ export default function NewAdmissionPage() {
       }
       // Ensure at least the primary exists
       if (entries.length === 0) {
-        const primary = encounterDiagnoses.find((d: any) => d.diagnosis_type === 'PRIMARY') || encounterDiagnoses[0];
+        const primary =
+          encounterDiagnoses.find((d) => d.diagnosis_type === 'PRIMARY') || encounterDiagnoses[0];
         if (primary) {
           let code: DiagnosisCodeValue = emptyDiagnosisCodeValue();
           if (primary.icd11_code) {
-            code = { ...code, icd11Code: primary.icd11_code, icd11Display: `${primary.icd11_code} - ${primary.icd11_display || primary.free_text_diagnosis || ''}` };
+            code = {
+              ...code,
+              icd11Code: primary.icd11_code,
+              icd11Display: `${primary.icd11_code} - ${primary.icd11_display || primary.free_text_diagnosis || ''}`,
+            };
           } else if (primary.free_text_diagnosis) {
             code = { ...code, icd10Display: primary.free_text_diagnosis };
           }
@@ -559,8 +633,14 @@ export default function NewAdmissionPage() {
   // Extract primary diagnosis from multi-diagnosis entries
   const primaryEntry = diagnosisEntries.find((e) => e.role === 'PRIMARY');
   const primaryDiagnosisValue = primaryEntry?.code ?? emptyDiagnosisCodeValue();
-  const hasDiagnosis = !!(primaryDiagnosisValue.icd11Code || primaryDiagnosisValue.icd10Code || primaryDiagnosisValue.icd10Display || primaryDiagnosisValue.snomedCode);
-  const hasRequiredMaternityContext = !isMaternityWard || (!!mchRegistrationId && mchRegistrationMatchesPatient);
+  const hasDiagnosis = !!(
+    primaryDiagnosisValue.icd11Code ||
+    primaryDiagnosisValue.icd10Code ||
+    primaryDiagnosisValue.icd10Display ||
+    primaryDiagnosisValue.snomedCode
+  );
+  const hasRequiredMaternityContext =
+    !isMaternityWard || (!!mchRegistrationId && mchRegistrationMatchesPatient);
 
   // With autoAssignBed, bed selection is not required (handled by backend)
   const recommendedBedId = useMemo(() => {
@@ -568,46 +648,58 @@ export default function NewAdmissionPage() {
       return bedId ? Number(bedId) : null;
     }
 
-    const recommendation = assignmentStrategy === 'SMART'
-      ? smartRecommendBed.data
-      : recommendBed.data;
+    const recommendation =
+      assignmentStrategy === 'SMART' ? smartRecommendBed.data : recommendBed.data;
 
     return recommendation?.success && recommendation.assigned_bed_id
       ? recommendation.assigned_bed_id
       : null;
   }, [assignmentStrategy, bedId, smartRecommendBed.data, recommendBed.data]);
 
-  const canSubmit = !!patientId
-    && !!wardId
-    && !!recommendedBedId
-    && hasDiagnosis
-    && !!user
-    && hasRequiredMaternityContext
-    && !activeAdmission
-    && !hasOrgActiveAdmissionConflict;
+  const canSubmit =
+    !!patientId &&
+    !!wardId &&
+    !!recommendedBedId &&
+    hasDiagnosis &&
+    !!user &&
+    hasRequiredMaternityContext &&
+    !activeAdmission &&
+    !hasOrgActiveAdmissionConflict;
 
-  const admittingDiagnosis = primaryDiagnosisValue.icd11Code
-    || primaryDiagnosisValue.icd10Display?.split(' - ')[0]
-    || primaryDiagnosisValue.snomedCode
-    || '';
+  const admittingDiagnosis =
+    primaryDiagnosisValue.icd11Code ||
+    primaryDiagnosisValue.icd10Display?.split(' - ')[0] ||
+    primaryDiagnosisValue.snomedCode ||
+    '';
 
-  const admittingDiagnosisText = primaryDiagnosisValue.icd11Display?.split(' - ').slice(1).join(' - ')
-    || primaryDiagnosisValue.icd10Display?.split(' - ').slice(1).join(' - ')
-    || primaryDiagnosisValue.snomedDisplay
-    || '';
+  const admittingDiagnosisText =
+    primaryDiagnosisValue.icd11Display?.split(' - ').slice(1).join(' - ') ||
+    primaryDiagnosisValue.icd10Display?.split(' - ').slice(1).join(' - ') ||
+    primaryDiagnosisValue.snomedDisplay ||
+    '';
 
   const secondaryDiagnoses = diagnosisEntries.filter((e) => e.role !== 'PRIMARY');
 
   // Resolve the selected bed number for the confirmation dialog
   const selectedBedNumber = useMemo(() => {
     if (assignmentStrategy === 'MANUAL') {
-      const bedsList = Array.isArray(beds) ? beds : beds?.results ?? [];
-      const bed = bedsList.find((b: any) => String(b.id) === bedId);
+      const bedsList: InpatientBed[] = Array.isArray(beds) ? beds : (beds?.results ?? []);
+      const bed = bedsList.find((b) => String(b.id) === bedId);
       return bed?.bed_number || `Bed #${bedId}`;
     }
-    const recommendation = assignmentStrategy === 'SMART' ? smartRecommendBed.data : recommendBed.data;
-    return recommendation?.assigned_bed_number || (recommendedBedId ? `Bed #${recommendedBedId}` : '');
-  }, [assignmentStrategy, beds, bedId, smartRecommendBed.data, recommendBed.data, recommendedBedId]);
+    const recommendation =
+      assignmentStrategy === 'SMART' ? smartRecommendBed.data : recommendBed.data;
+    return (
+      recommendation?.assigned_bed_number || (recommendedBedId ? `Bed #${recommendedBedId}` : '')
+    );
+  }, [
+    assignmentStrategy,
+    beds,
+    bedId,
+    smartRecommendBed.data,
+    recommendBed.data,
+    recommendedBedId,
+  ]);
 
   const handleSubmitAdmission = async () => {
     if (!patientId || !user || !recommendedBedId) return;
@@ -655,7 +747,7 @@ export default function NewAdmissionPage() {
   };
 
   return (
-    <div className="container mx-auto py-6 space-y-4 sm:space-y-6">
+    <div className="container mx-auto space-y-4 py-6 sm:space-y-6">
       <PageHeader
         title="New Admission"
         helpContent="Create an inpatient admission record. Select a patient, ward, and bed to admit."
@@ -676,7 +768,7 @@ export default function NewAdmissionPage() {
       {!encounterId && hasPendingItems && (
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-base flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-base">
               <AlertCircle className="h-4 w-4 text-amber-500" />
               Pending Admissions
             </CardTitle>
@@ -684,12 +776,12 @@ export default function NewAdmissionPage() {
               Select a recommendation or IPD encounter to prefill the admission form.
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-2 max-h-[280px] overflow-y-auto">
+          <CardContent className="max-h-[280px] space-y-2 overflow-y-auto">
             {pendingRecs.map((rec) => (
               <button
                 key={`rec-${rec.id}`}
                 type="button"
-                className="w-full flex items-center justify-between gap-3 rounded-md border p-3 text-left text-sm transition-colors hover:bg-accent"
+                className="flex w-full items-center justify-between gap-3 rounded-md border p-3 text-left text-sm transition-colors hover:bg-accent"
                 onClick={() => {
                   const params = new URLSearchParams();
                   if (rec.patient_id) params.set('patient', String(rec.patient_id));
@@ -699,14 +791,20 @@ export default function NewAdmissionPage() {
               >
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <span className="font-medium truncate">{rec.patient_name || `Patient #${rec.patient_id}`}</span>
-                    {rec.patient_mrn && <Badge variant="outline" className="text-xs shrink-0">{rec.patient_mrn}</Badge>}
+                    <span className="truncate font-medium">
+                      {rec.patient_name || `Patient #${rec.patient_id}`}
+                    </span>
+                    {rec.patient_mrn && (
+                      <Badge variant="outline" className="shrink-0 text-xs">
+                        {rec.patient_mrn}
+                      </Badge>
+                    )}
                   </div>
-                  <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                  <p className="mt-0.5 truncate text-xs text-muted-foreground">
                     {rec.provisional_diagnosis_text || rec.provisional_diagnosis} — {rec.reason}
                   </p>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex shrink-0 items-center gap-2">
                   <Badge
                     variant="secondary"
                     className={`text-xs ${
@@ -719,7 +817,9 @@ export default function NewAdmissionPage() {
                   >
                     {rec.urgency}
                   </Badge>
-                  <Badge variant="outline" className="text-xs">Recommendation</Badge>
+                  <Badge variant="outline" className="text-xs">
+                    Recommendation
+                  </Badge>
                 </div>
               </button>
             ))}
@@ -727,7 +827,7 @@ export default function NewAdmissionPage() {
               <button
                 key={`enc-${enc.id}`}
                 type="button"
-                className="w-full flex items-center justify-between gap-3 rounded-md border p-3 text-left text-sm transition-colors hover:bg-accent"
+                className="flex w-full items-center justify-between gap-3 rounded-md border p-3 text-left text-sm transition-colors hover:bg-accent"
                 onClick={() => {
                   const params = new URLSearchParams();
                   params.set('patient', String(enc.patient));
@@ -737,14 +837,22 @@ export default function NewAdmissionPage() {
               >
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <span className="font-medium truncate">{enc.patient_name || `Patient #${enc.patient}`}</span>
-                    {enc.patient_mrn && <Badge variant="outline" className="text-xs shrink-0">{enc.patient_mrn}</Badge>}
+                    <span className="truncate font-medium">
+                      {enc.patient_name || `Patient #${enc.patient}`}
+                    </span>
+                    {enc.patient_mrn && (
+                      <Badge variant="outline" className="shrink-0 text-xs">
+                        {enc.patient_mrn}
+                      </Badge>
+                    )}
                   </div>
-                  <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                  <p className="mt-0.5 truncate text-xs text-muted-foreground">
                     IPD Encounter — {enc.chief_complaint || 'No complaint recorded'}
                   </p>
                 </div>
-                <Badge variant="outline" className="text-xs shrink-0">IPD Encounter</Badge>
+                <Badge variant="outline" className="shrink-0 text-xs">
+                  IPD Encounter
+                </Badge>
               </button>
             ))}
           </CardContent>
@@ -754,25 +862,27 @@ export default function NewAdmissionPage() {
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">Admission Details</CardTitle>
-          <CardDescription>Enter the patient and ward information for this admission</CardDescription>
+          <CardDescription>
+            Enter the patient and ward information for this admission
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Patient Selection */}
           <div className="space-y-2">
             <Label>Patient</Label>
             {patientId && patientData ? (
-              <div className="flex flex-col gap-3 p-3 rounded-md border bg-muted/50 sm:flex-row sm:items-center">
-                <div className="flex items-center gap-3 min-w-0 flex-1">
-                  <div className="flex items-center justify-center w-10 h-10 shrink-0 rounded-full bg-primary/10">
+              <div className="flex flex-col gap-3 rounded-md border bg-muted/50 p-3 sm:flex-row sm:items-center">
+                <div className="flex min-w-0 flex-1 items-center gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10">
                     <User className="h-5 w-5 text-primary" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="font-medium truncate">
+                    <p className="truncate font-medium">
                       {patientData.first_name} {patientData.last_name}
                     </p>
                     <div className="flex flex-wrap items-center gap-x-2 text-sm text-muted-foreground">
                       <span className="truncate">MRN: {patientData.mrn}</span>
-                      <span className="hidden xs:inline">•</span>
+                      <span className="xs:inline hidden">•</span>
                       <span>ID: {patientId}</span>
                     </div>
                   </div>
@@ -781,7 +891,7 @@ export default function NewAdmissionPage() {
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="w-full sm:w-auto shrink-0"
+                  className="w-full shrink-0 sm:w-auto"
                   onClick={() => router.push(`/patients?select=true&returnTo=/admissions/new`)}
                   data-testid="change-patient-button"
                 >
@@ -790,17 +900,17 @@ export default function NewAdmissionPage() {
                 </Button>
               </div>
             ) : patientId ? (
-              <div className="flex items-center gap-3 p-3 rounded-md border">
-                <Skeleton className="w-10 h-10 rounded-full shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <Skeleton className="h-5 w-32 mb-1" />
+              <div className="flex items-center gap-3 rounded-md border p-3">
+                <Skeleton className="h-10 w-10 shrink-0 rounded-full" />
+                <div className="min-w-0 flex-1">
+                  <Skeleton className="mb-1 h-5 w-32" />
                   <Skeleton className="h-4 w-24" />
                 </div>
               </div>
             ) : (
-              <div className="flex flex-col gap-3 p-3 rounded-md border border-dashed sm:flex-row sm:items-center">
-                <div className="flex items-center gap-3 flex-1">
-                  <div className="flex items-center justify-center w-10 h-10 shrink-0 rounded-full bg-muted">
+              <div className="flex flex-col gap-3 rounded-md border border-dashed p-3 sm:flex-row sm:items-center">
+                <div className="flex flex-1 items-center gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted">
                     <UserPlus className="h-5 w-5 text-muted-foreground" />
                   </div>
                   <p className="text-muted-foreground">No patient selected</p>
@@ -809,7 +919,7 @@ export default function NewAdmissionPage() {
                   type="button"
                   variant="default"
                   size="sm"
-                  className="w-full sm:w-auto shrink-0"
+                  className="w-full shrink-0 sm:w-auto"
                   onClick={() => router.push(`/patients?select=true&returnTo=/admissions/new`)}
                   data-testid="select-patient-button"
                 >
@@ -818,10 +928,14 @@ export default function NewAdmissionPage() {
               </div>
             )}
             {patientId && activeAdmissionCheckLoading && (
-              <p className="text-xs text-muted-foreground">Checking active admissions for this patient...</p>
+              <p className="text-xs text-muted-foreground">
+                Checking active admissions for this patient...
+              </p>
             )}
             {patientId && orgActiveAdmissionCheckLoading && (
-              <p className="text-xs text-muted-foreground">Checking organization-wide active admissions...</p>
+              <p className="text-xs text-muted-foreground">
+                Checking organization-wide active admissions...
+              </p>
             )}
             {activeAdmission && (
               <Alert className="border-amber-300 bg-amber-50/70 dark:border-amber-800 dark:bg-amber-950/30">
@@ -829,8 +943,10 @@ export default function NewAdmissionPage() {
                 <AlertDescription className="space-y-2">
                   <p>
                     This patient already has an active admission
-                    {activeAdmission.admission_number ? ` (${activeAdmission.admission_number})` : ''}.
-                    Discharge or transfer that admission before creating a new one.
+                    {activeAdmission.admission_number
+                      ? ` (${activeAdmission.admission_number})`
+                      : ''}
+                    . Discharge or transfer that admission before creating a new one.
                   </p>
                   <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
                     <span>Ward: {activeAdmission.ward_name || `#${activeAdmission.ward}`}</span>
@@ -848,16 +964,26 @@ export default function NewAdmissionPage() {
                 <AlertDescription className="space-y-2">
                   <p>
                     This patient already has an active admission in another facility
-                    {orgActiveAdmission.admission_number ? ` (${orgActiveAdmission.admission_number})` : ''}.
-                    Resolve or discharge it before creating a new admission here.
+                    {orgActiveAdmission.admission_number
+                      ? ` (${orgActiveAdmission.admission_number})`
+                      : ''}
+                    . Resolve or discharge it before creating a new admission here.
                   </p>
                   <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
-                    {orgActiveAdmission.facility_name && <span>Facility: {orgActiveAdmission.facility_name}</span>}
-                    {orgActiveAdmission.ward_name && <span>Ward: {orgActiveAdmission.ward_name}</span>}
-                    {orgActiveAdmission.bed_number && <span>Bed: {orgActiveAdmission.bed_number}</span>}
+                    {orgActiveAdmission.facility_name && (
+                      <span>Facility: {orgActiveAdmission.facility_name}</span>
+                    )}
+                    {orgActiveAdmission.ward_name && (
+                      <span>Ward: {orgActiveAdmission.ward_name}</span>
+                    )}
+                    {orgActiveAdmission.bed_number && (
+                      <span>Bed: {orgActiveAdmission.bed_number}</span>
+                    )}
                   </div>
                   <Button asChild variant="outline" size="sm" className="mt-1">
-                    <Link href={`/admissions/${orgActiveAdmission.id}`}>View org-wide active admission</Link>
+                    <Link href={`/admissions/${orgActiveAdmission.id}`}>
+                      View org-wide active admission
+                    </Link>
                   </Button>
                 </AlertDescription>
               </Alert>
@@ -872,7 +998,10 @@ export default function NewAdmissionPage() {
                 <HelpPopover content="Smart assignment evaluates all wards for compatibility, workload, occupancy, and patient needs, then auto-selects the best option. Switch to manual to pick a specific ward." />
               </div>
               <div className="flex items-center gap-2">
-                <Badge variant={wardAssignmentMode === 'auto' ? 'default' : 'outline'} className="text-xs">
+                <Badge
+                  variant={wardAssignmentMode === 'auto' ? 'default' : 'outline'}
+                  className="text-xs"
+                >
                   {wardAssignmentMode === 'auto' ? 'Smart' : 'Manual'}
                 </Badge>
                 <Switch
@@ -896,10 +1025,12 @@ export default function NewAdmissionPage() {
               <div className="space-y-2">
                 {/* Loading state */}
                 {wardRecommendationLoading && (
-                  <div className="rounded-lg border bg-muted/20 p-4 space-y-3">
+                  <div className="space-y-3 rounded-lg border bg-muted/20 p-4">
                     <div className="flex items-center gap-3">
                       <Sparkles className="h-4 w-4 animate-pulse text-primary" />
-                      <p className="text-sm text-muted-foreground">Evaluating wards for best placement...</p>
+                      <p className="text-sm text-muted-foreground">
+                        Evaluating wards for best placement...
+                      </p>
                     </div>
                     <div className="space-y-2">
                       <Skeleton className="h-10 w-full rounded-md" />
@@ -911,7 +1042,7 @@ export default function NewAdmissionPage() {
 
                 {/* Recommendation results */}
                 {!wardRecommendationLoading && wardRecommendationData && (
-                  <div className="rounded-lg border bg-muted/20 p-3 space-y-2">
+                  <div className="space-y-2 rounded-lg border bg-muted/20 p-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-1.5">
                         <p className="text-sm font-medium">
@@ -934,25 +1065,39 @@ export default function NewAdmissionPage() {
                             onClick={() => handleWardChange(String(rw.ward_id))}
                             className={cn(
                               'flex w-full items-center justify-between rounded-md border p-2 text-left text-sm transition-colors hover:bg-accent',
-                              idx === 0 && 'border-emerald-500 bg-emerald-50 text-green-700 dark:border-emerald-400 dark:bg-emerald-950/30 dark:text-green-300',
+                              idx === 0 &&
+                                'border-emerald-500 bg-emerald-50 text-green-700 dark:border-emerald-400 dark:bg-emerald-950/30 dark:text-green-300',
                               String(rw.ward_id) === wardId && 'ring-2 ring-primary'
                             )}
                           >
-                            <div className="flex items-center gap-2 min-w-0">
-                              <span className={cn(
-                                'flex h-5 w-5 shrink-0 items-center justify-center rounded text-xs font-bold',
-                                idx === 0 ? 'bg-emerald-100 text-green-700 dark:bg-emerald-900/50 dark:text-green-300' : 'bg-muted text-muted-foreground'
-                              )}>
+                            <div className="flex min-w-0 items-center gap-2">
+                              <span
+                                className={cn(
+                                  'flex h-5 w-5 shrink-0 items-center justify-center rounded text-xs font-bold',
+                                  idx === 0
+                                    ? 'bg-emerald-100 text-green-700 dark:bg-emerald-900/50 dark:text-green-300'
+                                    : 'bg-muted text-muted-foreground'
+                                )}
+                              >
                                 {idx + 1}
                               </span>
-                              <span className={cn('truncate font-medium', idx === 0 && 'text-green-700 dark:text-green-300')}>
+                              <span
+                                className={cn(
+                                  'truncate font-medium',
+                                  idx === 0 && 'text-green-700 dark:text-green-300'
+                                )}
+                              >
                                 {rw.ward_name}
                               </span>
                               <span className="text-xs text-muted-foreground">{rw.ward_type}</span>
                             </div>
-                            <div className="flex items-center gap-2 shrink-0">
-                              <span className="text-xs text-muted-foreground">{rw.available_beds} beds</span>
-                              <Badge variant="outline" className="text-xs">Score {rw.score.toFixed(1)}</Badge>
+                            <div className="flex shrink-0 items-center gap-2">
+                              <span className="text-xs text-muted-foreground">
+                                {rw.available_beds} beds
+                              </span>
+                              <Badge variant="outline" className="text-xs">
+                                Score {rw.score.toFixed(1)}
+                              </Badge>
                               {String(rw.ward_id) === wardId && (
                                 <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
                               )}
@@ -965,7 +1110,9 @@ export default function NewAdmissionPage() {
                       <div className="space-y-1.5">
                         <div className="flex items-center gap-1">
                           <span className="text-xs text-muted-foreground">
-                            {wardRecommendationData.incompatible_wards.length} ward{wardRecommendationData.incompatible_wards.length !== 1 ? 's' : ''} excluded due to constraint violations
+                            {wardRecommendationData.incompatible_wards.length} ward
+                            {wardRecommendationData.incompatible_wards.length !== 1 ? 's' : ''}{' '}
+                            excluded due to constraint violations
                           </span>
                           <TooltipProvider>
                             <Tooltip>
@@ -991,13 +1138,15 @@ export default function NewAdmissionPage() {
                             {wardRecommendationData.incompatible_wards.map((iw) => (
                               <div
                                 key={iw.ward_id}
-                                className="flex items-start gap-2 rounded-md border border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/30 p-2 text-sm"
+                                className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50/50 p-2 text-sm dark:border-amber-800 dark:bg-amber-950/30"
                               >
-                                <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
+                                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
                                 <div className="min-w-0">
                                   <span className="font-medium">{iw.ward_name}</span>
-                                  <span className="text-xs text-muted-foreground ml-1.5">{iw.ward_type_display || iw.ward_type}</span>
-                                  <ul className="mt-0.5 text-xs text-muted-foreground list-disc list-inside">
+                                  <span className="ml-1.5 text-xs text-muted-foreground">
+                                    {iw.ward_type_display || iw.ward_type}
+                                  </span>
+                                  <ul className="mt-0.5 list-inside list-disc text-xs text-muted-foreground">
                                     {iw.violations.map((v, vi) => (
                                       <li key={vi}>{v}</li>
                                     ))}
@@ -1015,13 +1164,17 @@ export default function NewAdmissionPage() {
                 {/* Error state */}
                 {wardRecommendationError && (
                   <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3">
-                    <p className="text-sm text-destructive">Ward recommendation failed. Switch to manual to select a ward.</p>
+                    <p className="text-sm text-destructive">
+                      Ward recommendation failed. Switch to manual to select a ward.
+                    </p>
                   </div>
                 )}
 
                 {/* No patient selected */}
                 {!patientId && (
-                  <p className="text-xs text-muted-foreground">Select a patient to get a ward recommendation.</p>
+                  <p className="text-xs text-muted-foreground">
+                    Select a patient to get a ward recommendation.
+                  </p>
                 )}
               </div>
             ) : (
@@ -1031,7 +1184,7 @@ export default function NewAdmissionPage() {
                   <SelectValue placeholder="Select ward" />
                 </SelectTrigger>
                 <SelectContent>
-                  {((wards as any)?.results ?? wards ?? []).map((w: any) => (
+                  {wardsList.map((w) => (
                     <SelectItem key={w.id} value={String(w.id)}>
                       {w.name}
                     </SelectItem>
@@ -1044,14 +1197,15 @@ export default function NewAdmissionPage() {
               <div className="flex items-center gap-2 text-sm text-warning">
                 <AlertTriangle className="h-4 w-4 shrink-0" />
                 <span>
-                  {compatibilityViolations.length} compatibility warning{compatibilityViolations.length > 1 ? 's' : ''} (overridden)
+                  {compatibilityViolations.length} compatibility warning
+                  {compatibilityViolations.length > 1 ? 's' : ''} (overridden)
                 </span>
               </div>
             )}
           </div>
 
           {isMaternityWard && (
-            <div className="space-y-3 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50/70 dark:bg-amber-950/40 p-4">
+            <div className="space-y-3 rounded-lg border border-amber-200 bg-amber-50/70 p-4 dark:border-amber-800 dark:bg-amber-950/40">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5">
                   <Label>MCH Registration *</Label>
@@ -1060,7 +1214,7 @@ export default function NewAdmissionPage() {
                 {!mchManualMode && mchRegistrations.length > 0 && (
                   <button
                     type="button"
-                    className="text-xs text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
+                    className="text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
                     onClick={() => setMchManualMode(true)}
                   >
                     Search by MCH number
@@ -1069,7 +1223,7 @@ export default function NewAdmissionPage() {
                 {mchManualMode && (
                   <button
                     type="button"
-                    className="text-xs text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
+                    className="text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
                     onClick={() => {
                       setMchManualMode(false);
                       setMchManualSearch('');
@@ -1097,26 +1251,20 @@ export default function NewAdmissionPage() {
                 <>
                   {/* No registrations found */}
                   {mchRegistrations.length === 0 && (
-                    <div className="rounded-md border border-dashed p-3 text-sm space-y-2">
+                    <div className="space-y-2 rounded-md border border-dashed p-3 text-sm">
                       <p className="text-muted-foreground">
                         No active MCH registration found for this patient.
                       </p>
                       <div className="flex flex-wrap gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          asChild
-                        >
-                          <Link href={`/mch/registrations/new?patient=${patientId}&returnTo=${encodeURIComponent(`/admissions/new?patient=${patientId}${encounterId ? `&encounter=${encounterId}` : ''}`)}`}>
-                            <Baby className="h-3.5 w-3.5 mr-1.5" />
+                        <Button variant="outline" size="sm" asChild>
+                          <Link
+                            href={`/mch/registrations/new?patient=${patientId}&returnTo=${encodeURIComponent(`/admissions/new?patient=${patientId}${encounterId ? `&encounter=${encounterId}` : ''}`)}`}
+                          >
+                            <Baby className="mr-1.5 h-3.5 w-3.5" />
                             Create MCH Registration
                           </Link>
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setMchManualMode(true)}
-                        >
+                        <Button variant="ghost" size="sm" onClick={() => setMchManualMode(true)}>
                           Search manually
                         </Button>
                       </div>
@@ -1132,15 +1280,19 @@ export default function NewAdmissionPage() {
                         {mchRegistrationData.is_high_risk && (
                           <Badge variant="destructive">High Risk</Badge>
                         )}
-                        <Badge variant="outline" className="ml-auto text-xs bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800">
-                          <CheckCircle2 className="h-3 w-3 mr-1" />
+                        <Badge
+                          variant="outline"
+                          className="ml-auto border-green-200 bg-green-50 text-xs text-green-700 dark:border-green-800 dark:bg-green-950/30 dark:text-green-400"
+                        >
+                          <CheckCircle2 className="mr-1 h-3 w-3" />
                           Auto-selected
                         </Badge>
                       </div>
                       {mchRegistrationData.edd && (
                         <p className="mt-2 text-muted-foreground">
                           EDD: {mchRegistrationData.edd}
-                          {mchRegistrationData.gestation_display && ` • ${mchRegistrationData.gestation_display}`}
+                          {mchRegistrationData.gestation_display &&
+                            ` • ${mchRegistrationData.gestation_display}`}
                         </p>
                       )}
                     </div>
@@ -1150,7 +1302,8 @@ export default function NewAdmissionPage() {
                   {mchRegistrations.length > 1 && (
                     <div className="space-y-2">
                       <p className="text-sm text-muted-foreground">
-                        {mchRegistrations.length} active pregnancies found. Select the one for this admission.
+                        {mchRegistrations.length} active pregnancies found. Select the one for this
+                        admission.
                       </p>
                       <Select value={mchRegistrationId} onValueChange={setMchRegistrationId}>
                         <SelectTrigger>
@@ -1178,7 +1331,8 @@ export default function NewAdmissionPage() {
                           {mchRegistrationData.edd && (
                             <p className="mt-2 text-muted-foreground">
                               EDD: {mchRegistrationData.edd}
-                              {mchRegistrationData.gestation_display && ` • ${mchRegistrationData.gestation_display}`}
+                              {mchRegistrationData.gestation_display &&
+                                ` • ${mchRegistrationData.gestation_display}`}
                             </p>
                           )}
                         </div>
@@ -1198,10 +1352,12 @@ export default function NewAdmissionPage() {
                     placeholder="Search by MCH number, patient name, or MRN"
                   />
                   {mchManualSearch.length > 0 && mchManualSearch.length < 3 && (
-                    <p className="text-xs text-muted-foreground">Type at least 3 characters to search</p>
+                    <p className="text-xs text-muted-foreground">
+                      Type at least 3 characters to search
+                    </p>
                   )}
                   {mchSearchResults.length > 0 && (
-                    <div className="space-y-1 max-h-48 overflow-y-auto">
+                    <div className="max-h-48 space-y-1 overflow-y-auto">
                       {mchSearchResults.map((reg) => (
                         <button
                           key={reg.id}
@@ -1219,16 +1375,24 @@ export default function NewAdmissionPage() {
                             <span className="font-medium">{reg.mch_number}</span>
                             <span className="text-muted-foreground"> • {reg.mother_name}</span>
                           </div>
-                          <div className="flex items-center gap-1.5 shrink-0">
-                            <Badge variant="secondary" className="text-xs">{reg.status}</Badge>
-                            {reg.is_high_risk && <Badge variant="destructive" className="text-xs">HR</Badge>}
+                          <div className="flex shrink-0 items-center gap-1.5">
+                            <Badge variant="secondary" className="text-xs">
+                              {reg.status}
+                            </Badge>
+                            {reg.is_high_risk && (
+                              <Badge variant="destructive" className="text-xs">
+                                HR
+                              </Badge>
+                            )}
                           </div>
                         </button>
                       ))}
                     </div>
                   )}
                   {mchManualSearch.length >= 3 && mchSearchResults.length === 0 && (
-                    <p className="text-sm text-muted-foreground">No registrations found matching &ldquo;{mchManualSearch}&rdquo;</p>
+                    <p className="text-sm text-muted-foreground">
+                      No registrations found matching &ldquo;{mchManualSearch}&rdquo;
+                    </p>
                   )}
                   {/* Show selected registration from manual search */}
                   {mchRegistrationData && mchManualMode && (
@@ -1240,11 +1404,14 @@ export default function NewAdmissionPage() {
                           <Badge variant="destructive">High Risk</Badge>
                         )}
                       </div>
-                      <p className="mt-1 text-muted-foreground">{mchRegistrationData.mother_name}</p>
+                      <p className="mt-1 text-muted-foreground">
+                        {mchRegistrationData.mother_name}
+                      </p>
                       {mchRegistrationData.edd && (
                         <p className="text-muted-foreground">
                           EDD: {mchRegistrationData.edd}
-                          {mchRegistrationData.gestation_display && ` • ${mchRegistrationData.gestation_display}`}
+                          {mchRegistrationData.gestation_display &&
+                            ` • ${mchRegistrationData.gestation_display}`}
                         </p>
                       )}
                     </div>
@@ -1257,7 +1424,8 @@ export default function NewAdmissionPage() {
                 <Alert variant="destructive">
                   <AlertCircle className="h-4 w-4" />
                   <AlertDescription>
-                    This MCH registration belongs to a different patient. Select the matching pregnancy registration before creating the admission.
+                    This MCH registration belongs to a different patient. Select the matching
+                    pregnancy registration before creating the admission.
                   </AlertDescription>
                 </Alert>
               )}
@@ -1296,7 +1464,10 @@ export default function NewAdmissionPage() {
                     <Label>Admission type</Label>
                     <HelpPopover content="Elective admissions are planned in advance. Emergency admissions bypass normal capacity checks. Transfers come from another facility or ward." />
                   </div>
-                  <Select value={admissionType} onValueChange={(value) => setAdmissionType(value as SmartAdmissionType)}>
+                  <Select
+                    value={admissionType}
+                    onValueChange={(value) => setAdmissionType(value as SmartAdmissionType)}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Select admission type" />
                     </SelectTrigger>
@@ -1312,39 +1483,65 @@ export default function NewAdmissionPage() {
               <div className="grid gap-3 rounded-lg border p-4 md:grid-cols-3">
                 <div className="flex items-center justify-between gap-4 rounded-md border bg-muted/20 p-3">
                   <div className="flex items-center gap-1.5">
-                    <Label htmlFor="requires-isolation" className="cursor-pointer text-sm font-medium">Isolation required</Label>
+                    <Label
+                      htmlFor="requires-isolation"
+                      className="cursor-pointer text-sm font-medium"
+                    >
+                      Isolation required
+                    </Label>
                     <HelpPopover content="Filters for isolation-compatible beds and factors infection control into ward scoring." />
                   </div>
-                  <Switch id="requires-isolation" checked={requiresIsolation} onCheckedChange={setRequiresIsolation} />
+                  <Switch
+                    id="requires-isolation"
+                    checked={requiresIsolation}
+                    onCheckedChange={setRequiresIsolation}
+                  />
                 </div>
 
                 <div className="flex items-center justify-between gap-4 rounded-md border bg-muted/20 p-3">
                   <div className="flex items-center gap-1.5">
-                    <Label htmlFor="requires-oxygen" className="cursor-pointer text-sm font-medium">Needs oxygen</Label>
+                    <Label htmlFor="requires-oxygen" className="cursor-pointer text-sm font-medium">
+                      Needs oxygen
+                    </Label>
                     <HelpPopover content="Restricts recommendations to beds with oxygen supply so the patient can be safely placed." />
                   </div>
-                  <Switch id="requires-oxygen" checked={requiresOxygen} onCheckedChange={setRequiresOxygen} />
+                  <Switch
+                    id="requires-oxygen"
+                    checked={requiresOxygen}
+                    onCheckedChange={setRequiresOxygen}
+                  />
                 </div>
 
                 <div className="flex items-center justify-between gap-4 rounded-md border bg-muted/20 p-3">
                   <div className="flex items-center gap-1.5">
-                    <Label htmlFor="requires-ventilator" className="cursor-pointer text-sm font-medium">Needs ventilator</Label>
+                    <Label
+                      htmlFor="requires-ventilator"
+                      className="cursor-pointer text-sm font-medium"
+                    >
+                      Needs ventilator
+                    </Label>
                     <HelpPopover content="Prioritises beds and wards that can support mechanical ventilation and advanced respiratory care." />
                   </div>
-                  <Switch id="requires-ventilator" checked={requiresVentilator} onCheckedChange={setRequiresVentilator} />
+                  <Switch
+                    id="requires-ventilator"
+                    checked={requiresVentilator}
+                    onCheckedChange={setRequiresVentilator}
+                  />
                 </div>
               </div>
 
               {assignmentStrategy === 'MANUAL' ? (
                 <BedSelectionGrid
-                  beds={(Array.isArray(beds) ? beds : beds?.results ?? [])}
+                  beds={Array.isArray(beds) ? beds : (beds?.results ?? [])}
                   selectedBedId={bedId}
                   compatibilityResult={compatibilityResult}
                   onSelectBed={(id) => setBedId(String(id))}
                   isLoading={!beds}
                   disabled={checkCompatibility.isPending}
                   wardCapacity={selectedWardCapacity}
-                  onGenerateBeds={selectedWardId ? () => generateBeds.mutate(selectedWardId) : undefined}
+                  onGenerateBeds={
+                    selectedWardId ? () => generateBeds.mutate(selectedWardId) : undefined
+                  }
                   isGeneratingBeds={generateBeds.isPending}
                 />
               ) : (
@@ -1369,7 +1566,7 @@ export default function NewAdmissionPage() {
           {/* Payer Type */}
           <div className="space-y-2">
             <Label>Payer Type *</Label>
-            <Select value={payerType} onValueChange={(v) => setPayerType(v as any)}>
+            <Select value={payerType} onValueChange={(v) => setPayerType(v as AdmissionPayerType)}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
@@ -1384,7 +1581,7 @@ export default function NewAdmissionPage() {
               <p className="text-xs text-muted-foreground">Checking SHA eligibility...</p>
             )}
             {payerType === 'SHA' && shaEligibility.status === 'ineligible' && (
-              <Alert className="bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800">
+              <Alert className="border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/20">
                 <AlertCircle className="h-4 w-4 text-amber-600" />
                 <AlertDescription className="text-amber-700 dark:text-amber-300">
                   {shaEligibility.message}
@@ -1392,7 +1589,7 @@ export default function NewAdmissionPage() {
               </Alert>
             )}
             {payerType === 'SHA' && shaEligibility.status === 'blocked' && (
-              <Alert className="bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800">
+              <Alert className="border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/20">
                 <AlertCircle className="h-4 w-4 text-amber-600" />
                 <AlertDescription className="text-amber-700 dark:text-amber-300">
                   {shaEligibility.message}
@@ -1401,25 +1598,24 @@ export default function NewAdmissionPage() {
             )}
             {/* SHA benefits coverage alert */}
             {shaEligibility.status === 'eligible' && (
-              <SHABenefitsAlert
-                shaEligible
-                benefitsState={benefitsState}
-              />
+              <SHABenefitsAlert shaEligible benefitsState={benefitsState} />
             )}
           </div>
 
           {/* Submit Button */}
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-2 pt-4 border-t">
+          <div className="flex flex-col gap-2 border-t pt-4 sm:flex-row sm:items-center sm:gap-2">
             <Button
               disabled={!canSubmit || createAdmission.isPending}
               onClick={() => setShowConfirmDialog(true)}
               className="w-full sm:w-auto"
             >
-              <Save className="h-4 w-4 mr-2" />
+              <Save className="mr-2 h-4 w-4" />
               Review &amp; Admit
             </Button>
             {createAdmission.error && (
-              <p className="text-sm text-destructive">{getApiErrorMessage(createAdmission.error)}</p>
+              <p className="text-sm text-destructive">
+                {getApiErrorMessage(createAdmission.error)}
+              </p>
             )}
           </div>
         </CardContent>
@@ -1438,13 +1634,15 @@ export default function NewAdmissionPage() {
           <div className="space-y-4 py-2">
             {/* Patient */}
             <div className="flex items-start gap-3">
-              <div className="flex items-center justify-center w-8 h-8 shrink-0 rounded-full bg-primary/10 mt-0.5">
+              <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10">
                 <User className="h-4 w-4 text-primary" />
               </div>
               <div className="min-w-0">
                 <p className="text-sm text-muted-foreground">Patient</p>
                 <p className="font-medium">
-                  {patientData ? `${patientData.first_name} ${patientData.last_name}` : `Patient #${patientId}`}
+                  {patientData
+                    ? `${patientData.first_name} ${patientData.last_name}`
+                    : `Patient #${patientId}`}
                 </p>
                 {patientData?.mrn && (
                   <p className="text-sm text-muted-foreground">MRN: {patientData.mrn}</p>
@@ -1456,7 +1654,7 @@ export default function NewAdmissionPage() {
 
             {/* Ward & Bed */}
             <div className="flex items-start gap-3">
-              <div className="flex items-center justify-center w-8 h-8 shrink-0 rounded-full bg-primary/10 mt-0.5">
+              <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10">
                 <Bed className="h-4 w-4 text-primary" />
               </div>
               <div className="min-w-0 flex-1">
@@ -1477,7 +1675,7 @@ export default function NewAdmissionPage() {
 
             {/* Diagnosis */}
             <div className="flex items-start gap-3">
-              <div className="flex items-center justify-center w-8 h-8 shrink-0 rounded-full bg-primary/10 mt-0.5">
+              <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10">
                 <Stethoscope className="h-4 w-4 text-primary" />
               </div>
               <div className="min-w-0 space-y-1">
@@ -1489,14 +1687,23 @@ export default function NewAdmissionPage() {
                 {secondaryDiagnoses.length > 0 && (
                   <div className="mt-1 space-y-0.5">
                     {secondaryDiagnoses.map((entry, idx) => {
-                      const code = entry.code.icd11Code || entry.code.icd10Display?.split(' - ')[0] || entry.code.snomedCode || '';
-                      const text = entry.code.icd11Display?.split(' - ').slice(1).join(' - ')
-                        || entry.code.icd10Display?.split(' - ').slice(1).join(' - ')
-                        || entry.code.snomedDisplay || '';
+                      const code =
+                        entry.code.icd11Code ||
+                        entry.code.icd10Display?.split(' - ')[0] ||
+                        entry.code.snomedCode ||
+                        '';
+                      const text =
+                        entry.code.icd11Display?.split(' - ').slice(1).join(' - ') ||
+                        entry.code.icd10Display?.split(' - ').slice(1).join(' - ') ||
+                        entry.code.snomedDisplay ||
+                        '';
                       return (
                         <p key={idx} className="text-sm text-muted-foreground">
-                          <Badge variant="outline" className="text-xs mr-1.5">{entry.role}</Badge>
-                          {code}{text ? ` — ${text}` : ''}
+                          <Badge variant="outline" className="mr-1.5 text-xs">
+                            {entry.role}
+                          </Badge>
+                          {code}
+                          {text ? ` — ${text}` : ''}
                         </p>
                       );
                     })}
@@ -1533,12 +1740,12 @@ export default function NewAdmissionPage() {
               <>
                 <Separator />
                 <div className="flex items-start gap-3">
-                  <div className="flex items-center justify-center w-8 h-8 shrink-0 rounded-full bg-amber-100 dark:bg-amber-950/50 mt-0.5">
+                  <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-950/50">
                     <Shield className="h-4 w-4 text-amber-600 dark:text-amber-400" />
                   </div>
                   <div className="min-w-0">
                     <p className="text-sm text-muted-foreground">Special Requirements</p>
-                    <div className="flex flex-wrap gap-1.5 mt-1">
+                    <div className="mt-1 flex flex-wrap gap-1.5">
                       {requiresIsolation && <Badge variant="secondary">Isolation</Badge>}
                       {requiresOxygen && <Badge variant="secondary">Oxygen</Badge>}
                       {requiresVentilator && <Badge variant="secondary">Ventilator</Badge>}
@@ -1553,7 +1760,7 @@ export default function NewAdmissionPage() {
               <>
                 <Separator />
                 <div className="flex items-start gap-3">
-                  <div className="flex items-center justify-center w-8 h-8 shrink-0 rounded-full bg-pink-100 dark:bg-pink-950/50 mt-0.5">
+                  <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-pink-100 dark:bg-pink-950/50">
                     <Baby className="h-4 w-4 text-pink-600 dark:text-pink-400" />
                   </div>
                   <div className="min-w-0">
@@ -1562,11 +1769,14 @@ export default function NewAdmissionPage() {
                     {mchRegistrationData.edd && (
                       <p className="text-sm text-muted-foreground">
                         EDD: {mchRegistrationData.edd}
-                        {mchRegistrationData.gestation_display && ` • ${mchRegistrationData.gestation_display}`}
+                        {mchRegistrationData.gestation_display &&
+                          ` • ${mchRegistrationData.gestation_display}`}
                       </p>
                     )}
                     {mchRegistrationData.is_high_risk && (
-                      <Badge variant="destructive" className="mt-1">High Risk</Badge>
+                      <Badge variant="destructive" className="mt-1">
+                        High Risk
+                      </Badge>
                     )}
                   </div>
                 </div>
@@ -1580,8 +1790,9 @@ export default function NewAdmissionPage() {
                 <Alert variant="destructive">
                   <AlertTriangle className="h-4 w-4" />
                   <AlertDescription>
-                    {compatibilityViolations.length} compatibility warning{compatibilityViolations.length > 1 ? 's' : ''} overridden.
-                    Reason: {overrideReason}
+                    {compatibilityViolations.length} compatibility warning
+                    {compatibilityViolations.length > 1 ? 's' : ''} overridden. Reason:{' '}
+                    {overrideReason}
                   </AlertDescription>
                 </Alert>
               </>
@@ -1592,19 +1803,23 @@ export default function NewAdmissionPage() {
               <>
                 <Separator />
                 <div className="flex items-start gap-3">
-                  <div className="flex items-center justify-center w-8 h-8 shrink-0 rounded-full bg-primary/10 mt-0.5">
+                  <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10">
                     <ShieldCheck className="h-4 w-4 text-primary" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm text-muted-foreground mb-2">
-                      SHA Insurance Consent
-                    </p>
+                    <p className="mb-2 text-sm text-muted-foreground">SHA Insurance Consent</p>
                     <SHAConsentStep
                       patientId={patientId}
                       encounterId={encounterId}
-                      patientName={patientData ? `${patientData.first_name} ${patientData.last_name}` : undefined}
+                      patientName={
+                        patientData
+                          ? `${patientData.first_name} ${patientData.last_name}`
+                          : undefined
+                      }
                       patientCrNumber={consentBenefitsLookupId}
-                      workflowMemberType={(patientData as any)?.principal_national_id ? 'dependent' : 'principal'}
+                      workflowMemberType={
+                        patientData?.principal_national_id ? 'dependent' : 'principal'
+                      }
                     />
                   </div>
                 </div>
@@ -1626,7 +1841,7 @@ export default function NewAdmissionPage() {
               disabled={createAdmission.isPending}
               className="w-full sm:w-auto"
             >
-              <CheckCircle2 className="h-4 w-4 mr-2" />
+              <CheckCircle2 className="mr-2 h-4 w-4" />
               {createAdmission.isPending ? 'Creating...' : 'Confirm Admission'}
             </Button>
           </DialogFooter>

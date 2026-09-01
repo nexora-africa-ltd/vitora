@@ -170,9 +170,7 @@ function InvoiceNotFound() {
   return (
     <Alert>
       <AlertCircle className="h-4 w-4" />
-      <AlertDescription>
-        Invoice not found. Please select a valid invoice.
-      </AlertDescription>
+      <AlertDescription>Invoice not found. Please select a valid invoice.</AlertDescription>
     </Alert>
   );
 }
@@ -202,12 +200,14 @@ export function InvoiceDetail({
 }: InvoiceDetailProps) {
   const [cancelDialogOpen, setCancelDialogOpen] = React.useState(false);
   const [editingInvoiceItemId, setEditingInvoiceItemId] = React.useState<number | null>(null);
-  const [allocationDrafts, setAllocationDrafts] = React.useState<Record<number, AllocationDraft>>({});
+  const [allocationDrafts, setAllocationDrafts] = React.useState<Record<number, AllocationDraft>>(
+    {}
+  );
   const { hasPermission } = usePermissions();
   const invoiceItems = React.useMemo(() => invoice?.items || [], [invoice?.items]);
 
   const claimItems = React.useMemo<ClaimItem[]>(() => {
-    const raw = (linkedClaimDetail as Claim & { items?: unknown } | null)?.items;
+    const raw = (linkedClaimDetail as (Claim & { items?: unknown }) | null)?.items;
     return Array.isArray(raw) ? (raw as ClaimItem[]) : [];
   }, [linkedClaimDetail]);
 
@@ -222,11 +222,12 @@ export function InvoiceDetail({
   }, [claimItems]);
 
   const pendingAllocationCount = React.useMemo(
-    () => invoiceItems
-      .map((item) => claimItemByInvoiceItemId.get(item.id))
-      .filter((item): item is ClaimItem => !!item)
-      .filter((item) => item.allocation_status === 'pending').length,
-    [invoiceItems, claimItemByInvoiceItemId],
+    () =>
+      invoiceItems
+        .map((item) => claimItemByInvoiceItemId.get(item.id))
+        .filter((item): item is ClaimItem => !!item)
+        .filter((item) => item.allocation_status === 'pending').length,
+    [invoiceItems, claimItemByInvoiceItemId]
   );
 
   React.useEffect(() => {
@@ -251,49 +252,65 @@ export function InvoiceDetail({
     });
   }, [invoiceItems, claimItemByInvoiceItemId]);
 
-  const updateAllocationDraft = React.useCallback((invoiceItemId: number, patch: Partial<AllocationDraft>) => {
-    setAllocationDrafts((prev) => ({
-      ...prev,
-      [invoiceItemId]: {
-        ...(prev[invoiceItemId] ?? {
-          mode: 'patient',
-          discount_amount: '0.00',
-          discount_reason: '',
-          saving: false,
-          error: null,
-        }),
-        ...patch,
-      },
-    }));
-  }, []);
+  const updateAllocationDraft = React.useCallback(
+    (invoiceItemId: number, patch: Partial<AllocationDraft>) => {
+      setAllocationDrafts((prev) => ({
+        ...prev,
+        [invoiceItemId]: {
+          ...(prev[invoiceItemId] ?? {
+            mode: 'patient',
+            discount_amount: '0.00',
+            discount_reason: '',
+            saving: false,
+            error: null,
+          }),
+          ...patch,
+        },
+      }));
+    },
+    []
+  );
 
-  const saveAllocation = React.useCallback(async (invoiceItemId: number) => {
-    if (!invoice?.id || !onUpdateInvoiceItemAllocation) return;
-    const claimItem = claimItemByInvoiceItemId.get(invoiceItemId);
-    if (claimItem) return;
-    const draft = allocationDrafts[invoiceItemId];
-    if (!draft) return;
+  const saveAllocation = React.useCallback(
+    async (invoiceItemId: number) => {
+      if (!invoice?.id || !onUpdateInvoiceItemAllocation) return;
+      const claimItem = claimItemByInvoiceItemId.get(invoiceItemId);
+      if (claimItem) return;
+      const draft = allocationDrafts[invoiceItemId];
+      if (!draft) return;
 
-    updateAllocationDraft(invoiceItemId, { saving: true, error: null });
-    try {
-      await onUpdateInvoiceItemAllocation(invoice.id, invoiceItemId, draft.mode === 'patient'
-        ? { mode: 'patient' }
-        : {
-            mode: 'discount',
-            discount_amount: draft.discount_amount,
-            discount_reason: draft.discount_reason,
-          });
-      setEditingInvoiceItemId(null);
-    } catch (error: unknown) {
-      const message =
-        (error as { response?: { data?: { error?: string } } })?.response?.data?.error ||
-        (error as { message?: string })?.message ||
-        'Failed to update allocation';
-      updateAllocationDraft(invoiceItemId, { error: String(message) });
-    } finally {
-      updateAllocationDraft(invoiceItemId, { saving: false });
-    }
-  }, [invoice?.id, onUpdateInvoiceItemAllocation, claimItemByInvoiceItemId, allocationDrafts, updateAllocationDraft]);
+      updateAllocationDraft(invoiceItemId, { saving: true, error: null });
+      try {
+        await onUpdateInvoiceItemAllocation(
+          invoice.id,
+          invoiceItemId,
+          draft.mode === 'patient'
+            ? { mode: 'patient' }
+            : {
+                mode: 'discount',
+                discount_amount: draft.discount_amount,
+                discount_reason: draft.discount_reason,
+              }
+        );
+        setEditingInvoiceItemId(null);
+      } catch (error: unknown) {
+        const message =
+          (error as { response?: { data?: { error?: string } } })?.response?.data?.error ||
+          (error as { message?: string })?.message ||
+          'Failed to update allocation';
+        updateAllocationDraft(invoiceItemId, { error: String(message) });
+      } finally {
+        updateAllocationDraft(invoiceItemId, { saving: false });
+      }
+    },
+    [
+      invoice?.id,
+      onUpdateInvoiceItemAllocation,
+      claimItemByInvoiceItemId,
+      allocationDrafts,
+      updateAllocationDraft,
+    ]
+  );
 
   if (isLoading) {
     return <InvoiceDetailSkeleton />;
@@ -310,7 +327,7 @@ export function InvoiceDetail({
   const canEditAllocation = hasPermission('billing.change_shaclaimitem');
   const canApplyLineDiscount = hasPermission('billing.apply_discount');
   const showShaPanels =
-    String((invoice as any).payer_type || '').toLowerCase() === 'sha' ||
+    String(invoice.payer_type || '').toLowerCase() === 'sha' ||
     !!invoice.sha_claim_number ||
     !!linkedClaim ||
     !!linkedClaimDetail;
@@ -323,11 +340,13 @@ export function InvoiceDetail({
   const canRenewProforma = isProforma && !invoice.is_valid;
   const isConvertedFromProforma = !!invoice.converted_from_proforma;
   const insuranceClaimHref = (() => {
-    const payers = (invoice as Invoice & {
-      payers?: Array<{ insurance_claim?: number | null }>;
-    }).payers;
+    const payers = (
+      invoice as Invoice & {
+        payers?: Array<{ insurance_claim?: number | null }>;
+      }
+    ).payers;
     const payerWithInsuranceClaim = payers?.find(
-      (payer) => typeof payer.insurance_claim === 'number' && payer.insurance_claim > 0,
+      (payer) => typeof payer.insurance_claim === 'number' && payer.insurance_claim > 0
     );
     if (payerWithInsuranceClaim?.insurance_claim) {
       return `/insurance/claims/${payerWithInsuranceClaim.insurance_claim}`;
@@ -359,7 +378,7 @@ export function InvoiceDetail({
         >
           {claimNumber}
           <ExternalLink className="h-3 w-3" />
-        </Link>,
+        </Link>
       );
 
       lastIndex = start + claimNumber.length;
@@ -378,9 +397,15 @@ export function InvoiceDetail({
   const grossTotal = toAmount(invoiceTotals.gross_total, toAmount(invoice.total_amount));
   const shaCredit = toAmount(invoiceTotals.sha_credit_amount, 0);
   const insuranceCredit = toAmount(invoiceTotals.insurance_credit_amount, 0);
-  const payerCreditTotal = toAmount(invoiceTotals.payer_credit_total, Math.max(0, shaCredit + insuranceCredit));
+  const payerCreditTotal = toAmount(
+    invoiceTotals.payer_credit_total,
+    Math.max(0, shaCredit + insuranceCredit)
+  );
   const patientCopayAmount = toAmount(invoiceTotals.patient_copay_amount, 0);
-  const patientNetDue = toAmount(invoiceTotals.patient_net_due, Math.max(0, grossTotal - payerCreditTotal));
+  const patientNetDue = toAmount(
+    invoiceTotals.patient_net_due,
+    Math.max(0, grossTotal - payerCreditTotal)
+  );
   const total = grossTotal;
   const paid = toAmount(invoice.amount_paid || '0');
   const balance = Math.max(0, patientNetDue - paid);
@@ -388,20 +413,23 @@ export function InvoiceDetail({
   return (
     <div className="space-y-4 sm:space-y-6">
       {/* Invoice Summary Bar */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center p-3 sm:p-4 rounded-lg bg-muted/50">
-        <div className="flex flex-col gap-1 min-w-0" data-testid="invoice-number">
+      <div className="flex flex-col gap-3 rounded-lg bg-muted/50 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
+        <div className="flex min-w-0 flex-col gap-1" data-testid="invoice-number">
           {(invoice.patient_name || invoice.patient_mrn) && (
-            <p className="text-sm font-medium truncate">
+            <p className="truncate text-sm font-medium">
               {invoice.patient_name || ''}
               {invoice.patient_name && invoice.patient_mrn ? ' • ' : ''}
               <span className="text-muted-foreground">{invoice.patient_mrn || ''}</span>
             </p>
           )}
-          <p className="text-xs sm:text-sm text-muted-foreground">
+          <p className="text-xs text-muted-foreground sm:text-sm">
             Created {formatDate(invoice.invoice_date)}
           </p>
         </div>
-        <Badge className={`${statusColors[invoice.status]} shrink-0 w-fit self-start sm:self-auto`} data-testid="invoice-status">
+        <Badge
+          className={`${statusColors[invoice.status]} w-fit shrink-0 self-start sm:self-auto`}
+          data-testid="invoice-status"
+        >
           {invoice.status}
         </Badge>
       </div>
@@ -418,10 +446,13 @@ export function InvoiceDetail({
 
       {/* Proforma Validity Banner */}
       {isProforma && (
-        <Alert className={invoice.is_valid
-          ? 'border-purple-200 bg-purple-50 dark:border-purple-800 dark:bg-purple-950'
-          : 'border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950'
-        }>
+        <Alert
+          className={
+            invoice.is_valid
+              ? 'border-purple-200 bg-purple-50 dark:border-purple-800 dark:bg-purple-950'
+              : 'border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950'
+          }
+        >
           <Clock className={`h-4 w-4 ${invoice.is_valid ? 'text-purple-600' : 'text-red-600'}`} />
           <AlertDescription className="flex items-center justify-between">
             <div>
@@ -430,7 +461,8 @@ export function InvoiceDetail({
                   <span className="font-medium">Proforma Invoice</span>
                   {invoice.days_until_expiry !== undefined && invoice.days_until_expiry >= 0 && (
                     <span className="ml-2 text-muted-foreground">
-                      • Valid for {invoice.days_until_expiry} more {invoice.days_until_expiry === 1 ? 'day' : 'days'}
+                      • Valid for {invoice.days_until_expiry} more{' '}
+                      {invoice.days_until_expiry === 1 ? 'day' : 'days'}
                       {invoice.valid_until && ` (until ${formatDate(invoice.valid_until)})`}
                     </span>
                   )}
@@ -451,7 +483,7 @@ export function InvoiceDetail({
                   onClick={() => onConvertProforma(invoice)}
                   className="bg-purple-600 hover:bg-purple-700"
                 >
-                  <ArrowRightCircle className="h-4 w-4 mr-1" />
+                  <ArrowRightCircle className="mr-1 h-4 w-4" />
                   Convert to Invoice
                 </Button>
               )}
@@ -462,7 +494,7 @@ export function InvoiceDetail({
                   onClick={() => onRenewProforma(invoice)}
                   className="border-red-500 text-red-600 hover:bg-red-50"
                 >
-                  <RefreshCw className="h-4 w-4 mr-1" />
+                  <RefreshCw className="mr-1 h-4 w-4" />
                   Renew
                 </Button>
               )}
@@ -484,29 +516,23 @@ export function InvoiceDetail({
               >
                 PRO-{invoice.converted_from_proforma}
               </Link>
-              {invoice.converted_at && (
-                <> on {formatDate(invoice.converted_at)}</>
-              )}
+              {invoice.converted_at && <> on {formatDate(invoice.converted_at)}</>}
             </span>
           </AlertDescription>
         </Alert>
       )}
 
       {/* Patient & Invoice Info Cards */}
-      <div className="grid md:grid-cols-2 gap-4">
+      <div className="grid gap-4 md:grid-cols-2">
         {/* Patient Info */}
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Patient
-            </CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Patient</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="font-semibold">{invoice.patient_name}</div>
             {invoice.patient_mrn && (
-              <div className="text-sm text-muted-foreground">
-                MRN: {invoice.patient_mrn}
-              </div>
+              <div className="text-sm text-muted-foreground">MRN: {invoice.patient_mrn}</div>
             )}
           </CardContent>
         </Card>
@@ -556,8 +582,7 @@ export function InvoiceDetail({
       </div>
 
       {/* SHA Claim Status Card - Show only for insurance/SHA invoices */}
-      {['PENDING', 'PARTIAL', 'PAID', 'OVERDUE'].includes(invoice.status) &&
-        showShaPanels && (
+      {['PENDING', 'PARTIAL', 'PAID', 'OVERDUE'].includes(invoice.status) && showShaPanels && (
         <Card className="border-blue-200 dark:border-blue-800">
           <CardHeader className="pb-2">
             <div className="flex items-center gap-2">
@@ -572,7 +597,7 @@ export function InvoiceDetail({
                   <div className="flex items-center gap-2">
                     <ClaimStatusBadge status={linkedClaim.status} />
                     {linkedClaim.sha_reference && (
-                      <span className="text-sm font-mono text-muted-foreground">
+                      <span className="font-mono text-sm text-muted-foreground">
                         {linkedClaim.sha_reference}
                       </span>
                     )}
@@ -580,7 +605,7 @@ export function InvoiceDetail({
                   <Button variant="outline" size="sm" asChild>
                     <Link href={`/transactions/sha-claims/${linkedClaim.id}`}>
                       View Claim
-                      <ExternalLink className="h-3 w-3 ml-1" />
+                      <ExternalLink className="ml-1 h-3 w-3" />
                     </Link>
                   </Button>
                 </div>
@@ -622,8 +647,13 @@ export function InvoiceDetail({
         <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <CardTitle className="text-base sm:text-lg">Line Items</CardTitle>
           {canEdit && onAddItem && (
-            <Button variant="outline" size="sm" onClick={() => onAddItem(invoice)} className="w-full sm:w-auto">
-              <Plus className="h-4 w-4 mr-1" />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onAddItem(invoice)}
+              className="w-full sm:w-auto"
+            >
+              <Plus className="mr-1 h-4 w-4" />
               Add Item
             </Button>
           )}
@@ -634,253 +664,298 @@ export function InvoiceDetail({
               Payer allocation review: {pendingAllocationCount} pending line(s)
             </div>
           )}
-          <div className="overflow-x-auto -mx-0">
+          <div className="-mx-0 overflow-x-auto">
             <Table className="min-w-[980px]">
               <TableHeader>
                 <TableRow>
                   <TableHead>Service</TableHead>
-                  <TableHead className="text-right w-16">Qty</TableHead>
-                  <TableHead className="text-right w-28">Unit Price</TableHead>
-                  <TableHead className="text-right w-28">Gross</TableHead>
+                  <TableHead className="w-16 text-right">Qty</TableHead>
+                  <TableHead className="w-28 text-right">Unit Price</TableHead>
+                  <TableHead className="w-28 text-right">Gross</TableHead>
                   {showShaPanels && (
                     <>
-                      <TableHead className="text-right w-28">SHA</TableHead>
-                      <TableHead className="text-right w-28">Patient</TableHead>
-                      <TableHead className="text-right w-36">Discount</TableHead>
+                      <TableHead className="w-28 text-right">SHA</TableHead>
+                      <TableHead className="w-28 text-right">Patient</TableHead>
+                      <TableHead className="w-36 text-right">Discount</TableHead>
                       <TableHead className="w-40">Status</TableHead>
                     </>
                   )}
                   {canEdit && onRemoveItem && <TableHead className="w-12" />}
                 </TableRow>
               </TableHeader>
-            <TableBody>
-              {(invoice.items || []).map((item) => (
-                <TableRow key={item.id}>
-                  <TableCell>
-                    <div>
-                      <div className="font-medium">{item.service_name}</div>
-                      {item.description && item.description !== item.service_name && (
-                        <div className="text-sm text-muted-foreground">
-                          {item.description}
-                        </div>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right">{item.quantity}</TableCell>
-                  <TableCell className="text-right">
-                    {formatKES(parseFloat(item.unit_price))}
-                  </TableCell>
-                  <TableCell className="text-right font-medium">
-                    {formatKES(parseFloat(item.line_total))}
-                  </TableCell>
-                  {showShaPanels && (() => {
-                    const claimItem = claimItemByInvoiceItemId.get(item.id);
-                    const draft = allocationDrafts[item.id];
-                    const isEditing = editingInvoiceItemId === item.id;
-                    const canEditThisRow = !!(
-                      canEditAllocation &&
-                      !claimItem &&
-                      invoice?.id &&
-                      onUpdateInvoiceItemAllocation
-                    );
-                    const isLinkedToClaimLine = !!claimItem;
-                    const statusPending = claimItem?.allocation_status === 'pending';
-                    const lineTotal = parseFloat(String(item.line_total || '0'));
-                    const shaAmount = parseFloat(String(claimItem?.sha_covered_amount || item.insurance_approved_amount || '0'));
-                    const discountAmount = parseFloat(String(claimItem?.discount_amount || item.discount_amount || '0'));
-                    const patientAmount = Math.max(0, lineTotal - shaAmount - discountAmount);
+              <TableBody>
+                {(invoice.items || []).map((item) => (
+                  <TableRow key={item.id}>
+                    <TableCell>
+                      <div>
+                        <div className="font-medium">{item.service_name}</div>
+                        {item.description && item.description !== item.service_name && (
+                          <div className="text-sm text-muted-foreground">{item.description}</div>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right">{item.quantity}</TableCell>
+                    <TableCell className="text-right">
+                      {formatKES(parseFloat(item.unit_price))}
+                    </TableCell>
+                    <TableCell className="text-right font-medium">
+                      {formatKES(parseFloat(item.line_total))}
+                    </TableCell>
+                    {showShaPanels &&
+                      (() => {
+                        const claimItem = claimItemByInvoiceItemId.get(item.id);
+                        const draft = allocationDrafts[item.id];
+                        const isEditing = editingInvoiceItemId === item.id;
+                        const canEditThisRow = !!(
+                          canEditAllocation &&
+                          !claimItem &&
+                          invoice?.id &&
+                          onUpdateInvoiceItemAllocation
+                        );
+                        const isLinkedToClaimLine = !!claimItem;
+                        const statusPending = claimItem?.allocation_status === 'pending';
+                        const lineTotal = parseFloat(String(item.line_total || '0'));
+                        const shaAmount = parseFloat(
+                          String(
+                            claimItem?.sha_covered_amount || item.insurance_approved_amount || '0'
+                          )
+                        );
+                        const discountAmount = parseFloat(
+                          String(claimItem?.discount_amount || item.discount_amount || '0')
+                        );
+                        const patientAmount = Math.max(0, lineTotal - shaAmount - discountAmount);
 
-                    return (
-                      <>
-                        <TableCell className="text-right">
-                          {formatKES(shaAmount)}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {formatKES(patientAmount)}
-                        </TableCell>
-                        <TableCell>
-                          {isEditing && draft && draft.mode === 'discount' ? (
-                            <div className="space-y-1">
-                              <Input
-                                value={draft.discount_amount}
-                                onChange={(e) => updateAllocationDraft(item.id, { discount_amount: e.target.value })}
-                                className="h-8 text-xs text-right"
-                                disabled={!canApplyLineDiscount}
-                              />
-                              <Input
-                                value={draft.discount_reason}
-                                onChange={(e) => updateAllocationDraft(item.id, { discount_reason: e.target.value })}
-                                className="h-8 text-xs"
-                                placeholder="Reason required if discount > 0"
-                                disabled={!canApplyLineDiscount}
-                              />
-                            </div>
-                          ) : (
-                            <div className="text-right">
-                              <div>{formatKES(discountAmount)}</div>
-                              {claimItem?.discount_reason ? (
-                                <p className="text-[11px] text-muted-foreground truncate">{claimItem.discount_reason}</p>
-                              ) : null}
-                            </div>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <div className="space-y-1">
-                            <Badge className={
-                              !isLinkedToClaimLine
-                                ? 'bg-slate-100 text-slate-700'
-                                : statusPending
-                                  ? 'bg-amber-100 text-amber-800'
-                                  : 'bg-emerald-100 text-emerald-800'
-                            }>
-                              {!isLinkedToClaimLine ? 'Unlinked' : statusPending ? 'Pending allocation' : 'Resolved'}
-                            </Badge>
-                            {draft?.error ? (
-                              <p className="text-[11px] text-destructive">{draft.error}</p>
-                            ) : null}
-                            {canEditThisRow ? (
-                              <div className="flex gap-1">
-                                {isEditing ? (
-                                  <>
-                                    <select
-                                      value={draft?.mode || 'patient'}
-                                      onChange={(e) => updateAllocationDraft(item.id, { mode: e.target.value as 'patient' | 'discount' })}
-                                      className="h-7 rounded border border-input bg-background px-2 text-[11px]"
-                                      disabled={!!draft?.saving}
-                                    >
-                                      <option value="patient">Set patient payer</option>
-                                      <option value="discount">Apply discount</option>
-                                    </select>
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      className="h-7 px-2 text-[11px]"
-                                      onClick={() => void saveAllocation(item.id)}
-                                      disabled={!!draft?.saving || (draft?.mode === 'discount' && !canApplyLineDiscount)}
-                                    >
-                                      {draft?.saving ? 'Saving…' : 'Save'}
-                                    </Button>
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      className="h-7 px-2 text-[11px]"
-                                      onClick={() => setEditingInvoiceItemId(null)}
-                                      disabled={!!draft?.saving}
-                                    >
-                                      Cancel
-                                    </Button>
-                                  </>
-                                ) : (
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="h-7 px-2 text-[11px]"
-                                    onClick={() => {
-                                      const currentDiscount = Number(draft?.discount_amount || item.discount_amount || '0');
+                        return (
+                          <>
+                            <TableCell className="text-right">{formatKES(shaAmount)}</TableCell>
+                            <TableCell className="text-right">{formatKES(patientAmount)}</TableCell>
+                            <TableCell>
+                              {isEditing && draft && draft.mode === 'discount' ? (
+                                <div className="space-y-1">
+                                  <Input
+                                    value={draft.discount_amount}
+                                    onChange={(e) =>
                                       updateAllocationDraft(item.id, {
-                                        mode: currentDiscount > 0 ? 'discount' : 'patient',
-                                      });
-                                      setEditingInvoiceItemId(item.id);
-                                    }}
-                                  >
-                                    Edit allocation
-                                  </Button>
+                                        discount_amount: e.target.value,
+                                      })
+                                    }
+                                    className="h-8 text-right text-xs"
+                                    disabled={!canApplyLineDiscount}
+                                  />
+                                  <Input
+                                    value={draft.discount_reason}
+                                    onChange={(e) =>
+                                      updateAllocationDraft(item.id, {
+                                        discount_reason: e.target.value,
+                                      })
+                                    }
+                                    className="h-8 text-xs"
+                                    placeholder="Reason required if discount > 0"
+                                    disabled={!canApplyLineDiscount}
+                                  />
+                                </div>
+                              ) : (
+                                <div className="text-right">
+                                  <div>{formatKES(discountAmount)}</div>
+                                  {claimItem?.discount_reason ? (
+                                    <p className="truncate text-[11px] text-muted-foreground">
+                                      {claimItem.discount_reason}
+                                    </p>
+                                  ) : null}
+                                </div>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              <div className="space-y-1">
+                                <Badge
+                                  className={
+                                    !isLinkedToClaimLine
+                                      ? 'bg-slate-100 text-slate-700'
+                                      : statusPending
+                                        ? 'bg-amber-100 text-amber-800'
+                                        : 'bg-emerald-100 text-emerald-800'
+                                  }
+                                >
+                                  {!isLinkedToClaimLine
+                                    ? 'Unlinked'
+                                    : statusPending
+                                      ? 'Pending allocation'
+                                      : 'Resolved'}
+                                </Badge>
+                                {draft?.error ? (
+                                  <p className="text-[11px] text-destructive">{draft.error}</p>
+                                ) : null}
+                                {canEditThisRow ? (
+                                  <div className="flex gap-1">
+                                    {isEditing ? (
+                                      <>
+                                        <select
+                                          value={draft?.mode || 'patient'}
+                                          onChange={(e) =>
+                                            updateAllocationDraft(item.id, {
+                                              mode: e.target.value as 'patient' | 'discount',
+                                            })
+                                          }
+                                          className="h-7 rounded border border-input bg-background px-2 text-[11px]"
+                                          disabled={!!draft?.saving}
+                                        >
+                                          <option value="patient">Set patient payer</option>
+                                          <option value="discount">Apply discount</option>
+                                        </select>
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          className="h-7 px-2 text-[11px]"
+                                          onClick={() => void saveAllocation(item.id)}
+                                          disabled={
+                                            !!draft?.saving ||
+                                            (draft?.mode === 'discount' && !canApplyLineDiscount)
+                                          }
+                                        >
+                                          {draft?.saving ? 'Saving…' : 'Save'}
+                                        </Button>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          className="h-7 px-2 text-[11px]"
+                                          onClick={() => setEditingInvoiceItemId(null)}
+                                          disabled={!!draft?.saving}
+                                        >
+                                          Cancel
+                                        </Button>
+                                      </>
+                                    ) : (
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="h-7 px-2 text-[11px]"
+                                        onClick={() => {
+                                          const currentDiscount = Number(
+                                            draft?.discount_amount || item.discount_amount || '0'
+                                          );
+                                          updateAllocationDraft(item.id, {
+                                            mode: currentDiscount > 0 ? 'discount' : 'patient',
+                                          });
+                                          setEditingInvoiceItemId(item.id);
+                                        }}
+                                      >
+                                        Edit allocation
+                                      </Button>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <p className="text-[11px] text-muted-foreground">
+                                    {claimItem ? 'Read-only (linked SHA line)' : 'Read-only'}
+                                  </p>
                                 )}
                               </div>
-                            ) : (
-                              <p className="text-[11px] text-muted-foreground">
-                                {claimItem ? 'Read-only (linked SHA line)' : 'Read-only'}
-                              </p>
-                            )}
-                          </div>
-                        </TableCell>
-                      </>
-                    );
-                  })()}
-                  {canEdit && onRemoveItem && (
-                    <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-red-500 hover:text-red-700"
-                        onClick={() => onRemoveItem(invoice, item.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
-                  )}
-                </TableRow>
-              ))}
-            </TableBody>
-            <TableFooter>
-              <TableRow>
-                <TableCell colSpan={showShaPanels ? 7 : 3}>Subtotal</TableCell>
-                <TableCell className="text-right">
-                  {formatKES(subtotal)}
-                </TableCell>
-                {canEdit && onRemoveItem && <TableCell />}
-              </TableRow>
-              {discount > 0 && (
+                            </TableCell>
+                          </>
+                        );
+                      })()}
+                    {canEdit && onRemoveItem && (
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-red-500 hover:text-red-700"
+                          onClick={() => onRemoveItem(invoice, item.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    )}
+                  </TableRow>
+                ))}
+              </TableBody>
+              <TableFooter>
                 <TableRow>
+                  <TableCell colSpan={showShaPanels ? 7 : 3}>Subtotal</TableCell>
+                  <TableCell className="text-right">{formatKES(subtotal)}</TableCell>
+                  {canEdit && onRemoveItem && <TableCell />}
+                </TableRow>
+                {discount > 0 && (
+                  <TableRow>
                     <TableCell colSpan={showShaPanels ? 7 : 3} className="text-green-600">
-                    Discount
-                    {invoice.discount_type === 'PERCENTAGE' && (() => {
-                      const pct = parseFloat(invoice.discount_value || '0');
-                      if (!Number.isFinite(pct) || pct <= 0) return '';
-                      const pctLabel = Number.isInteger(pct) ? `${pct}%` : `${pct}%`;
-                      return ` (${pctLabel})`;
-                    })()}
+                      Discount
+                      {invoice.discount_type === 'PERCENTAGE' &&
+                        (() => {
+                          const pct = parseFloat(invoice.discount_value || '0');
+                          if (!Number.isFinite(pct) || pct <= 0) return '';
+                          const pctLabel = Number.isInteger(pct) ? `${pct}%` : `${pct}%`;
+                          return ` (${pctLabel})`;
+                        })()}
+                    </TableCell>
+                    <TableCell className="text-right text-green-600">
+                      -{formatKES(discount)}
+                    </TableCell>
+                    {canEdit && onRemoveItem && <TableCell />}
+                  </TableRow>
+                )}
+                <TableRow className="font-bold">
+                  <TableCell colSpan={showShaPanels ? 7 : 3}>Total</TableCell>
+                  <TableCell className="text-right">{formatKES(total)}</TableCell>
+                  {canEdit && onRemoveItem && <TableCell />}
+                </TableRow>
+                {shaCredit > 0 && (
+                  <TableRow>
+                    <TableCell colSpan={showShaPanels ? 7 : 3} className="text-emerald-700">
+                      SHA Credit
+                    </TableCell>
+                    <TableCell className="text-right text-emerald-700">
+                      -{formatKES(shaCredit)}
+                    </TableCell>
+                    {canEdit && onRemoveItem && <TableCell />}
+                  </TableRow>
+                )}
+                {insuranceCredit > 0 && (
+                  <TableRow>
+                    <TableCell
+                      colSpan={showShaPanels ? 7 : 3}
+                      className="text-emerald-700 dark:text-emerald-300"
+                    >
+                      Insurance Reserve/Credit
+                    </TableCell>
+                    <TableCell className="text-right text-emerald-700 dark:text-emerald-300">
+                      -{formatKES(insuranceCredit)}
+                    </TableCell>
+                    {canEdit && onRemoveItem && <TableCell />}
+                  </TableRow>
+                )}
+                {payerCreditTotal > 0 && (
+                  <TableRow>
+                    <TableCell colSpan={showShaPanels ? 7 : 3} className="text-muted-foreground">
+                      Total Payer Credits
+                    </TableCell>
+                    <TableCell className="text-right text-muted-foreground">
+                      -{formatKES(payerCreditTotal)}
+                    </TableCell>
+                    {canEdit && onRemoveItem && <TableCell />}
+                  </TableRow>
+                )}
+                {patientCopayAmount > 0 && (
+                  <TableRow>
+                    <TableCell
+                      colSpan={showShaPanels ? 7 : 3}
+                      className="text-amber-700 dark:text-amber-300"
+                    >
+                      Patient Copay
+                    </TableCell>
+                    <TableCell className="text-right text-amber-700 dark:text-amber-300">
+                      {formatKES(patientCopayAmount)}
+                    </TableCell>
+                    {canEdit && onRemoveItem && <TableCell />}
+                  </TableRow>
+                )}
+                <TableRow className="bg-emerald-50/60 font-bold dark:bg-emerald-950/40">
+                  <TableCell colSpan={showShaPanels ? 7 : 3}>Patient Net Due</TableCell>
+                  <TableCell className="text-right text-emerald-800 dark:text-emerald-200">
+                    {formatKES(patientNetDue)}
                   </TableCell>
-                  <TableCell className="text-right text-green-600">
-                    -{formatKES(discount)}
-                  </TableCell>
                   {canEdit && onRemoveItem && <TableCell />}
                 </TableRow>
-              )}
-              <TableRow className="font-bold">
-                <TableCell colSpan={showShaPanels ? 7 : 3}>Total</TableCell>
-                <TableCell className="text-right">
-                  {formatKES(total)}
-                </TableCell>
-                {canEdit && onRemoveItem && <TableCell />}
-              </TableRow>
-              {shaCredit > 0 && (
-                <TableRow>
-                  <TableCell colSpan={showShaPanels ? 7 : 3} className="text-emerald-700">SHA Credit</TableCell>
-                  <TableCell className="text-right text-emerald-700">-{formatKES(shaCredit)}</TableCell>
-                  {canEdit && onRemoveItem && <TableCell />}
-                </TableRow>
-              )}
-              {insuranceCredit > 0 && (
-                <TableRow>
-                  <TableCell colSpan={showShaPanels ? 7 : 3} className="text-emerald-700 dark:text-emerald-300">Insurance Reserve/Credit</TableCell>
-                  <TableCell className="text-right text-emerald-700 dark:text-emerald-300">-{formatKES(insuranceCredit)}</TableCell>
-                  {canEdit && onRemoveItem && <TableCell />}
-                </TableRow>
-              )}
-              {payerCreditTotal > 0 && (
-                <TableRow>
-                  <TableCell colSpan={showShaPanels ? 7 : 3} className="text-muted-foreground">Total Payer Credits</TableCell>
-                  <TableCell className="text-right text-muted-foreground">-{formatKES(payerCreditTotal)}</TableCell>
-                  {canEdit && onRemoveItem && <TableCell />}
-                </TableRow>
-              )}
-              {patientCopayAmount > 0 && (
-                <TableRow>
-                  <TableCell colSpan={showShaPanels ? 7 : 3} className="text-amber-700 dark:text-amber-300">Patient Copay</TableCell>
-                  <TableCell className="text-right text-amber-700 dark:text-amber-300">{formatKES(patientCopayAmount)}</TableCell>
-                  {canEdit && onRemoveItem && <TableCell />}
-                </TableRow>
-              )}
-              <TableRow className="font-bold bg-emerald-50/60 dark:bg-emerald-950/40">
-                <TableCell colSpan={showShaPanels ? 7 : 3}>Patient Net Due</TableCell>
-                <TableCell className="text-right text-emerald-800 dark:text-emerald-200">
-                  {formatKES(patientNetDue)}
-                </TableCell>
-                {canEdit && onRemoveItem && <TableCell />}
-              </TableRow>
-            </TableFooter>
-          </Table>
+              </TableFooter>
+            </Table>
           </div>
         </CardContent>
       </Card>
@@ -900,18 +975,15 @@ export function InvoiceDetail({
           variant="outline"
           onClick={() => (onPrint ? onPrint(invoice) : printInvoice({ invoice }))}
         >
-          <Printer className="h-4 w-4 mr-2" />
+          <Printer className="mr-2 h-4 w-4" />
           Print Invoice
         </Button>
 
         {/* Print Receipt - Show for paid/partial invoices */}
         {(isPaid || invoice.status === 'PARTIAL') && parseFloat(invoice.amount_paid || '0') > 0 && (
-          <Button
-            variant="outline"
-            asChild
-          >
+          <Button variant="outline" asChild>
             <Link href={`/transactions/payments?invoice=${invoice.id}`}>
-              <Receipt className="h-4 w-4 mr-2" />
+              <Receipt className="mr-2 h-4 w-4" />
               View Payments
             </Link>
           </Button>
@@ -920,15 +992,19 @@ export function InvoiceDetail({
         {/* Email */}
         {onEmail && (
           <Button variant="outline" onClick={() => onEmail(invoice)}>
-            <Send className="h-4 w-4 mr-2" />
+            <Send className="mr-2 h-4 w-4" />
             Email
           </Button>
         )}
 
         {/* Apply Discount (Draft only) */}
         {canEdit && onApplyDiscount && (
-          <ActionButton action="billing.apply_discount" variant="outline" onClick={() => onApplyDiscount(invoice)}>
-            <Percent className="h-4 w-4 mr-2" />
+          <ActionButton
+            action="billing.apply_discount"
+            variant="outline"
+            onClick={() => onApplyDiscount(invoice)}
+          >
+            <Percent className="mr-2 h-4 w-4" />
             Discount
           </ActionButton>
         )}
@@ -936,7 +1012,7 @@ export function InvoiceDetail({
         {/* Collect Copay (Draft only) */}
         {canEdit && onCollectCopay && patientCopayAmount > 0 && (
           <Button variant="outline" onClick={() => onCollectCopay(invoice)}>
-            <CreditCard className="h-4 w-4 mr-2" />
+            <CreditCard className="mr-2 h-4 w-4" />
             Collect Copay
           </Button>
         )}
@@ -948,7 +1024,7 @@ export function InvoiceDetail({
             className="border-green-500 text-green-600 hover:bg-green-50"
             onClick={() => onFinalize(invoice)}
           >
-            <FileCheck className="h-4 w-4 mr-2" />
+            <FileCheck className="mr-2 h-4 w-4" />
             Finalize
           </Button>
         )}
@@ -959,7 +1035,7 @@ export function InvoiceDetail({
             className="bg-purple-600 hover:bg-purple-700"
             onClick={() => onConvertProforma(invoice)}
           >
-            <ArrowRightCircle className="h-4 w-4 mr-2" />
+            <ArrowRightCircle className="mr-2 h-4 w-4" />
             Convert to Invoice
           </Button>
         )}
@@ -971,7 +1047,7 @@ export function InvoiceDetail({
             className="border-amber-500 text-amber-600 hover:bg-amber-50"
             onClick={() => onRenewProforma(invoice)}
           >
-            <RefreshCw className="h-4 w-4 mr-2" />
+            <RefreshCw className="mr-2 h-4 w-4" />
             Renew Proforma
           </Button>
         )}
@@ -979,65 +1055,63 @@ export function InvoiceDetail({
         {/* Cancel (Draft/Pending only) */}
         {canCancel && (
           <PermissionGate action="billing.void_invoice">
-          <AlertDialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
-            <AlertDialogTrigger asChild>
-              <Button variant="outline" className="border-red-500 text-red-600 hover:bg-red-50">
-                <FileX className="h-4 w-4 mr-2" />
-                Cancel
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Cancel Invoice?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Are you sure you want to cancel invoice {invoice.invoice_number}?
-                  This action cannot be undone.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>No, keep it</AlertDialogCancel>
-                <AlertDialogAction
-                  className="bg-red-600 hover:bg-red-700"
-                  onClick={() => {
-                    onCancel(invoice);
-                    setCancelDialogOpen(false);
-                  }}
-                >
-                  Yes, cancel invoice
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+            <AlertDialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline" className="border-red-500 text-red-600 hover:bg-red-50">
+                  <FileX className="mr-2 h-4 w-4" />
+                  Cancel
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Cancel Invoice?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Are you sure you want to cancel invoice {invoice.invoice_number}? This action
+                    cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>No, keep it</AlertDialogCancel>
+                  <AlertDialogAction
+                    className="bg-red-600 hover:bg-red-700"
+                    onClick={() => {
+                      onCancel(invoice);
+                      setCancelDialogOpen(false);
+                    }}
+                  >
+                    Yes, cancel invoice
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </PermissionGate>
         )}
 
         {/* Record Payment */}
         {canRecordPayment && (
           <ActionButton action="billing.record_payment" onClick={() => onRecordPayment(invoice)}>
-            <CreditCard className="h-4 w-4 mr-2" />
+            <CreditCard className="mr-2 h-4 w-4" />
             Record Payment
           </ActionButton>
         )}
 
         {/* Paid Badge */}
-        {isPaid && (
-          <Badge className="bg-green-100 text-green-700 px-4 py-2">
-            ✓ Fully Paid
-          </Badge>
-        )}
+        {isPaid && <Badge className="bg-green-100 px-4 py-2 text-green-700">✓ Fully Paid</Badge>}
       </div>
 
       {/* Notes */}
       {invoice.notes && (
         <Card className="border-blue-200 bg-blue-50/60 dark:border-blue-900 dark:bg-blue-950/20">
           <CardHeader>
-            <CardTitle className="text-sm text-blue-900 dark:text-blue-100 flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-sm text-blue-900 dark:text-blue-100">
               <FileText className="h-4 w-4" />
               Notes
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-blue-900/90 dark:text-blue-100/90 leading-relaxed">{notesWithClaimLinks}</p>
+            <p className="leading-relaxed text-blue-900/90 dark:text-blue-100/90">
+              {notesWithClaimLinks}
+            </p>
           </CardContent>
         </Card>
       )}

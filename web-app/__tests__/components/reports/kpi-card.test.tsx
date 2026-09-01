@@ -12,7 +12,13 @@ jest.mock('next/link', () => {
 
 // Mock TrendIndicator component
 jest.mock('@/components/charts', () => ({
-  TrendIndicator: ({ direction, percentageChange }: { direction?: string; percentageChange?: number }) => (
+  TrendIndicator: ({
+    direction,
+    percentageChange,
+  }: {
+    direction?: string;
+    percentageChange?: number;
+  }) => (
     <span data-testid="trend-indicator" data-direction={direction} data-change={percentageChange}>
       {percentageChange !== undefined && `${Math.abs(percentageChange)}%`}
     </span>
@@ -41,14 +47,7 @@ describe('KPICard', () => {
   });
 
   it('renders positive trend with TrendIndicator', () => {
-    render(
-      <KPICard
-        {...defaultProps}
-        change={12.5}
-        changeType="increase"
-        trend="up"
-      />
-    );
+    render(<KPICard {...defaultProps} change={12.5} changeType="increase" trend="up" />);
 
     const indicator = screen.getByTestId('trend-indicator');
     expect(indicator).toHaveAttribute('data-direction', 'up');
@@ -56,14 +55,7 @@ describe('KPICard', () => {
   });
 
   it('renders negative trend with TrendIndicator', () => {
-    render(
-      <KPICard
-        {...defaultProps}
-        change={5.2}
-        changeType="decrease"
-        trend="down"
-      />
-    );
+    render(<KPICard {...defaultProps} change={5.2} changeType="decrease" trend="down" />);
 
     const indicator = screen.getByTestId('trend-indicator');
     expect(indicator).toHaveAttribute('data-direction', 'down');

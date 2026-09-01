@@ -20,13 +20,14 @@ import type { ConsultationQueueItem } from '@/lib/types/encounter';
 beforeAll(() => {
   // Radix Tooltip relies on PointerEvent; JSDOM may not implement it.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (window as any).PointerEvent = window.MouseEvent;
+  (window as unknown).PointerEvent = window.MouseEvent;
 });
 
 // Helper to get HTMLElement from closest() for use with within()
 const getClosestElement = (text: string, selector: string): HTMLElement => {
   const element = screen.getByText(text).closest(selector);
-  if (!element) throw new Error(`Could not find element with selector "${selector}" near "${text}"`);
+  if (!element)
+    throw new Error(`Could not find element with selector "${selector}" near "${text}"`);
   return element as HTMLElement;
 };
 
@@ -34,7 +35,9 @@ const getClosestElement = (text: string, selector: string): HTMLElement => {
 // MOCK DATA
 // =============================================================================
 
-const createQueueItem = (overrides: Partial<ConsultationQueueItem> = {}): ConsultationQueueItem => ({
+const createQueueItem = (
+  overrides: Partial<ConsultationQueueItem> = {}
+): ConsultationQueueItem => ({
   id: Math.floor(Math.random() * 1000),
   patient_id: 1,
   patient_name: 'John Kamau',
@@ -292,17 +295,16 @@ describe('ConsultationQueue', () => {
       const janeRow = getClosestElement('Jane Wanjiku', '[data-testid="queue-item"]');
       const callButton = within(janeRow).getByRole('button', { name: /Call Patient/i });
 
-      expect(callButton).toHaveAttribute(
-        'title',
-        'Call the patient and claim for consultation'
-      );
+      expect(callButton).toHaveAttribute('title', 'Call the patient and claim for consultation');
     });
 
     it('should render "Start Consultation" button for called patients', () => {
       render(<ConsultationQueue {...defaultProps} />);
 
       const aliceRow = getClosestElement('Alice Njeri', '[data-testid="queue-item"]');
-      expect(within(aliceRow).getByRole('button', { name: /Start Consultation/i })).toBeInTheDocument();
+      expect(
+        within(aliceRow).getByRole('button', { name: /Start Consultation/i })
+      ).toBeInTheDocument();
     });
 
     it('should call onStartConsultation when "Start Consultation" is clicked', async () => {
@@ -326,7 +328,9 @@ describe('ConsultationQueue', () => {
 
     it('should disable Call button while action is loading', async () => {
       const user = userEvent.setup();
-      const slowCallPatient = jest.fn().mockImplementation(() => new Promise(resolve => setTimeout(resolve, 1000)));
+      const slowCallPatient = jest
+        .fn()
+        .mockImplementation(() => new Promise((resolve) => setTimeout(resolve, 1000)));
 
       render(<ConsultationQueue {...defaultProps} onCallPatient={slowCallPatient} />);
 
@@ -406,7 +410,7 @@ describe('ConsultationQueue', () => {
       });
       // Click the dropdown option (not the badge)
       const dropdownOptions = screen.getAllByRole('option');
-      const calledOption = dropdownOptions.find(opt => opt.textContent?.includes('Called'));
+      const calledOption = dropdownOptions.find((opt) => opt.textContent?.includes('Called'));
       if (calledOption) {
         await user.click(calledOption);
       } else {

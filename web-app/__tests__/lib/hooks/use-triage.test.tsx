@@ -117,7 +117,9 @@ describe('triage assessment hooks', () => {
   });
 
   it('fetches an assessment by id and respects disabled state', async () => {
-    mockApiClient.get.mockResolvedValueOnce({ data: { id: 1, encounter: 100, triage_category: 'YELLOW' } } as never);
+    mockApiClient.get.mockResolvedValueOnce({
+      data: { id: 1, encounter: 100, triage_category: 'YELLOW' },
+    } as never);
 
     const { result } = renderHook(() => useTriageAssessment(1), { wrapper: createWrapper() });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
@@ -162,12 +164,19 @@ describe('triage assessment hooks', () => {
 
     const updateHook = renderHook(() => useUpdateTriageAssessment(), { wrapper: createWrapper() });
     await act(async () => {
-      await updateHook.result.current.mutateAsync({ id: 3, data: { triage_category: 'ORANGE' } as never });
+      await updateHook.result.current.mutateAsync({
+        id: 3,
+        data: { triage_category: 'ORANGE' } as never,
+      });
     });
-    expect(mockApiClient.patch).toHaveBeenCalledWith('/api/triage/assessments/3/', { triage_category: 'ORANGE' });
+    expect(mockApiClient.patch).toHaveBeenCalledWith('/api/triage/assessments/3/', {
+      triage_category: 'ORANGE',
+    });
     expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: ['triage', 'assessments', 3] });
 
-    const completeHook = renderHook(() => useCompleteTriageAssessment(), { wrapper: createWrapper() });
+    const completeHook = renderHook(() => useCompleteTriageAssessment(), {
+      wrapper: createWrapper(),
+    });
     await act(async () => {
       await completeHook.result.current.mutateAsync(3);
     });
@@ -177,12 +186,17 @@ describe('triage assessment hooks', () => {
   });
 
   it('posts to calculate triage category endpoint', async () => {
-    mockApiClient.post.mockResolvedValueOnce({ data: { suggested_category: 'RED', alerts: [] } } as never);
+    mockApiClient.post.mockResolvedValueOnce({
+      data: { suggested_category: 'RED', alerts: [] },
+    } as never);
 
     const { result } = renderHook(() => useCalculateTriageCategory(), { wrapper: createWrapper() });
 
     await act(async () => {
-      await result.current.mutateAsync({ mental_status: 'ALERT', chief_complaint_category: 'TRAUMA' });
+      await result.current.mutateAsync({
+        mental_status: 'ALERT',
+        chief_complaint_category: 'TRAUMA',
+      });
     });
 
     expect(mockApiClient.post).toHaveBeenCalledWith('/api/triage/assessments/calculate-category/', {
@@ -209,11 +223,16 @@ describe('triage queue and waiting queue hooks', () => {
       .mockResolvedValueOnce({ data: { id: 1 } } as never)
       .mockResolvedValueOnce({ data: { id: 1 } } as never);
 
-    const queue = renderHook(() => useTriageQueue({ area: 'ER', category: 'RED', status: 'WAITING' } as never), {
-      wrapper: createWrapper(),
-    });
+    const queue = renderHook(
+      () => useTriageQueue({ area: 'ER', category: 'RED', status: 'WAITING' } as never),
+      {
+        wrapper: createWrapper(),
+      }
+    );
     await waitFor(() => expect(queue.result.current.isSuccess).toBe(true));
-    expect(mockApiClient.get).toHaveBeenCalledWith('/api/triage/queue/?area=ER&triage_category=RED&status=WAITING');
+    expect(mockApiClient.get).toHaveBeenCalledWith(
+      '/api/triage/queue/?area=ER&triage_category=RED&status=WAITING'
+    );
 
     const actions = renderHook(() => useTriageQueueActions(), { wrapper: createWrapper() });
     await act(async () => {
@@ -226,30 +245,45 @@ describe('triage queue and waiting queue hooks', () => {
     expect(mockApiClient.post).toHaveBeenNthCalledWith(1, '/api/triage/queue/1/call/');
     expect(mockApiClient.post).toHaveBeenNthCalledWith(2, '/api/triage/queue/1/with-clinician/');
     expect(mockApiClient.post).toHaveBeenNthCalledWith(3, '/api/triage/queue/1/complete/');
-    expect(mockApiClient.post).toHaveBeenNthCalledWith(4, '/api/triage/queue/1/lwbs/', { reason: 'Patient left' });
+    expect(mockApiClient.post).toHaveBeenNthCalledWith(4, '/api/triage/queue/1/lwbs/', {
+      reason: 'Patient left',
+    });
     expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: ['triage', 'queue'] });
     invalidateQueriesSpy.mockRestore();
   });
 
   it('handles waiting queue queries and mutations', async () => {
     const invalidateQueriesSpy = jest.spyOn(QueryClient.prototype, 'invalidateQueries');
-    mockApiClient.get.mockResolvedValueOnce({ data: { count: 1, results: [{ id: 9, status: 'WAITING_TRIAGE' }] } } as never);
+    mockApiClient.get.mockResolvedValueOnce({
+      data: { count: 1, results: [{ id: 9, status: 'WAITING_TRIAGE' }] },
+    } as never);
     mockApiClient.post
       .mockResolvedValueOnce({ data: { id: 9, status: 'WAITING_TRIAGE' } } as never)
       .mockResolvedValueOnce({ data: { id: 9, status: 'IN_TRIAGE' } } as never)
       .mockResolvedValueOnce({ data: { id: 9, status: 'CANCELLED' } } as never);
 
-    const waiting = renderHook(() => useWaitingQueue({ status: 'WAITING_TRIAGE', show_all: true }), {
-      wrapper: createWrapper(),
-    });
+    const waiting = renderHook(
+      () => useWaitingQueue({ status: 'WAITING_TRIAGE', show_all: true }),
+      {
+        wrapper: createWrapper(),
+      }
+    );
     await waitFor(() => expect(waiting.result.current.isSuccess).toBe(true));
-    expect(mockApiClient.get).toHaveBeenCalledWith('/api/triage/waiting/?status=WAITING_TRIAGE&show_all=true');
+    expect(mockApiClient.get).toHaveBeenCalledWith(
+      '/api/triage/waiting/?status=WAITING_TRIAGE&show_all=true'
+    );
 
     const checkIn = renderHook(() => useCheckInPatient(), { wrapper: createWrapper() });
     await act(async () => {
-      await checkIn.result.current.mutateAsync({ patient_id: 1, reason_for_visit: 'Fever' } as never);
+      await checkIn.result.current.mutateAsync({
+        patient_id: 1,
+        reason_for_visit: 'Fever',
+      } as never);
     });
-    expect(mockApiClient.post).toHaveBeenNthCalledWith(1, '/api/triage/waiting/', { patient_id: 1, reason_for_visit: 'Fever' });
+    expect(mockApiClient.post).toHaveBeenNthCalledWith(1, '/api/triage/waiting/', {
+      patient_id: 1,
+      reason_for_visit: 'Fever',
+    });
 
     const start = renderHook(() => useStartTriage(), { wrapper: createWrapper() });
     await act(async () => {
@@ -261,7 +295,9 @@ describe('triage queue and waiting queue hooks', () => {
     await act(async () => {
       await cancel.result.current.mutateAsync({ id: 9, reason: 'Duplicate entry' });
     });
-    expect(mockApiClient.post).toHaveBeenNthCalledWith(3, '/api/triage/waiting/9/cancel/', { reason: 'Duplicate entry' });
+    expect(mockApiClient.post).toHaveBeenNthCalledWith(3, '/api/triage/waiting/9/cancel/', {
+      reason: 'Duplicate entry',
+    });
     expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: ['triage', 'waiting'] });
     invalidateQueriesSpy.mockRestore();
   });
@@ -274,7 +310,9 @@ describe('triage thresholds and reports hooks', () => {
 
   it('handles threshold reads and mutations', async () => {
     const invalidateQueriesSpy = jest.spyOn(QueryClient.prototype, 'invalidateQueries');
-    mockApiClient.get.mockResolvedValueOnce({ data: { results: [{ id: 1, vital_type: 'HEART_RATE' }] } } as never);
+    mockApiClient.get.mockResolvedValueOnce({
+      data: { results: [{ id: 1, vital_type: 'HEART_RATE' }] },
+    } as never);
     mockApiClient.put.mockResolvedValueOnce({ data: { id: 1, vital_type: 'HEART_RATE' } } as never);
     mockApiClient.patch.mockResolvedValueOnce({ data: { id: 1, is_active: false } } as never);
     mockApiClient.post
@@ -284,26 +322,35 @@ describe('triage thresholds and reports hooks', () => {
 
     const thresholds = renderHook(() => useTriageVitalThresholds(), { wrapper: createWrapper() });
     await waitFor(() => expect(thresholds.result.current.isSuccess).toBe(true));
-    expect(mockApiClient.get).toHaveBeenCalledWith('/api/triage/vital-thresholds/', { params: { page_size: 100 } });
+    expect(mockApiClient.get).toHaveBeenCalledWith('/api/triage/vital-thresholds/', {
+      params: { page_size: 100 },
+    });
 
     const update = renderHook(() => useUpdateVitalThreshold(), { wrapper: createWrapper() });
     await act(async () => {
       await update.result.current.mutateAsync({ id: 1, vital_type: 'HEART_RATE' } as never);
     });
-    expect(mockApiClient.put).toHaveBeenCalledWith('/api/triage/vital-thresholds/1/', { id: 1, vital_type: 'HEART_RATE' });
+    expect(mockApiClient.put).toHaveBeenCalledWith('/api/triage/vital-thresholds/1/', {
+      id: 1,
+      vital_type: 'HEART_RATE',
+    });
 
     const toggle = renderHook(() => useToggleThresholdActive(), { wrapper: createWrapper() });
     await act(async () => {
       await toggle.result.current.mutateAsync({ id: 1, isActive: false });
     });
-    expect(mockApiClient.patch).toHaveBeenCalledWith('/api/triage/vital-thresholds/1/', { is_active: false });
+    expect(mockApiClient.patch).toHaveBeenCalledWith('/api/triage/vital-thresholds/1/', {
+      is_active: false,
+    });
 
     const resetOne = renderHook(() => useResetThresholdToDefault(), { wrapper: createWrapper() });
     await act(async () => {
       await resetOne.result.current.mutateAsync(1);
     });
 
-    const resetAll = renderHook(() => useResetAllThresholdsToDefaults(), { wrapper: createWrapper() });
+    const resetAll = renderHook(() => useResetAllThresholdsToDefaults(), {
+      wrapper: createWrapper(),
+    });
     await act(async () => {
       await resetAll.result.current.mutateAsync();
     });
@@ -314,8 +361,13 @@ describe('triage thresholds and reports hooks', () => {
     });
 
     expect(mockApiClient.post).toHaveBeenNthCalledWith(1, '/api/triage/vital-thresholds/1/reset/');
-    expect(mockApiClient.post).toHaveBeenNthCalledWith(2, '/api/triage/vital-thresholds/reset-all/');
-    expect(mockApiClient.post).toHaveBeenNthCalledWith(3, '/api/triage/vital-thresholds/import/', { HEART_RATE: { critical_high: 140 } });
+    expect(mockApiClient.post).toHaveBeenNthCalledWith(
+      2,
+      '/api/triage/vital-thresholds/reset-all/'
+    );
+    expect(mockApiClient.post).toHaveBeenNthCalledWith(3, '/api/triage/vital-thresholds/import/', {
+      HEART_RATE: { critical_high: 140 },
+    });
     expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: ['triage', 'thresholds'] });
     invalidateQueriesSpy.mockRestore();
   });
@@ -326,17 +378,28 @@ describe('triage thresholds and reports hooks', () => {
       .mockResolvedValueOnce({ data: { total_assessments: 12 } } as never);
     mockTriageApi.getVolumeReport.mockResolvedValueOnce({ categories: [], areas: [] } as never);
 
-    const reports = renderHook(() => useTriageReports({ dateRange: 'week', area: 'ER', category: 'RED' } as never), {
+    const reports = renderHook(
+      () => useTriageReports({ dateRange: 'week', area: 'ER', category: 'RED' } as never),
+      {
+        wrapper: createWrapper(),
+      }
+    );
+    await waitFor(() => expect(reports.result.current.isSuccess).toBe(true));
+    expect(mockApiClient.get).toHaveBeenCalledWith(
+      '/api/triage/reports/?date_range=week&area=ER&category=RED'
+    );
+
+    const waitTimes = renderHook(() => useTriageWaitTimeStats({ dateRange: 'today' }), {
       wrapper: createWrapper(),
     });
-    await waitFor(() => expect(reports.result.current.isSuccess).toBe(true));
-    expect(mockApiClient.get).toHaveBeenCalledWith('/api/triage/reports/?date_range=week&area=ER&category=RED');
-
-    const waitTimes = renderHook(() => useTriageWaitTimeStats({ dateRange: 'today' }), { wrapper: createWrapper() });
     await waitFor(() => expect(waitTimes.result.current.isSuccess).toBe(true));
-    expect(mockApiClient.get).toHaveBeenCalledWith('/api/triage/reports/wait-times/?date_range=today');
+    expect(mockApiClient.get).toHaveBeenCalledWith(
+      '/api/triage/reports/wait-times/?date_range=today'
+    );
 
-    const volume = renderHook(() => useTriageVolumeReport({ dateRange: 'month' }), { wrapper: createWrapper() });
+    const volume = renderHook(() => useTriageVolumeReport({ dateRange: 'month' }), {
+      wrapper: createWrapper(),
+    });
     await waitFor(() => expect(volume.result.current.isSuccess).toBe(true));
     expect(mockTriageApi.getVolumeReport).toHaveBeenCalledWith({ date_range: 'month' });
   });
@@ -378,15 +441,29 @@ describe('emergency, bed board, breaches, and escalations hooks', () => {
 
     const actions = renderHook(() => useERBedActions(), { wrapper: createWrapper() });
     await act(async () => {
-      await actions.result.current.assignPatient.mutateAsync({ bedId: 1, patient: 99, triage_assessment: 3 });
+      await actions.result.current.assignPatient.mutateAsync({
+        bedId: 1,
+        patient: 99,
+        triage_assessment: 3,
+      });
       await actions.result.current.releaseBed.mutateAsync({ bedId: 1, markCleaning: false });
-      await actions.result.current.updateStatus.mutateAsync({ bedId: 1, status: 'OUT_OF_SERVICE', reason: 'Maintenance' });
+      await actions.result.current.updateStatus.mutateAsync({
+        bedId: 1,
+        status: 'OUT_OF_SERVICE',
+        reason: 'Maintenance',
+      });
       await actions.result.current.createBed.mutateAsync({ zone: 'RED', bed_number: 'R-02' });
     });
 
-    expect(mockTriageApi.assignERBedPatient).toHaveBeenCalledWith(1, { patient: 99, triage_assessment: 3 });
+    expect(mockTriageApi.assignERBedPatient).toHaveBeenCalledWith(1, {
+      patient: 99,
+      triage_assessment: 3,
+    });
     expect(mockTriageApi.releaseERBed).toHaveBeenCalledWith(1, false);
-    expect(mockTriageApi.updateERBedStatus).toHaveBeenCalledWith(1, { status: 'OUT_OF_SERVICE', reason: 'Maintenance' });
+    expect(mockTriageApi.updateERBedStatus).toHaveBeenCalledWith(1, {
+      status: 'OUT_OF_SERVICE',
+      reason: 'Maintenance',
+    });
     expect(mockTriageApi.createERBed).toHaveBeenCalledWith({ zone: 'RED', bed_number: 'R-02' });
     expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: ['triage', 'er-beds'] });
     invalidateQueriesSpy.mockRestore();
@@ -403,16 +480,28 @@ describe('emergency, bed board, breaches, and escalations hooks', () => {
     mockTriageApi.resolveEscalation.mockResolvedValueOnce({ id: 2 } as never);
     mockTriageApi.dismissEscalation.mockResolvedValueOnce({ id: 2 } as never);
 
-    const breaches = renderHook(() => useWaitTimeBreaches({ severity: 'HIGH', triageCategory: 'RED' }), { wrapper: createWrapper() });
+    const breaches = renderHook(
+      () => useWaitTimeBreaches({ severity: 'HIGH', triageCategory: 'RED' }),
+      { wrapper: createWrapper() }
+    );
     const summary = renderHook(() => useBreachSummary(), { wrapper: createWrapper() });
-    const escalations = renderHook(() => useEscalations({ escalationType: 'OVERDUE' }), { wrapper: createWrapper() });
+    const escalations = renderHook(() => useEscalations({ escalationType: 'OVERDUE' }), {
+      wrapper: createWrapper(),
+    });
     await waitFor(() => expect(breaches.result.current.isSuccess).toBe(true));
     await waitFor(() => expect(summary.result.current.isSuccess).toBe(true));
     await waitFor(() => expect(escalations.result.current.isSuccess).toBe(true));
 
-    expect(mockTriageApi.getBreaches).toHaveBeenCalledWith({ active_only: true, severity: 'HIGH', triage_category: 'RED' });
+    expect(mockTriageApi.getBreaches).toHaveBeenCalledWith({
+      active_only: true,
+      severity: 'HIGH',
+      triage_category: 'RED',
+    });
     expect(mockTriageApi.getBreachSummary).toHaveBeenCalled();
-    expect(mockTriageApi.getEscalations).toHaveBeenCalledWith({ active_only: true, escalation_type: 'OVERDUE' });
+    expect(mockTriageApi.getEscalations).toHaveBeenCalledWith({
+      active_only: true,
+      escalation_type: 'OVERDUE',
+    });
 
     const breachActions = renderHook(() => useBreachActions(), { wrapper: createWrapper() });
     await act(async () => {
@@ -424,14 +513,29 @@ describe('emergency, bed board, breaches, and escalations hooks', () => {
 
     const escalate = renderHook(() => useEscalatePatient(), { wrapper: createWrapper() });
     await act(async () => {
-      await escalate.result.current.mutateAsync({ queueEntryId: 10, escalationType: 'OVERDUE', reason: 'Exceeded wait target' });
+      await escalate.result.current.mutateAsync({
+        queueEntryId: 10,
+        escalationType: 'OVERDUE',
+        reason: 'Exceeded wait target',
+      });
     });
-    expect(mockTriageApi.escalateQueueEntry).toHaveBeenCalledWith(10, { escalation_type: 'OVERDUE', reason: 'Exceeded wait target' });
+    expect(mockTriageApi.escalateQueueEntry).toHaveBeenCalledWith(10, {
+      escalation_type: 'OVERDUE',
+      reason: 'Exceeded wait target',
+    });
 
-    const escalationActions = renderHook(() => useEscalationActions(), { wrapper: createWrapper() });
+    const escalationActions = renderHook(() => useEscalationActions(), {
+      wrapper: createWrapper(),
+    });
     await act(async () => {
-      await escalationActions.result.current.resolveEscalation({ escalationId: 2, notes: 'Handled' });
-      await escalationActions.result.current.dismissEscalation({ escalationId: 2, notes: 'False alarm' });
+      await escalationActions.result.current.resolveEscalation({
+        escalationId: 2,
+        notes: 'Handled',
+      });
+      await escalationActions.result.current.dismissEscalation({
+        escalationId: 2,
+        notes: 'False alarm',
+      });
     });
     expect(mockTriageApi.resolveEscalation).toHaveBeenCalledWith(2, 'Handled');
     expect(mockTriageApi.dismissEscalation).toHaveBeenCalledWith(2, 'False alarm');

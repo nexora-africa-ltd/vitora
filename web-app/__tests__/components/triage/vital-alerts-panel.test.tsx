@@ -21,9 +21,7 @@ import type { TriageAlert, AlertSeverity, VitalType } from '@/lib/types/triage';
 // TEST DATA HELPERS
 // =============================================================================
 
-const createAlert = (
-  overrides: Partial<TriageAlert> = {}
-): TriageAlert => ({
+const createAlert = (overrides: Partial<TriageAlert> = {}): TriageAlert => ({
   id: `alert-${Math.random().toString(36).substr(2, 9)}`,
   severity: 'WARNING',
   vital_type: 'SPO2',
@@ -417,10 +415,7 @@ describe('VitalAlertsPanel - Accessibility', () => {
     const alerts = [createCriticalSpO2Alert(), createWarningSpO2Alert()];
     render(<VitalAlertsPanel alerts={alerts} />);
 
-    expect(screen.getByRole('region')).toHaveAttribute(
-      'aria-label',
-      expect.stringContaining('2')
-    );
+    expect(screen.getByRole('region')).toHaveAttribute('aria-label', expect.stringContaining('2'));
   });
 });
 
@@ -442,11 +437,7 @@ describe('VitalAlertsPanel - Additional Props', () => {
     const alerts = [createWarningSpO2Alert()];
 
     render(
-      <VitalAlertsPanel
-        alerts={alerts}
-        expanded={true}
-        onExpandedChange={handleExpandedChange}
-      />
+      <VitalAlertsPanel alerts={alerts} expanded={true} onExpandedChange={handleExpandedChange} />
     );
 
     const header = screen.getByTestId('alerts-header');

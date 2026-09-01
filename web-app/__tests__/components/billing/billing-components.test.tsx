@@ -32,7 +32,16 @@ jest.mock('@/lib/api/billing');
 // Mock auth context (used by PermissionGate via usePermissions)
 jest.mock('@/lib/auth/context', () => ({
   useAuth: () => ({
-    user: { id: 1, username: 'testuser', email: 'test@example.com', first_name: 'Test', last_name: 'User', is_staff: true, is_superuser: true, permissions: [] },
+    user: {
+      id: 1,
+      username: 'testuser',
+      email: 'test@example.com',
+      first_name: 'Test',
+      last_name: 'User',
+      is_staff: true,
+      is_superuser: true,
+      permissions: [],
+    },
     isAuthenticated: true,
     isLoading: false,
     tokens: null,
@@ -170,8 +179,22 @@ const mockReceipt = {
 };
 
 const mockServices = [
-  { id: 1, code: 'CONS-001', name: 'General Consultation', unit_price: '500.00', category: 1, category_name: 'Consultation' },
-  { id: 2, code: 'LAB-001', name: 'Complete Blood Count', unit_price: '1000.00', category: 2, category_name: 'Laboratory' },
+  {
+    id: 1,
+    code: 'CONS-001',
+    name: 'General Consultation',
+    unit_price: '500.00',
+    category: 1,
+    category_name: 'Consultation',
+  },
+  {
+    id: 2,
+    code: 'LAB-001',
+    name: 'Complete Blood Count',
+    unit_price: '1000.00',
+    category: 2,
+    category_name: 'Laboratory',
+  },
 ] satisfies Service[];
 
 // ============================================================================
@@ -554,14 +577,9 @@ describe('PaymentForm', () => {
   });
 
   it('should render payment method options', () => {
-    render(
-      <PaymentForm
-        invoice={mockInvoice}
-        onSubmit={mockOnSubmit}
-        onCancel={mockOnCancel}
-      />,
-      { wrapper: createWrapper() }
-    );
+    render(<PaymentForm invoice={mockInvoice} onSubmit={mockOnSubmit} onCancel={mockOnCancel} />, {
+      wrapper: createWrapper(),
+    });
 
     expect(screen.getByRole('radio', { name: /cash/i })).toBeInTheDocument();
     expect(screen.getByRole('radio', { name: /m-pesa/i })).toBeInTheDocument();
@@ -569,28 +587,18 @@ describe('PaymentForm', () => {
   });
 
   it('should pre-fill amount with balance due', () => {
-    render(
-      <PaymentForm
-        invoice={mockInvoice}
-        onSubmit={mockOnSubmit}
-        onCancel={mockOnCancel}
-      />,
-      { wrapper: createWrapper() }
-    );
+    render(<PaymentForm invoice={mockInvoice} onSubmit={mockOnSubmit} onCancel={mockOnCancel} />, {
+      wrapper: createWrapper(),
+    });
 
     const amountInput = screen.getByLabelText(/amount/i);
     expect(amountInput).toHaveValue(1500);
   });
 
   it('should validate amount does not exceed balance', async () => {
-    render(
-      <PaymentForm
-        invoice={mockInvoice}
-        onSubmit={mockOnSubmit}
-        onCancel={mockOnCancel}
-      />,
-      { wrapper: createWrapper() }
-    );
+    render(<PaymentForm invoice={mockInvoice} onSubmit={mockOnSubmit} onCancel={mockOnCancel} />, {
+      wrapper: createWrapper(),
+    });
 
     const amountInput = screen.getByLabelText(/amount/i);
     await userEvent.clear(amountInput);
@@ -626,14 +634,9 @@ describe('PaymentForm', () => {
   });
 
   it('should show phone number field for M-Pesa', async () => {
-    render(
-      <PaymentForm
-        invoice={mockInvoice}
-        onSubmit={mockOnSubmit}
-        onCancel={mockOnCancel}
-      />,
-      { wrapper: createWrapper() }
-    );
+    render(<PaymentForm invoice={mockInvoice} onSubmit={mockOnSubmit} onCancel={mockOnCancel} />, {
+      wrapper: createWrapper(),
+    });
 
     await userEvent.click(screen.getByRole('radio', { name: /m-pesa/i }));
 
@@ -641,14 +644,9 @@ describe('PaymentForm', () => {
   });
 
   it('should validate Kenyan phone number format', async () => {
-    render(
-      <PaymentForm
-        invoice={mockInvoice}
-        onSubmit={mockOnSubmit}
-        onCancel={mockOnCancel}
-      />,
-      { wrapper: createWrapper() }
-    );
+    render(<PaymentForm invoice={mockInvoice} onSubmit={mockOnSubmit} onCancel={mockOnCancel} />, {
+      wrapper: createWrapper(),
+    });
 
     await userEvent.click(screen.getByRole('radio', { name: /m-pesa/i }));
 
@@ -661,14 +659,9 @@ describe('PaymentForm', () => {
   });
 
   it('should accept valid Kenyan phone formats', async () => {
-    render(
-      <PaymentForm
-        invoice={mockInvoice}
-        onSubmit={mockOnSubmit}
-        onCancel={mockOnCancel}
-      />,
-      { wrapper: createWrapper() }
-    );
+    render(<PaymentForm invoice={mockInvoice} onSubmit={mockOnSubmit} onCancel={mockOnCancel} />, {
+      wrapper: createWrapper(),
+    });
 
     await userEvent.click(screen.getByRole('radio', { name: /m-pesa/i }));
 
@@ -687,14 +680,9 @@ describe('PaymentForm', () => {
   });
 
   it('should show card details fields for card payment', async () => {
-    render(
-      <PaymentForm
-        invoice={mockInvoice}
-        onSubmit={mockOnSubmit}
-        onCancel={mockOnCancel}
-      />,
-      { wrapper: createWrapper() }
-    );
+    render(<PaymentForm invoice={mockInvoice} onSubmit={mockOnSubmit} onCancel={mockOnCancel} />, {
+      wrapper: createWrapper(),
+    });
 
     await userEvent.click(screen.getByRole('radio', { name: /card/i }));
 
@@ -703,14 +691,9 @@ describe('PaymentForm', () => {
   });
 
   it('should submit cash payment correctly', async () => {
-    render(
-      <PaymentForm
-        invoice={mockInvoice}
-        onSubmit={mockOnSubmit}
-        onCancel={mockOnCancel}
-      />,
-      { wrapper: createWrapper() }
-    );
+    render(<PaymentForm invoice={mockInvoice} onSubmit={mockOnSubmit} onCancel={mockOnCancel} />, {
+      wrapper: createWrapper(),
+    });
 
     await userEvent.click(screen.getByRole('radio', { name: /cash/i }));
     await userEvent.click(screen.getByRole('button', { name: /submit|pay/i }));
@@ -744,7 +727,7 @@ describe('MpesaPaymentDialog', () => {
         open={true}
         onOpenChange={jest.fn()}
         invoiceNumber={mockInvoice.invoice_number}
-        amount={500.00}
+        amount={500.0}
         onInitiate={jest.fn()}
         onCancel={mockOnCancel}
         onComplete={mockOnSuccess}
@@ -763,7 +746,7 @@ describe('MpesaPaymentDialog', () => {
         open={true}
         onOpenChange={jest.fn()}
         invoiceNumber={mockInvoice.invoice_number}
-        amount={500.00}
+        amount={500.0}
         onInitiate={jest.fn()}
         onCancel={mockOnCancel}
         onComplete={mockOnSuccess}
@@ -782,7 +765,7 @@ describe('MpesaPaymentDialog', () => {
         open={true}
         onOpenChange={jest.fn()}
         invoiceNumber={mockInvoice.invoice_number}
-        amount={500.00}
+        amount={500.0}
         onInitiate={jest.fn()}
         onCancel={mockOnCancel}
         onComplete={mockOnSuccess}
@@ -802,7 +785,7 @@ describe('MpesaPaymentDialog', () => {
         open={true}
         onOpenChange={jest.fn()}
         invoiceNumber={mockInvoice.invoice_number}
-        amount={500.00}
+        amount={500.0}
         onInitiate={jest.fn()}
         onCancel={mockOnCancel}
         onComplete={mockOnSuccess}
@@ -824,7 +807,7 @@ describe('MpesaPaymentDialog', () => {
         open={true}
         onOpenChange={jest.fn()}
         invoiceNumber={mockInvoice.invoice_number}
-        amount={500.00}
+        amount={500.0}
         onInitiate={mockOnRetry}
         onCancel={mockOnCancel}
         onComplete={mockOnSuccess}
@@ -845,7 +828,7 @@ describe('MpesaPaymentDialog', () => {
         open={true}
         onOpenChange={jest.fn()}
         invoiceNumber={mockInvoice.invoice_number}
-        amount={500.00}
+        amount={500.0}
         onInitiate={jest.fn()}
         onCancel={mockOnCancel}
         onComplete={mockOnSuccess}
@@ -871,13 +854,7 @@ describe('ReceiptView', () => {
   });
 
   it('should render receipt details', () => {
-    render(
-      <ReceiptView
-        receipt={mockReceipt}
-        isLoading={false}
-      />,
-      { wrapper: createWrapper() }
-    );
+    render(<ReceiptView receipt={mockReceipt} isLoading={false} />, { wrapper: createWrapper() });
 
     expect(screen.getByText('RCP-20260103-0001')).toBeInTheDocument();
     expect(screen.getByText('Jane Doe')).toBeInTheDocument();
@@ -886,38 +863,20 @@ describe('ReceiptView', () => {
   });
 
   it('should show facility information', () => {
-    render(
-      <ReceiptView
-        receipt={mockReceipt}
-        isLoading={false}
-      />,
-      { wrapper: createWrapper() }
-    );
+    render(<ReceiptView receipt={mockReceipt} isLoading={false} />, { wrapper: createWrapper() });
 
     expect(screen.getByText('Demo Health Facility')).toBeInTheDocument();
     expect(screen.getByText('123 Health Street, Nairobi')).toBeInTheDocument();
   });
 
   it('should show payment method', () => {
-    render(
-      <ReceiptView
-        receipt={mockReceipt}
-        isLoading={false}
-      />,
-      { wrapper: createWrapper() }
-    );
+    render(<ReceiptView receipt={mockReceipt} isLoading={false} />, { wrapper: createWrapper() });
 
     expect(screen.getByText(/cash/i)).toBeInTheDocument();
   });
 
   it('should call onPrint when print button clicked', async () => {
-    render(
-      <ReceiptView
-        receipt={mockReceipt}
-        isLoading={false}
-      />,
-      { wrapper: createWrapper() }
-    );
+    render(<ReceiptView receipt={mockReceipt} isLoading={false} />, { wrapper: createWrapper() });
 
     await userEvent.click(screen.getByRole('button', { name: /print/i }));
 
@@ -931,13 +890,7 @@ describe('ReceiptView', () => {
       void_reason: 'Duplicate entry',
     };
 
-    render(
-      <ReceiptView
-        receipt={voidedReceipt}
-        isLoading={false}
-      />,
-      { wrapper: createWrapper() }
-    );
+    render(<ReceiptView receipt={voidedReceipt} isLoading={false} />, { wrapper: createWrapper() });
 
     expect(screen.getByText(/voided/i)).toBeInTheDocument();
     expect(screen.getByText(/duplicate entry/i)).toBeInTheDocument();
@@ -957,11 +910,29 @@ describe('ServiceSelector', () => {
 
   it('should render service categories', () => {
     render(
-        <ServiceSelector
-          services={mockServices}
+      <ServiceSelector
+        services={mockServices}
         categories={[
-          { id: 1, name: 'Consultation', code: 'CONS', description: '', display_order: 1, is_active: true, created_at: '', updated_at: '' },
-          { id: 2, name: 'Laboratory', code: 'LAB', description: '', display_order: 2, is_active: true, created_at: '', updated_at: '' },
+          {
+            id: 1,
+            name: 'Consultation',
+            code: 'CONS',
+            description: '',
+            display_order: 1,
+            is_active: true,
+            created_at: '',
+            updated_at: '',
+          },
+          {
+            id: 2,
+            name: 'Laboratory',
+            code: 'LAB',
+            description: '',
+            display_order: 2,
+            is_active: true,
+            created_at: '',
+            updated_at: '',
+          },
         ]}
         onSelect={mockOnSelect}
       />,
@@ -974,11 +945,29 @@ describe('ServiceSelector', () => {
 
   it('should filter services by category', async () => {
     render(
-        <ServiceSelector
-          services={mockServices}
+      <ServiceSelector
+        services={mockServices}
         categories={[
-          { id: 1, name: 'Consultation', code: 'CONS', description: '', display_order: 1, is_active: true, created_at: '', updated_at: '' },
-          { id: 2, name: 'Laboratory', code: 'LAB', description: '', display_order: 2, is_active: true, created_at: '', updated_at: '' },
+          {
+            id: 1,
+            name: 'Consultation',
+            code: 'CONS',
+            description: '',
+            display_order: 1,
+            is_active: true,
+            created_at: '',
+            updated_at: '',
+          },
+          {
+            id: 2,
+            name: 'Laboratory',
+            code: 'LAB',
+            description: '',
+            display_order: 2,
+            is_active: true,
+            created_at: '',
+            updated_at: '',
+          },
         ]}
         onSelect={mockOnSelect}
       />,
@@ -992,14 +981,9 @@ describe('ServiceSelector', () => {
   });
 
   it('should search services by name', async () => {
-    render(
-        <ServiceSelector
-          services={mockServices}
-        categories={[]}
-        onSelect={mockOnSelect}
-      />,
-      { wrapper: createWrapper() }
-    );
+    render(<ServiceSelector services={mockServices} categories={[]} onSelect={mockOnSelect} />, {
+      wrapper: createWrapper(),
+    });
 
     const searchInput = screen.getByPlaceholderText(/search/i);
     await userEvent.type(searchInput, 'blood');
@@ -1009,14 +993,9 @@ describe('ServiceSelector', () => {
   });
 
   it('should call onSelect with service details', async () => {
-    render(
-        <ServiceSelector
-          services={mockServices}
-        categories={[]}
-        onSelect={mockOnSelect}
-      />,
-      { wrapper: createWrapper() }
-    );
+    render(<ServiceSelector services={mockServices} categories={[]} onSelect={mockOnSelect} />, {
+      wrapper: createWrapper(),
+    });
 
     await userEvent.click(screen.getByText('General Consultation'));
 
@@ -1044,11 +1023,7 @@ describe('CreditNoteForm', () => {
 
   it('should render reason options', async () => {
     render(
-      <CreditNoteForm
-        invoice={mockInvoice}
-        onSubmit={mockOnSubmit}
-        onCancel={mockOnCancel}
-      />,
+      <CreditNoteForm invoice={mockInvoice} onSubmit={mockOnSubmit} onCancel={mockOnCancel} />,
       { wrapper: createWrapper() }
     );
 
@@ -1065,11 +1040,7 @@ describe('CreditNoteForm', () => {
 
   it('should require description field', async () => {
     render(
-      <CreditNoteForm
-        invoice={mockInvoice}
-        onSubmit={mockOnSubmit}
-        onCancel={mockOnCancel}
-      />,
+      <CreditNoteForm invoice={mockInvoice} onSubmit={mockOnSubmit} onCancel={mockOnCancel} />,
       { wrapper: createWrapper() }
     );
 
@@ -1089,11 +1060,7 @@ describe('CreditNoteForm', () => {
 
   it('should validate amount is positive', async () => {
     render(
-      <CreditNoteForm
-        invoice={mockInvoice}
-        onSubmit={mockOnSubmit}
-        onCancel={mockOnCancel}
-      />,
+      <CreditNoteForm invoice={mockInvoice} onSubmit={mockOnSubmit} onCancel={mockOnCancel} />,
       { wrapper: createWrapper() }
     );
 
@@ -1108,11 +1075,7 @@ describe('CreditNoteForm', () => {
 
   it('should submit credit note request', async () => {
     render(
-      <CreditNoteForm
-        invoice={mockInvoice}
-        onSubmit={mockOnSubmit}
-        onCancel={mockOnCancel}
-      />,
+      <CreditNoteForm invoice={mockInvoice} onSubmit={mockOnSubmit} onCancel={mockOnCancel} />,
       { wrapper: createWrapper() }
     );
 
@@ -1132,12 +1095,14 @@ describe('CreditNoteForm', () => {
     // Submit form
     await userEvent.click(screen.getByRole('button', { name: /submit/i }));
 
-    expect(mockOnSubmit).toHaveBeenCalledWith(expect.objectContaining({
-      invoice: 1,
-      amount: '100',
-      reason: 'PRICING_ERROR',
-      reason_detail: 'Incorrect fee applied on consultation',
-    }));
+    expect(mockOnSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        invoice: 1,
+        amount: '100',
+        reason: 'PRICING_ERROR',
+        reason_detail: 'Incorrect fee applied on consultation',
+      })
+    );
   });
 });
 
@@ -1164,13 +1129,9 @@ describe('BillingDashboard', () => {
   });
 
   it('should show daily collection summary', () => {
-    render(
-      <BillingDashboard
-        dailyReport={mockDailyReport}
-        isLoading={false}
-      />,
-      { wrapper: createWrapper() }
-    );
+    render(<BillingDashboard dailyReport={mockDailyReport} isLoading={false} />, {
+      wrapper: createWrapper(),
+    });
 
     expect(screen.getByText(/today's collection/i)).toBeInTheDocument();
     expect(screen.getByText(/15,000/)).toBeInTheDocument(); // Currency formatted by locale
@@ -1180,13 +1141,9 @@ describe('BillingDashboard', () => {
 
   it('should show link to transactions page for payment breakdown', () => {
     // Payment method breakdown is now in /transactions page
-    render(
-      <BillingDashboard
-        dailyReport={mockDailyReport}
-        isLoading={false}
-      />,
-      { wrapper: createWrapper() }
-    );
+    render(<BillingDashboard dailyReport={mockDailyReport} isLoading={false} />, {
+      wrapper: createWrapper(),
+    });
 
     // Dashboard shows summary KPIs, not detailed payment breakdown
     // Verify the dashboard renders with totals
@@ -1212,13 +1169,7 @@ describe('BillingDashboard', () => {
   });
 
   it('should show loading state', () => {
-    render(
-      <BillingDashboard
-        dailyReport={null}
-        isLoading={true}
-      />,
-      { wrapper: createWrapper() }
-    );
+    render(<BillingDashboard dailyReport={null} isLoading={true} />, { wrapper: createWrapper() });
 
     expect(screen.getByRole('status')).toBeInTheDocument();
   });
@@ -1254,11 +1205,7 @@ describe('PaymentList', () => {
 
   it('should render payment list', () => {
     render(
-      <PaymentList
-        payments={[mockPayment]}
-        isLoading={false}
-        onViewReceipt={mockOnViewReceipt}
-      />,
+      <PaymentList payments={[mockPayment]} isLoading={false} onViewReceipt={mockOnViewReceipt} />,
       { wrapper: createWrapper() }
     );
 
@@ -1271,11 +1218,7 @@ describe('PaymentList', () => {
 
   it('should show receipt button for completed payments', () => {
     render(
-      <PaymentList
-        payments={[mockPayment]}
-        isLoading={false}
-        onViewReceipt={mockOnViewReceipt}
-      />,
+      <PaymentList payments={[mockPayment]} isLoading={false} onViewReceipt={mockOnViewReceipt} />,
       { wrapper: createWrapper() }
     );
 
@@ -1286,11 +1229,7 @@ describe('PaymentList', () => {
 
   it('should call onViewReceipt when receipt button clicked', async () => {
     render(
-      <PaymentList
-        payments={[mockPayment]}
-        isLoading={false}
-        onViewReceipt={mockOnViewReceipt}
-      />,
+      <PaymentList payments={[mockPayment]} isLoading={false} onViewReceipt={mockOnViewReceipt} />,
       { wrapper: createWrapper() }
     );
 

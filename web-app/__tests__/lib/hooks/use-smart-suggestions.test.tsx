@@ -73,8 +73,20 @@ describe('useSmartSuggestions', () => {
     mockAiApi.autopopulate.mockResolvedValueOnce({
       error: null,
       suggested_fields: [
-        { field_name: 'notes', value: 'Consider admission', confidence: 0.8, reason: 'AI reason', source: 'ai' },
-        { field_name: 'plan', value: 'Order CBC', confidence: 0.7, reason: 'AI reason 2', source: 'history' },
+        {
+          field_name: 'notes',
+          value: 'Consider admission',
+          confidence: 0.8,
+          reason: 'AI reason',
+          source: 'ai',
+        },
+        {
+          field_name: 'plan',
+          value: 'Order CBC',
+          confidence: 0.7,
+          reason: 'AI reason 2',
+          source: 'history',
+        },
       ],
     } as never);
 
@@ -110,6 +122,8 @@ describe('useSmartSuggestions', () => {
       result.current.fetchSuggestions({ encounter_id: 2 } as never);
     });
 
-    await waitFor(() => expect(result.current.error).toBe('AI suggestions temporarily unavailable.'));
+    await waitFor(() =>
+      expect(result.current.error).toBe('AI suggestions temporarily unavailable.')
+    );
   });
 });

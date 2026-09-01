@@ -32,11 +32,7 @@ import {
   CommandItem,
   CommandList,
 } from '@/components/ui/command';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { HelpPopover } from '@/components/shared/help-popover';
 import { useToast } from '@/lib/hooks/use-toast';
 import { useDrugs, useBatchesForDrug, useCreateDispensing } from '@/lib/hooks/use-pharmacy';
@@ -64,18 +60,18 @@ interface DirectDispenseDialogProps {
   onSuccess?: () => void;
 }
 
-export function DirectDispenseDialog({
-  isOpen,
-  onClose,
-  onSuccess,
-}: DirectDispenseDialogProps) {
+export function DirectDispenseDialog({ isOpen, onClose, onSuccess }: DirectDispenseDialogProps) {
   const { toast } = useToast();
   const [patientOpen, setPatientOpen] = useState(false);
   const [patientSearch, setPatientSearch] = useState('');
   const [drugOpen, setDrugOpen] = useState(false);
   const [drugSearch, setDrugSearch] = useState('');
   const [selectedDrugId, setSelectedDrugId] = useState<string>('');
-  const [selectedPatient, setSelectedPatient] = useState<{ id: string; name: string; mrn: string } | null>(null);
+  const [selectedPatient, setSelectedPatient] = useState<{
+    id: string;
+    name: string;
+    mrn: string;
+  } | null>(null);
 
   // Debounce searches to avoid too many API calls
   const debouncedPatientSearch = useDebounce(patientSearch, 300);
@@ -99,7 +95,7 @@ export function DirectDispenseDialog({
   // Get selected drug info (need to search separately if not in current results)
   const selectedDrug = useMemo(() => {
     if (!selectedDrugId) return null;
-    return otcDrugs.find(d => d.id.toString() === selectedDrugId);
+    return otcDrugs.find((d) => d.id.toString() === selectedDrugId);
   }, [selectedDrugId, otcDrugs]);
 
   // Fetch batches for selected drug
@@ -128,7 +124,7 @@ export function DirectDispenseDialog({
 
   const quantity = watch('quantity');
 
-  const availableBatches = batches?.filter(b => b.quantity_available > 0) || [];
+  const availableBatches = batches?.filter((b) => b.quantity_available > 0) || [];
   const selectedBatch = availableBatches[0]; // FEFO - first batch
 
   // Calculate total (use selling_price from batch or reference_price from drug)
@@ -163,10 +159,11 @@ export function DirectDispenseDialog({
 
       handleClose();
       onSuccess?.();
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const apiError = error as { response?: { data?: { error?: string } }; message?: string };
       toast({
         title: 'Dispensing Failed',
-        description: error.response?.data?.error || error.message || 'An error occurred',
+        description: apiError.response?.data?.error || apiError.message || 'An error occurred',
         variant: 'destructive',
       });
     }
@@ -209,7 +206,7 @@ export function DirectDispenseDialog({
                 >
                   {selectedPatient
                     ? `${selectedPatient.name} (${selectedPatient.mrn})`
-                    : "Select patient..."}
+                    : 'Select patient...'}
                   <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
               </PopoverTrigger>
@@ -222,7 +219,7 @@ export function DirectDispenseDialog({
                   />
                   <CommandList>
                     {patientsLoading ? (
-                      <div className="p-4 text-sm text-muted-foreground text-center">
+                      <div className="p-4 text-center text-sm text-muted-foreground">
                         Searching...
                       </div>
                     ) : patients.length === 0 ? (
@@ -246,7 +243,9 @@ export function DirectDispenseDialog({
                               setPatientOpen(false);
                             }}
                           >
-                            <span>{patient.first_name} {patient.last_name}</span>
+                            <span>
+                              {patient.first_name} {patient.last_name}
+                            </span>
                             <span className="ml-2 text-muted-foreground">{patient.mrn}</span>
                           </CommandItem>
                         ))}
@@ -274,7 +273,7 @@ export function DirectDispenseDialog({
                 >
                   {selectedDrug
                     ? `${selectedDrug.generic_name} (${selectedDrug.form} ${selectedDrug.strength})`
-                    : "Select OTC item..."}
+                    : 'Select OTC item...'}
                   <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
               </PopoverTrigger>
@@ -287,8 +286,8 @@ export function DirectDispenseDialog({
                   />
                   <CommandList className="max-h-[200px]">
                     {drugsLoading ? (
-                      <div className="p-4 text-sm text-muted-foreground text-center">
-                        <Loader2 className="h-4 w-4 animate-spin inline mr-2" />
+                      <div className="p-4 text-center text-sm text-muted-foreground">
+                        <Loader2 className="mr-2 inline h-4 w-4 animate-spin" />
                         Searching...
                       </div>
                     ) : otcDrugs.length === 0 ? (
@@ -309,8 +308,8 @@ export function DirectDispenseDialog({
                           >
                             <Check
                               className={cn(
-                                "mr-2 h-4 w-4",
-                                selectedDrugId === drug.id.toString() ? "opacity-100" : "opacity-0"
+                                'mr-2 h-4 w-4',
+                                selectedDrugId === drug.id.toString() ? 'opacity-100' : 'opacity-0'
                               )}
                             />
                             <div className="flex flex-col">
@@ -327,11 +326,9 @@ export function DirectDispenseDialog({
                 </Command>
               </PopoverContent>
             </Popover>
-            {errors.drug_id && (
-              <p className="text-sm text-destructive">{errors.drug_id.message}</p>
-            )}
+            {errors.drug_id && <p className="text-sm text-destructive">{errors.drug_id.message}</p>}
             {selectedDrug && selectedDrug.requires_prescription && (
-              <p className="text-sm text-destructive flex items-center gap-1">
+              <p className="flex items-center gap-1 text-sm text-destructive">
                 <AlertTriangle className="h-3 w-3" />
                 This drug requires a prescription
               </p>
@@ -340,7 +337,7 @@ export function DirectDispenseDialog({
 
           {/* Batch Info */}
           {selectedBatch && (
-            <div className="p-3 bg-secondary rounded-md text-sm space-y-1">
+            <div className="space-y-1 rounded-md bg-secondary p-3 text-sm">
               <p>
                 <span className="text-secondary-foreground/70">Batch:</span>{' '}
                 {selectedBatch.batch_number}
@@ -379,7 +376,7 @@ export function DirectDispenseDialog({
 
           {/* Total Cost */}
           {selectedDrug && (
-            <div className="p-3 bg-secondary rounded-md">
+            <div className="rounded-md bg-secondary p-3">
               <div className="flex justify-between text-sm text-secondary-foreground">
                 <span>Unit Price:</span>
                 <span>KSH {unitPrice.toFixed(2)}</span>
@@ -394,11 +391,7 @@ export function DirectDispenseDialog({
           {/* Notes */}
           <div className="space-y-2">
             <Label htmlFor="notes">Notes</Label>
-            <Textarea
-              id="notes"
-              placeholder="Optional notes..."
-              {...register('notes')}
-            />
+            <Textarea id="notes" placeholder="Optional notes..." {...register('notes')} />
           </div>
 
           <DialogFooter>
@@ -413,7 +406,7 @@ export function DirectDispenseDialog({
             <Button type="submit" disabled={createDispensing.isPending}>
               {createDispensing.isPending ? (
                 <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Dispensing...
                 </>
               ) : (

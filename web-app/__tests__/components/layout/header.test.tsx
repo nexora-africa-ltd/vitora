@@ -18,12 +18,20 @@ jest.mock('next-themes', () => ({
 
 // Mock dropdown menu primitives to keep the test focused on rendered links
 jest.mock('@/components/ui/dropdown-menu', () => ({
-  DropdownMenu: ({ children }: { children: React.ReactNode }) => React.createElement(React.Fragment, null, children),
-  DropdownMenuTrigger: ({ children }: { children: React.ReactNode }) => React.createElement(React.Fragment, null, children),
-  DropdownMenuContent: ({ children }: { children: React.ReactNode }) => React.createElement('div', null, children),
-  DropdownMenuLabel: ({ children }: { children: React.ReactNode }) => React.createElement('div', null, children),
+  DropdownMenu: ({ children }: { children: React.ReactNode }) =>
+    React.createElement(React.Fragment, null, children),
+  DropdownMenuTrigger: ({ children }: { children: React.ReactNode }) =>
+    React.createElement(React.Fragment, null, children),
+  DropdownMenuContent: ({ children }: { children: React.ReactNode }) =>
+    React.createElement('div', null, children),
+  DropdownMenuLabel: ({ children }: { children: React.ReactNode }) =>
+    React.createElement('div', null, children),
   DropdownMenuSeparator: () => React.createElement('hr'),
-  DropdownMenuItem: ({ children, asChild = false, ...props }: { children: React.ReactNode; asChild?: boolean } & Record<string, unknown>) => {
+  DropdownMenuItem: ({
+    children,
+    asChild = false,
+    ...props
+  }: { children: React.ReactNode; asChild?: boolean } & Record<string, unknown>) => {
     if (asChild && React.isValidElement(children)) {
       return React.cloneElement(children, props);
     }
@@ -65,7 +73,8 @@ jest.mock('@/lib/context/sync-context', () => ({
 
 // Mock NotificationPanel component
 jest.mock('@/components/notifications/notification-panel', () => ({
-  NotificationPanel: () => React.createElement('div', { 'data-testid': 'notification-panel' }, null),
+  NotificationPanel: () =>
+    React.createElement('div', { 'data-testid': 'notification-panel' }, null),
 }));
 
 // Mock Breadcrumb component

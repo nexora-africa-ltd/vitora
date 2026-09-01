@@ -72,16 +72,13 @@ export const aiKeys = {
   carePlanConditions: () => [...aiKeys.all, 'care-plan-conditions'] as const,
   storedCarePlans: (params: { encounter_id?: number; admission_id?: number }) =>
     [...aiKeys.all, 'stored-care-plans', params] as const,
-  storedCDS: (encounterId: number) =>
-    [...aiKeys.all, 'stored-cds', encounterId] as const,
+  storedCDS: (encounterId: number) => [...aiKeys.all, 'stored-cds', encounterId] as const,
   storedLabInterpretations: (params: { lab_result_id?: number; encounter_id?: number }) =>
     [...aiKeys.all, 'stored-lab-interpretations', params] as const,
   storedDischarge: (admissionId: number) =>
     [...aiKeys.all, 'stored-discharge', admissionId] as const,
-  storedICURisk: (admissionId: number) =>
-    [...aiKeys.all, 'stored-icu-risk', admissionId] as const,
-  icuLabs: (admissionId: number) =>
-    [...aiKeys.all, 'icu-labs', admissionId] as const,
+  storedICURisk: (admissionId: number) => [...aiKeys.all, 'stored-icu-risk', admissionId] as const,
+  icuLabs: (admissionId: number) => [...aiKeys.all, 'icu-labs', admissionId] as const,
   storedInvestigationSuggestions: (encounterId: number) =>
     [...aiKeys.all, 'stored-investigation-suggestions', encounterId] as const,
   storedEGFR: (params: { patient_id?: number; encounter_id?: number }) =>
@@ -589,7 +586,10 @@ export function useStoredCDSResults(encounterId: number | undefined) {
   });
 }
 
-export function useStoredLabInterpretations(params: { lab_result_id?: number; encounter_id?: number }) {
+export function useStoredLabInterpretations(params: {
+  lab_result_id?: number;
+  encounter_id?: number;
+}) {
   const hasId = Boolean(params.lab_result_id || params.encounter_id);
   return useQuery<StoredLabInterpretResult[]>({
     queryKey: aiKeys.storedLabInterpretations(params),
@@ -673,7 +673,7 @@ export function useAIInsights() {
 
 export function useFacilityKB() {
   return useQuery({
-    queryKey: aiKeys.all.concat(['facility-kb'] as any),
+    queryKey: [...aiKeys.all, 'facility-kb'],
     queryFn: () => aiApi.getFacilityKB(),
     enabled: ENABLE_AI,
     retry: false,
@@ -683,7 +683,7 @@ export function useFacilityKB() {
 
 export function useFacilityKBSearch(query: string, limit?: number) {
   return useQuery({
-    queryKey: aiKeys.all.concat(['facility-kb', 'search', query, limit] as any),
+    queryKey: [...aiKeys.all, 'facility-kb', 'search', query, limit],
     queryFn: () => aiApi.searchFacilityKB(query, limit),
     enabled: ENABLE_AI && query.length >= 2,
     retry: false,
@@ -697,7 +697,7 @@ export function useUploadToFacilityKB() {
   return useMutation({
     mutationFn: (file: File) => aiApi.uploadToFacilityKB(file),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: aiKeys.all.concat(['facility-kb'] as any) });
+      queryClient.invalidateQueries({ queryKey: [...aiKeys.all, 'facility-kb'] });
     },
   });
 }
@@ -708,7 +708,7 @@ export function useDeleteFacilityKBDocument() {
   return useMutation({
     mutationFn: (documentId: string) => aiApi.deleteFacilityKBDocument(documentId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: aiKeys.all.concat(['facility-kb'] as any) });
+      queryClient.invalidateQueries({ queryKey: [...aiKeys.all, 'facility-kb'] });
     },
   });
 }

@@ -81,11 +81,7 @@ const createTestQueryClient = () =>
 const createWrapper = () => {
   const queryClient = createTestQueryClient();
   return function Wrapper({ children }: { children: React.ReactNode }) {
-    return (
-      <QueryClientProvider client={queryClient}>
-        {children}
-      </QueryClientProvider>
-    );
+    return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
   };
 };
 
@@ -252,10 +248,7 @@ describe('TriageAssessmentForm - Form Structure', () => {
 describe('TriageAssessmentForm - AVPU Critical Alert', () => {
   it('should show critical alert when Unresponsive is selected via initial data', () => {
     renderWithWrapper(
-      <TriageAssessmentForm
-        {...defaultProps}
-        initialData={{ mental_status: 'U' }}
-      />
+      <TriageAssessmentForm {...defaultProps} initialData={{ mental_status: 'U' }} />
     );
 
     // May appear in multiple places (alerts panel and inline)
@@ -265,10 +258,7 @@ describe('TriageAssessmentForm - AVPU Critical Alert', () => {
 
   it('should show suggested RED category when Unresponsive is in initial data', () => {
     renderWithWrapper(
-      <TriageAssessmentForm
-        {...defaultProps}
-        initialData={{ mental_status: 'U' }}
-      />
+      <TriageAssessmentForm {...defaultProps} initialData={{ mental_status: 'U' }} />
     );
 
     const suggestedCategory = screen.getByTestId('suggested-category');
@@ -439,13 +429,16 @@ describe('TriageAssessmentForm - Submission', () => {
     await user.click(submitButton);
 
     // Check that button becomes disabled after click
-    await waitFor(() => {
-      const buttons = screen.getAllByRole('button');
-      const savingButton = buttons.find(b => b.textContent?.includes('Saving'));
-      if (savingButton) {
-        expect(savingButton).toBeDisabled();
-      }
-    }, { timeout: 200 });
+    await waitFor(
+      () => {
+        const buttons = screen.getAllByRole('button');
+        const savingButton = buttons.find((b) => b.textContent?.includes('Saving'));
+        if (savingButton) {
+          expect(savingButton).toBeDisabled();
+        }
+      },
+      { timeout: 200 }
+    );
   });
 
   it('should include vitals in submission payload when provided', async () => {

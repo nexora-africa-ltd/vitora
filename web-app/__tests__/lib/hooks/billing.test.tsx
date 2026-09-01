@@ -152,10 +152,9 @@ describe('useInvoices', () => {
       results: [],
     });
 
-    const { result } = renderHook(
-      () => useInvoices({ status: 'PENDING', patient: 1 }),
-      { wrapper: createWrapper() }
-    );
+    const { result } = renderHook(() => useInvoices({ status: 'PENDING', patient: 1 }), {
+      wrapper: createWrapper(),
+    });
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
@@ -249,9 +248,9 @@ describe('useCreateInvoice', () => {
       wrapper: createWrapper(),
     });
 
-    await expect(result.current.mutateAsync({ patient: 0, due_date: '2026-02-02' } as any)).rejects.toMatchObject(
-      validationError
-    );
+    await expect(
+      result.current.mutateAsync({ patient: 0, due_date: '2026-02-02' } as unknown)
+    ).rejects.toMatchObject(validationError);
   });
 });
 
@@ -408,10 +407,9 @@ describe('usePayments', () => {
       results: [],
     });
 
-    const { result } = renderHook(
-      () => usePayments({ method: 'MPESA' }),
-      { wrapper: createWrapper() }
-    );
+    const { result } = renderHook(() => usePayments({ method: 'MPESA' }), {
+      wrapper: createWrapper(),
+    });
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
@@ -517,10 +515,9 @@ describe('useMpesaQuery', () => {
       mpesa_receipt_number: 'QJH3XXXXXX',
     });
 
-    const { result } = renderHook(
-      () => useMpesaQuery('ws_CO_123456789'),
-      { wrapper: createWrapper() }
-    );
+    const { result } = renderHook(() => useMpesaQuery('ws_CO_123456789'), {
+      wrapper: createWrapper(),
+    });
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
@@ -582,10 +579,7 @@ describe('useServices', () => {
       results: [],
     });
 
-    const { result } = renderHook(
-      () => useServices({ category: 1 }),
-      { wrapper: createWrapper() }
-    );
+    const { result } = renderHook(() => useServices({ category: 1 }), { wrapper: createWrapper() });
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
@@ -603,7 +597,18 @@ describe('useServiceCategories', () => {
       count: 1,
       next: null,
       previous: null,
-      results: [{ id: 1, name: 'Consultation', code: 'CONS', description: '', display_order: 1, is_active: true, created_at: '', updated_at: '' }],
+      results: [
+        {
+          id: 1,
+          name: 'Consultation',
+          code: 'CONS',
+          description: '',
+          display_order: 1,
+          is_active: true,
+          created_at: '',
+          updated_at: '',
+        },
+      ],
     });
 
     const { result } = renderHook(() => useServiceCategories(), {
@@ -630,17 +635,19 @@ describe('useCreditNotes', () => {
       count: 1,
       next: null,
       previous: null,
-      results: [{
-        id: 1,
-        credit_note_number: 'CN-001',
-        invoice: 1,
-        amount: '100.00',
-        reason: 'OVERCHARGE' as const,
-        reason_detail: 'Test',
-        status: 'PENDING' as const,
-        requested_by: 1,
-        created_at: '',
-      }],
+      results: [
+        {
+          id: 1,
+          credit_note_number: 'CN-001',
+          invoice: 1,
+          amount: '100.00',
+          reason: 'OVERCHARGE' as const,
+          reason_detail: 'Test',
+          status: 'PENDING' as const,
+          requested_by: 1,
+          created_at: '',
+        },
+      ],
     });
 
     const { result } = renderHook(() => useCreditNotes(), {
@@ -739,10 +746,9 @@ describe('useDailyCollectionReport', () => {
       outstanding_balance: 25000,
     });
 
-    const { result } = renderHook(
-      () => useDailyCollectionReport('2026-01-03'),
-      { wrapper: createWrapper() }
-    );
+    const { result } = renderHook(() => useDailyCollectionReport('2026-01-03'), {
+      wrapper: createWrapper(),
+    });
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
@@ -760,8 +766,8 @@ describe('useRevenueSummary', () => {
       period: { start: '2026-01-01', end: '2026-01-31' },
       total_revenue: 500000,
       by_category: {
-        'Consultation': { revenue: 150000, count: 300 },
-        'Laboratory': { revenue: 200000, count: 250 },
+        Consultation: { revenue: 150000, count: 300 },
+        Laboratory: { revenue: 200000, count: 250 },
       },
       by_payment_method: {
         cash: 200000,
@@ -770,10 +776,9 @@ describe('useRevenueSummary', () => {
       },
     });
 
-    const { result } = renderHook(
-      () => useRevenueSummary('2026-01-01', '2026-01-31'),
-      { wrapper: createWrapper() }
-    );
+    const { result } = renderHook(() => useRevenueSummary('2026-01-01', '2026-01-31'), {
+      wrapper: createWrapper(),
+    });
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
@@ -831,10 +836,9 @@ describe('useServiceUtilization', () => {
       },
     ]);
 
-    const { result } = renderHook(
-      () => useServiceUtilization('2026-01-01', '2026-01-31'),
-      { wrapper: createWrapper() }
-    );
+    const { result } = renderHook(() => useServiceUtilization('2026-01-01', '2026-01-31'), {
+      wrapper: createWrapper(),
+    });
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
@@ -863,10 +867,9 @@ describe('usePaymentMethodAnalysis', () => {
       },
     });
 
-    const { result } = renderHook(
-      () => usePaymentMethodAnalysis('2026-01-01', '2026-01-31'),
-      { wrapper: createWrapper() }
-    );
+    const { result } = renderHook(() => usePaymentMethodAnalysis('2026-01-01', '2026-01-31'), {
+      wrapper: createWrapper(),
+    });
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 

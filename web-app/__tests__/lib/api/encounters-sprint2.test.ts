@@ -33,10 +33,10 @@ describe('encountersApi - Sprint 2 Methods', () => {
         reason: 'Patient arrived',
       });
 
-      expect(mockApiClient.post).toHaveBeenCalledWith(
-        '/api/encounters/1/transition/',
-        { to_status: 'CHECKED_IN', reason: 'Patient arrived' }
-      );
+      expect(mockApiClient.post).toHaveBeenCalledWith('/api/encounters/1/transition/', {
+        to_status: 'CHECKED_IN',
+        reason: 'Patient arrived',
+      });
       expect(result.status).toBe('CHECKED_IN');
       expect(result.previous_status).toBe('CREATED');
     });
@@ -55,18 +55,17 @@ describe('encountersApi - Sprint 2 Methods', () => {
 
       await encountersApi.transition(1, { to_status: 'IN_PROGRESS' });
 
-      expect(mockApiClient.post).toHaveBeenCalledWith(
-        '/api/encounters/1/transition/',
-        { to_status: 'IN_PROGRESS' }
-      );
+      expect(mockApiClient.post).toHaveBeenCalledWith('/api/encounters/1/transition/', {
+        to_status: 'IN_PROGRESS',
+      });
     });
 
     it('handles transition error', async () => {
       mockApiClient.post.mockRejectedValue(new Error('Invalid transition'));
 
-      await expect(
-        encountersApi.transition(1, { to_status: 'CLOSED' })
-      ).rejects.toThrow('Invalid transition');
+      await expect(encountersApi.transition(1, { to_status: 'CLOSED' })).rejects.toThrow(
+        'Invalid transition'
+      );
     });
   });
 

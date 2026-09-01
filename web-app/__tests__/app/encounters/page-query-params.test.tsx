@@ -38,13 +38,7 @@ jest.mock('@/components/encounters/consultation-queue-container', () => ({
 }));
 
 jest.mock('@/components/encounters/encounter-table', () => ({
-  EncounterTable: ({
-    encounters,
-    emptyTitle,
-  }: {
-    encounters: unknown[];
-    emptyTitle?: string;
-  }) => (
+  EncounterTable: ({ encounters, emptyTitle }: { encounters: unknown[]; emptyTitle?: string }) => (
     <div>
       <div>Encounter Table {encounters.length}</div>
       {emptyTitle ? <div>{emptyTitle}</div> : null}

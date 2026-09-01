@@ -15,6 +15,7 @@ import { usePermissions } from '@/lib/hooks/use-permissions';
 import { useFacility } from '@/lib/context/facility-context';
 import { MODULE_PERMISSIONS, type ModuleKey } from '@/lib/permissions/constants';
 import { ACTION_PERMISSIONS, type ActionKey } from '@/lib/permissions/actions';
+import type { FacilityModules } from '@/lib/auth/context';
 import { facilitiesApi, toUserFacility } from '@/lib/api/facilities';
 import { Bug, Search, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -34,7 +35,8 @@ export function PermissionDebugPanel() {
   const [open, setOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'modules' | 'actions' | 'facility'>('modules');
   const [filter, setFilter] = useState('');
-  const { role, roleCategory, isSuperuser, canAccessModule, canPerformAction, isAuthenticated } = usePermissions();
+  const { role, roleCategory, isSuperuser, canAccessModule, canPerformAction, isAuthenticated } =
+    usePermissions();
   const {
     facility,
     assignedFacility,
@@ -59,7 +61,7 @@ export function PermissionDebugPanel() {
 
   const filteredFacilityEntries = facility
     ? Object.entries(facility.modules).filter(([k]) =>
-        lowerFilter ? k.toLowerCase().includes(lowerFilter) : true,
+        lowerFilter ? k.toLowerCase().includes(lowerFilter) : true
       )
     : [];
 
@@ -93,7 +95,7 @@ export function PermissionDebugPanel() {
     return (
       <button
         onClick={() => setOpen(true)}
-        className="fixed bottom-4 left-4 z-[9999] bg-amber-500 text-white rounded-full p-2 shadow-lg hover:bg-amber-600 transition-colors"
+        className="fixed bottom-4 left-4 z-[9999] rounded-full bg-amber-500 p-2 text-white shadow-lg transition-colors hover:bg-amber-600"
         title="Permission Debug Panel"
       >
         <Bug className="h-4 w-4" />
@@ -104,7 +106,7 @@ export function PermissionDebugPanel() {
   return (
     <div className="fixed bottom-4 left-4 z-[9999] flex h-[60vh] w-80 flex-col overflow-hidden rounded-lg border bg-background shadow-xl">
       {/* Header */}
-      <div className="flex items-center justify-between p-3 border-b">
+      <div className="flex items-center justify-between border-b p-3">
         <div className="flex items-center gap-2">
           <Bug className="h-4 w-4 text-amber-500" />
           <span className="text-sm font-semibold">RBAC Debug</span>
@@ -115,10 +117,12 @@ export function PermissionDebugPanel() {
       </div>
 
       {/* User Info */}
-      <div className="p-3 text-xs space-y-1 border-b">
+      <div className="space-y-1 border-b p-3 text-xs">
         <div className="flex justify-between">
           <span className="text-muted-foreground">Role:</span>
-          <Badge variant="outline" className="text-xs">{role || 'none'}</Badge>
+          <Badge variant="outline" className="text-xs">
+            {role || 'none'}
+          </Badge>
         </div>
         <div className="flex justify-between">
           <span className="text-muted-foreground">Category:</span>
@@ -130,12 +134,14 @@ export function PermissionDebugPanel() {
         </div>
         <div className="flex justify-between">
           <span className="text-muted-foreground">Facility:</span>
-          <span className="text-right truncate max-w-[160px]">{facility?.name || 'None'}</span>
+          <span className="max-w-[160px] truncate text-right">{facility?.name || 'None'}</span>
         </div>
         {isUsingFacilityOverride && facilityOverride && (
           <div className="flex justify-between">
             <span className="text-muted-foreground">Mode:</span>
-            <Badge variant="secondary" className="text-[10px]">OVERRIDE</Badge>
+            <Badge variant="secondary" className="text-[10px]">
+              OVERRIDE
+            </Badge>
           </div>
         )}
       </div>
@@ -145,11 +151,12 @@ export function PermissionDebugPanel() {
         {(['modules', 'actions', 'facility'] as const).map((tab) => (
           <button
             key={tab}
-            onClick={() => { setActiveTab(tab); setFilter(''); }}
-            className={`flex-1 text-xs py-2 capitalize ${
-              activeTab === tab
-                ? 'border-b-2 border-primary font-medium'
-                : 'text-muted-foreground'
+            onClick={() => {
+              setActiveTab(tab);
+              setFilter('');
+            }}
+            className={`flex-1 py-2 text-xs capitalize ${
+              activeTab === tab ? 'border-b-2 border-primary font-medium' : 'text-muted-foreground'
             }`}
           >
             {tab}
@@ -160,12 +167,12 @@ export function PermissionDebugPanel() {
       {/* Filter */}
       <div className="px-2 pt-2">
         <div className="relative">
-          <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+          <Search className="absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
             placeholder={`Filter ${activeTab}...`}
-            className="h-7 text-xs pl-7 pr-7"
+            className="h-7 pl-7 pr-7 text-xs"
           />
           {filter && (
             <button
@@ -181,30 +188,44 @@ export function PermissionDebugPanel() {
 
       {/* Content */}
       <ScrollArea className="min-h-0 flex-1">
-        <div className="p-2 space-y-1">
-          {activeTab === 'modules' && filteredModuleKeys.map((key) => {
-            const allowed = canAccessModule(key);
-            return (
-              <div key={key} className="flex items-center justify-between text-xs py-1 px-2 rounded hover:bg-muted/50">
-                <span className="font-mono">{key}</span>
-                <Badge variant={allowed ? 'default' : 'secondary'} className={`text-[10px] ${allowed ? 'bg-green-500' : 'bg-red-500 text-white'}`}>
-                  {allowed ? 'ALLOW' : 'DENY'}
-                </Badge>
-              </div>
-            );
-          })}
+        <div className="space-y-1 p-2">
+          {activeTab === 'modules' &&
+            filteredModuleKeys.map((key) => {
+              const allowed = canAccessModule(key);
+              return (
+                <div
+                  key={key}
+                  className="flex items-center justify-between rounded px-2 py-1 text-xs hover:bg-muted/50"
+                >
+                  <span className="font-mono">{key}</span>
+                  <Badge
+                    variant={allowed ? 'default' : 'secondary'}
+                    className={`text-[10px] ${allowed ? 'bg-green-500' : 'bg-red-500 text-white'}`}
+                  >
+                    {allowed ? 'ALLOW' : 'DENY'}
+                  </Badge>
+                </div>
+              );
+            })}
 
-          {activeTab === 'actions' && filteredActionKeys.map((key) => {
-            const allowed = canPerformAction(key);
-            return (
-              <div key={key} className="flex items-center justify-between text-xs py-1 px-2 rounded hover:bg-muted/50">
-                <span className="font-mono truncate max-w-[180px]">{key}</span>
-                <Badge variant={allowed ? 'default' : 'secondary'} className={`text-[10px] shrink-0 ${allowed ? 'bg-green-500' : 'bg-red-500 text-white'}`}>
-                  {allowed ? 'ALLOW' : 'DENY'}
-                </Badge>
-              </div>
-            );
-          })}
+          {activeTab === 'actions' &&
+            filteredActionKeys.map((key) => {
+              const allowed = canPerformAction(key);
+              return (
+                <div
+                  key={key}
+                  className="flex items-center justify-between rounded px-2 py-1 text-xs hover:bg-muted/50"
+                >
+                  <span className="max-w-[180px] truncate font-mono">{key}</span>
+                  <Badge
+                    variant={allowed ? 'default' : 'secondary'}
+                    className={`shrink-0 text-[10px] ${allowed ? 'bg-green-500' : 'bg-red-500 text-white'}`}
+                  >
+                    {allowed ? 'ALLOW' : 'DENY'}
+                  </Badge>
+                </div>
+              );
+            })}
 
           {activeTab === 'facility' && (
             <>
@@ -213,7 +234,11 @@ export function PermissionDebugPanel() {
                   Development facility switcher
                 </p>
                 <Select
-                  value={isUsingFacilityOverride && facilityOverride ? String(facilityOverride.id) : 'assigned'}
+                  value={
+                    isUsingFacilityOverride && facilityOverride
+                      ? String(facilityOverride.id)
+                      : 'assigned'
+                  }
                   onValueChange={(value) => void handleFacilitySelection(value)}
                 >
                   <SelectTrigger className="h-8 text-xs">
@@ -231,21 +256,30 @@ export function PermissionDebugPanel() {
                   </SelectContent>
                 </Select>
                 <p className="text-[11px] text-muted-foreground">
-                  Switches the effective facility context in development only. Current: {facility?.name || 'none'}
+                  Switches the effective facility context in development only. Current:{' '}
+                  {facility?.name || 'none'}
                 </p>
               </div>
 
               {!facility ? (
-                <p className="text-xs text-muted-foreground p-2">No facility assigned — all modules allowed.</p>
+                <p className="p-2 text-xs text-muted-foreground">
+                  No facility assigned — all modules allowed.
+                </p>
               ) : filteredFacilityEntries.length === 0 ? (
-                <p className="text-xs text-muted-foreground p-2">No matching modules.</p>
+                <p className="p-2 text-xs text-muted-foreground">No matching modules.</p>
               ) : (
                 filteredFacilityEntries.map(([key, enabled]) => {
-                  const gateResult = hasModule(key as any);
+                  const gateResult = hasModule(key as keyof FacilityModules);
                   return (
-                    <div key={key} className="flex items-center justify-between text-xs py-1 px-2 rounded hover:bg-muted/50">
+                    <div
+                      key={key}
+                      className="flex items-center justify-between rounded px-2 py-1 text-xs hover:bg-muted/50"
+                    >
                       <span className="font-mono">{key}</span>
-                      <Badge variant={gateResult ? 'default' : 'secondary'} className={`text-[10px] ${gateResult ? 'bg-green-500' : 'bg-red-500 text-white'}`}>
+                      <Badge
+                        variant={gateResult ? 'default' : 'secondary'}
+                        className={`text-[10px] ${gateResult ? 'bg-green-500' : 'bg-red-500 text-white'}`}
+                      >
                         {enabled ? 'ON' : 'OFF'}
                       </Badge>
                     </div>
@@ -256,10 +290,10 @@ export function PermissionDebugPanel() {
           )}
 
           {activeTab === 'modules' && filteredModuleKeys.length === 0 && (
-            <p className="text-xs text-muted-foreground p-2">No matching modules.</p>
+            <p className="p-2 text-xs text-muted-foreground">No matching modules.</p>
           )}
           {activeTab === 'actions' && filteredActionKeys.length === 0 && (
-            <p className="text-xs text-muted-foreground p-2">No matching actions.</p>
+            <p className="p-2 text-xs text-muted-foreground">No matching actions.</p>
           )}
         </div>
       </ScrollArea>

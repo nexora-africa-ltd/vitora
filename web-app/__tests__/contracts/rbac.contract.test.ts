@@ -41,14 +41,17 @@ import {
 
 interface OpenAPISchema {
   components: {
-    schemas: Record<string, {
-      type?: string;
-      properties?: Record<string, unknown>;
-      required?: string[];
-      enum?: string[];
-      allOf?: Array<{ $ref?: string }>;
-      description?: string;
-    }>;
+    schemas: Record<
+      string,
+      {
+        type?: string;
+        properties?: Record<string, unknown>;
+        required?: string[];
+        enum?: string[];
+        allOf?: Array<{ $ref?: string }>;
+        description?: string;
+      }
+    >;
   };
 }
 
@@ -77,10 +80,7 @@ function getSchemaProperties(
 /**
  * Get enum values from a component schema.
  */
-function getSchemaEnumValues(
-  openapi: OpenAPISchema,
-  schemaName: string
-): string[] | null {
+function getSchemaEnumValues(openapi: OpenAPISchema, schemaName: string): string[] | null {
   const schema = openapi.components.schemas[schemaName];
   if (!schema || !schema.enum) return null;
   return schema.enum;
@@ -147,8 +147,8 @@ describe('RBAC Contract Tests', () => {
       }
 
       // Critical fields should cause test failure
-      const criticalMissingFields = missingInZod.filter(
-        (field) => ['id', 'name', 'code', 'department_type', 'is_active'].includes(field)
+      const criticalMissingFields = missingInZod.filter((field) =>
+        ['id', 'name', 'code', 'department_type', 'is_active'].includes(field)
       );
 
       expect(criticalMissingFields).toEqual([]);
@@ -176,12 +176,7 @@ describe('RBAC Contract Tests', () => {
     it('should include hierarchy and relationship fields', () => {
       const zodFields = getZodSchemaFields(DepartmentSchema);
 
-      const relationshipFields = [
-        'parent',
-        'parent_name',
-        'head',
-        'head_name',
-      ];
+      const relationshipFields = ['parent', 'parent_name', 'head', 'head_name'];
 
       const missing = relationshipFields.filter((field) => !zodFields.includes(field));
       expect(missing).toEqual([]);
@@ -206,8 +201,8 @@ describe('RBAC Contract Tests', () => {
       }
 
       // Critical fields should cause test failure
-      const criticalMissingFields = missingInZod.filter(
-        (field) => ['id', 'name', 'code', 'category', 'is_active'].includes(field)
+      const criticalMissingFields = missingInZod.filter((field) =>
+        ['id', 'name', 'code', 'category', 'is_active'].includes(field)
       );
 
       expect(criticalMissingFields).toEqual([]);
@@ -268,8 +263,8 @@ describe('RBAC Contract Tests', () => {
       }
 
       // Critical fields should cause test failure
-      const criticalMissingFields = missingInZod.filter(
-        (field) => ['codename', 'name', 'app_label'].includes(field)
+      const criticalMissingFields = missingInZod.filter((field) =>
+        ['codename', 'name', 'app_label'].includes(field)
       );
 
       expect(criticalMissingFields).toEqual([]);
@@ -278,11 +273,7 @@ describe('RBAC Contract Tests', () => {
     it('should have core permission fields', () => {
       const zodFields = getZodSchemaFields(PermissionSchema);
 
-      const coreFields = [
-        'codename',
-        'name',
-        'app_label',
-      ];
+      const coreFields = ['codename', 'name', 'app_label'];
 
       const missing = coreFields.filter((field) => !zodFields.includes(field));
       expect(missing).toEqual([]);
@@ -293,11 +284,7 @@ describe('RBAC Contract Tests', () => {
     it('should have group structure fields', () => {
       const zodFields = getZodSchemaFields(PermissionGroupSchema);
 
-      const structureFields = [
-        'app_label',
-        'app_name',
-        'permissions',
-      ];
+      const structureFields = ['app_label', 'app_name', 'permissions'];
 
       const missing = structureFields.filter((field) => !zodFields.includes(field));
       expect(missing).toEqual([]);
@@ -322,8 +309,8 @@ describe('RBAC Contract Tests', () => {
       }
 
       // Critical fields should cause test failure
-      const criticalMissingFields = missingInZod.filter(
-        (field) => ['id', 'user', 'employee_id', 'employment_status'].includes(field)
+      const criticalMissingFields = missingInZod.filter((field) =>
+        ['id', 'user', 'employee_id', 'employment_status'].includes(field)
       );
 
       expect(criticalMissingFields).toEqual([]);
@@ -351,12 +338,7 @@ describe('RBAC Contract Tests', () => {
     it('should include user account fields', () => {
       const zodFields = getZodSchemaFields(StaffProfileSchema);
 
-      const userFields = [
-        'user_username',
-        'user_email',
-        'user_first_name',
-        'user_last_name',
-      ];
+      const userFields = ['user_username', 'user_email', 'user_first_name', 'user_last_name'];
 
       const missing = userFields.filter((field) => !zodFields.includes(field));
       expect(missing).toEqual([]);
@@ -438,11 +420,7 @@ describe('RBAC Contract Tests', () => {
     it('should have username availability fields', () => {
       const zodFields = getZodSchemaFields(UsernameCheckResponseSchema);
 
-      const requiredFields = [
-        'username',
-        'available',
-        'suggestions',
-      ];
+      const requiredFields = ['username', 'available', 'suggestions'];
 
       const missing = requiredFields.filter((field) => !zodFields.includes(field));
       expect(missing).toEqual([]);
@@ -475,8 +453,8 @@ describe('RBAC Contract Tests', () => {
       }
 
       // Critical fields should cause test failure
-      const criticalMissingFields = missingInZod.filter(
-        (field) => ['id', 'action', 'resource_type', 'timestamp'].includes(field)
+      const criticalMissingFields = missingInZod.filter((field) =>
+        ['id', 'action', 'resource_type', 'timestamp'].includes(field)
       );
 
       expect(criticalMissingFields).toEqual([]);
@@ -530,7 +508,9 @@ describe('RBAC Contract Tests', () => {
       const missingInZod = apiValues.filter((v) => !zodValues.includes(v));
 
       if (missingInZod.length > 0) {
-        console.warn(`⚠️  DepartmentTypeSchema: Missing values from API: ${missingInZod.join(', ')}`);
+        console.warn(
+          `⚠️  DepartmentTypeSchema: Missing values from API: ${missingInZod.join(', ')}`
+        );
       }
 
       // Enum values must match exactly
@@ -540,11 +520,7 @@ describe('RBAC Contract Tests', () => {
     it('should include core department types', () => {
       const zodValues = getZodEnumValues(DepartmentTypeSchema);
 
-      const coreTypes = [
-        'CLINICAL',
-        'ADMINISTRATIVE',
-        'SUPPORT',
-      ];
+      const coreTypes = ['CLINICAL', 'ADMINISTRATIVE', 'SUPPORT'];
 
       const missing = coreTypes.filter((t) => !zodValues.includes(t));
       expect(missing).toEqual([]);
@@ -571,13 +547,7 @@ describe('RBAC Contract Tests', () => {
     it('should include all role categories', () => {
       const zodValues = getZodEnumValues(RoleCategorySchema);
 
-      const allCategories = [
-        'CLINICAL',
-        'ADMINISTRATIVE',
-        'TECHNICAL',
-        'MANAGEMENT',
-        'COMMUNITY',
-      ];
+      const allCategories = ['CLINICAL', 'ADMINISTRATIVE', 'TECHNICAL', 'MANAGEMENT', 'COMMUNITY'];
 
       const missing = allCategories.filter((c) => !zodValues.includes(c));
       expect(missing).toEqual([]);
@@ -595,7 +565,9 @@ describe('RBAC Contract Tests', () => {
       const missingInZod = apiValues.filter((v) => !zodValues.includes(v));
 
       if (missingInZod.length > 0) {
-        console.warn(`⚠️  EmploymentStatusSchema: Missing values from API: ${missingInZod.join(', ')}`);
+        console.warn(
+          `⚠️  EmploymentStatusSchema: Missing values from API: ${missingInZod.join(', ')}`
+        );
       }
 
       expect(missingInZod).toEqual([]);
@@ -604,12 +576,7 @@ describe('RBAC Contract Tests', () => {
     it('should include core employment statuses', () => {
       const zodValues = getZodEnumValues(EmploymentStatusSchema);
 
-      const coreStatuses = [
-        'ACTIVE',
-        'ON_LEAVE',
-        'SUSPENDED',
-        'TERMINATED',
-      ];
+      const coreStatuses = ['ACTIVE', 'ON_LEAVE', 'SUSPENDED', 'TERMINATED'];
 
       const missing = coreStatuses.filter((s) => !zodValues.includes(s));
       expect(missing).toEqual([]);
@@ -627,7 +594,9 @@ describe('RBAC Contract Tests', () => {
       const missingInZod = apiValues.filter((v) => !zodValues.includes(v));
 
       if (missingInZod.length > 0) {
-        console.warn(`⚠️  EmploymentTypeSchema: Missing values from API: ${missingInZod.join(', ')}`);
+        console.warn(
+          `⚠️  EmploymentTypeSchema: Missing values from API: ${missingInZod.join(', ')}`
+        );
       }
 
       expect(missingInZod).toEqual([]);
@@ -636,11 +605,7 @@ describe('RBAC Contract Tests', () => {
     it('should include core employment types', () => {
       const zodValues = getZodEnumValues(EmploymentTypeSchema);
 
-      const coreTypes = [
-        'PERMANENT',
-        'CONTRACT',
-        'LOCUM',
-      ];
+      const coreTypes = ['PERMANENT', 'CONTRACT', 'LOCUM'];
 
       const missing = coreTypes.filter((t) => !zodValues.includes(t));
       expect(missing).toEqual([]);

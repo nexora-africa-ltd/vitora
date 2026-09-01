@@ -63,10 +63,7 @@ describe('ActionButton', () => {
     it('renders fallback when user lacks permission', () => {
       mockCanPerformAction.mockReturnValue(false);
       render(
-        <ActionButton
-          action="billing.void_invoice"
-          fallback={<span>Contact supervisor</span>}
-        >
+        <ActionButton action="billing.void_invoice" fallback={<span>Contact supervisor</span>}>
           Void Invoice
         </ActionButton>
       );
@@ -77,9 +74,7 @@ describe('ActionButton', () => {
     it('renders nothing (no fallback) by default when denied', () => {
       mockCanPerformAction.mockReturnValue(false);
       const { container } = render(
-        <ActionButton action="billing.void_invoice">
-          Void Invoice
-        </ActionButton>
+        <ActionButton action="billing.void_invoice">Void Invoice</ActionButton>
       );
       expect(container.innerHTML).toBe('');
     });
@@ -138,30 +133,22 @@ describe('ActionButton', () => {
   // =========================================================================
   describe('action key checking', () => {
     it('checks the correct action key for pharmacy', () => {
-      render(
-        <ActionButton action="pharmacy.dispense">Dispense</ActionButton>
-      );
+      render(<ActionButton action="pharmacy.dispense">Dispense</ActionButton>);
       expect(mockCanPerformAction).toHaveBeenCalledWith('pharmacy.dispense');
     });
 
     it('checks the correct action key for laboratory', () => {
-      render(
-        <ActionButton action="laboratory.verify_results">Verify</ActionButton>
-      );
+      render(<ActionButton action="laboratory.verify_results">Verify</ActionButton>);
       expect(mockCanPerformAction).toHaveBeenCalledWith('laboratory.verify_results');
     });
 
     it('checks the correct action key for billing', () => {
-      render(
-        <ActionButton action="billing.record_payment">Pay</ActionButton>
-      );
+      render(<ActionButton action="billing.record_payment">Pay</ActionButton>);
       expect(mockCanPerformAction).toHaveBeenCalledWith('billing.record_payment');
     });
 
     it('checks the correct action key for encounters', () => {
-      render(
-        <ActionButton action="encounters.prescribe">Prescribe</ActionButton>
-      );
+      render(<ActionButton action="encounters.prescribe">Prescribe</ActionButton>);
       expect(mockCanPerformAction).toHaveBeenCalledWith('encounters.prescribe');
     });
   });
@@ -180,13 +167,9 @@ describe('ActionButton', () => {
         }),
       }));
 
-      const { ActionButton: UnauthButton } = await import(
-        '@/components/shared/action-button'
-      );
+      const { ActionButton: UnauthButton } = await import('@/components/shared/action-button');
       const { container } = render(
-        <UnauthButton action="inpatient.discharge">
-          Discharge
-        </UnauthButton>
+        <UnauthButton action="inpatient.discharge">Discharge</UnauthButton>
       );
       expect(container.innerHTML).toBe('');
     });
@@ -200,14 +183,9 @@ describe('ActionButton', () => {
         }),
       }));
 
-      const { ActionButton: UnauthButton } = await import(
-        '@/components/shared/action-button'
-      );
+      const { ActionButton: UnauthButton } = await import('@/components/shared/action-button');
       render(
-        <UnauthButton
-          action="inpatient.discharge"
-          fallback={<span>Login required</span>}
-        >
+        <UnauthButton action="inpatient.discharge" fallback={<span>Login required</span>}>
           Discharge
         </UnauthButton>
       );

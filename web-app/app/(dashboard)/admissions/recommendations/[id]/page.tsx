@@ -54,8 +54,10 @@ import { useToast } from '@/lib/hooks/use-toast';
 import { formatDate, formatDateTime } from '@/lib/utils/format';
 import type {
   AdmissionRecommendationUrgency,
+  Bed,
   CompatibleWardInfo,
   IncompatibleWardInfo,
+  InpatientWard,
   PatientCompatibilityResult,
 } from '@/lib/types/inpatient';
 
@@ -72,7 +74,9 @@ const STATUS_COLORS: Record<string, string> = {
   EXPIRED: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200',
 };
 
-function getUrgencyVariant(urgency: AdmissionRecommendationUrgency): 'default' | 'secondary' | 'destructive' | 'outline' {
+function getUrgencyVariant(
+  urgency: AdmissionRecommendationUrgency
+): 'default' | 'secondary' | 'destructive' | 'outline' {
   switch (urgency) {
     case 'EMERGENCY':
       return 'destructive';
@@ -92,7 +96,12 @@ export default function RecommendationDetailPage() {
   const { toast } = useToast();
   const recommendationId = Number(params.id);
 
-  const { data: recommendation, isLoading, error, refetch } = useAdmissionRecommendation(recommendationId);
+  const {
+    data: recommendation,
+    isLoading,
+    error,
+    refetch,
+  } = useAdmissionRecommendation(recommendationId);
   const { data: wards } = useInpatientWards();
 
   const [acceptDialogOpen, setAcceptDialogOpen] = useState(false);
@@ -101,7 +110,9 @@ export default function RecommendationDetailPage() {
   const [selectedWard, setSelectedWard] = useState<string>('');
   const [selectedBed, setSelectedBed] = useState<string>('');
   const [overrideReason, setOverrideReason] = useState('');
-  const [compatibilityResult, setCompatibilityResult] = useState<PatientCompatibilityResult | null>(null);
+  const [compatibilityResult, setCompatibilityResult] = useState<PatientCompatibilityResult | null>(
+    null
+  );
   const [isCheckingCompatibility, setIsCheckingCompatibility] = useState(false);
 
   const { data: beds } = useWardBeds(selectedWard ? Number(selectedWard) : undefined);
@@ -109,15 +120,14 @@ export default function RecommendationDetailPage() {
   const declineRecommendation = useDeclineAdmissionRecommendation();
   const bulkCompatibilityCheck = useBulkCompatibilityCheck();
 
-  const wardsList = wards?.results ?? [];
-  const bedsList = Array.isArray(beds) ? beds : beds?.results ?? [];
-  const availableBeds = bedsList.filter((b: any) => b.status === 'AVAILABLE');
+  const wardsList: InpatientWard[] = wards?.results ?? [];
+  const bedsList: Bed[] = Array.isArray(beds) ? beds : (beds?.results ?? []);
+  const availableBeds = bedsList.filter((b) => b.status === 'AVAILABLE');
 
   // Determine if the selected ward requires an override
   const selectedWardId = selectedWard ? Number(selectedWard) : null;
-  const isSelectedWardIncompatible = compatibilityResult?.incompatible_wards?.some(
-    (w) => w.ward_id === selectedWardId
-  ) ?? false;
+  const isSelectedWardIncompatible =
+    compatibilityResult?.incompatible_wards?.some((w) => w.ward_id === selectedWardId) ?? false;
   const selectedIncompatibleWard = compatibilityResult?.incompatible_wards?.find(
     (w) => w.ward_id === selectedWardId
   );
@@ -132,18 +142,22 @@ export default function RecommendationDetailPage() {
       setSelectedBed('');
       setOverrideReason('');
 
-      bulkCompatibilityCheck.mutateAsync({
-        patientIds: [recommendation.patient_id],
-      }).then((result) => {
-        if (result.results.length > 0 && result.results[0]) {
-          setCompatibilityResult(result.results[0]);
-        }
-      }).catch((err) => {
-        console.error('Failed to check ward compatibility:', err);
-        // Continue without compatibility data - user can still select any ward
-      }).finally(() => {
-        setIsCheckingCompatibility(false);
-      });
+      bulkCompatibilityCheck
+        .mutateAsync({
+          patientIds: [recommendation.patient_id],
+        })
+        .then((result) => {
+          if (result.results.length > 0 && result.results[0]) {
+            setCompatibilityResult(result.results[0]);
+          }
+        })
+        .catch((err) => {
+          console.error('Failed to check ward compatibility:', err);
+          // Continue without compatibility data - user can still select any ward
+        })
+        .finally(() => {
+          setIsCheckingCompatibility(false);
+        });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [acceptDialogOpen, recommendation?.patient_id]);
@@ -215,8 +229,9 @@ export default function RecommendationDetailPage() {
     return (
       <div className="container mx-auto py-12 text-center">
         <p className="text-xl font-semibold">Recommendation not found</p>
-        <p className="text-muted-foreground mt-2">
-          The admission recommendation you&apos;re looking for doesn&apos;t exist or has been removed.
+        <p className="mt-2 text-muted-foreground">
+          The admission recommendation you&apos;re looking for doesn&apos;t exist or has been
+          removed.
         </p>
         <Button onClick={() => router.push('/admissions/recommendations')} className="mt-4">
           View Recommendations
@@ -229,34 +244,29 @@ export default function RecommendationDetailPage() {
   const isExpired = recommendation.is_expired;
 
   return (
-    <div className="container mx-auto py-6 space-y-4 sm:space-y-6">
+    <div className="container mx-auto space-y-4 py-6 sm:space-y-6">
       <PageHeader
         title="Admission Recommendation"
         helpContent="Review the admission recommendation details and take action to accept or decline."
       />
 
       {/* Summary Bar */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center p-3 sm:p-4 rounded-lg bg-muted/50">
-        <div className="flex flex-col gap-1 min-w-0">
-          <p className="text-lg sm:text-xl font-bold truncate">
+      <div className="flex flex-col gap-3 rounded-lg bg-muted/50 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
+        <div className="flex min-w-0 flex-col gap-1">
+          <p className="truncate text-lg font-bold sm:text-xl">
             {recommendation.patient_name || 'Unknown Patient'}
           </p>
-          <p className="text-sm text-muted-foreground truncate">
+          <p className="truncate text-sm text-muted-foreground">
             {recommendation.patient_mrn && <span>MRN: {recommendation.patient_mrn} • </span>}
             Encounter #{recommendation.encounter}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Badge
-            variant={getUrgencyVariant(recommendation.urgency)}
-            className="shrink-0 w-fit"
-          >
-            {recommendation.urgency === 'EMERGENCY' && <AlertTriangle className="h-3 w-3 mr-1" />}
+          <Badge variant={getUrgencyVariant(recommendation.urgency)} className="w-fit shrink-0">
+            {recommendation.urgency === 'EMERGENCY' && <AlertTriangle className="mr-1 h-3 w-3" />}
             {recommendation.urgency}
           </Badge>
-          <Badge className={STATUS_COLORS[recommendation.status]}>
-            {recommendation.status}
-          </Badge>
+          <Badge className={STATUS_COLORS[recommendation.status]}>{recommendation.status}</Badge>
         </div>
       </div>
 
@@ -265,7 +275,7 @@ export default function RecommendationDetailPage() {
         <Card className="border-destructive bg-destructive/10">
           <CardContent className="flex items-center gap-3 py-4">
             <AlertTriangle className="h-5 w-5 text-destructive" />
-            <p className="text-sm text-destructive font-medium">
+            <p className="text-sm font-medium text-destructive">
               This recommendation has expired and can no longer be accepted.
             </p>
           </CardContent>
@@ -276,11 +286,11 @@ export default function RecommendationDetailPage() {
       {isPending && !isExpired && (
         <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
           <Button variant="outline" onClick={() => setDeclineDialogOpen(true)}>
-            <X className="h-4 w-4 mr-2" />
+            <X className="mr-2 h-4 w-4" />
             Decline
           </Button>
           <Button onClick={() => setAcceptDialogOpen(true)}>
-            <Check className="h-4 w-4 mr-2" />
+            <Check className="mr-2 h-4 w-4" />
             Accept & Admit
           </Button>
         </div>
@@ -306,7 +316,7 @@ export default function RecommendationDetailPage() {
                 <p className="text-sm text-muted-foreground">Provisional Diagnosis</p>
                 <p className="font-medium">
                   {recommendation.provisional_diagnosis && (
-                    <code className="text-xs bg-muted px-1 py-0.5 rounded mr-2">
+                    <code className="mr-2 rounded bg-muted px-1 py-0.5 text-xs">
                       {recommendation.provisional_diagnosis}
                     </code>
                   )}
@@ -323,7 +333,9 @@ export default function RecommendationDetailPage() {
               <div>
                 <p className="text-sm text-muted-foreground">Urgency</p>
                 <Badge variant={getUrgencyVariant(recommendation.urgency)}>
-                  {recommendation.urgency === 'EMERGENCY' && <AlertTriangle className="h-3 w-3 mr-1" />}
+                  {recommendation.urgency === 'EMERGENCY' && (
+                    <AlertTriangle className="mr-1 h-3 w-3" />
+                  )}
                   {recommendation.urgency}
                 </Badge>
               </div>
@@ -345,7 +357,9 @@ export default function RecommendationDetailPage() {
                 <p className="text-sm text-muted-foreground">Recommended By</p>
                 <div className="flex items-center gap-2">
                   <User className="h-4 w-4 text-muted-foreground" />
-                  <span className="font-medium">{recommendation.recommended_by_username || 'Unknown'}</span>
+                  <span className="font-medium">
+                    {recommendation.recommended_by_username || 'Unknown'}
+                  </span>
                 </div>
               </div>
               <div>
@@ -384,7 +398,7 @@ export default function RecommendationDetailPage() {
 
           {/* Loading State */}
           {isCheckingCompatibility && (
-            <div className="flex items-center justify-center py-8 gap-3">
+            <div className="flex items-center justify-center gap-3 py-8">
               <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
               <span className="text-sm text-muted-foreground">Checking ward compatibility...</span>
             </div>
@@ -408,7 +422,10 @@ export default function RecommendationDetailPage() {
 
               {/* Incompatible Wards Warning */}
               {compatibilityResult.incompatible_wards.length > 0 && (
-                <Alert variant="destructive" className="bg-orange-50 dark:bg-orange-950/20 border-orange-500/30">
+                <Alert
+                  variant="destructive"
+                  className="border-orange-500/30 bg-orange-50 dark:bg-orange-950/20"
+                >
                   <AlertTriangle className="h-4 w-4 text-orange-600" />
                   <AlertTitle className="text-orange-700 dark:text-orange-400">
                     {compatibilityResult.incompatible_wards.length} Ward(s) with Restrictions
@@ -444,7 +461,7 @@ export default function RecommendationDetailPage() {
                           {compatibilityResult.compatible_wards.map((ward) => (
                             <SelectItem key={ward.ward_id} value={String(ward.ward_id)}>
                               <div className="flex items-center gap-2">
-                                <CheckCircle2 className="h-3.5 w-3.5 text-green-500 shrink-0" />
+                                <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-green-500" />
                                 <span>{ward.ward_name}</span>
                                 <Badge variant="secondary" className="ml-auto text-xs">
                                   {ward.available_beds} beds
@@ -458,16 +475,16 @@ export default function RecommendationDetailPage() {
                       {/* Incompatible Wards - Orange/Red indicators */}
                       {compatibilityResult.incompatible_wards.length > 0 && (
                         <>
-                          <div className="px-2 py-1.5 text-xs font-medium text-orange-600 dark:text-orange-400 mt-2 border-t">
+                          <div className="mt-2 border-t px-2 py-1.5 text-xs font-medium text-orange-600 dark:text-orange-400">
                             ⚠ Requires Override
                           </div>
                           {compatibilityResult.incompatible_wards.map((ward) => (
                             <SelectItem key={ward.ward_id} value={String(ward.ward_id)}>
                               <div className="flex items-center gap-2">
                                 {ward.has_critical ? (
-                                  <XCircle className="h-3.5 w-3.5 text-red-500 shrink-0" />
+                                  <XCircle className="h-3.5 w-3.5 shrink-0 text-red-500" />
                                 ) : (
-                                  <AlertTriangle className="h-3.5 w-3.5 text-orange-500 shrink-0" />
+                                  <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-orange-500" />
                                 )}
                                 <span>{ward.ward_name}</span>
                                 <Badge variant="outline" className="ml-auto text-xs">
@@ -528,7 +545,7 @@ export default function RecommendationDetailPage() {
                           No available beds in this ward
                         </div>
                       ) : (
-                        availableBeds.map((bed: any) => (
+                        availableBeds.map((bed) => (
                           <SelectItem key={bed.id} value={String(bed.id)}>
                             {bed.bed_number}
                           </SelectItem>
@@ -554,13 +571,19 @@ export default function RecommendationDetailPage() {
 
               <div className="space-y-2">
                 <Label>Ward</Label>
-                <Select value={selectedWard} onValueChange={(v) => { setSelectedWard(v); setSelectedBed(''); }}>
+                <Select
+                  value={selectedWard}
+                  onValueChange={(v) => {
+                    setSelectedWard(v);
+                    setSelectedBed('');
+                  }}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Select ward" />
                   </SelectTrigger>
                   <SelectContent>
                     <ScrollArea className="max-h-60">
-                      {wardsList.map((ward: any) => (
+                      {wardsList.map((ward) => (
                         <SelectItem key={ward.id} value={String(ward.id)}>
                           {ward.name} ({ward.ward_type})
                         </SelectItem>
@@ -582,7 +605,7 @@ export default function RecommendationDetailPage() {
                           No available beds in this ward
                         </div>
                       ) : (
-                        availableBeds.map((bed: any) => (
+                        availableBeds.map((bed) => (
                           <SelectItem key={bed.id} value={String(bed.id)}>
                             {bed.bed_number}
                           </SelectItem>
@@ -653,7 +676,7 @@ export default function RecommendationDetailPage() {
 
 function RecommendationDetailSkeleton() {
   return (
-    <div className="container mx-auto py-6 space-y-6">
+    <div className="container mx-auto space-y-6 py-6">
       <Skeleton className="h-10 w-64" />
       <Skeleton className="h-20 w-full" />
       <div className="grid gap-4 md:grid-cols-2">

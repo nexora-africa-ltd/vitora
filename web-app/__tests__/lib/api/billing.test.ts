@@ -240,7 +240,9 @@ describe('Billing API - Services', () => {
 
       const result = await billingApi.getServices();
 
-      expect(mockApiClient.get).toHaveBeenCalledWith(expect.stringContaining('/api/billing/services/'));
+      expect(mockApiClient.get).toHaveBeenCalledWith(
+        expect.stringContaining('/api/billing/services/')
+      );
       expect(result.results).toHaveLength(1);
       expect(result.results[0]?.name).toBe('General Consultation');
     });
@@ -355,7 +357,9 @@ describe('Billing API - Invoices', () => {
 
       const result = await billingApi.getInvoices();
 
-      expect(mockApiClient.get).toHaveBeenCalledWith(expect.stringContaining('/api/billing/invoices/'));
+      expect(mockApiClient.get).toHaveBeenCalledWith(
+        expect.stringContaining('/api/billing/invoices/')
+      );
       expect(result.results).toHaveLength(1);
       expect(result.results[0]?.invoice_number).toBe('INV-20260103-0001');
     });
@@ -443,7 +447,11 @@ describe('Billing API - Invoices', () => {
 
   describe('finalizeInvoice', () => {
     it('should finalize a draft invoice', async () => {
-      const finalizedInvoice = { ...mockInvoice, status: 'PENDING' as const, finalized_at: '2026-01-03T11:00:00Z' };
+      const finalizedInvoice = {
+        ...mockInvoice,
+        status: 'PENDING' as const,
+        finalized_at: '2026-01-03T11:00:00Z',
+      };
       mockApiClient.post.mockResolvedValue({ data: finalizedInvoice });
 
       const result = await billingApi.finalizeInvoice(1);
@@ -495,7 +503,10 @@ describe('Billing API - Invoices', () => {
 
       const result = await billingApi.addInvoiceItem(1, itemData);
 
-      expect(mockApiClient.post).toHaveBeenCalledWith('/api/billing/invoices/1/add_item/', itemData);
+      expect(mockApiClient.post).toHaveBeenCalledWith(
+        '/api/billing/invoices/1/add_item/',
+        itemData
+      );
       expect(result.description).toBe('Lab Test - CBC');
     });
   });
@@ -528,7 +539,10 @@ describe('Billing API - Invoices', () => {
 
       const result = await billingApi.applyDiscount(1, discountData);
 
-      expect(mockApiClient.post).toHaveBeenCalledWith('/api/billing/invoices/1/apply_discount/', discountData);
+      expect(mockApiClient.post).toHaveBeenCalledWith(
+        '/api/billing/invoices/1/apply_discount/',
+        discountData
+      );
       expect(result.discount_amount).toBe('150.00');
     });
 
@@ -554,7 +568,9 @@ describe('Billing API - Invoices', () => {
   describe('getOverdueInvoices', () => {
     it('should fetch overdue invoices', async () => {
       const overdueInvoice = { ...mockInvoice, status: 'OVERDUE' as const };
-      mockApiClient.get.mockResolvedValue({ data: { count: 1, next: null, previous: null, results: [overdueInvoice] } });
+      mockApiClient.get.mockResolvedValue({
+        data: { count: 1, next: null, previous: null, results: [overdueInvoice] },
+      });
 
       const result = await billingApi.getOverdueInvoices();
 
@@ -587,7 +603,9 @@ describe('Billing API - Payments', () => {
 
       const result = await billingApi.getPayments();
 
-      expect(mockApiClient.get).toHaveBeenCalledWith(expect.stringContaining('/api/billing/payments/'));
+      expect(mockApiClient.get).toHaveBeenCalledWith(
+        expect.stringContaining('/api/billing/payments/')
+      );
       expect(result.results).toHaveLength(1);
     });
 
@@ -827,7 +845,9 @@ describe('Billing API - Credit Notes', () => {
 
       const result = await billingApi.getCreditNotes();
 
-      expect(mockApiClient.get).toHaveBeenCalledWith(expect.stringContaining('/api/billing/credit-notes/'));
+      expect(mockApiClient.get).toHaveBeenCalledWith(
+        expect.stringContaining('/api/billing/credit-notes/')
+      );
       expect(result.results).toHaveLength(1);
     });
 
@@ -870,7 +890,9 @@ describe('Billing API - Credit Notes', () => {
 
       const result = await billingApi.approveCreditNote(1);
 
-      expect(mockApiClient.post).toHaveBeenCalledWith('/api/billing/credit-notes/1/approve/', { approved: true });
+      expect(mockApiClient.post).toHaveBeenCalledWith('/api/billing/credit-notes/1/approve/', {
+        approved: true,
+      });
       expect(result.status).toBe('APPROVED');
     });
 
@@ -910,10 +932,13 @@ describe('Billing API - Credit Notes', () => {
         refund_reference: 'REF-001',
       });
 
-      expect(mockApiClient.post).toHaveBeenCalledWith('/api/billing/credit-notes/1/process-refund/', {
-        refund_method: 'CASH',
-        refund_reference: 'REF-001',
-      });
+      expect(mockApiClient.post).toHaveBeenCalledWith(
+        '/api/billing/credit-notes/1/process-refund/',
+        {
+          refund_method: 'CASH',
+          refund_reference: 'REF-001',
+        }
+      );
       expect(result.status).toBe('REFUNDED');
     });
   });
@@ -946,7 +971,9 @@ describe('Billing API - Reports', () => {
 
       const result = await billingApi.getDailyCollectionReport('2026-01-03');
 
-      expect(mockApiClient.get).toHaveBeenCalledWith('/api/billing/reports/daily-collection/?date=2026-01-03');
+      expect(mockApiClient.get).toHaveBeenCalledWith(
+        '/api/billing/reports/daily-collection/?date=2026-01-03'
+      );
       expect(result.total_collections).toBe(15000);
       expect(result.by_payment_method.cash).toBe(8000);
     });
@@ -958,9 +985,9 @@ describe('Billing API - Reports', () => {
         period: { start: '2026-01-01', end: '2026-01-31' },
         total_revenue: 500000,
         by_category: {
-          'Consultation': { revenue: 150000, count: 300 },
-          'Laboratory': { revenue: 200000, count: 250 },
-          'Pharmacy': { revenue: 150000, count: 400 },
+          Consultation: { revenue: 150000, count: 300 },
+          Laboratory: { revenue: 200000, count: 250 },
+          Pharmacy: { revenue: 150000, count: 400 },
         },
         by_payment_method: {
           cash: 200000,
@@ -1088,10 +1115,15 @@ describe('Billing API - Error Handling', () => {
 
   it('should handle 403 forbidden errors', async () => {
     mockApiClient.post.mockRejectedValue({
-      response: { status: 403, data: { detail: 'You do not have permission to perform this action.' } },
+      response: {
+        status: 403,
+        data: { detail: 'You do not have permission to perform this action.' },
+      },
     });
 
-    await expect(billingApi.createInvoice({ patient: 1, due_date: '2026-02-01' })).rejects.toMatchObject({
+    await expect(
+      billingApi.createInvoice({ patient: 1, due_date: '2026-02-01' })
+    ).rejects.toMatchObject({
       response: { status: 403 },
     });
   });
@@ -1117,7 +1149,9 @@ describe('Billing API - Error Handling', () => {
       },
     });
 
-    await expect(billingApi.createInvoice({ patient: 0, due_date: '2020-01-01' } as any)).rejects.toMatchObject({
+    await expect(
+      billingApi.createInvoice({ patient: 0, due_date: '2020-01-01' } as unknown)
+    ).rejects.toMatchObject({
       response: { status: 400 },
     });
   });

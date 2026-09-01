@@ -33,14 +33,17 @@ import {
 
 interface OpenAPISchema {
   components: {
-    schemas: Record<string, {
-      type?: string;
-      properties?: Record<string, unknown>;
-      required?: string[];
-      enum?: string[];
-      allOf?: Array<{ $ref?: string }>;
-      description?: string;
-    }>;
+    schemas: Record<
+      string,
+      {
+        type?: string;
+        properties?: Record<string, unknown>;
+        required?: string[];
+        enum?: string[];
+        allOf?: Array<{ $ref?: string }>;
+        description?: string;
+      }
+    >;
   };
 }
 
@@ -69,10 +72,7 @@ function getSchemaProperties(
 /**
  * Get enum values from a component schema.
  */
-function getSchemaEnumValues(
-  openapi: OpenAPISchema,
-  schemaName: string
-): string[] | null {
+function getSchemaEnumValues(openapi: OpenAPISchema, schemaName: string): string[] | null {
   const schema = openapi.components.schemas[schemaName];
   if (!schema || !schema.enum) return null;
   return schema.enum;
@@ -138,11 +138,9 @@ describe('Patient Contract Tests', () => {
       }
 
       // Critical fields should cause test failure
-      const criticalMissingFields = missingInZod.filter(
-        (field) =>
-          // These are critical fields that must be in the Zod schema
-          ['id', 'mrn', 'first_name', 'last_name', 'date_of_birth', 'gender']
-            .includes(field)
+      const criticalMissingFields = missingInZod.filter((field) =>
+        // These are critical fields that must be in the Zod schema
+        ['id', 'mrn', 'first_name', 'last_name', 'date_of_birth', 'gender'].includes(field)
       );
 
       expect(criticalMissingFields).toEqual([]);

@@ -78,11 +78,7 @@ function createWrapper() {
     },
   });
   return function Wrapper({ children }: { children: React.ReactNode }) {
-    return (
-      <QueryClientProvider client={queryClient}>
-        {children}
-      </QueryClientProvider>
-    );
+    return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
   };
 }
 
@@ -119,8 +115,7 @@ describe('Lab Order Form - Context Integration', () => {
 
       await waitFor(() => {
         // Patient name should be displayed somewhere in the form
-        const patientDisplay = screen.queryByText(/Jane/) ||
-                              screen.queryByText(mockPatient.mrn);
+        const patientDisplay = screen.queryByText(/Jane/) || screen.queryByText(mockPatient.mrn);
         expect(patientDisplay).toBeTruthy();
       });
 
@@ -198,8 +193,7 @@ describe('Lab Order Form - Context Integration', () => {
 
       await waitFor(() => {
         // Should show warning about missing encounter
-        const warning = screen.queryByText(/encounter.*required/i) ||
-                       screen.queryByRole('alert');
+        const warning = screen.queryByText(/encounter.*required/i) || screen.queryByRole('alert');
         expect(warning).toBeTruthy();
       });
     });
@@ -227,9 +221,10 @@ describe('Lab Order Form - Context Integration', () => {
 
       await waitFor(() => {
         // Should show warning about encounter not active
-        const warning = screen.queryByText(/not active/i) ||
-                       screen.queryByText(/completed/i) ||
-                       screen.queryByRole('alert');
+        const warning =
+          screen.queryByText(/not active/i) ||
+          screen.queryByText(/completed/i) ||
+          screen.queryByRole('alert');
         expect(warning).toBeTruthy();
       });
     });

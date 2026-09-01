@@ -160,7 +160,7 @@ describe('useBillingStore', () => {
       const mockInvoice = { id: 1, invoice_number: 'INV-001' };
 
       act(() => {
-        result.current.setSelectedInvoice(mockInvoice as any);
+        result.current.setSelectedInvoice(mockInvoice as unknown);
       });
 
       expect(result.current.selectedInvoice?.id).toBe(1);
@@ -170,7 +170,7 @@ describe('useBillingStore', () => {
       const { result } = renderHook(() => useBillingStore());
 
       act(() => {
-        result.current.setSelectedInvoice({ id: 1 } as any);
+        result.current.setSelectedInvoice({ id: 1 } as unknown);
         result.current.clearSelectedInvoice();
       });
 
@@ -183,7 +183,7 @@ describe('useBillingStore', () => {
       const mockPayment = { id: 1, payment_reference: 'PAY-001' };
 
       act(() => {
-        result.current.setSelectedPayment(mockPayment as any);
+        result.current.setSelectedPayment(mockPayment as unknown);
       });
 
       expect(result.current.selectedPayment?.id).toBe(1);

@@ -60,6 +60,16 @@ import {
   PaginatedStockAdjustmentSchema,
 } from '@/lib/schemas/pharmacy.schema';
 
+type StockMovementReport = z.infer<typeof StockMovementReportSchema>;
+type AlertSettings = z.infer<typeof AlertSettingsSchema>;
+type NormalizedStockMovementReport = {
+  results: Array<
+    Omit<StockMovementReport['results'][number], 'user'> & {
+      user: string;
+    }
+  >;
+};
+
 export interface DrugCategoryCreateData {
   name: string;
   code?: string;
@@ -91,8 +101,9 @@ export const pharmacyApi = {
   /**
    * Create a new drug category in the backend registry.
    */
-  async createDrugCategory(data: DrugCategoryCreateData): Promise<{ value: string; label: string }>
-  {
+  async createDrugCategory(
+    data: DrugCategoryCreateData
+  ): Promise<{ value: string; label: string }> {
     const response = await apiClient.post('/api/pharmacy/drug-categories/', data);
     const parsed = parseResponse(DrugCategorySchema, response.data, {
       context: 'pharmacyApi.createDrugCategory',
@@ -125,7 +136,9 @@ export const pharmacyApi = {
     const response = await apiClient.get<PaginatedResponse<Drug>>('/api/pharmacy/drugs/', {
       params: { search: query, page_size: 20 },
     });
-    const parsed = parseResponse(PaginatedDrugSchema, response.data, { context: 'pharmacyApi.searchDrugs' });
+    const parsed = parseResponse(PaginatedDrugSchema, response.data, {
+      context: 'pharmacyApi.searchDrugs',
+    });
     return parsed.results;
   },
 
@@ -161,7 +174,9 @@ export const pharmacyApi = {
     const response = await apiClient.get<PaginatedResponse<StockBatch>>('/api/pharmacy/stock/', {
       params,
     });
-    return parseResponse(PaginatedStockBatchSchema, response.data, { context: 'pharmacyApi.listStockBatches' });
+    return parseResponse(PaginatedStockBatchSchema, response.data, {
+      context: 'pharmacyApi.listStockBatches',
+    });
   },
 
   /**
@@ -179,7 +194,9 @@ export const pharmacyApi = {
     const response = await apiClient.get<StockBatch[]>('/api/pharmacy/stock/by_drug/', {
       params: { drug_id: drugId },
     });
-    return parseResponse(z.array(StockBatchSchema), response.data, { context: 'pharmacyApi.getDrugStockBatches' });
+    return parseResponse(z.array(StockBatchSchema), response.data, {
+      context: 'pharmacyApi.getDrugStockBatches',
+    });
   },
 
   /**
@@ -187,7 +204,9 @@ export const pharmacyApi = {
    */
   async createStockBatch(data: StockBatchCreateData): Promise<StockBatch> {
     const response = await apiClient.post<StockBatch>('/api/pharmacy/stock/', data);
-    return parseResponse(StockBatchSchema, response.data, { context: 'pharmacyApi.createStockBatch' });
+    return parseResponse(StockBatchSchema, response.data, {
+      context: 'pharmacyApi.createStockBatch',
+    });
   },
 
   /**
@@ -195,7 +214,9 @@ export const pharmacyApi = {
    */
   async updateStockBatch(id: number, data: Partial<StockBatchCreateData>): Promise<StockBatch> {
     const response = await apiClient.patch<StockBatch>(`/api/pharmacy/stock/${id}/`, data);
-    return parseResponse(StockBatchSchema, response.data, { context: 'pharmacyApi.updateStockBatch' });
+    return parseResponse(StockBatchSchema, response.data, {
+      context: 'pharmacyApi.updateStockBatch',
+    });
   },
 
   // ============ Stock Alerts ============
@@ -207,12 +228,8 @@ export const pharmacyApi = {
     const queryParams = params
       ? {
           ...params,
-          ...(params.resolved !== undefined
-            ? { is_resolved: params.resolved }
-            : {}),
-          ...(params.acknowledged !== undefined
-            ? { is_acknowledged: params.acknowledged }
-            : {}),
+          ...(params.resolved !== undefined ? { is_resolved: params.resolved } : {}),
+          ...(params.acknowledged !== undefined ? { is_acknowledged: params.acknowledged } : {}),
         }
       : undefined;
 
@@ -230,7 +247,9 @@ export const pharmacyApi = {
       })),
     };
 
-    return parseResponse(PaginatedStockAlertSchema, normalizedData, { context: 'pharmacyApi.listAlerts' });
+    return parseResponse(PaginatedStockAlertSchema, normalizedData, {
+      context: 'pharmacyApi.listAlerts',
+    });
   },
 
   /**
@@ -246,7 +265,9 @@ export const pharmacyApi = {
    */
   async getLowStockAlerts(): Promise<StockAlert[]> {
     const response = await apiClient.get<StockAlert[]>('/api/pharmacy/alerts/low_stock/');
-    return parseResponse(z.array(StockAlertSchema), response.data, { context: 'pharmacyApi.getLowStockAlerts' });
+    return parseResponse(z.array(StockAlertSchema), response.data, {
+      context: 'pharmacyApi.getLowStockAlerts',
+    });
   },
 
   /**
@@ -254,13 +275,17 @@ export const pharmacyApi = {
    */
   async getExpiringAlerts(): Promise<StockAlert[]> {
     const response = await apiClient.get<StockAlert[]>('/api/pharmacy/alerts/expiring/');
-    return parseResponse(z.array(StockAlertSchema), response.data, { context: 'pharmacyApi.getExpiringAlerts' });
+    return parseResponse(z.array(StockAlertSchema), response.data, {
+      context: 'pharmacyApi.getExpiringAlerts',
+    });
   },
 
   /**
    * Get aggregate alert counts by severity.
    */
-  async getAlertSeveritySummary(params?: { resolved?: boolean }): Promise<StockAlertSeveritySummary> {
+  async getAlertSeveritySummary(params?: {
+    resolved?: boolean;
+  }): Promise<StockAlertSeveritySummary> {
     const response = await apiClient.get('/api/pharmacy/alerts/severity-summary/', {
       params,
     });
@@ -274,7 +299,9 @@ export const pharmacyApi = {
    */
   async acknowledgeAlert(id: number): Promise<StockAlert> {
     const response = await apiClient.post<StockAlert>(`/api/pharmacy/alerts/${id}/acknowledge/`);
-    return parseResponse(StockAlertSchema, response.data, { context: 'pharmacyApi.acknowledgeAlert' });
+    return parseResponse(StockAlertSchema, response.data, {
+      context: 'pharmacyApi.acknowledgeAlert',
+    });
   },
 
   /**
@@ -296,7 +323,9 @@ export const pharmacyApi = {
     const response = await apiClient.get<PrescriptionListResponse>('/api/pharmacy/prescriptions/', {
       params,
     });
-    return parseResponse(PaginatedPrescriptionSchema, response.data, { context: 'pharmacyApi.listPrescriptions' });
+    return parseResponse(PaginatedPrescriptionSchema, response.data, {
+      context: 'pharmacyApi.listPrescriptions',
+    });
   },
 
   /**
@@ -304,17 +333,24 @@ export const pharmacyApi = {
    */
   async getPrescription(id: IdParam): Promise<Prescription> {
     const response = await apiClient.get<Prescription>(`/api/pharmacy/prescriptions/${id}/`);
-    return parseResponse(PrescriptionSchema, response.data, { context: 'pharmacyApi.getPrescription' });
+    return parseResponse(PrescriptionSchema, response.data, {
+      context: 'pharmacyApi.getPrescription',
+    });
   },
 
   /**
    * Get prescriptions for a patient.
    */
   async getPatientPrescriptions(patientId: number): Promise<Prescription[]> {
-    const response = await apiClient.get<PaginatedResponse<Prescription>>('/api/pharmacy/prescriptions/', {
-      params: { patient: patientId },
+    const response = await apiClient.get<PaginatedResponse<Prescription>>(
+      '/api/pharmacy/prescriptions/',
+      {
+        params: { patient: patientId },
+      }
+    );
+    const parsed = parseResponse(PaginatedPrescriptionSchema, response.data, {
+      context: 'pharmacyApi.getPatientPrescriptions',
     });
-    const parsed = parseResponse(PaginatedPrescriptionSchema, response.data, { context: 'pharmacyApi.getPatientPrescriptions' });
     return parsed.results;
   },
 
@@ -322,10 +358,15 @@ export const pharmacyApi = {
    * Get prescriptions for an encounter.
    */
   async getEncounterPrescriptions(encounterId: number): Promise<Prescription[]> {
-    const response = await apiClient.get<PaginatedResponse<Prescription>>('/api/pharmacy/prescriptions/', {
-      params: { encounter: encounterId },
+    const response = await apiClient.get<PaginatedResponse<Prescription>>(
+      '/api/pharmacy/prescriptions/',
+      {
+        params: { encounter: encounterId },
+      }
+    );
+    const parsed = parseResponse(PaginatedPrescriptionSchema, response.data, {
+      context: 'pharmacyApi.getEncounterPrescriptions',
     });
-    const parsed = parseResponse(PaginatedPrescriptionSchema, response.data, { context: 'pharmacyApi.getEncounterPrescriptions' });
     return parsed.results;
   },
 
@@ -333,10 +374,15 @@ export const pharmacyApi = {
    * Get prescriptions for an admission (inpatient stay).
    */
   async getAdmissionPrescriptions(admissionId: IdParam): Promise<Prescription[]> {
-    const response = await apiClient.get<PaginatedResponse<Prescription>>('/api/pharmacy/prescriptions/', {
-      params: { admission: admissionId, page_size: 100 },
+    const response = await apiClient.get<PaginatedResponse<Prescription>>(
+      '/api/pharmacy/prescriptions/',
+      {
+        params: { admission: admissionId, page_size: 100 },
+      }
+    );
+    const parsed = parseResponse(PaginatedPrescriptionSchema, response.data, {
+      context: 'pharmacyApi.getAdmissionPrescriptions',
     });
-    const parsed = parseResponse(PaginatedPrescriptionSchema, response.data, { context: 'pharmacyApi.getAdmissionPrescriptions' });
     return parsed.results;
   },
 
@@ -345,10 +391,15 @@ export const pharmacyApi = {
    * Filters out prescriptions whose effective_status is EXPIRED even if DB status is PENDING.
    */
   async getPendingPrescriptions(): Promise<Prescription[]> {
-    const response = await apiClient.get<PaginatedResponse<Prescription>>('/api/pharmacy/prescriptions/', {
-      params: { status: 'PENDING', page_size: 100 },
+    const response = await apiClient.get<PaginatedResponse<Prescription>>(
+      '/api/pharmacy/prescriptions/',
+      {
+        params: { status: 'PENDING', page_size: 100 },
+      }
+    );
+    const parsed = parseResponse(PaginatedPrescriptionSchema, response.data, {
+      context: 'pharmacyApi.getPendingPrescriptions',
     });
-    const parsed = parseResponse(PaginatedPrescriptionSchema, response.data, { context: 'pharmacyApi.getPendingPrescriptions' });
     return parsed.results.filter((rx) => rx.effective_status !== 'EXPIRED');
   },
 
@@ -357,25 +408,40 @@ export const pharmacyApi = {
    */
   async createPrescription(data: PrescriptionCreateData): Promise<Prescription> {
     const response = await apiClient.post<Prescription>('/api/pharmacy/prescriptions/', data);
-    return parseResponse(PrescriptionSchema, response.data, { context: 'pharmacyApi.createPrescription' });
+    return parseResponse(PrescriptionSchema, response.data, {
+      context: 'pharmacyApi.createPrescription',
+    });
   },
 
   /**
    * Cancel a prescription.
    */
   async cancelPrescription(id: IdParam, reason: string): Promise<Prescription> {
-    const response = await apiClient.post<Prescription>(`/api/pharmacy/prescriptions/${id}/cancel/`, {
-      reason,
+    const response = await apiClient.post<Prescription>(
+      `/api/pharmacy/prescriptions/${id}/cancel/`,
+      {
+        reason,
+      }
+    );
+    return parseResponse(PrescriptionSchema, response.data, {
+      context: 'pharmacyApi.cancelPrescription',
     });
-    return parseResponse(PrescriptionSchema, response.data, { context: 'pharmacyApi.cancelPrescription' });
   },
 
   /**
    * Update a prescription's discharge fields (dispensing_type, is_discharge_medication).
    */
-  async updatePrescription(id: IdParam, data: { dispensing_type?: 'INTERNAL' | 'EXTERNAL'; is_discharge_medication?: boolean }): Promise<Prescription> {
-    const response = await apiClient.patch<Prescription>(`/api/pharmacy/prescriptions/${id}/`, data);
-    return parseResponse(PrescriptionSchema, response.data, { context: 'pharmacyApi.updatePrescription' });
+  async updatePrescription(
+    id: IdParam,
+    data: { dispensing_type?: 'INTERNAL' | 'EXTERNAL'; is_discharge_medication?: boolean }
+  ): Promise<Prescription> {
+    const response = await apiClient.patch<Prescription>(
+      `/api/pharmacy/prescriptions/${id}/`,
+      data
+    );
+    return parseResponse(PrescriptionSchema, response.data, {
+      context: 'pharmacyApi.updatePrescription',
+    });
   },
 
   // ============ Dispensing ============
@@ -384,10 +450,15 @@ export const pharmacyApi = {
    * Get paginated list of dispensing records.
    */
   async listDispensings(params?: DispensingListParams): Promise<PaginatedResponse<Dispensing>> {
-    const response = await apiClient.get<PaginatedResponse<Dispensing>>('/api/pharmacy/dispensings/', {
-      params,
+    const response = await apiClient.get<PaginatedResponse<Dispensing>>(
+      '/api/pharmacy/dispensings/',
+      {
+        params,
+      }
+    );
+    return parseResponse(PaginatedDispensingSchema, response.data, {
+      context: 'pharmacyApi.listDispensings',
     });
-    return parseResponse(PaginatedDispensingSchema, response.data, { context: 'pharmacyApi.listDispensings' });
   },
 
   /**
@@ -403,7 +474,9 @@ export const pharmacyApi = {
    */
   async createDispensing(data: DispensingCreateData): Promise<Dispensing> {
     const response = await apiClient.post<Dispensing>('/api/pharmacy/dispensings/', data);
-    return parseResponse(DispensingSchema, response.data, { context: 'pharmacyApi.createDispensing' });
+    return parseResponse(DispensingSchema, response.data, {
+      context: 'pharmacyApi.createDispensing',
+    });
   },
 
   /**
@@ -418,8 +491,13 @@ export const pharmacyApi = {
     counseling_notes?: string;
     store_location_id?: number;
   }): Promise<Dispensing[]> {
-    const response = await apiClient.post<Dispensing[]>('/api/pharmacy/dispensings/dispense/', data);
-    return parseResponse(z.array(DispensingSchema), response.data, { context: 'pharmacyApi.dispenseFromPrescription' });
+    const response = await apiClient.post<Dispensing[]>(
+      '/api/pharmacy/dispensings/dispense/',
+      data
+    );
+    return parseResponse(z.array(DispensingSchema), response.data, {
+      context: 'pharmacyApi.dispenseFromPrescription',
+    });
   },
 
   /**
@@ -434,7 +512,9 @@ export const pharmacyApi = {
         ordering: 'expiry_date', // FEFO ordering
       },
     });
-    const parsed = parseResponse(PaginatedStockBatchSchema, response.data, { context: 'pharmacyApi.getBatchesForDrug' });
+    const parsed = parseResponse(PaginatedStockBatchSchema, response.data, {
+      context: 'pharmacyApi.getBatchesForDrug',
+    });
     return parsed.results;
   },
 
@@ -442,11 +522,16 @@ export const pharmacyApi = {
    * Return dispensed drugs.
    */
   async returnDispensing(id: IdParam, quantity: number, reason: string): Promise<Dispensing> {
-    const response = await apiClient.post<Dispensing>(`/api/pharmacy/dispensings/${id}/return_stock/`, {
-      quantity,
-      reason,
+    const response = await apiClient.post<Dispensing>(
+      `/api/pharmacy/dispensings/${id}/return_stock/`,
+      {
+        quantity,
+        reason,
+      }
+    );
+    return parseResponse(DispensingSchema, response.data, {
+      context: 'pharmacyApi.returnDispensing',
     });
-    return parseResponse(DispensingSchema, response.data, { context: 'pharmacyApi.returnDispensing' });
   },
 
   /**
@@ -454,7 +539,9 @@ export const pharmacyApi = {
    */
   async verifyDispensing(id: IdParam): Promise<Dispensing> {
     const response = await apiClient.post<Dispensing>(`/api/pharmacy/dispensings/${id}/verify/`);
-    return parseResponse(DispensingSchema, response.data, { context: 'pharmacyApi.verifyDispensing' });
+    return parseResponse(DispensingSchema, response.data, {
+      context: 'pharmacyApi.verifyDispensing',
+    });
   },
 
   // ============ Stock Adjustments ============
@@ -462,13 +549,20 @@ export const pharmacyApi = {
   /**
    * Get paginated list of stock adjustments.
    */
-  async listAdjustments(params?: { page?: number; page_size?: number; stock_batch?: number }): Promise<
-    PaginatedResponse<StockAdjustment>
-  > {
-    const response = await apiClient.get<PaginatedResponse<StockAdjustment>>('/api/pharmacy/adjustments/', {
-      params,
+  async listAdjustments(params?: {
+    page?: number;
+    page_size?: number;
+    stock_batch?: number;
+  }): Promise<PaginatedResponse<StockAdjustment>> {
+    const response = await apiClient.get<PaginatedResponse<StockAdjustment>>(
+      '/api/pharmacy/adjustments/',
+      {
+        params,
+      }
+    );
+    return parseResponse(PaginatedStockAdjustmentSchema, response.data, {
+      context: 'pharmacyApi.listAdjustments',
     });
-    return parseResponse(PaginatedStockAdjustmentSchema, response.data, { context: 'pharmacyApi.listAdjustments' });
   },
 
   /**
@@ -476,7 +570,9 @@ export const pharmacyApi = {
    */
   async createAdjustment(data: StockAdjustmentCreateData): Promise<StockAdjustment> {
     const response = await apiClient.post<StockAdjustment>('/api/pharmacy/adjustments/', data);
-    return parseResponse(StockAdjustmentSchema, response.data, { context: 'pharmacyApi.createAdjustment' });
+    return parseResponse(StockAdjustmentSchema, response.data, {
+      context: 'pharmacyApi.createAdjustment',
+    });
   },
 
   // ============ Reports ============
@@ -485,39 +581,66 @@ export const pharmacyApi = {
    * Get stock summary report.
    */
   async getStockSummaryReport(): Promise<{ results: StockSummaryItem[] }> {
-    const response = await apiClient.get<{ results: StockSummaryItem[] }>('/api/pharmacy/reports/stock-summary/');
-    return parseResponse(z.object({ results: z.array(StockSummaryItemSchema) }), response.data, { context: 'pharmacyApi.getStockSummaryReport' });
+    const response = await apiClient.get<{ results: StockSummaryItem[] }>(
+      '/api/pharmacy/reports/stock-summary/'
+    );
+    return parseResponse(z.object({ results: z.array(StockSummaryItemSchema) }), response.data, {
+      context: 'pharmacyApi.getStockSummaryReport',
+    });
   },
 
   /**
    * Get expiry report.
    */
   async getExpiryReport(params?: { days?: number }): Promise<ExpiryReportItem[]> {
-    const response = await apiClient.get<{ results: ExpiryReportItem[] }>('/api/pharmacy/reports/expiry-report/', {
-      params,
-    });
-    const parsed = parseResponse(z.object({ results: z.array(ExpiryReportItemSchema) }), response.data, { context: 'pharmacyApi.getExpiryReport' });
+    const response = await apiClient.get<{ results: ExpiryReportItem[] }>(
+      '/api/pharmacy/reports/expiry-report/',
+      {
+        params,
+      }
+    );
+    const parsed = parseResponse(
+      z.object({ results: z.array(ExpiryReportItemSchema) }),
+      response.data,
+      { context: 'pharmacyApi.getExpiryReport' }
+    );
     return parsed.results;
   },
 
   /**
    * Get dispensing report.
    */
-  async getDispensingReport(params?: { date_from?: string; date_to?: string }): Promise<DispensingReportSummary> {
-    const response = await apiClient.get<DispensingReportSummary>('/api/pharmacy/reports/dispensing/', {
-      params,
+  async getDispensingReport(params?: {
+    date_from?: string;
+    date_to?: string;
+  }): Promise<DispensingReportSummary> {
+    const response = await apiClient.get<DispensingReportSummary>(
+      '/api/pharmacy/reports/dispensing/',
+      {
+        params,
+      }
+    );
+    return parseResponse(DispensingReportSummarySchema, response.data, {
+      context: 'pharmacyApi.getDispensingReport',
     });
-    return parseResponse(DispensingReportSummarySchema, response.data, { context: 'pharmacyApi.getDispensingReport' });
   },
 
   /**
    * Get stock movement report.
    */
-  async getStockMovementReport(params?: { date_from?: string; date_to?: string }): Promise<{ results: any[] }> {
+  async getStockMovementReport(params?: {
+    date_from?: string;
+    date_to?: string;
+  }): Promise<NormalizedStockMovementReport> {
     const response = await apiClient.get('/api/pharmacy/reports/movement/', {
       params,
     });
-    return parseResponse(StockMovementReportSchema, response.data, { context: 'pharmacyApi.getStockMovementReport' });
+    const parsed = parseResponse(StockMovementReportSchema, response.data, {
+      context: 'pharmacyApi.getStockMovementReport',
+    });
+    return {
+      results: parsed.results.map((item) => ({ ...item, user: item.user ?? '' })),
+    };
   },
 
   // ============ Alert Settings ============
@@ -525,9 +648,11 @@ export const pharmacyApi = {
   /**
    * Get alert settings.
    */
-  async getAlertSettings(): Promise<any> {
+  async getAlertSettings(): Promise<AlertSettings> {
     const response = await apiClient.get('/api/pharmacy/alert-settings/');
-    return parseResponse(AlertSettingsSchema, response.data, { context: 'pharmacyApi.getAlertSettings' });
+    return parseResponse(AlertSettingsSchema, response.data, {
+      context: 'pharmacyApi.getAlertSettings',
+    });
   },
 
   /**
@@ -539,9 +664,11 @@ export const pharmacyApi = {
     expiry_critical_days?: number;
     enable_email_notifications?: boolean;
     notification_email_recipients?: string;
-  }): Promise<any> {
+  }): Promise<AlertSettings> {
     const response = await apiClient.patch('/api/pharmacy/alert-settings/', data);
-    return parseResponse(AlertSettingsSchema, response.data, { context: 'pharmacyApi.updateAlertSettings' });
+    return parseResponse(AlertSettingsSchema, response.data, {
+      context: 'pharmacyApi.updateAlertSettings',
+    });
   },
 
   // ============ HPT Registry ============
@@ -553,7 +680,9 @@ export const pharmacyApi = {
     const response = await apiClient.get('/api/pharmacy/drugs/hpt-search/', {
       params: { q: query },
     });
-    return parseResponse(HptSearchResponseSchema, response.data, { context: 'pharmacyApi.hptSearch' });
+    return parseResponse(HptSearchResponseSchema, response.data, {
+      context: 'pharmacyApi.hptSearch',
+    });
   },
 
   /**

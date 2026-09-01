@@ -4,7 +4,13 @@
  */
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from '@/components/ui/select';
 
 describe('Select Component', () => {
   describe('Select', () => {
@@ -186,7 +192,11 @@ describe('Select Component', () => {
       const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
 
       expect(() => {
-        render(<SelectTrigger><span>Test</span></SelectTrigger>);
+        render(
+          <SelectTrigger>
+            <span>Test</span>
+          </SelectTrigger>
+        );
       }).toThrow('SelectTrigger must be used within Select');
 
       consoleSpy.mockRestore();
@@ -206,7 +216,11 @@ describe('Select Component', () => {
       const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
 
       expect(() => {
-        render(<SelectContent><div>Content</div></SelectContent>);
+        render(
+          <SelectContent>
+            <div>Content</div>
+          </SelectContent>
+        );
       }).toThrow('SelectContent must be used within Select');
 
       consoleSpy.mockRestore();

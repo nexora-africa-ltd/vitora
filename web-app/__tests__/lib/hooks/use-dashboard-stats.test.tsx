@@ -11,7 +11,9 @@ jest.mock('@/lib/api/client', () => {
     apiClient: {
       get: jest.fn(),
     },
-    setActiveFacilityId: (id: number | null) => { _facilityId = id; },
+    setActiveFacilityId: (id: number | null) => {
+      _facilityId = id;
+    },
     getActiveFacilityId: () => _facilityId,
   };
 });
@@ -29,11 +31,7 @@ const createWrapper = () => {
   });
 
   function Wrapper({ children }: { children: React.ReactNode }) {
-    return (
-      <QueryClientProvider client={queryClient}>
-        {children}
-      </QueryClientProvider>
-    );
+    return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
   }
   Wrapper.displayName = 'QueryClientTestWrapper';
 
@@ -51,7 +49,12 @@ describe('useDashboardStats', () => {
       cache_ttl: 300,
       patients: { total: 1247, today: 15, this_week: 89, this_month: 156 },
       encounters: { total: 3456, today: 48, in_progress: 8, completed_today: 40 },
-      pharmacy: { prescriptions_today: 156, pending_dispensing: 12, low_stock_items: 7, expiring_soon: 15 },
+      pharmacy: {
+        prescriptions_today: 156,
+        pending_dispensing: 12,
+        low_stock_items: 7,
+        expiring_soon: 15,
+      },
       laboratory: { pending_tests: 18, completed_today: 32, critical_results: 2 },
       triage: { waiting: 5, avg_wait_time_minutes: 24, emergency_count: 2 },
       billing: { revenue_today: 145200, pending_payments: 25000, sha_claims_pending: 12 },
@@ -80,7 +83,12 @@ describe('useDashboardStats', () => {
         cache_ttl: 300,
         patients: { total: 0, today: 0, this_week: 0, this_month: 0 },
         encounters: { total: 0, today: 0, in_progress: 0, completed_today: 0 },
-        pharmacy: { prescriptions_today: 0, pending_dispensing: 0, low_stock_items: 0, expiring_soon: 0 },
+        pharmacy: {
+          prescriptions_today: 0,
+          pending_dispensing: 0,
+          low_stock_items: 0,
+          expiring_soon: 0,
+        },
         laboratory: { pending_tests: 0, completed_today: 0, critical_results: 0 },
         triage: { waiting: 0, avg_wait_time_minutes: 0, emergency_count: 0 },
         billing: { revenue_today: 0, pending_payments: 0, sha_claims_pending: 0 },
@@ -134,7 +142,12 @@ describe('Dashboard stats reflect active facility', () => {
     cache_ttl: 300,
     patients: { total: totalPatients, today: 2, this_week: 10, this_month: 40 },
     encounters: { total: 100, today: 8, in_progress: 3, completed_today: 5 },
-    pharmacy: { prescriptions_today: 5, pending_dispensing: 1, low_stock_items: 0, expiring_soon: 2 },
+    pharmacy: {
+      prescriptions_today: 5,
+      pending_dispensing: 1,
+      low_stock_items: 0,
+      expiring_soon: 2,
+    },
     laboratory: { pending_tests: 3, completed_today: 7, critical_results: 0 },
     triage: { waiting: 2, avg_wait_time_minutes: 15, emergency_count: 0 },
     billing: { revenue_today: 50000, pending_payments: 10000, sha_claims_pending: 3 },
@@ -168,11 +181,7 @@ describe('Dashboard stats reflect active facility', () => {
     });
 
     function Wrapper({ children }: { children: React.ReactNode }) {
-      return (
-        <QueryClientProvider client={queryClient}>
-          {children}
-        </QueryClientProvider>
-      );
+      return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
     }
     Wrapper.displayName = 'FacilityStatsWrapper';
 
@@ -196,11 +205,7 @@ describe('Dashboard stats reflect active facility', () => {
     });
 
     function Wrapper({ children }: { children: React.ReactNode }) {
-      return (
-        <QueryClientProvider client={queryClient}>
-          {children}
-        </QueryClientProvider>
-      );
+      return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
     }
     Wrapper.displayName = 'FacilityStatsWrapper2';
 
@@ -237,11 +242,7 @@ describe('Dashboard stats reflect active facility', () => {
     });
 
     function Wrapper({ children }: { children: React.ReactNode }) {
-      return (
-        <QueryClientProvider client={queryClient}>
-          {children}
-        </QueryClientProvider>
-      );
+      return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
     }
     Wrapper.displayName = 'FacilityStatsWrapper3';
 

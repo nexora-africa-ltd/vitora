@@ -71,9 +71,7 @@ describe('EncounterImagingOrders', () => {
 
     render(<EncounterImagingOrders encounterId={1} patientId={1} />);
 
-    expect(
-      screen.getByText(/No imaging orders for this encounter/)
-    ).toBeInTheDocument();
+    expect(screen.getByText(/No imaging orders for this encounter/)).toBeInTheDocument();
   });
 
   it('renders orders when data is available', () => {
@@ -130,9 +128,7 @@ describe('EncounterImagingOrders', () => {
     const button = screen.getByRole('button', { name: /Order Imaging/i });
     fireEvent.click(button);
 
-    expect(mockPush).toHaveBeenCalledWith(
-      '/imaging/orders/new?encounter=123&patient=456'
-    );
+    expect(mockPush).toHaveBeenCalledWith('/imaging/orders/new?encounter=123&patient=456');
   });
 
   it('calls onBeforeNavigate before navigating', async () => {
@@ -169,9 +165,7 @@ describe('EncounterImagingOrders', () => {
       error: null,
     } as unknown as ReturnType<typeof useEncounterImagingOrders>);
 
-    render(
-      <EncounterImagingOrders encounterId={1} patientId={1} disabled={true} />
-    );
+    render(<EncounterImagingOrders encounterId={1} patientId={1} disabled={true} />);
 
     const button = screen.getByRole('button', { name: /Order Imaging/i });
     expect(button).toBeDisabled();

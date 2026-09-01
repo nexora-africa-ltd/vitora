@@ -2,7 +2,7 @@ import { create } from 'zustand';
 
 interface FormDraft {
   id: string;
-  data: Record<string, any>;
+  data: Record<string, unknown>;
   savedAt: Date;
 }
 
@@ -11,7 +11,7 @@ interface FormState {
   drafts: Record<string, FormDraft>;
 
   // Actions
-  saveDraft: (formId: string, data: Record<string, any>) => void;
+  saveDraft: (formId: string, data: Record<string, unknown>) => void;
   getDraft: (formId: string) => FormDraft | null;
   clearDraft: (formId: string) => void;
   clearAllDrafts: () => void;

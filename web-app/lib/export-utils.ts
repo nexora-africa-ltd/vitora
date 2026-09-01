@@ -53,7 +53,7 @@ interface ReceiptPDFOptions {
  */
 export async function exportToPDF(
   title: string,
-  data: any,
+  data: Record<string, unknown> | Record<string, unknown>[],
   options: PDFExportOptions = {}
 ): Promise<Blob> {
   const {
@@ -106,7 +106,9 @@ export async function exportToPDF(
   // Generation date
   doc.setFontSize(8);
   doc.setTextColor(100);
-  doc.text(`Generated: ${new Date().toLocaleString()}`, pageWidth / 2, yPosition, { align: 'center' });
+  doc.text(`Generated: ${new Date().toLocaleString()}`, pageWidth / 2, yPosition, {
+    align: 'center',
+  });
   doc.setTextColor(0);
   yPosition += 10;
 
@@ -125,7 +127,9 @@ export async function exportToPDF(
       });
     } else {
       // Auto-detect columns from first row
-      const keys = Object.keys(data[0]);
+      const firstRow = data[0];
+      if (!firstRow) return doc.output('blob');
+      const keys = Object.keys(firstRow);
       autoTable(doc, {
         startY: yPosition,
         head: [keys.map(formatColumnHeader)],
@@ -158,12 +162,9 @@ export async function exportToPDF(
       doc.setPage(i);
       doc.setFontSize(8);
       doc.setTextColor(128);
-      doc.text(
-        `Page ${i} of ${pageCount}`,
-        pageWidth / 2,
-        doc.internal.pageSize.getHeight() - 10,
-        { align: 'center' }
-      );
+      doc.text(`Page ${i} of ${pageCount}`, pageWidth / 2, doc.internal.pageSize.getHeight() - 10, {
+        align: 'center',
+      });
     }
   }
 
@@ -278,10 +279,7 @@ export function printPage(): void {
 /**
  * Export data array to CSV and trigger download
  */
-export function exportToCSV(
-  data: Record<string, any>[],
-  filename: string
-): void {
+export function exportToCSV(data: Record<string, unknown>[], filename: string): void {
   if (!data || data.length === 0) {
     console.warn('No data to export');
     return;
@@ -322,7 +320,7 @@ function formatColumnHeader(key: string): string {
 /**
  * Format cell values for display in tables
  */
-function formatCellValue(value: any): string {
+function formatCellValue(value: unknown): string {
   if (value === null || value === undefined) return '-';
   if (typeof value === 'boolean') return value ? 'Yes' : 'No';
   if (value instanceof Date) return value.toLocaleDateString();

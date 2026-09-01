@@ -65,7 +65,12 @@ interface InterventionsListProps {
   onChange?: () => void;
 }
 
-export function InterventionsList({ claimId, interventions, facilityLevel, onChange }: InterventionsListProps) {
+export function InterventionsList({
+  claimId,
+  interventions,
+  facilityLevel,
+  onChange,
+}: InterventionsListProps) {
   const { toast } = useToast();
   const { user } = useAuth();
   const [busyCode, setBusyCode] = useState<string | null>(null);
@@ -140,10 +145,11 @@ export function InterventionsList({ claimId, interventions, facilityLevel, onCha
         description: `${code} has been retired from this claim.`,
       });
       onChange?.();
-    } catch (e: any) {
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { error?: string } }; message?: string };
       toast({
         title: 'Retire failed',
-        description: e?.response?.data?.error ?? e?.message ?? 'Could not retire intervention.',
+        description: err.response?.data?.error ?? err.message ?? 'Could not retire intervention.',
         variant: 'destructive',
       });
     } finally {
@@ -161,10 +167,11 @@ export function InterventionsList({ claimId, interventions, facilityLevel, onCha
         description: `${code} has been restored to this claim.`,
       });
       onChange?.();
-    } catch (e: any) {
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { error?: string } }; message?: string };
       toast({
         title: 'Restore failed',
-        description: e?.response?.data?.error ?? e?.message ?? 'Could not restore intervention.',
+        description: err.response?.data?.error ?? err.message ?? 'Could not restore intervention.',
         variant: 'destructive',
       });
     } finally {
@@ -188,10 +195,11 @@ export function InterventionsList({ claimId, interventions, facilityLevel, onCha
       setTransferFrom(null);
       setTransferTo('');
       onChange?.();
-    } catch (e: any) {
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { error?: string } }; message?: string };
       toast({
         title: 'Transfer failed',
-        description: e?.response?.data?.error ?? e?.message ?? 'Could not complete transfer.',
+        description: err.response?.data?.error ?? err.message ?? 'Could not complete transfer.',
         variant: 'destructive',
       });
     } finally {
@@ -202,7 +210,7 @@ export function InterventionsList({ claimId, interventions, facilityLevel, onCha
   async function handlePurge(code: string) {
     if (typeof window !== 'undefined') {
       const confirmed = window.confirm(
-        `Permanently purge retired intervention ${code} from local claim rows? This cannot be undone.`,
+        `Permanently purge retired intervention ${code} from local claim rows? This cannot be undone.`
       );
       if (!confirmed) return;
     }
@@ -216,10 +224,11 @@ export function InterventionsList({ claimId, interventions, facilityLevel, onCha
         description: `${code} was permanently removed from local claim rows.`,
       });
       onChange?.();
-    } catch (e: any) {
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { error?: string } }; message?: string };
       toast({
         title: 'Purge failed',
-        description: e?.response?.data?.error ?? e?.message ?? 'Could not purge intervention.',
+        description: err.response?.data?.error ?? err.message ?? 'Could not purge intervention.',
         variant: 'destructive',
       });
     } finally {
@@ -230,7 +239,7 @@ export function InterventionsList({ claimId, interventions, facilityLevel, onCha
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base flex items-center gap-2">
+        <CardTitle className="flex items-center gap-2 text-base">
           Interventions
           <Badge variant="secondary" className="text-xs">
             {activeInterventions.length} active
@@ -247,38 +256,41 @@ export function InterventionsList({ claimId, interventions, facilityLevel, onCha
         {activeInterventions.map((intervention) => (
           <div
             key={intervention.id}
-            className="flex items-center justify-between p-3 rounded-md border bg-card"
+            className="flex items-center justify-between rounded-md border bg-card p-3"
           >
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
                 <span className="font-mono text-sm font-medium">
                   {intervention.intervention_code}
                 </span>
-                <Badge variant="default" className="text-[10px] h-5">
+                <Badge variant="default" className="h-5 text-[10px]">
                   Active
                 </Badge>
               </div>
-              <p className="text-sm text-muted-foreground truncate mt-0.5">
+              <p className="mt-0.5 truncate text-sm text-muted-foreground">
                 {intervention.intervention_name}
               </p>
               <div className="mt-1 flex flex-wrap gap-1.5">
                 {intervention.dha_intervention_id ? (
-                  <Badge variant="secondary" className="text-[10px] h-5 font-mono">
+                  <Badge variant="secondary" className="h-5 font-mono text-[10px]">
                     ILM ID {intervention.dha_intervention_id}
                   </Badge>
                 ) : null}
                 {intervention.payment_mechanism ? (
-                  <Badge variant="outline" className="text-[10px] h-5">
+                  <Badge variant="outline" className="h-5 text-[10px]">
                     {labelize(intervention.payment_mechanism)}
                   </Badge>
                 ) : null}
                 {intervention.access_point ? (
-                  <Badge variant="outline" className="text-[10px] h-5">
+                  <Badge variant="outline" className="h-5 text-[10px]">
                     {intervention.access_point}
                   </Badge>
                 ) : null}
                 {intervention.needs_preauth ? (
-                  <Badge variant="outline" className="text-[10px] h-5 border-amber-300 text-amber-700">
+                  <Badge
+                    variant="outline"
+                    className="h-5 border-amber-300 text-[10px] text-amber-700"
+                  >
                     Preauth required
                   </Badge>
                 ) : null}
@@ -287,8 +299,8 @@ export function InterventionsList({ claimId, interventions, facilityLevel, onCha
                     variant="outline"
                     className={
                       intervention.preauth_approved
-                        ? 'text-[10px] h-5 border-emerald-300 text-emerald-700'
-                        : 'text-[10px] h-5 border-amber-300 text-amber-700'
+                        ? 'h-5 border-emerald-300 text-[10px] text-emerald-700'
+                        : 'h-5 border-amber-300 text-[10px] text-amber-700'
                     }
                   >
                     {intervention.preauth_approved
@@ -300,13 +312,17 @@ export function InterventionsList({ claimId, interventions, facilityLevel, onCha
               <div className="mt-1 grid grid-cols-1 gap-x-4 gap-y-0.5 text-xs text-muted-foreground md:grid-cols-2">
                 <p>
                   KEPH tariff ({facilityLevel ? `L${facilityLevel}` : 'facility'}):{' '}
-                  <span className="font-medium text-foreground">{formatKes(getKephTariff(intervention))}</span>
+                  <span className="font-medium text-foreground">
+                    {formatKes(getKephTariff(intervention))}
+                  </span>
                 </p>
                 <p>
                   Base tariff:{' '}
-                  <span className="font-medium text-foreground">{formatKes(intervention.tariff_amount)}</span>
+                  <span className="font-medium text-foreground">
+                    {formatKes(intervention.tariff_amount)}
+                  </span>
                 </p>
-                {(intervention.fund || intervention.intervention_fund) ? (
+                {intervention.fund || intervention.intervention_fund ? (
                   <p>
                     Fund:{' '}
                     <span className="font-medium text-foreground">
@@ -316,7 +332,10 @@ export function InterventionsList({ claimId, interventions, facilityLevel, onCha
                 ) : null}
                 {intervention.supported_scheme ? (
                   <p>
-                    Scheme: <span className="font-medium text-foreground">{intervention.supported_scheme}</span>
+                    Scheme:{' '}
+                    <span className="font-medium text-foreground">
+                      {intervention.supported_scheme}
+                    </span>
                   </p>
                 ) : null}
               </div>
@@ -328,35 +347,35 @@ export function InterventionsList({ claimId, interventions, facilityLevel, onCha
               {(() => {
                 const warning = getMissingTariffWarning(intervention);
                 return warning ? (
-                  <p className="text-xs text-destructive mt-0.5 font-medium">{warning}</p>
+                  <p className="mt-0.5 text-xs font-medium text-destructive">{warning}</p>
                 ) : null;
               })()}
             </div>
-            <div className="flex gap-1.5 shrink-0 ml-2">
+            <div className="ml-2 flex shrink-0 gap-1.5">
               <Button
                 variant="outline"
                 size="sm"
-                className="text-blue-600 border-blue-200 hover:bg-blue-50 dark:text-blue-400 dark:border-blue-800 dark:hover:bg-blue-900/20"
+                className="border-blue-200 text-blue-600 hover:bg-blue-50 dark:border-blue-800 dark:text-blue-400 dark:hover:bg-blue-900/20"
                 disabled={busyCode !== null}
                 onClick={() => {
                   setTransferFrom(intervention.intervention_code);
                   setTransferTo('');
                 }}
               >
-                <ArrowRightLeft className="h-3.5 w-3.5 mr-1.5" />
+                <ArrowRightLeft className="mr-1.5 h-3.5 w-3.5" />
                 Transfer
               </Button>
               <Button
                 variant="outline"
                 size="sm"
-                className="text-amber-600 border-amber-200 hover:bg-amber-50 dark:text-amber-400 dark:border-amber-800 dark:hover:bg-amber-900/20"
+                className="border-amber-200 text-amber-600 hover:bg-amber-50 dark:border-amber-800 dark:text-amber-400 dark:hover:bg-amber-900/20"
                 disabled={busyCode !== null}
                 onClick={() => handleRetire(intervention.intervention_code)}
               >
                 {busyCode === intervention.intervention_code ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
                 ) : (
-                  <Archive className="h-3.5 w-3.5 mr-1.5" />
+                  <Archive className="mr-1.5 h-3.5 w-3.5" />
                 )}
                 Retire
               </Button>
@@ -367,34 +386,35 @@ export function InterventionsList({ claimId, interventions, facilityLevel, onCha
         {/* Retired Interventions */}
         {retiredInterventions.length > 0 && (
           <>
-            <div className="border-t pt-2 mt-2">
-              <p className="text-xs font-medium text-muted-foreground mb-2">Retired</p>
+            <div className="mt-2 border-t pt-2">
+              <p className="mb-2 text-xs font-medium text-muted-foreground">Retired</p>
             </div>
             {retiredInterventions.map((intervention) => (
               <div
                 key={intervention.id}
-                className="flex items-center justify-between p-3 rounded-md border border-dashed bg-muted/30"
+                className="flex items-center justify-between rounded-md border border-dashed bg-muted/30 p-3"
               >
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <span className="font-mono text-sm font-medium text-muted-foreground line-through">
                       {intervention.intervention_code}
                     </span>
-                    <Badge variant="outline" className="text-[10px] h-5 text-muted-foreground">
+                    <Badge variant="outline" className="h-5 text-[10px] text-muted-foreground">
                       Retired
                     </Badge>
                   </div>
-                  <p className="text-sm text-muted-foreground truncate mt-0.5">
+                  <p className="mt-0.5 truncate text-sm text-muted-foreground">
                     {intervention.intervention_name}
                   </p>
                   {intervention.dha_intervention_id ? (
-                    <p className="mt-0.5 text-xs text-muted-foreground font-mono">
+                    <p className="mt-0.5 font-mono text-xs text-muted-foreground">
                       ILM ID: {intervention.dha_intervention_id}
                     </p>
                   ) : null}
                   {intervention.auto_retired_by_omission ? (
                     <p className="mt-0.5 text-xs text-amber-700 dark:text-amber-300">
-                      Auto-retired after {intervention.preview_missing_streak ?? 0} consecutive DHA preview misses.
+                      Auto-retired after {intervention.preview_missing_streak ?? 0} consecutive DHA
+                      preview misses.
                     </p>
                   ) : null}
                   <p className="mt-0.5 text-xs text-muted-foreground">
@@ -414,7 +434,7 @@ export function InterventionsList({ claimId, interventions, facilityLevel, onCha
                     {busyCode === intervention.intervention_code ? (
                       <Loader2 className="h-3.5 w-3.5 animate-spin" />
                     ) : (
-                      <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
+                      <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
                     )}
                     Restore
                   </Button>
@@ -428,7 +448,7 @@ export function InterventionsList({ claimId, interventions, facilityLevel, onCha
                       {purgeBusyCode === intervention.intervention_code ? (
                         <Loader2 className="h-3.5 w-3.5 animate-spin" />
                       ) : (
-                        <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+                        <Trash2 className="mr-1.5 h-3.5 w-3.5" />
                       )}
                       Purge
                     </Button>
@@ -441,14 +461,19 @@ export function InterventionsList({ claimId, interventions, facilityLevel, onCha
       </CardContent>
 
       {/* Transfer Intervention Dialog */}
-      <Dialog open={transferFrom !== null} onOpenChange={(open) => { if (!open) setTransferFrom(null); }}>
+      <Dialog
+        open={transferFrom !== null}
+        onOpenChange={(open) => {
+          if (!open) setTransferFrom(null);
+        }}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Transfer Intervention</DialogTitle>
             <DialogDescription>
-              This will retire <span className="font-mono font-medium">{transferFrom}</span> and
-              add a new intervention in its place. Use this for ward transfers (e.g., General Ward → ICU)
-              or procedure upgrades.
+              This will retire <span className="font-mono font-medium">{transferFrom}</span> and add
+              a new intervention in its place. Use this for ward transfers (e.g., General Ward →
+              ICU) or procedure upgrades.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3 py-2">
@@ -466,10 +491,7 @@ export function InterventionsList({ claimId, interventions, facilityLevel, onCha
             <Button variant="outline" onClick={() => setTransferFrom(null)}>
               Cancel
             </Button>
-            <Button
-              disabled={transferBusy || !transferTo.trim()}
-              onClick={handleTransfer}
-            >
+            <Button disabled={transferBusy || !transferTo.trim()} onClick={handleTransfer}>
               {transferBusy && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
               Transfer
             </Button>

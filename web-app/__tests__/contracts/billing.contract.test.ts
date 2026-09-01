@@ -45,14 +45,17 @@ import {
 
 interface OpenAPISchema {
   components: {
-    schemas: Record<string, {
-      type?: string;
-      properties?: Record<string, unknown>;
-      required?: string[];
-      enum?: string[];
-      allOf?: Array<{ $ref?: string }>;
-      description?: string;
-    }>;
+    schemas: Record<
+      string,
+      {
+        type?: string;
+        properties?: Record<string, unknown>;
+        required?: string[];
+        enum?: string[];
+        allOf?: Array<{ $ref?: string }>;
+        description?: string;
+      }
+    >;
   };
 }
 
@@ -81,10 +84,7 @@ function getSchemaProperties(
 /**
  * Get enum values from a component schema.
  */
-function getSchemaEnumValues(
-  openapi: OpenAPISchema,
-  schemaName: string
-): string[] | null {
+function getSchemaEnumValues(openapi: OpenAPISchema, schemaName: string): string[] | null {
   const schema = openapi.components.schemas[schemaName];
   if (!schema || !schema.enum) return null;
   return schema.enum;
@@ -119,7 +119,10 @@ function getZodEnumValues(zodSchema: unknown): string[] {
       return (jsonSchema as { enum: string[] }).enum;
     }
     // Union type (oneOf/anyOf) - extract enums from nested schemas
-    const schemaObj = jsonSchema as { oneOf?: Array<{ enum?: string[] }>; anyOf?: Array<{ enum?: string[] }> };
+    const schemaObj = jsonSchema as {
+      oneOf?: Array<{ enum?: string[] }>;
+      anyOf?: Array<{ enum?: string[] }>;
+    };
     const unionSchemas = schemaObj.oneOf || schemaObj.anyOf;
     if (unionSchemas) {
       const allEnums: string[] = [];
@@ -129,7 +132,7 @@ function getZodEnumValues(zodSchema: unknown): string[] {
         }
       }
       // Filter out empty string if present (used for optional/nullable)
-      return allEnums.filter(v => v !== '');
+      return allEnums.filter((v) => v !== '');
     }
   }
   return [];
@@ -176,8 +179,8 @@ describe('Billing Contract Tests', () => {
       }
 
       // Critical fields should cause test failure
-      const criticalMissingFields = missingInZod.filter(
-        (field) => ['id', 'name', 'code'].includes(field)
+      const criticalMissingFields = missingInZod.filter((field) =>
+        ['id', 'name', 'code'].includes(field)
       );
 
       expect(criticalMissingFields).toEqual([]);
@@ -186,14 +189,7 @@ describe('Billing Contract Tests', () => {
     it('should have critical required fields', () => {
       const zodFields = getZodSchemaFields(ServiceCategorySchema);
 
-      const criticalFields = [
-        'id',
-        'name',
-        'code',
-        'is_active',
-        'created_at',
-        'updated_at',
-      ];
+      const criticalFields = ['id', 'name', 'code', 'is_active', 'created_at', 'updated_at'];
 
       const missing = criticalFields.filter((field) => !zodFields.includes(field));
       expect(missing).toEqual([]);
@@ -217,8 +213,8 @@ describe('Billing Contract Tests', () => {
         );
       }
 
-      const criticalMissingFields = missingInZod.filter(
-        (field) => ['id', 'name', 'code', 'unit_price', 'category'].includes(field)
+      const criticalMissingFields = missingInZod.filter((field) =>
+        ['id', 'name', 'code', 'unit_price', 'category'].includes(field)
       );
 
       expect(criticalMissingFields).toEqual([]);
@@ -260,8 +256,8 @@ describe('Billing Contract Tests', () => {
         );
       }
 
-      const criticalMissingFields = missingInZod.filter(
-        (field) => ['id', 'invoice_number', 'patient', 'status', 'total_amount'].includes(field)
+      const criticalMissingFields = missingInZod.filter((field) =>
+        ['id', 'invoice_number', 'patient', 'status', 'total_amount'].includes(field)
       );
 
       expect(criticalMissingFields).toEqual([]);
@@ -307,8 +303,8 @@ describe('Billing Contract Tests', () => {
         );
       }
 
-      const criticalMissingFields = missingInZod.filter(
-        (field) => ['id', 'invoice', 'description', 'quantity', 'unit_price', 'line_total'].includes(field)
+      const criticalMissingFields = missingInZod.filter((field) =>
+        ['id', 'invoice', 'description', 'quantity', 'unit_price', 'line_total'].includes(field)
       );
 
       expect(criticalMissingFields).toEqual([]);
@@ -350,8 +346,8 @@ describe('Billing Contract Tests', () => {
         );
       }
 
-      const criticalMissingFields = missingInZod.filter(
-        (field) => ['id', 'name', 'code', 'method'].includes(field)
+      const criticalMissingFields = missingInZod.filter((field) =>
+        ['id', 'name', 'code', 'method'].includes(field)
       );
 
       expect(criticalMissingFields).toEqual([]);
@@ -392,8 +388,8 @@ describe('Billing Contract Tests', () => {
         );
       }
 
-      const criticalMissingFields = missingInZod.filter(
-        (field) => ['id', 'payment_reference', 'invoice', 'amount', 'method', 'status'].includes(field)
+      const criticalMissingFields = missingInZod.filter((field) =>
+        ['id', 'payment_reference', 'invoice', 'amount', 'method', 'status'].includes(field)
       );
 
       expect(criticalMissingFields).toEqual([]);
@@ -435,8 +431,8 @@ describe('Billing Contract Tests', () => {
         );
       }
 
-      const criticalMissingFields = missingInZod.filter(
-        (field) => ['id', 'credit_note_number', 'invoice', 'amount', 'reason', 'status'].includes(field)
+      const criticalMissingFields = missingInZod.filter((field) =>
+        ['id', 'credit_note_number', 'invoice', 'amount', 'reason', 'status'].includes(field)
       );
 
       expect(criticalMissingFields).toEqual([]);
@@ -487,13 +483,7 @@ describe('Billing Contract Tests', () => {
     it('should include all critical invoice statuses', () => {
       const zodValues = normalizeEnumValues([...INVOICE_STATUSES]);
 
-      const criticalStatuses = [
-        'draft',
-        'pending',
-        'partial',
-        'paid',
-        'cancelled',
-      ];
+      const criticalStatuses = ['draft', 'pending', 'partial', 'paid', 'cancelled'];
 
       const missing = criticalStatuses.filter((s) => !zodValues.includes(s));
       expect(missing).toEqual([]);
@@ -520,12 +510,7 @@ describe('Billing Contract Tests', () => {
     it('should include all critical payment methods', () => {
       const zodValues = normalizeEnumValues([...PAYMENT_METHODS]);
 
-      const criticalMethods = [
-        'cash',
-        'mpesa',
-        'card',
-        'insurance',
-      ];
+      const criticalMethods = ['cash', 'mpesa', 'card', 'insurance'];
 
       const missing = criticalMethods.filter((m) => !zodValues.includes(m));
       expect(missing).toEqual([]);
@@ -552,12 +537,7 @@ describe('Billing Contract Tests', () => {
     it('should include all critical payment statuses', () => {
       const zodValues = normalizeEnumValues([...PAYMENT_STATUSES]);
 
-      const criticalStatuses = [
-        'pending',
-        'completed',
-        'failed',
-        'refunded',
-      ];
+      const criticalStatuses = ['pending', 'completed', 'failed', 'refunded'];
 
       const missing = criticalStatuses.filter((s) => !zodValues.includes(s));
       expect(missing).toEqual([]);
@@ -584,10 +564,7 @@ describe('Billing Contract Tests', () => {
     it('should include key credit note reasons', () => {
       const zodValues = normalizeEnumValues([...CREDIT_NOTE_REASONS]);
 
-      const keyReasons = [
-        'overcharge',
-        'other',
-      ];
+      const keyReasons = ['overcharge', 'other'];
 
       const missing = keyReasons.filter((r) => !zodValues.includes(r));
       expect(missing).toEqual([]);
@@ -614,11 +591,7 @@ describe('Billing Contract Tests', () => {
     it('should include all critical credit note statuses', () => {
       const zodValues = normalizeEnumValues([...CREDIT_NOTE_STATUSES]);
 
-      const criticalStatuses = [
-        'approved',
-        'rejected',
-        'refunded',
-      ];
+      const criticalStatuses = ['approved', 'rejected', 'refunded'];
 
       const missing = criticalStatuses.filter((s) => !zodValues.includes(s));
       expect(missing).toEqual([]);

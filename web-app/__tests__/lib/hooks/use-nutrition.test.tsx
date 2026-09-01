@@ -235,9 +235,21 @@ describe('nutrition mutation hooks', () => {
       {
         useHook: useCreateNutritionConsultation,
         apiMock: mockNutritionApi.createConsultation,
-        input: { patient_id: 1, encounter_id: 100, consultation_type: 'INITIAL', reason: 'Weight management' },
+        input: {
+          patient_id: 1,
+          encounter_id: 100,
+          consultation_type: 'INITIAL',
+          reason: 'Weight management',
+        },
         resolved: mockConsultation,
-        calledWith: [{ patient_id: 1, encounter_id: 100, consultation_type: 'INITIAL', reason: 'Weight management' }],
+        calledWith: [
+          {
+            patient_id: 1,
+            encounter_id: 100,
+            consultation_type: 'INITIAL',
+            reason: 'Weight management',
+          },
+        ],
         keys: [nutritionKeys.consultations()],
       },
       {

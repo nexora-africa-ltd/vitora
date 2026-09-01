@@ -7,7 +7,11 @@
 
 import { notificationApi } from '@/lib/api/notifications';
 import { apiClient } from '@/lib/api/client';
-import type { Notification, NotificationListResponse, UnreadCountResponse } from '@/lib/types/notification';
+import type {
+  Notification,
+  NotificationListResponse,
+  UnreadCountResponse,
+} from '@/lib/types/notification';
 
 // Mock the API client
 jest.mock('@/lib/api/client', () => ({

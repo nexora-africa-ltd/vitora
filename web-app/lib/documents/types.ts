@@ -14,7 +14,19 @@
 /**
  * Supported document types in the system
  */
-export type DocumentType = 'prescription' | 'label' | 'invoice' | 'receipt';
+export type DocumentType =
+  | 'prescription'
+  | 'label'
+  | 'invoice'
+  | 'receipt'
+  | 'lab_report'
+  | 'lab_analytics'
+  | 'partograph_report'
+  | 'radiology_report'
+  | 'dispensing_report'
+  | 'stock_summary_report'
+  | 'expiry_report'
+  | 'stock_movement_report';
 
 /**
  * Layout variants for different output formats

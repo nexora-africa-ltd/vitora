@@ -274,10 +274,9 @@ describe('imagingApi', () => {
         scheduled_datetime: '2025-01-02T10:00:00Z',
       });
 
-      expect(mockPost).toHaveBeenCalledWith(
-        '/api/imaging/orders/RAD-20250101-0001/schedule/',
-        { scheduled_datetime: '2025-01-02T10:00:00Z' }
-      );
+      expect(mockPost).toHaveBeenCalledWith('/api/imaging/orders/RAD-20250101-0001/schedule/', {
+        scheduled_datetime: '2025-01-02T10:00:00Z',
+      });
     });
 
     it('startOrder calls POST /start/', async () => {

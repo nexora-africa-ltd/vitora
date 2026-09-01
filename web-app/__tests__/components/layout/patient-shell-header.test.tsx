@@ -55,11 +55,7 @@ function createWrapper() {
     },
   });
   return function Wrapper({ children }: { children: React.ReactNode }) {
-    return (
-      <QueryClientProvider client={queryClient}>
-        {children}
-      </QueryClientProvider>
-    );
+    return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
   };
 }
 
@@ -485,7 +481,8 @@ describe('PatientShellHeader', () => {
       await waitFor(() => {
         const sensitiveIndicator = screen.getByText(/Sensitive|Confidential|Protected/i);
         // Should have accessible labeling - check either the element or a parent
-        const hasAriaLabel = sensitiveIndicator.hasAttribute('aria-label') ||
+        const hasAriaLabel =
+          sensitiveIndicator.hasAttribute('aria-label') ||
           sensitiveIndicator.closest('[aria-label]') !== null;
         expect(hasAriaLabel).toBe(true);
       });

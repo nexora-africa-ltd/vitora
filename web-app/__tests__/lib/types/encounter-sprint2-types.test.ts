@@ -20,8 +20,17 @@ describe('Encounter Status Types (Sprint 2)', () => {
 
     it('includes all expected statuses', () => {
       const expected: EncounterStatus[] = [
-        'CREATED', 'CHECKED_IN', 'TRIAGED', 'IN_PROGRESS', 'ON_HOLD',
-        'ORDERS_PLACED', 'RESULTS_PENDING', 'READY_TO_CLOSE', 'CLOSED', 'COMPLETED', 'CANCELLED',
+        'CREATED',
+        'CHECKED_IN',
+        'TRIAGED',
+        'IN_PROGRESS',
+        'ON_HOLD',
+        'ORDERS_PLACED',
+        'RESULTS_PENDING',
+        'READY_TO_CLOSE',
+        'CLOSED',
+        'COMPLETED',
+        'CANCELLED',
       ];
       expected.forEach((status) => {
         expect(ENCOUNTER_STATUS_DISPLAY[status]).toBeDefined();
@@ -88,8 +97,14 @@ describe('Visit Reason Types (Sprint 2)', () => {
 
     it('includes all expected reasons', () => {
       const expected: VisitReason[] = [
-        'NEW_COMPLAINT', 'FOLLOW_UP', 'CHRONIC_CARE', 'PROCEDURE_REVIEW',
-        'REFILL_ONLY', 'LAB_REVIEW', 'REFERRAL_VISIT', 'OTHER',
+        'NEW_COMPLAINT',
+        'FOLLOW_UP',
+        'CHRONIC_CARE',
+        'PROCEDURE_REVIEW',
+        'REFILL_ONLY',
+        'LAB_REVIEW',
+        'REFERRAL_VISIT',
+        'OTHER',
       ];
       expected.forEach((reason) => {
         expect(VISIT_REASON_DISPLAY[reason]).toBeDefined();

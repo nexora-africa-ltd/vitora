@@ -27,6 +27,13 @@ import {
   useDeclineAdmissionRecommendation,
   usePendingAdmissions,
 } from '@/lib/hooks/use-inpatient';
+import type { Encounter } from '@/lib/types/encounter';
+import type { AdmissionRecommendation } from '@/lib/types/inpatient';
+
+type PendingAdmissionEncounter = Encounter & {
+  patient_name?: string;
+  patient_mrn?: string;
+};
 
 const URGENCY_COLORS: Record<string, string> = {
   ROUTINE: 'bg-blue-100 text-blue-800',
@@ -45,11 +52,16 @@ export default function AdmissionRecommendationsPage() {
   const router = useRouter();
   const { toast } = useToast();
   const { data: staffProfile } = useMyStaffProfile();
-  const [selectedRecommendation, setSelectedRecommendation] = useState<any>(null);
+  const [selectedRecommendation, setSelectedRecommendation] =
+    useState<AdmissionRecommendation | null>(null);
   const [declineDialogOpen, setDeclineDialogOpen] = useState(false);
   const [declineReason, setDeclineReason] = useState('');
 
-  const { data: recommendations, isLoading, refetch } = useAdmissionRecommendations({
+  const {
+    data: recommendations,
+    isLoading,
+    refetch,
+  } = useAdmissionRecommendations({
     status: 'PENDING',
     ordering: '-created_at',
   });
@@ -58,12 +70,12 @@ export default function AdmissionRecommendationsPage() {
 
   const declineRecommendation = useDeclineAdmissionRecommendation();
 
-  const handleApproveClick = (rec: any) => {
+  const handleApproveClick = (rec: AdmissionRecommendation) => {
     // Navigate to detail page for full compatibility check + ward/bed selection
     router.push(`/admissions/recommendations/${rec.id}`);
   };
 
-  const handleDeclineClick = (rec: any) => {
+  const handleDeclineClick = (rec: AdmissionRecommendation) => {
     setSelectedRecommendation(rec);
     setDeclineReason('');
     setDeclineDialogOpen(true);
@@ -95,12 +107,13 @@ export default function AdmissionRecommendationsPage() {
     }
   };
 
-  const recommendationsList = recommendations?.results ?? [];
-  const pendingAdmissionsList = pendingAdmissionsData?.results ?? [];
+  const recommendationsList: AdmissionRecommendation[] = recommendations?.results ?? [];
+  const pendingAdmissionsList: PendingAdmissionEncounter[] =
+    (pendingAdmissionsData?.results as unknown as PendingAdmissionEncounter[]) ?? [];
 
   if (isLoading && isPendingLoading) {
     return (
-      <div className="container mx-auto py-6 space-y-6">
+      <div className="container mx-auto space-y-6 py-6">
         <Skeleton className="h-10 w-64" />
         <div className="space-y-4">
           {[...Array(3)].map((_, i) => (
@@ -112,18 +125,18 @@ export default function AdmissionRecommendationsPage() {
   }
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
+    <div className="container mx-auto space-y-6 py-6">
       <PageHeader
         title="Admission Recommendations"
         helpContent="Review and approve pending admission recommendations from OPD encounters, and process IPD encounters awaiting admission."
-        actions={(
+        actions={
           <Button asChild>
             <CreateRouteLink href="/admissions/recommendations/new">
-              <Plus className="h-4 w-4 mr-2" />
+              <Plus className="mr-2 h-4 w-4" />
               New Recommendation
             </CreateRouteLink>
           </Button>
-        )}
+        }
       />
 
       {/* Stats */}
@@ -131,7 +144,7 @@ export default function AdmissionRecommendationsPage() {
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-yellow-100">
+              <div className="rounded-lg bg-yellow-100 p-2">
                 <Clock className="h-5 w-5 text-yellow-600" />
               </div>
               <div>
@@ -144,7 +157,7 @@ export default function AdmissionRecommendationsPage() {
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-blue-100">
+              <div className="rounded-lg bg-blue-100 p-2">
                 <BedDouble className="h-5 w-5 text-blue-600" />
               </div>
               <div>
@@ -163,16 +176,18 @@ export default function AdmissionRecommendationsPage() {
           <p className="text-sm text-muted-foreground">
             IPD encounters awaiting admission processing (no admission record yet).
           </p>
-          {pendingAdmissionsList.map((enc: any) => (
-            <Card key={enc.id} className="hover:shadow-md transition-shadow">
+          {pendingAdmissionsList.map((enc) => (
+            <Card key={enc.id} className="transition-shadow hover:shadow-md">
               <CardHeader className="pb-2">
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-full bg-blue-50">
+                    <div className="rounded-full bg-blue-50 p-2">
                       <BedDouble className="h-5 w-5 text-blue-600" />
                     </div>
                     <div>
-                      <CardTitle className="text-lg">{enc.patient_name || 'Unknown Patient'}</CardTitle>
+                      <CardTitle className="text-lg">
+                        {enc.patient_name || 'Unknown Patient'}
+                      </CardTitle>
                       <CardDescription>
                         {enc.patient_mrn} • {new Date(enc.encounter_date).toLocaleDateString()}
                       </CardDescription>
@@ -186,7 +201,7 @@ export default function AdmissionRecommendationsPage() {
                   <p className="text-sm font-medium text-muted-foreground">Chief Complaint</p>
                   <p className="text-sm">{enc.chief_complaint || '—'}</p>
                 </div>
-                <div className="flex justify-end pt-2 border-t">
+                <div className="flex justify-end border-t pt-2">
                   <Button size="sm" asChild>
                     <Link href={`/admissions/new?encounter=${enc.id}&patient=${enc.patient}`}>
                       Admit Patient
@@ -205,22 +220,24 @@ export default function AdmissionRecommendationsPage() {
         {recommendationsList.length === 0 ? (
           <Card>
             <CardContent className="py-12 text-center">
-              <Check className="h-12 w-12 mx-auto text-green-500 mb-4" />
+              <Check className="mx-auto mb-4 h-12 w-12 text-green-500" />
               <p className="text-lg font-medium">All caught up!</p>
               <p className="text-muted-foreground">No pending admission recommendations.</p>
             </CardContent>
           </Card>
         ) : (
-          recommendationsList.map((rec: any) => (
-            <Card key={rec.id} className="hover:shadow-md transition-shadow">
+          recommendationsList.map((rec) => (
+            <Card key={rec.id} className="transition-shadow hover:shadow-md">
               <CardHeader className="pb-2">
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-full bg-muted">
+                    <div className="rounded-full bg-muted p-2">
                       <User className="h-5 w-5" />
                     </div>
                     <div>
-                      <CardTitle className="text-lg">{rec.patient_name || 'Unknown Patient'}</CardTitle>
+                      <CardTitle className="text-lg">
+                        {rec.patient_name || 'Unknown Patient'}
+                      </CardTitle>
                       <CardDescription>
                         Encounter #{rec.encounter} • Recommended by {rec.recommended_by_username}
                       </CardDescription>
@@ -243,8 +260,14 @@ export default function AdmissionRecommendationsPage() {
                     <p>{rec.reason || 'Severe pneumonia requiring IV antibiotics'}</p>
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-muted-foreground">Provisional Diagnosis</p>
-                    <p>{rec.provisional_diagnosis_text || rec.provisional_diagnosis || 'J18.9 - Pneumonia'}</p>
+                    <p className="text-sm font-medium text-muted-foreground">
+                      Provisional Diagnosis
+                    </p>
+                    <p>
+                      {rec.provisional_diagnosis_text ||
+                        rec.provisional_diagnosis ||
+                        'J18.9 - Pneumonia'}
+                    </p>
                   </div>
                 </div>
                 <div className="grid gap-4 md:grid-cols-2">
@@ -254,15 +277,13 @@ export default function AdmissionRecommendationsPage() {
                   </div>
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">Created</p>
-                    <p>{new Date(rec.created_at).toLocaleString()}</p>
+                    <p>{rec.created_at ? new Date(rec.created_at).toLocaleString() : '—'}</p>
                   </div>
                 </div>
 
-                <div className="flex justify-end gap-2 pt-2 border-t">
+                <div className="flex justify-end gap-2 border-t pt-2">
                   <Button variant="outline" size="sm" asChild>
-                    <Link href={`/admissions/recommendations/${rec.id}`}>
-                      View Details
-                    </Link>
+                    <Link href={`/admissions/recommendations/${rec.id}`}>View Details</Link>
                   </Button>
                   <Button
                     variant="outline"
@@ -270,7 +291,7 @@ export default function AdmissionRecommendationsPage() {
                     onClick={() => handleDeclineClick(rec)}
                     data-testid="decline-button"
                   >
-                    <X className="h-4 w-4 mr-2" />
+                    <X className="mr-2 h-4 w-4" />
                     Decline
                   </Button>
                   <Button
@@ -278,7 +299,7 @@ export default function AdmissionRecommendationsPage() {
                     onClick={() => handleApproveClick(rec)}
                     data-testid="approve-button"
                   >
-                    <Check className="h-4 w-4 mr-2" />
+                    <Check className="mr-2 h-4 w-4" />
                     Approve & Admit
                   </Button>
                 </div>
@@ -294,7 +315,8 @@ export default function AdmissionRecommendationsPage() {
           <DialogHeader>
             <DialogTitle>Decline Admission Recommendation</DialogTitle>
             <DialogDescription>
-              Please provide a reason for declining the admission recommendation for {selectedRecommendation?.patient_name || 'this patient'}.
+              Please provide a reason for declining the admission recommendation for{' '}
+              {selectedRecommendation?.patient_name || 'this patient'}.
             </DialogDescription>
           </DialogHeader>
 

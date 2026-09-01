@@ -39,14 +39,17 @@ import {
 
 interface OpenAPISchema {
   components: {
-    schemas: Record<string, {
-      type?: string;
-      properties?: Record<string, unknown>;
-      required?: string[];
-      enum?: string[];
-      allOf?: Array<{ $ref?: string }>;
-      description?: string;
-    }>;
+    schemas: Record<
+      string,
+      {
+        type?: string;
+        properties?: Record<string, unknown>;
+        required?: string[];
+        enum?: string[];
+        allOf?: Array<{ $ref?: string }>;
+        description?: string;
+      }
+    >;
   };
 }
 
@@ -75,10 +78,7 @@ function getSchemaProperties(
 /**
  * Get enum values from a component schema.
  */
-function getSchemaEnumValues(
-  openapi: OpenAPISchema,
-  schemaName: string
-): string[] | null {
+function getSchemaEnumValues(openapi: OpenAPISchema, schemaName: string): string[] | null {
   const schema = openapi.components.schemas[schemaName];
   if (!schema || !schema.enum) return null;
   return schema.enum;
@@ -144,9 +144,8 @@ describe('Clinic Contract Tests', () => {
       }
 
       // Critical fields should cause test failure
-      const criticalMissingFields = missingInZod.filter(
-        (field) =>
-          ['id', 'name', 'clinic_type', 'code', 'status'].includes(field)
+      const criticalMissingFields = missingInZod.filter((field) =>
+        ['id', 'name', 'clinic_type', 'code', 'status'].includes(field)
       );
 
       expect(criticalMissingFields).toEqual([]);
@@ -211,8 +210,8 @@ describe('Clinic Contract Tests', () => {
       }
 
       // Critical fields
-      const criticalMissing = missingInZod.filter(
-        (field) => ['id', 'clinic', 'session_date', 'status'].includes(field)
+      const criticalMissing = missingInZod.filter((field) =>
+        ['id', 'clinic', 'session_date', 'status'].includes(field)
       );
       expect(criticalMissing).toEqual([]);
     });
@@ -238,8 +237,8 @@ describe('Clinic Contract Tests', () => {
       }
 
       // Critical fields
-      const criticalMissing = missingInZod.filter(
-        (field) => ['id', 'session', 'patient', 'status', 'queue_number'].includes(field)
+      const criticalMissing = missingInZod.filter((field) =>
+        ['id', 'session', 'patient', 'status', 'queue_number'].includes(field)
       );
       expect(criticalMissing).toEqual([]);
     });
@@ -265,8 +264,8 @@ describe('Clinic Contract Tests', () => {
       }
 
       // Critical fields
-      const criticalMissing = missingInZod.filter(
-        (field) => ['id', 'clinic', 'user', 'role'].includes(field)
+      const criticalMissing = missingInZod.filter((field) =>
+        ['id', 'clinic', 'user', 'role'].includes(field)
       );
       expect(criticalMissing).toEqual([]);
     });
@@ -292,8 +291,8 @@ describe('Clinic Contract Tests', () => {
       }
 
       // Critical fields
-      const criticalMissing = missingInZod.filter(
-        (field) => ['id', 'clinic', 'day_of_week', 'start_time', 'end_time'].includes(field)
+      const criticalMissing = missingInZod.filter((field) =>
+        ['id', 'clinic', 'day_of_week', 'start_time', 'end_time'].includes(field)
       );
       expect(criticalMissing).toEqual([]);
     });
@@ -319,8 +318,8 @@ describe('Clinic Contract Tests', () => {
       }
 
       // Critical fields
-      const criticalMissing = missingInZod.filter(
-        (field) => ['id', 'clinic', 'patient', 'enrollment_number', 'status'].includes(field)
+      const criticalMissing = missingInZod.filter((field) =>
+        ['id', 'clinic', 'patient', 'enrollment_number', 'status'].includes(field)
       );
       expect(criticalMissing).toEqual([]);
     });
@@ -372,10 +371,10 @@ describe('Clinic Contract Tests', () => {
   describe('ClinicVisitStatusSchema (enum)', () => {
     it('should match OpenAPI ClinicVisitStatusEnum values', () => {
       const zodValues = getZodEnumValues(ClinicVisitStatusSchema);
-        const apiValues = getSchemaEnumValues(openapi, 'ClinicVisitStatusEnum');
+      const apiValues = getSchemaEnumValues(openapi, 'ClinicVisitStatusEnum');
 
       if (!apiValues) {
-          console.warn('ClinicVisitStatusEnum not found in OpenAPI (visit status)');
+        console.warn('ClinicVisitStatusEnum not found in OpenAPI (visit status)');
         return;
       }
 
@@ -392,10 +391,10 @@ describe('Clinic Contract Tests', () => {
   describe('ClinicVisitPrioritySchema (enum)', () => {
     it('should match OpenAPI priority enum values', () => {
       const zodValues = getZodEnumValues(ClinicVisitPrioritySchema);
-        const apiValues = getSchemaEnumValues(openapi, 'ClinicVisitPriorityEnum');
+      const apiValues = getSchemaEnumValues(openapi, 'ClinicVisitPriorityEnum');
 
       if (!apiValues) {
-          console.warn('ClinicVisitPriorityEnum not found in OpenAPI');
+        console.warn('ClinicVisitPriorityEnum not found in OpenAPI');
         return;
       }
 
@@ -412,10 +411,10 @@ describe('Clinic Contract Tests', () => {
   describe('ClinicVisitTypeSchema (enum)', () => {
     it('should match OpenAPI visit type enum values', () => {
       const zodValues = getZodEnumValues(ClinicVisitTypeSchema);
-        const apiValues = getSchemaEnumValues(openapi, 'ClinicVisitTypeEnum');
+      const apiValues = getSchemaEnumValues(openapi, 'ClinicVisitTypeEnum');
 
       if (!apiValues) {
-          console.warn('ClinicVisitTypeEnum not found in OpenAPI');
+        console.warn('ClinicVisitTypeEnum not found in OpenAPI');
         return;
       }
 
@@ -452,10 +451,10 @@ describe('Clinic Contract Tests', () => {
   describe('ClinicSessionStatusSchema (enum)', () => {
     it('should match OpenAPI session status enum values', () => {
       const zodValues = getZodEnumValues(ClinicSessionStatusSchema);
-        const apiValues = getSchemaEnumValues(openapi, 'ClinicSessionStatusEnum');
+      const apiValues = getSchemaEnumValues(openapi, 'ClinicSessionStatusEnum');
 
       if (!apiValues) {
-          console.warn('ClinicSessionStatusEnum not found in OpenAPI (session status)');
+        console.warn('ClinicSessionStatusEnum not found in OpenAPI (session status)');
         return;
       }
 
@@ -492,10 +491,10 @@ describe('Clinic Contract Tests', () => {
   describe('ClinicStaffRoleSchema (enum)', () => {
     it('should match OpenAPI staff role enum values', () => {
       const zodValues = getZodEnumValues(ClinicStaffRoleSchema);
-        const apiValues = getSchemaEnumValues(openapi, 'RoleEnum');
+      const apiValues = getSchemaEnumValues(openapi, 'RoleEnum');
 
       if (!apiValues) {
-          console.warn('RoleEnum not found in OpenAPI (staff role)');
+        console.warn('RoleEnum not found in OpenAPI (staff role)');
         return;
       }
 

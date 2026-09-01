@@ -604,9 +604,7 @@ describe('Occupational Therapy Flow - Integration', () => {
     const result = await occupationalTherapyApi.getOrder(mockOTOrder.id);
 
     expect(result.independence_score_current).toBe(78);
-    expect(result.independence_score_current).toBeGreaterThan(
-      result.independence_score_initial!
-    );
+    expect(result.independence_score_current).toBeGreaterThan(result.independence_score_initial!);
     expect(result.sessions_completed).toBe(5);
   });
 
@@ -632,9 +630,12 @@ describe('Occupational Therapy Flow - Integration', () => {
 
     expect(result.status).toBe('COMPLETED');
     expect(result.independence_score).toBe(70);
-    expect(mockOTApi.completeSession).toHaveBeenCalledWith(1, expect.objectContaining({
-      independence_score: 70,
-    }));
+    expect(mockOTApi.completeSession).toHaveBeenCalledWith(
+      1,
+      expect.objectContaining({
+        independence_score: 70,
+      })
+    );
   });
 });
 
@@ -828,9 +829,27 @@ describe('Counselling Flow - Integration', () => {
 
   it('should schedule follow-up sessions via generateSessions', async () => {
     const mockSessions = [
-      { id: 1, session_number: 'CS-20260227-0001', referral_id: 1, scheduled_date: '2026-02-27', status: 'SCHEDULED' as const },
-      { id: 2, session_number: 'CS-20260303-0001', referral_id: 1, scheduled_date: '2026-03-03', status: 'SCHEDULED' as const },
-      { id: 3, session_number: 'CS-20260310-0001', referral_id: 1, scheduled_date: '2026-03-10', status: 'SCHEDULED' as const },
+      {
+        id: 1,
+        session_number: 'CS-20260227-0001',
+        referral_id: 1,
+        scheduled_date: '2026-02-27',
+        status: 'SCHEDULED' as const,
+      },
+      {
+        id: 2,
+        session_number: 'CS-20260303-0001',
+        referral_id: 1,
+        scheduled_date: '2026-03-03',
+        status: 'SCHEDULED' as const,
+      },
+      {
+        id: 3,
+        session_number: 'CS-20260310-0001',
+        referral_id: 1,
+        scheduled_date: '2026-03-10',
+        status: 'SCHEDULED' as const,
+      },
     ];
     mockCounsellingApi.generateSessions.mockResolvedValueOnce(mockSessions);
 

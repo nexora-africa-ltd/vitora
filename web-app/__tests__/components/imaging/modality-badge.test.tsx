@@ -8,16 +8,7 @@ import { ModalityBadge } from '@/components/imaging/modality-badge';
 import { ImagingModality, MODALITY_LABELS } from '@/lib/types/imaging';
 
 describe('ModalityBadge', () => {
-  const modalities: ImagingModality[] = [
-    'XR',
-    'US',
-    'CT',
-    'MRI',
-    'NM',
-    'MG',
-    'FL',
-    'OTHER',
-  ];
+  const modalities: ImagingModality[] = ['XR', 'US', 'CT', 'MRI', 'NM', 'MG', 'FL', 'OTHER'];
 
   it.each(modalities)('renders %s modality correctly', (modality) => {
     render(<ModalityBadge modality={modality} />);
@@ -37,9 +28,7 @@ describe('ModalityBadge', () => {
   });
 
   it('applies custom className', () => {
-    const { container } = render(
-      <ModalityBadge modality="CT" className="custom-class" />
-    );
+    const { container } = render(<ModalityBadge modality="CT" className="custom-class" />);
     expect(container.firstChild).toHaveClass('custom-class');
   });
 

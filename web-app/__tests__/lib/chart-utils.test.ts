@@ -80,7 +80,10 @@ describe('chart-utils', () => {
 
   it('fills missing dates and calculates moving averages', () => {
     const filled = fillMissingDates(
-      [{ date: '2026-03-01', count: 2 }, { date: '2026-03-03', count: 4 }],
+      [
+        { date: '2026-03-01', count: 2 },
+        { date: '2026-03-03', count: 4 },
+      ],
       'date',
       new Date('2026-03-01'),
       new Date('2026-03-03'),
@@ -100,7 +103,10 @@ describe('chart-utils', () => {
 
   it('normalizes percentages, colorizes values, and builds pie data', () => {
     const normalized = normalizeToPercentage(
-      [{ male: 30, female: 70 }, { male: 0, female: 0 }],
+      [
+        { male: 30, female: 70 },
+        { male: 0, female: 0 },
+      ],
       ['male', 'female']
     );
 
@@ -110,8 +116,12 @@ describe('chart-utils', () => {
 
     expect(getColorForValue(39, { warning: 38, critical: 40 })).toBe('warning');
     expect(getColorForValue(41, { warning: 38, critical: 40 })).toBe('critical');
-    expect(getColorForValue(92, { warning: 95, critical: 90 }, { invertScale: true })).toBe('warning');
-    expect(getColorForValue(88, { warning: 95, critical: 90 }, { invertScale: true })).toBe('critical');
+    expect(getColorForValue(92, { warning: 95, critical: 90 }, { invertScale: true })).toBe(
+      'warning'
+    );
+    expect(getColorForValue(88, { warning: 95, critical: 90 }, { invertScale: true })).toBe(
+      'critical'
+    );
 
     expect(generatePieData({ RED: 2, GREEN: 5 }, { RED: 'Critical' })).toEqual([
       { name: 'RED', value: 2, label: 'Critical' },

@@ -52,16 +52,16 @@ export const tokenStorage = {
   /**
    * Get the stored user profile data.
    */
-  getUser(): any | null {
+  getUser<T = unknown>(): T | null {
     if (typeof window === 'undefined') return null;
     const user = localStorage.getItem(USER_KEY);
-    return user ? JSON.parse(user) : null;
+    return user ? (JSON.parse(user) as T) : null;
   },
 
   /**
    * Store user profile data (non-sensitive: name, role, permissions).
    */
-  setUser(user: any): void {
+  setUser<T>(user: T): void {
     if (typeof window === 'undefined') return;
     localStorage.setItem(USER_KEY, JSON.stringify(user));
   },

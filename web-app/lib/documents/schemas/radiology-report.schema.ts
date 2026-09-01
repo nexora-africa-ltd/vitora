@@ -14,7 +14,7 @@ import type { DocumentDefinition } from '../types';
  * radiology report template placeholders.
  */
 export const radiologyReportSchema: DocumentDefinition = {
-  document_type: 'radiology_report' as any, // Extended type
+  document_type: 'radiology_report',
   version: '1.0',
   layout: 'a4',
   template: 'radiology-report.html',

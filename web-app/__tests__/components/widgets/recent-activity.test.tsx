@@ -14,8 +14,15 @@ jest.mock('next/link', () => {
 
 // Mock ScrollArea to avoid Radix React 19 issues
 jest.mock('@/components/ui/scroll-area', () => ({
-  ScrollArea: ({ children, style, className }: { children: React.ReactNode; style?: React.CSSProperties; className?: string }) =>
-    React.createElement('div', { 'data-testid': 'scroll-area', style, className }, children),
+  ScrollArea: ({
+    children,
+    style,
+    className,
+  }: {
+    children: React.ReactNode;
+    style?: React.CSSProperties;
+    className?: string;
+  }) => React.createElement('div', { 'data-testid': 'scroll-area', style, className }, children),
 }));
 
 // Mock format utility
@@ -124,9 +131,7 @@ describe('RecentActivity', () => {
   });
 
   it('applies custom maxHeight', () => {
-    const { container } = render(
-      <RecentActivity activities={mockActivities} maxHeight="500px" />
-    );
+    const { container } = render(<RecentActivity activities={mockActivities} maxHeight="500px" />);
 
     // ScrollArea would have the maxHeight style
     const scrollArea = container.querySelector('[style*="max-height"]');

@@ -45,14 +45,17 @@ import {
 
 interface OpenAPISchema {
   components: {
-    schemas: Record<string, {
-      type?: string;
-      properties?: Record<string, unknown>;
-      required?: string[];
-      enum?: string[];
-      allOf?: Array<{ $ref?: string }>;
-      description?: string;
-    }>;
+    schemas: Record<
+      string,
+      {
+        type?: string;
+        properties?: Record<string, unknown>;
+        required?: string[];
+        enum?: string[];
+        allOf?: Array<{ $ref?: string }>;
+        description?: string;
+      }
+    >;
   };
 }
 
@@ -81,10 +84,7 @@ function getSchemaProperties(
 /**
  * Get enum values from a component schema.
  */
-function getSchemaEnumValues(
-  openapi: OpenAPISchema,
-  schemaName: string
-): string[] | null {
+function getSchemaEnumValues(openapi: OpenAPISchema, schemaName: string): string[] | null {
   const schema = openapi.components.schemas[schemaName];
   if (!schema || !schema.enum) return null;
   return schema.enum;
@@ -150,8 +150,8 @@ describe('Inpatient Contract Tests', () => {
         );
       }
 
-      const criticalMissingFields = missingInZod.filter(
-        (field) => ['id', 'name', 'code', 'ward_type', 'capacity'].includes(field)
+      const criticalMissingFields = missingInZod.filter((field) =>
+        ['id', 'name', 'code', 'ward_type', 'capacity'].includes(field)
       );
 
       expect(criticalMissingFields).toEqual([]);
@@ -192,8 +192,8 @@ describe('Inpatient Contract Tests', () => {
         );
       }
 
-      const criticalMissingFields = missingInZod.filter(
-        (field) => ['id', 'ward', 'bed_number', 'status'].includes(field)
+      const criticalMissingFields = missingInZod.filter((field) =>
+        ['id', 'ward', 'bed_number', 'status'].includes(field)
       );
 
       expect(criticalMissingFields).toEqual([]);
@@ -202,12 +202,7 @@ describe('Inpatient Contract Tests', () => {
     it('should have critical required fields', () => {
       const zodFields = getZodSchemaFields(BedSchema);
 
-      const criticalFields = [
-        'id',
-        'ward',
-        'bed_number',
-        'status',
-      ];
+      const criticalFields = ['id', 'ward', 'bed_number', 'status'];
 
       const missing = criticalFields.filter((field) => !zodFields.includes(field));
       expect(missing).toEqual([]);
@@ -231,8 +226,8 @@ describe('Inpatient Contract Tests', () => {
         );
       }
 
-      const criticalMissingFields = missingInZod.filter(
-        (field) => ['id', 'encounter', 'status', 'urgency'].includes(field)
+      const criticalMissingFields = missingInZod.filter((field) =>
+        ['id', 'encounter', 'status', 'urgency'].includes(field)
       );
 
       expect(criticalMissingFields).toEqual([]);
@@ -241,14 +236,7 @@ describe('Inpatient Contract Tests', () => {
     it('should have critical required fields', () => {
       const zodFields = getZodSchemaFields(AdmissionRecommendationSchema);
 
-      const criticalFields = [
-        'id',
-        'encounter',
-        'recommended_by',
-        'reason',
-        'urgency',
-        'status',
-      ];
+      const criticalFields = ['id', 'encounter', 'recommended_by', 'reason', 'urgency', 'status'];
 
       const missing = criticalFields.filter((field) => !zodFields.includes(field));
       expect(missing).toEqual([]);
@@ -272,8 +260,8 @@ describe('Inpatient Contract Tests', () => {
         );
       }
 
-      const criticalMissingFields = missingInZod.filter(
-        (field) => ['id', 'admission_number', 'patient', 'ward', 'bed', 'admission_status'].includes(field)
+      const criticalMissingFields = missingInZod.filter((field) =>
+        ['id', 'admission_number', 'patient', 'ward', 'bed', 'admission_status'].includes(field)
       );
 
       expect(criticalMissingFields).toEqual([]);
@@ -316,8 +304,8 @@ describe('Inpatient Contract Tests', () => {
         );
       }
 
-      const criticalMissingFields = missingInZod.filter(
-        (field) => ['id', 'admission', 'discharge_type', 'discharge_date'].includes(field)
+      const criticalMissingFields = missingInZod.filter((field) =>
+        ['id', 'admission', 'discharge_type', 'discharge_date'].includes(field)
       );
 
       expect(criticalMissingFields).toEqual([]);
@@ -359,8 +347,8 @@ describe('Inpatient Contract Tests', () => {
         );
       }
 
-      const criticalMissingFields = missingInZod.filter(
-        (field) => ['id', 'admission', 'source_ward', 'destination_ward', 'reason'].includes(field)
+      const criticalMissingFields = missingInZod.filter((field) =>
+        ['id', 'admission', 'source_ward', 'destination_ward', 'reason'].includes(field)
       );
 
       expect(criticalMissingFields).toEqual([]);
@@ -404,8 +392,8 @@ describe('Inpatient Contract Tests', () => {
         );
       }
 
-      const criticalMissingFields = missingInZod.filter(
-        (field) => ['id', 'admission', 'round_date', 'conducted_by'].includes(field)
+      const criticalMissingFields = missingInZod.filter((field) =>
+        ['id', 'admission', 'round_date', 'conducted_by'].includes(field)
       );
 
       expect(criticalMissingFields).toEqual([]);
@@ -449,8 +437,8 @@ describe('Inpatient Contract Tests', () => {
         );
       }
 
-      const criticalMissingFields = missingInZod.filter(
-        (field) => ['id', 'admission', 'fall_risk', 'pressure_sore_risk'].includes(field)
+      const criticalMissingFields = missingInZod.filter((field) =>
+        ['id', 'admission', 'fall_risk', 'pressure_sore_risk'].includes(field)
       );
 
       expect(criticalMissingFields).toEqual([]);
@@ -489,8 +477,8 @@ describe('Inpatient Contract Tests', () => {
         );
       }
 
-      const criticalMissingFields = missingInZod.filter(
-        (field) => ['id', 'ward', 'shift_date', 'outgoing_nurse', 'incoming_nurse'].includes(field)
+      const criticalMissingFields = missingInZod.filter((field) =>
+        ['id', 'ward', 'shift_date', 'outgoing_nurse', 'incoming_nurse'].includes(field)
       );
 
       expect(criticalMissingFields).toEqual([]);
@@ -538,12 +526,7 @@ describe('Inpatient Contract Tests', () => {
     it('should include critical ward types', () => {
       const zodValues = getZodEnumValues(InpatientWardTypeSchema);
 
-      const criticalTypes = [
-        'MEDICAL',
-        'SURGICAL',
-        'ICU',
-        'MATERNITY',
-      ];
+      const criticalTypes = ['MEDICAL', 'SURGICAL', 'ICU', 'MATERNITY'];
 
       const missing = criticalTypes.filter((t) => !zodValues.includes(t));
       expect(missing).toEqual([]);
@@ -570,11 +553,7 @@ describe('Inpatient Contract Tests', () => {
     it('should include critical bed statuses', () => {
       const zodValues = getZodEnumValues(BedStatusSchema);
 
-      const criticalStatuses = [
-        'AVAILABLE',
-        'OCCUPIED',
-        'MAINTENANCE',
-      ];
+      const criticalStatuses = ['AVAILABLE', 'OCCUPIED', 'MAINTENANCE'];
 
       const missing = criticalStatuses.filter((s) => !zodValues.includes(s));
       expect(missing).toEqual([]);
@@ -594,7 +573,9 @@ describe('Inpatient Contract Tests', () => {
       const missingInZod = apiValues.filter((v) => !zodValues.includes(v));
 
       if (missingInZod.length > 0) {
-        console.warn(`AdmissionRecommendationStatusSchema: Missing values: ${missingInZod.join(', ')}`);
+        console.warn(
+          `AdmissionRecommendationStatusSchema: Missing values: ${missingInZod.join(', ')}`
+        );
       }
 
       expect(missingInZod).toEqual([]);
@@ -603,11 +584,7 @@ describe('Inpatient Contract Tests', () => {
     it('should include critical statuses', () => {
       const zodValues = getZodEnumValues(AdmissionRecommendationStatusSchema);
 
-      const criticalStatuses = [
-        'PENDING',
-        'ACCEPTED',
-        'DECLINED',
-      ];
+      const criticalStatuses = ['PENDING', 'ACCEPTED', 'DECLINED'];
 
       const missing = criticalStatuses.filter((s) => !zodValues.includes(s));
       expect(missing).toEqual([]);
@@ -625,7 +602,9 @@ describe('Inpatient Contract Tests', () => {
       const missingInZod = apiValues.filter((v) => !zodValues.includes(v));
 
       if (missingInZod.length > 0) {
-        console.warn(`AdmissionRecommendationUrgencySchema: Missing values: ${missingInZod.join(', ')}`);
+        console.warn(
+          `AdmissionRecommendationUrgencySchema: Missing values: ${missingInZod.join(', ')}`
+        );
       }
 
       expect(missingInZod).toEqual([]);
@@ -634,11 +613,7 @@ describe('Inpatient Contract Tests', () => {
     it('should include all urgency levels', () => {
       const zodValues = getZodEnumValues(AdmissionRecommendationUrgencySchema);
 
-      const urgencyLevels = [
-        'ROUTINE',
-        'URGENT',
-        'EMERGENCY',
-      ];
+      const urgencyLevels = ['ROUTINE', 'URGENT', 'EMERGENCY'];
 
       const missing = urgencyLevels.filter((u) => !zodValues.includes(u));
       expect(missing).toEqual([]);
@@ -665,11 +640,7 @@ describe('Inpatient Contract Tests', () => {
     it('should include critical admission statuses', () => {
       const zodValues = getZodEnumValues(AdmissionStatusSchema);
 
-      const criticalStatuses = [
-        'ACTIVE',
-        'DISCHARGED',
-        'DECEASED',
-      ];
+      const criticalStatuses = ['ACTIVE', 'DISCHARGED', 'DECEASED'];
 
       const missing = criticalStatuses.filter((s) => !zodValues.includes(s));
       expect(missing).toEqual([]);
@@ -696,10 +667,7 @@ describe('Inpatient Contract Tests', () => {
     it('should include critical payer types', () => {
       const zodValues = getZodEnumValues(AdmissionPayerTypeSchema);
 
-      const criticalPayers = [
-        'CASH',
-        'SHA',
-      ];
+      const criticalPayers = ['CASH', 'SHA'];
 
       const missing = criticalPayers.filter((p) => !zodValues.includes(p));
       expect(missing).toEqual([]);
@@ -726,11 +694,7 @@ describe('Inpatient Contract Tests', () => {
     it('should include critical discharge types', () => {
       const zodValues = getZodEnumValues(DischargeTypeSchema);
 
-      const criticalTypes = [
-        'NORMAL',
-        'DECEASED',
-        'AGAINST_ADVICE',
-      ];
+      const criticalTypes = ['NORMAL', 'DECEASED', 'AGAINST_ADVICE'];
 
       const missing = criticalTypes.filter((t) => !zodValues.includes(t));
       expect(missing).toEqual([]);
@@ -757,11 +721,7 @@ describe('Inpatient Contract Tests', () => {
     it('should include key transfer reasons', () => {
       const zodValues = getZodEnumValues(TransferReasonSchema);
 
-      const keyReasons = [
-        'STEP_UP',
-        'STEP_DOWN',
-        'SPECIALTY',
-      ];
+      const keyReasons = ['STEP_UP', 'STEP_DOWN', 'SPECIALTY'];
 
       const missing = keyReasons.filter((r) => !zodValues.includes(r));
       expect(missing).toEqual([]);
@@ -789,12 +749,7 @@ describe('Inpatient Contract Tests', () => {
     it('should include all condition statuses', () => {
       const zodValues = getZodEnumValues(ConditionStatusSchema);
 
-      const allStatuses = [
-        'STABLE',
-        'IMPROVING',
-        'DETERIORATING',
-        'CRITICAL',
-      ];
+      const allStatuses = ['STABLE', 'IMPROVING', 'DETERIORATING', 'CRITICAL'];
 
       const missing = allStatuses.filter((s) => !zodValues.includes(s));
       expect(missing).toEqual([]);
@@ -821,11 +776,7 @@ describe('Inpatient Contract Tests', () => {
     it('should include all risk levels', () => {
       const zodValues = getZodEnumValues(RiskLevelSchema);
 
-      const allLevels = [
-        'LOW',
-        'MODERATE',
-        'HIGH',
-      ];
+      const allLevels = ['LOW', 'MODERATE', 'HIGH'];
 
       const missing = allLevels.filter((l) => !zodValues.includes(l));
       expect(missing).toEqual([]);
@@ -852,10 +803,7 @@ describe('Inpatient Contract Tests', () => {
     it('should include basic shifts', () => {
       const zodValues = getZodEnumValues(ShiftTypeSchema);
 
-      const basicShifts = [
-        'DAY',
-        'NIGHT',
-      ];
+      const basicShifts = ['DAY', 'NIGHT'];
 
       const missing = basicShifts.filter((s) => !zodValues.includes(s));
       expect(missing).toEqual([]);

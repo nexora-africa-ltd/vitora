@@ -118,7 +118,7 @@ function setCachedInsights(
   insights: ProactiveInsight[],
   tierCounts: ProactiveInsightTierCounts,
   contextHash: string,
-  inputSignature: string,
+  inputSignature: string
 ): void {
   if (!cacheKey) return;
   try {
@@ -142,7 +142,7 @@ function setCachedInsights(
 export function useProactiveInsights(
   patientContext: AIPatientContext | null,
   encounterContext: AIEncounterContext | null,
-  options: UseProactiveInsightsOptions = {},
+  options: UseProactiveInsightsOptions = {}
 ): UseProactiveInsightsReturn {
   const { enabled = true, includeLLM = true, cacheKey } = options;
 
@@ -214,12 +214,16 @@ export function useProactiveInsights(
       // Don't clear existing insights on error — graceful degradation
       if (err instanceof AxiosError && err.response?.status === 429) {
         // Parse "Expected available in X seconds." from DRF throttle response
-        const detail = (err.response?.data as any)?.detail || '';
+        const detail =
+          ((err.response?.data as { detail?: string } | undefined)?.detail as string | undefined) ||
+          '';
         const match = detail.match(/(\d+)\s*seconds?/);
-        const seconds = match ? parseInt(match[1]) : 30;
+        const seconds = match?.[1] ? parseInt(match[1], 10) : 30;
         setError(`Insight generation is rate-limited. Try again in ${seconds}s.`);
       } else if (err instanceof AxiosError && err.response?.status === 503) {
-        setError('TibaBot AI service is temporarily unavailable. Rule-based insights still active.');
+        setError(
+          'TibaBot AI service is temporarily unavailable. Rule-based insights still active.'
+        );
       } else {
         setError(err.message || 'Failed to generate insights');
       }
@@ -262,36 +266,39 @@ export function useProactiveInsights(
   }, [patientContext, encounterContext, includeLLM]);
 
   // Trigger insight generation
-  const triggerInsights = useCallback((bypassRateLimit = false) => {
-    if (!ENABLE_AI || !enabled) return;
+  const triggerInsights = useCallback(
+    (bypassRateLimit = false) => {
+      if (!ENABLE_AI || !enabled) return;
 
-    const now = Date.now();
-    const elapsed = now - lastCallRef.current;
+      const now = Date.now();
+      const elapsed = now - lastCallRef.current;
 
-    // Rate limit guard (skipped for manual refresh)
-    if (!bypassRateLimit && elapsed < MIN_INTERVAL_MS && lastCallRef.current > 0) {
-      return;
-    }
+      // Rate limit guard (skipped for manual refresh)
+      if (!bypassRateLimit && elapsed < MIN_INTERVAL_MS && lastCallRef.current > 0) {
+        return;
+      }
 
-    const request = buildRequest();
-    if (!request) return;
+      const request = buildRequest();
+      if (!request) return;
 
-    const inputSignature = buildInputSignature(request);
+      const inputSignature = buildInputSignature(request);
 
-    // Persist insights through tab switches/routes: when effective context has not
-    // changed, do not call TibaBot again unless user explicitly requests refresh.
-    if (
-      !bypassRateLimit &&
-      inputSignatureRef.current === inputSignature &&
-      (insights.length > 0 || noInsightsFound)
-    ) {
-      return;
-    }
+      // Persist insights through tab switches/routes: when effective context has not
+      // changed, do not call TibaBot again unless user explicitly requests refresh.
+      if (
+        !bypassRateLimit &&
+        inputSignatureRef.current === inputSignature &&
+        (insights.length > 0 || noInsightsFound)
+      ) {
+        return;
+      }
 
-    lastCallRef.current = now;
-    pendingInputSignatureRef.current = inputSignature;
-    mutation.mutate(request);
-  }, [enabled, buildRequest, mutation, insights.length, noInsightsFound]);
+      lastCallRef.current = now;
+      pendingInputSignatureRef.current = inputSignature;
+      mutation.mutate(request);
+    },
+    [enabled, buildRequest, mutation, insights.length, noInsightsFound]
+  );
 
   // Debounced trigger on context changes
   useEffect(() => {

@@ -14,12 +14,7 @@ describe('EmptyState Component', () => {
   });
 
   it('should render description when provided', () => {
-    render(
-      <EmptyState
-        title="No results"
-        description="Try adjusting your search criteria"
-      />
-    );
+    render(<EmptyState title="No results" description="Try adjusting your search criteria" />);
 
     expect(screen.getByText('Try adjusting your search criteria')).toBeInTheDocument();
   });

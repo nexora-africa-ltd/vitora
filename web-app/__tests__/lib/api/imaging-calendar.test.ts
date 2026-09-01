@@ -153,7 +153,13 @@ describe('imagingApi - Calendar/Scheduling', () => {
           date: '2026-02-07',
           day_name: 'Saturday',
           slots: [
-            { date: '2026-02-07', start_time: '08:00:00', end_time: '08:30:00', is_available: true, appointment: null },
+            {
+              date: '2026-02-07',
+              start_time: '08:00:00',
+              end_time: '08:30:00',
+              is_available: true,
+              appointment: null,
+            },
           ],
           total_slots: 10,
           available_slots: 8,
@@ -173,9 +179,12 @@ describe('imagingApi - Calendar/Scheduling', () => {
 
       const result = await imagingApi.getResourceWeeklyAvailability(1);
 
-      expect(mockApiClient.get).toHaveBeenCalledWith('/api/imaging/resources/1/availability/weekly/', {
-        params: undefined,
-      });
+      expect(mockApiClient.get).toHaveBeenCalledWith(
+        '/api/imaging/resources/1/availability/weekly/',
+        {
+          params: undefined,
+        }
+      );
       expect(result).toHaveLength(2);
       expect(result[0].day_name).toBe('Saturday');
     });
@@ -183,11 +192,16 @@ describe('imagingApi - Calendar/Scheduling', () => {
     it('fetches weekly availability with start_date', async () => {
       mockApiClient.get.mockResolvedValueOnce({ data: mockWeeklyResponse });
 
-      const result = await imagingApi.getResourceWeeklyAvailability(1, { start_date: '2026-02-07' });
-
-      expect(mockApiClient.get).toHaveBeenCalledWith('/api/imaging/resources/1/availability/weekly/', {
-        params: { start_date: '2026-02-07' },
+      const result = await imagingApi.getResourceWeeklyAvailability(1, {
+        start_date: '2026-02-07',
       });
+
+      expect(mockApiClient.get).toHaveBeenCalledWith(
+        '/api/imaging/resources/1/availability/weekly/',
+        {
+          params: { start_date: '2026-02-07' },
+        }
+      );
       expect(result).toHaveLength(2);
     });
   });
@@ -206,13 +220,16 @@ describe('imagingApi - Calendar/Scheduling', () => {
 
       const result = await imagingApi.checkSlotAvailability(1, '2026-02-07', '08:00', '08:30');
 
-      expect(mockApiClient.get).toHaveBeenCalledWith('/api/imaging/resources/1/availability/check/', {
-        params: {
-          date: '2026-02-07',
-          start_time: '08:00',
-          end_time: '08:30',
-        },
-      });
+      expect(mockApiClient.get).toHaveBeenCalledWith(
+        '/api/imaging/resources/1/availability/check/',
+        {
+          params: {
+            date: '2026-02-07',
+            start_time: '08:00',
+            end_time: '08:30',
+          },
+        }
+      );
       expect(result.is_available).toBe(true);
     });
 
@@ -240,7 +257,13 @@ describe('imagingApi - Calendar/Scheduling', () => {
             metadata: { department: 'radiology', modalities: ['XR'] },
           },
           slots: [
-            { date: '2026-02-07', start_time: '08:00:00', end_time: '08:30:00', is_available: true, appointment: null },
+            {
+              date: '2026-02-07',
+              start_time: '08:00:00',
+              end_time: '08:30:00',
+              is_available: true,
+              appointment: null,
+            },
           ],
           total_slots: 10,
           available_slots: 8,
@@ -254,7 +277,9 @@ describe('imagingApi - Calendar/Scheduling', () => {
 
       const result = await imagingApi.getCalendar();
 
-      expect(mockApiClient.get).toHaveBeenCalledWith('/api/imaging/calendar/', { params: undefined });
+      expect(mockApiClient.get).toHaveBeenCalledWith('/api/imaging/calendar/', {
+        params: undefined,
+      });
       expect(result.date).toBe('2026-02-07');
       expect(result.resources).toHaveLength(1);
     });

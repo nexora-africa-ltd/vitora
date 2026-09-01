@@ -5,7 +5,15 @@ import type { TimelineFilters as FilterType } from '@/lib/types/timeline';
 
 describe('TimelineFilters', () => {
   const defaultFilters: FilterType = {
-    eventTypes: ['encounter', 'lab_result', 'prescription', 'vital_alert', 'diagnosis', 'admission', 'discharge'],
+    eventTypes: [
+      'encounter',
+      'lab_result',
+      'prescription',
+      'vital_alert',
+      'diagnosis',
+      'admission',
+      'discharge',
+    ],
     startDate: undefined,
     endDate: undefined,
     searchQuery: undefined,

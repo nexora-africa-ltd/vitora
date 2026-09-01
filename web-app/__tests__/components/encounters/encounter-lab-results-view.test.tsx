@@ -15,7 +15,7 @@ const mockLabInterpretPanel = jest.fn(() => (
   <div data-testid="lab-interpret-panel">AI Interpret Panel</div>
 ));
 jest.mock('@/components/encounters/lab-interpret-panel', () => ({
-  LabInterpretPanel: (props: any) => mockLabInterpretPanel(props),
+  LabInterpretPanel: (props: unknown) => mockLabInterpretPanel(props),
 }));
 
 const queryClient = new QueryClient({
@@ -140,19 +140,13 @@ describe('EncounterLabResultsView', () => {
   });
 
   it('should render empty state when no orders have results', () => {
-    render(
-      <EncounterLabResultsView orders={[PENDING_ORDER]} />,
-      { wrapper },
-    );
+    render(<EncounterLabResultsView orders={[PENDING_ORDER]} />, { wrapper });
 
     expect(screen.getByText('No lab results available yet')).toBeInTheDocument();
   });
 
   it('should render completed order results', () => {
-    render(
-      <EncounterLabResultsView orders={[COMPLETED_ORDER]} />,
-      { wrapper },
-    );
+    render(<EncounterLabResultsView orders={[COMPLETED_ORDER]} />, { wrapper });
 
     expect(screen.getByText('LAB-2026-001')).toBeInTheDocument();
     expect(screen.getByText('Complete Blood Count')).toBeInTheDocument();
@@ -174,10 +168,7 @@ describe('EncounterLabResultsView', () => {
       ],
     };
 
-    render(
-      <EncounterLabResultsView orders={[criticalOrder]} />,
-      { wrapper },
-    );
+    render(<EncounterLabResultsView orders={[criticalOrder]} />, { wrapper });
 
     expect(screen.getByText('Critical Results Detected')).toBeInTheDocument();
   });
@@ -189,7 +180,7 @@ describe('EncounterLabResultsView', () => {
         encounterId={10}
         patientDemographics={PATIENT_DEMOGRAPHICS}
       />,
-      { wrapper },
+      { wrapper }
     );
 
     expect(screen.getByTestId('lab-interpret-panel')).toBeInTheDocument();
@@ -200,7 +191,7 @@ describe('EncounterLabResultsView', () => {
         patientSex: 'female',
         encounterId: 10,
         autoTrigger: true,
-      }),
+      })
     );
   });
 
@@ -211,7 +202,7 @@ describe('EncounterLabResultsView', () => {
         encounterId={10}
         patientDemographics={PATIENT_DEMOGRAPHICS}
       />,
-      { wrapper },
+      { wrapper }
     );
 
     const call = mockLabInterpretPanel.mock.calls[0]?.[0];
@@ -221,25 +212,19 @@ describe('EncounterLabResultsView', () => {
         test_name: 'Complete Blood Count',
         value: 12.5,
         unit: 'g/dL',
-      }),
+      })
     );
     expect(call.labResults[1]).toEqual(
       expect.objectContaining({
         test_name: 'White Blood Cells',
         value: 15.2,
         unit: '10^3/uL',
-      }),
+      })
     );
   });
 
   it('should NOT render LabInterpretPanel when patient demographics are missing', () => {
-    render(
-      <EncounterLabResultsView
-        orders={[COMPLETED_ORDER]}
-        encounterId={10}
-      />,
-      { wrapper },
-    );
+    render(<EncounterLabResultsView orders={[COMPLETED_ORDER]} encounterId={10} />, { wrapper });
 
     expect(screen.queryByTestId('lab-interpret-panel')).not.toBeInTheDocument();
     expect(mockLabInterpretPanel).not.toHaveBeenCalled();
@@ -289,7 +274,7 @@ describe('EncounterLabResultsView', () => {
         encounterId={10}
         patientDemographics={PATIENT_DEMOGRAPHICS}
       />,
-      { wrapper },
+      { wrapper }
     );
 
     const panels = screen.getAllByTestId('lab-interpret-panel');
@@ -307,13 +292,13 @@ describe('EncounterLabResultsView', () => {
         patientDemographics={PATIENT_DEMOGRAPHICS}
         diagnoses={diagnoses}
       />,
-      { wrapper },
+      { wrapper }
     );
 
     expect(mockLabInterpretPanel).toHaveBeenCalledWith(
       expect.objectContaining({
         diagnoses,
-      }),
+      })
     );
   });
 
@@ -324,23 +309,22 @@ describe('EncounterLabResultsView', () => {
         encounterId={10}
         patientDemographics={PATIENT_DEMOGRAPHICS}
       />,
-      { wrapper },
+      { wrapper }
     );
 
     expect(mockLabInterpretPanel).toHaveBeenCalledWith(
       expect.objectContaining({
         labResultId: 201, // First completed item's result ID
-      }),
+      })
     );
   });
 
   it('should render loading skeleton', () => {
-    const { container } = render(
-      <EncounterLabResultsView orders={[]} isLoading />,
-      { wrapper },
-    );
+    const { container } = render(<EncounterLabResultsView orders={[]} isLoading />, { wrapper });
 
     // Skeletons should be present
-    expect(container.querySelectorAll('[class*="skeleton"], [data-slot="skeleton"]').length).toBeGreaterThan(0);
+    expect(
+      container.querySelectorAll('[class*="skeleton"], [data-slot="skeleton"]').length
+    ).toBeGreaterThan(0);
   });
 });

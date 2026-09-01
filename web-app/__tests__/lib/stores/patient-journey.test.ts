@@ -36,7 +36,11 @@ describe('usePatientJourneyStore', () => {
   it('tracks outpatient flow from registration through consultation', () => {
     const store = usePatientJourneyStore.getState();
     store.registerPatient({ id: 1, mrn: 'MRN-001', name: 'John Doe', gender: 'M' });
-    store.checkInPatient(1, { encounter_id: 10, encounter_type: 'OPD', chief_complaint: 'Headache' });
+    store.checkInPatient(1, {
+      encounter_id: 10,
+      encounter_type: 'OPD',
+      chief_complaint: 'Headache',
+    });
     store.addToWaitingQueue(1);
     store.startTriage(1);
     store.completeTriage(1, {
@@ -69,10 +73,21 @@ describe('usePatientJourneyStore', () => {
     store.addLabOrder(2, { id: 101, test_name: 'CBC', status: 'PENDING', is_urgent: true });
     store.markLabCollected(2, 101);
     store.markLabCompleted(2, 101);
-    store.addImagingOrder(2, { id: 201, modality: 'XRAY', body_part: 'Chest', status: 'PENDING', is_urgent: false });
+    store.addImagingOrder(2, {
+      id: 201,
+      modality: 'XRAY',
+      body_part: 'Chest',
+      status: 'PENDING',
+      is_urgent: false,
+    });
     store.markImagingPerformed(2, 201);
     store.markImagingReported(2, 201);
-    store.addPharmacyOrder(2, { id: 301, prescription_id: 55, medication_count: 2, status: 'PENDING' });
+    store.addPharmacyOrder(2, {
+      id: 301,
+      prescription_id: 55,
+      medication_count: 2,
+      status: 'PENDING',
+    });
     store.markPharmacyReady(2, 301);
     store.markPharmacyDispensed(2, 301);
     store.setBilling(2, {
@@ -84,7 +99,11 @@ describe('usePatientJourneyStore', () => {
       last_updated: '',
     });
     store.updateBillingStatus(2, 'PAID', 2000);
-    store.recommendAdmission(2, { recommendation_id: 88, recommended_by: 'Dr. Smith', reason: 'Observation' });
+    store.recommendAdmission(2, {
+      recommendation_id: 88,
+      recommended_by: 'Dr. Smith',
+      reason: 'Observation',
+    });
     store.assignBed(2, 'B-01', 'Medical Ward');
     store.admitPatient(2, 500);
     store.startDischargePlanning(2);

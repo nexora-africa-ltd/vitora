@@ -44,10 +44,20 @@ import { CLINIC_PRIORITY_CONFIG } from '@/lib/types/clinic';
 const formSchema = z.object({
   target_clinic_id: z.number({ required_error: 'Please select a clinic' }),
   reason: z.string().min(5, 'Please provide a reason for the referral'),
-  priority: z.enum([
-    'EMERGENCY', 'URGENT', 'PRIORITY', 'STANDARD', 'NON_URGENT',
-    'RED', 'ORANGE', 'YELLOW', 'GREEN', 'BLUE',
-  ]).optional(),
+  priority: z
+    .enum([
+      'EMERGENCY',
+      'URGENT',
+      'PRIORITY',
+      'STANDARD',
+      'NON_URGENT',
+      'RED',
+      'ORANGE',
+      'YELLOW',
+      'GREEN',
+      'BLUE',
+    ])
+    .optional(),
   notes: z.string().optional(),
 });
 
@@ -99,10 +109,11 @@ export function ReferPatientDialog({
         });
         form.reset();
         onSuccess();
-      } catch (error: any) {
+      } catch (error: unknown) {
+        const apiError = error as { response?: { data?: { detail?: string } } };
         toast({
           title: 'Error',
-          description: error?.response?.data?.detail || 'Failed to refer patient.',
+          description: apiError.response?.data?.detail || 'Failed to refer patient.',
           variant: 'destructive',
         });
       }
@@ -119,7 +130,9 @@ export function ReferPatientDialog({
               <ArrowRight className="h-5 w-5" />
               Refer Patient
             </DialogTitle>
-            <HelpPopover content={`Refer ${visit.patient.full_name} to another clinic for continuing care.`} />
+            <HelpPopover
+              content={`Refer ${visit.patient.full_name} to another clinic for continuing care.`}
+            />
           </div>
         </DialogHeader>
 
@@ -225,11 +238,7 @@ export function ReferPatientDialog({
             />
 
             <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => onOpenChange(false)}
-              >
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Cancel
               </Button>
               <Button type="submit" disabled={referring}>

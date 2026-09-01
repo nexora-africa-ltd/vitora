@@ -25,7 +25,13 @@ const mockTemplate: ClinicalTemplate = {
         fields: [
           { name: 'chief_complaint', type: 'text', label: 'Chief Complaint', required: true },
           { name: 'duration', type: 'text', label: 'Duration', required: false },
-          { name: 'severity', type: 'select', label: 'Severity', required: false, options: ['Mild', 'Moderate', 'Severe'] },
+          {
+            name: 'severity',
+            type: 'select',
+            label: 'Severity',
+            required: false,
+            options: ['Mild', 'Moderate', 'Severe'],
+          },
         ],
       },
       {
@@ -56,51 +62,27 @@ describe('ClinicalTemplateForm', () => {
   });
 
   it('should render template name and description', () => {
-    render(
-      <ClinicalTemplateForm
-        template={mockTemplate}
-        value={{}}
-        onChange={mockOnChange}
-      />
-    );
+    render(<ClinicalTemplateForm template={mockTemplate} value={{}} onChange={mockOnChange} />);
 
     expect(screen.getByText('Test Assessment Template')).toBeInTheDocument();
     expect(screen.getByText('A test template for unit tests')).toBeInTheDocument();
   });
 
   it('should render all sections', () => {
-    render(
-      <ClinicalTemplateForm
-        template={mockTemplate}
-        value={{}}
-        onChange={mockOnChange}
-      />
-    );
+    render(<ClinicalTemplateForm template={mockTemplate} value={{}} onChange={mockOnChange} />);
 
     expect(screen.getByText('Patient History')).toBeInTheDocument();
     expect(screen.getByText('Examination')).toBeInTheDocument();
   });
 
   it('should render text input field', () => {
-    render(
-      <ClinicalTemplateForm
-        template={mockTemplate}
-        value={{}}
-        onChange={mockOnChange}
-      />
-    );
+    render(<ClinicalTemplateForm template={mockTemplate} value={{}} onChange={mockOnChange} />);
 
     expect(screen.getByLabelText(/chief complaint/i)).toBeInTheDocument();
   });
 
   it('should mark required fields with asterisk', () => {
-    render(
-      <ClinicalTemplateForm
-        template={mockTemplate}
-        value={{}}
-        onChange={mockOnChange}
-      />
-    );
+    render(<ClinicalTemplateForm template={mockTemplate} value={{}} onChange={mockOnChange} />);
 
     // Required field should have asterisk in label
     const chiefComplaintLabel = screen.getByText(/chief complaint/i);
@@ -109,13 +91,7 @@ describe('ClinicalTemplateForm', () => {
 
   it('should call onChange when text field is updated', async () => {
     const user = userEvent.setup();
-    render(
-      <ClinicalTemplateForm
-        template={mockTemplate}
-        value={{}}
-        onChange={mockOnChange}
-      />
-    );
+    render(<ClinicalTemplateForm template={mockTemplate} value={{}} onChange={mockOnChange} />);
 
     const input = screen.getByLabelText(/chief complaint/i);
     await user.type(input, 'H');
@@ -127,38 +103,20 @@ describe('ClinicalTemplateForm', () => {
   });
 
   it('should render select field with options', () => {
-    render(
-      <ClinicalTemplateForm
-        template={mockTemplate}
-        value={{}}
-        onChange={mockOnChange}
-      />
-    );
+    render(<ClinicalTemplateForm template={mockTemplate} value={{}} onChange={mockOnChange} />);
 
     // Find the severity label
     expect(screen.getByText(/severity/i)).toBeInTheDocument();
   });
 
   it('should render textarea field', () => {
-    render(
-      <ClinicalTemplateForm
-        template={mockTemplate}
-        value={{}}
-        onChange={mockOnChange}
-      />
-    );
+    render(<ClinicalTemplateForm template={mockTemplate} value={{}} onChange={mockOnChange} />);
 
     expect(screen.getByLabelText(/examination findings/i)).toBeInTheDocument();
   });
 
   it('should render checkbox for boolean field', () => {
-    render(
-      <ClinicalTemplateForm
-        template={mockTemplate}
-        value={{}}
-        onChange={mockOnChange}
-      />
-    );
+    render(<ClinicalTemplateForm template={mockTemplate} value={{}} onChange={mockOnChange} />);
 
     expect(screen.getByLabelText(/normal examination/i)).toBeInTheDocument();
   });
@@ -183,12 +141,7 @@ describe('ClinicalTemplateForm', () => {
 
   it('should disable all fields when disabled prop is true', () => {
     render(
-      <ClinicalTemplateForm
-        template={mockTemplate}
-        value={{}}
-        onChange={mockOnChange}
-        disabled
-      />
+      <ClinicalTemplateForm template={mockTemplate} value={{}} onChange={mockOnChange} disabled />
     );
 
     expect(screen.getByLabelText(/chief complaint/i)).toBeDisabled();
@@ -213,13 +166,7 @@ describe('ClinicalTemplateForm', () => {
   });
 
   it('should show specialty badge', () => {
-    render(
-      <ClinicalTemplateForm
-        template={mockTemplate}
-        value={{}}
-        onChange={mockOnChange}
-      />
-    );
+    render(<ClinicalTemplateForm template={mockTemplate} value={{}} onChange={mockOnChange} />);
 
     expect(screen.getByText('General Practice')).toBeInTheDocument();
   });

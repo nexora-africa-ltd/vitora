@@ -106,11 +106,7 @@ const createTestQueryClient = () =>
 const createWrapper = () => {
   const queryClient = createTestQueryClient();
   return function Wrapper({ children }: { children: React.ReactNode }) {
-    return (
-      <QueryClientProvider client={queryClient}>
-        {children}
-      </QueryClientProvider>
-    );
+    return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
   };
 };
 
@@ -317,9 +313,7 @@ describe('PhysioOrderTable - Search', () => {
     await user.type(searchInput, 'John');
     await user.click(screen.getByRole('button', { name: /search/i }));
 
-    expect(mockUsePhysioOrders).toHaveBeenCalledWith(
-      expect.objectContaining({ search: 'John' })
-    );
+    expect(mockUsePhysioOrders).toHaveBeenCalledWith(expect.objectContaining({ search: 'John' }));
   });
 });
 
@@ -339,13 +333,17 @@ describe('PhysioOrderTable - Filters', () => {
   it('should render status filter', () => {
     renderWithWrapper(<PhysioOrderTable />);
 
-    expect(screen.getByRole('combobox', { name: /status/i }) || screen.getByText(/all status/i)).toBeTruthy();
+    expect(
+      screen.getByRole('combobox', { name: /status/i }) || screen.getByText(/all status/i)
+    ).toBeTruthy();
   });
 
   it('should render priority filter', () => {
     renderWithWrapper(<PhysioOrderTable />);
 
-    expect(screen.getByRole('combobox', { name: /priority/i }) || screen.getByText(/all priority/i)).toBeTruthy();
+    expect(
+      screen.getByRole('combobox', { name: /priority/i }) || screen.getByText(/all priority/i)
+    ).toBeTruthy();
   });
 });
 

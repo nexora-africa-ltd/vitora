@@ -4,7 +4,12 @@ import type { RevenueData } from '@/lib/types/dashboard';
 
 // Mock the charts library components
 jest.mock('@/components/charts', () => ({
-  DonutChart: ({ data, showLegend, centerLabelTitle, centerLabelValue }: {
+  DonutChart: ({
+    data,
+    showLegend,
+    centerLabelTitle,
+    centerLabelValue,
+  }: {
     data: Array<{ name: string; value: number }>;
     showLegend?: boolean;
     centerLabelTitle?: string;

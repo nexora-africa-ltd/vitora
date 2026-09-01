@@ -20,12 +20,7 @@ describe('PageHeader Component', () => {
   });
 
   it('should render description when provided', () => {
-    render(
-      <PageHeader
-        title="Patients"
-        description="Manage patient records"
-      />
-    );
+    render(<PageHeader title="Patients" description="Manage patient records" />);
 
     // Description is now shown in HelpPopover, not as visible text
     // Check that HelpPopover is rendered
@@ -43,12 +38,7 @@ describe('PageHeader Component', () => {
   });
 
   it('should render actions when provided', () => {
-    render(
-      <PageHeader
-        title="Patients"
-        actions={<button>Add Patient</button>}
-      />
-    );
+    render(<PageHeader title="Patients" actions={<button>Add Patient</button>} />);
 
     expect(screen.getByRole('button', { name: 'Add Patient' })).toBeInTheDocument();
   });
@@ -86,27 +76,23 @@ describe('PageHeader Component', () => {
   });
 
   it('should have description with muted styling', () => {
-    render(
-      <PageHeader
-        title="Test"
-        description="Test description"
-      />
-    );
+    render(<PageHeader title="Test" description="Test description" />);
 
     // Description is now in HelpPopover, check popover trigger exists
     expect(screen.getByRole('button', { name: /help/i })).toBeInTheDocument();
   });
 
   it('should have responsive layout classes', () => {
-    const { container } = render(
-      <PageHeader
-        title="Test"
-        actions={<button>Action</button>}
-      />
-    );
+    const { container } = render(<PageHeader title="Test" actions={<button>Action</button>} />);
 
     const wrapper = container.firstChild;
     // Classes use sm: breakpoint now (not md:)
-    expect(wrapper).toHaveClass('flex', 'flex-col', 'sm:flex-row', 'sm:items-center', 'sm:justify-between');
+    expect(wrapper).toHaveClass(
+      'flex',
+      'flex-col',
+      'sm:flex-row',
+      'sm:items-center',
+      'sm:justify-between'
+    );
   });
 });

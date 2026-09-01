@@ -116,10 +116,11 @@ export function AddToQueueDialog({
         form.reset();
         setSearchQuery('');
         onSuccess();
-      } catch (error: any) {
+      } catch (error: unknown) {
+        const apiError = error as { response?: { data?: { detail?: string } } };
         toast({
           title: 'Error',
-          description: error?.response?.data?.detail || 'Failed to add patient to queue.',
+          description: apiError.response?.data?.detail || 'Failed to add patient to queue.',
           variant: 'destructive',
         });
       }
@@ -161,7 +162,7 @@ export function AddToQueueDialog({
 
               {/* Search Results */}
               {debouncedSearch.length >= 2 && (
-                <div className="max-h-[200px] overflow-y-auto space-y-2">
+                <div className="max-h-[200px] space-y-2 overflow-y-auto">
                   {searchingPatients ? (
                     <div className="space-y-2">
                       <Skeleton className="h-16" />
@@ -178,9 +179,7 @@ export function AddToQueueDialog({
                       <Card
                         key={patient.id}
                         className={`cursor-pointer transition-all hover:border-primary ${
-                          selectedPatientId === patient.id
-                            ? 'border-primary bg-primary/5'
-                            : ''
+                          selectedPatientId === patient.id ? 'border-primary bg-primary/5' : ''
                         }`}
                         onClick={() => handleSelectPatient(patient.id)}
                       >
@@ -190,7 +189,8 @@ export function AddToQueueDialog({
                               {patient.first_name} {patient.last_name}
                             </p>
                             <p className="text-sm text-muted-foreground">
-                              {patient.mrn} • {patient.age ? `${patient.age}y` : ''} {patient.gender}
+                              {patient.mrn} • {patient.age ? `${patient.age}y` : ''}{' '}
+                              {patient.gender}
                             </p>
                           </div>
                           {selectedPatientId === patient.id && (
@@ -204,7 +204,7 @@ export function AddToQueueDialog({
               )}
 
               {form.formState.errors.patient_id && (
-                <p className="text-sm text-destructive flex items-center gap-1">
+                <p className="flex items-center gap-1 text-sm text-destructive">
                   <AlertCircle className="h-3 w-3" />
                   {form.formState.errors.patient_id.message}
                 </p>
@@ -334,11 +334,7 @@ export function AddToQueueDialog({
             />
 
             <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => onOpenChange(false)}
-              >
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Cancel
               </Button>
               <Button type="submit" disabled={adding || !selectedPatientId}>

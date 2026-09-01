@@ -193,7 +193,7 @@ describe('getApiErrorMessage', () => {
       data: { detail: 'Invalid request data' },
       statusText: 'Bad Request',
       headers: {},
-      config: {} as any,
+      config: {} as unknown,
     };
 
     expect(getApiErrorMessage(error)).toBe('Invalid request data');
@@ -206,7 +206,7 @@ describe('getApiErrorMessage', () => {
       data: { error: "Cannot release an encounter with status 'CANCELLED'." },
       statusText: 'Bad Request',
       headers: {},
-      config: {} as any,
+      config: {} as unknown,
     };
 
     expect(getApiErrorMessage(error)).toBe("Cannot release an encounter with status 'CANCELLED'.");
@@ -219,7 +219,7 @@ describe('getApiErrorMessage', () => {
       data: { message: 'Something went wrong' },
       statusText: 'Internal Server Error',
       headers: {},
-      config: {} as any,
+      config: {} as unknown,
     };
 
     expect(getApiErrorMessage(error)).toBe('Something went wrong');
@@ -235,7 +235,7 @@ describe('getApiErrorMessage', () => {
       },
       statusText: 'Bad Request',
       headers: {},
-      config: {} as any,
+      config: {} as unknown,
     };
 
     const result = getApiErrorMessage(error);
@@ -252,7 +252,7 @@ describe('getApiErrorMessage', () => {
       },
       statusText: 'Bad Request',
       headers: {},
-      config: {} as any,
+      config: {} as unknown,
     };
 
     expect(getApiErrorMessage(error)).toBe('Invalid credentials');
@@ -268,7 +268,7 @@ describe('getApiErrorMessage', () => {
       },
       statusText: 'Bad Request',
       headers: {},
-      config: {} as any,
+      config: {} as unknown,
     };
 
     expect(getApiErrorMessage(error)).toBe('Authentication failed');

@@ -185,7 +185,9 @@ describe('Tabs Component', () => {
       render(
         <Tabs defaultValue="tab1">
           <TabsList>
-            <TabsTrigger value="tab1" className="custom-trigger">Tab 1</TabsTrigger>
+            <TabsTrigger value="tab1" className="custom-trigger">
+              Tab 1
+            </TabsTrigger>
           </TabsList>
           <TabsContent value="tab1">Content</TabsContent>
         </Tabs>

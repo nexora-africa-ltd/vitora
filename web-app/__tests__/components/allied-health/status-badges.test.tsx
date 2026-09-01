@@ -5,10 +5,7 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import {
-  OrderStatusBadge,
-  SessionStatusBadge,
-} from '@/components/allied-health/status-badges';
+import { OrderStatusBadge, SessionStatusBadge } from '@/components/allied-health/status-badges';
 import { PriorityBadge } from '@/components/allied-health/priority-badge';
 
 describe('OrderStatusBadge', () => {

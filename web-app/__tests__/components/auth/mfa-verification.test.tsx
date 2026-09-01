@@ -250,9 +250,7 @@ describe('MFAVerification', () => {
     it('should show loading state during verification', async () => {
       const user = userEvent.setup();
       // Delay the verification
-      mockVerifyMFA.mockImplementation(
-        () => new Promise((resolve) => setTimeout(resolve, 100))
-      );
+      mockVerifyMFA.mockImplementation(() => new Promise((resolve) => setTimeout(resolve, 100)));
 
       render(<MFAVerification mfaToken={mockMfaToken} onCancel={mockOnCancel} />);
 
@@ -300,10 +298,7 @@ describe('MFAVerification', () => {
       fireEvent.click(verifyButton);
 
       await waitFor(() => {
-        expect(mockVerifyMFA).toHaveBeenCalledWith(
-          mockMfaToken,
-          { backupCode: 'ABCD-1234' }
-        );
+        expect(mockVerifyMFA).toHaveBeenCalledWith(mockMfaToken, { backupCode: 'ABCD-1234' });
       });
     });
 
@@ -325,7 +320,7 @@ describe('MFAVerification', () => {
 
     it('should show error on backup code verification failure', async () => {
       // Wait for any pending async effects (100ms setTimeout) from prior tests to settle
-      await new Promise(resolve => setTimeout(resolve, 150));
+      await new Promise((resolve) => setTimeout(resolve, 150));
       mockReplace.mockClear();
 
       mockVerifyMFA.mockRejectedValueOnce(new Error('Invalid backup code'));

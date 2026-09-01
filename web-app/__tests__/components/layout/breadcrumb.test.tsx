@@ -36,6 +36,6 @@ describe('Breadcrumb', () => {
     expect(patientsLink).toHaveAttribute('href', '/patients');
     // Current page (#123) should not be a link - get all and check at least one is a SPAN
     const currentPages = screen.getAllByText('#123');
-    expect(currentPages.some(el => el.tagName === 'SPAN')).toBe(true);
+    expect(currentPages.some((el) => el.tagName === 'SPAN')).toBe(true);
   });
 });

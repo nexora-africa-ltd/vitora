@@ -155,20 +155,31 @@ describe('social work query hooks', () => {
   });
 
   it('fetches referrals, cases, notes, and interventions', async () => {
-    mockSocialWorkApi.listReferrals.mockResolvedValueOnce({ count: 1, results: [mockReferral] } as never);
+    mockSocialWorkApi.listReferrals.mockResolvedValueOnce({
+      count: 1,
+      results: [mockReferral],
+    } as never);
     mockSocialWorkApi.getReferral.mockResolvedValueOnce(mockReferral as never);
     mockSocialWorkApi.getReferralByNumber.mockResolvedValueOnce(mockReferral as never);
     mockSocialWorkApi.listCases.mockResolvedValueOnce({ count: 1, results: [mockCase] } as never);
     mockSocialWorkApi.getCase.mockResolvedValueOnce(mockCase as never);
     mockSocialWorkApi.getCaseByNumber.mockResolvedValueOnce(mockCase as never);
-    mockSocialWorkApi.listCaseNotes.mockResolvedValueOnce({ count: 1, results: [mockCaseNote] } as never);
+    mockSocialWorkApi.listCaseNotes.mockResolvedValueOnce({
+      count: 1,
+      results: [mockCaseNote],
+    } as never);
     mockSocialWorkApi.getCaseNotes.mockResolvedValueOnce([mockCaseNote] as never);
     mockSocialWorkApi.getCaseNote.mockResolvedValueOnce(mockCaseNote as never);
-    mockSocialWorkApi.listInterventions.mockResolvedValueOnce({ count: 1, results: [mockIntervention] } as never);
+    mockSocialWorkApi.listInterventions.mockResolvedValueOnce({
+      count: 1,
+      results: [mockIntervention],
+    } as never);
     mockSocialWorkApi.getCaseInterventions.mockResolvedValueOnce([mockIntervention] as never);
     mockSocialWorkApi.getIntervention.mockResolvedValueOnce(mockIntervention as never);
 
-    const referrals = renderHook(() => useSWReferrals({ status: 'PENDING' as never }), { wrapper: createWrapper().wrapper });
+    const referrals = renderHook(() => useSWReferrals({ status: 'PENDING' as never }), {
+      wrapper: createWrapper().wrapper,
+    });
     await waitFor(() => expect(referrals.result.current.isSuccess).toBe(true));
     expect(mockSocialWorkApi.listReferrals).toHaveBeenCalledWith({ status: 'PENDING' });
 
@@ -176,11 +187,15 @@ describe('social work query hooks', () => {
     await waitFor(() => expect(referral.result.current.isSuccess).toBe(true));
     expect(mockSocialWorkApi.getReferral).toHaveBeenCalledWith(4);
 
-    const referralByNumber = renderHook(() => useSWReferralByNumber('SW-20260315-0001'), { wrapper: createWrapper().wrapper });
+    const referralByNumber = renderHook(() => useSWReferralByNumber('SW-20260315-0001'), {
+      wrapper: createWrapper().wrapper,
+    });
     await waitFor(() => expect(referralByNumber.result.current.isSuccess).toBe(true));
     expect(mockSocialWorkApi.getReferralByNumber).toHaveBeenCalledWith('SW-20260315-0001');
 
-    const cases = renderHook(() => useSWCases({ status: 'OPEN' as never }), { wrapper: createWrapper().wrapper });
+    const cases = renderHook(() => useSWCases({ status: 'OPEN' as never }), {
+      wrapper: createWrapper().wrapper,
+    });
     await waitFor(() => expect(cases.result.current.isSuccess).toBe(true));
     expect(mockSocialWorkApi.listCases).toHaveBeenCalledWith({ status: 'OPEN' });
 
@@ -188,15 +203,21 @@ describe('social work query hooks', () => {
     await waitFor(() => expect(oneCase.result.current.isSuccess).toBe(true));
     expect(mockSocialWorkApi.getCase).toHaveBeenCalledWith(8);
 
-    const caseByNumber = renderHook(() => useSWCaseByNumber('SWC-20260315-0001'), { wrapper: createWrapper().wrapper });
+    const caseByNumber = renderHook(() => useSWCaseByNumber('SWC-20260315-0001'), {
+      wrapper: createWrapper().wrapper,
+    });
     await waitFor(() => expect(caseByNumber.result.current.isSuccess).toBe(true));
     expect(mockSocialWorkApi.getCaseByNumber).toHaveBeenCalledWith('SWC-20260315-0001');
 
-    const notes = renderHook(() => useCaseNotes({ case_id: 8 } as never), { wrapper: createWrapper().wrapper });
+    const notes = renderHook(() => useCaseNotes({ case_id: 8 } as never), {
+      wrapper: createWrapper().wrapper,
+    });
     await waitFor(() => expect(notes.result.current.isSuccess).toBe(true));
     expect(mockSocialWorkApi.listCaseNotes).toHaveBeenCalledWith({ case_id: 8 });
 
-    const notesByCase = renderHook(() => useCaseNotesByCaseId(8), { wrapper: createWrapper().wrapper });
+    const notesByCase = renderHook(() => useCaseNotesByCaseId(8), {
+      wrapper: createWrapper().wrapper,
+    });
     await waitFor(() => expect(notesByCase.result.current.isSuccess).toBe(true));
     expect(mockSocialWorkApi.getCaseNotes).toHaveBeenCalledWith(8);
 
@@ -204,15 +225,21 @@ describe('social work query hooks', () => {
     await waitFor(() => expect(note.result.current.isSuccess).toBe(true));
     expect(mockSocialWorkApi.getCaseNote).toHaveBeenCalledWith(11);
 
-    const interventions = renderHook(() => useInterventions({ case_id: 8 } as never), { wrapper: createWrapper().wrapper });
+    const interventions = renderHook(() => useInterventions({ case_id: 8 } as never), {
+      wrapper: createWrapper().wrapper,
+    });
     await waitFor(() => expect(interventions.result.current.isSuccess).toBe(true));
     expect(mockSocialWorkApi.listInterventions).toHaveBeenCalledWith({ case_id: 8 });
 
-    const interventionsByCase = renderHook(() => useInterventionsByCaseId(8), { wrapper: createWrapper().wrapper });
+    const interventionsByCase = renderHook(() => useInterventionsByCaseId(8), {
+      wrapper: createWrapper().wrapper,
+    });
     await waitFor(() => expect(interventionsByCase.result.current.isSuccess).toBe(true));
     expect(mockSocialWorkApi.getCaseInterventions).toHaveBeenCalledWith(8);
 
-    const intervention = renderHook(() => useIntervention(14), { wrapper: createWrapper().wrapper });
+    const intervention = renderHook(() => useIntervention(14), {
+      wrapper: createWrapper().wrapper,
+    });
     await waitFor(() => expect(intervention.result.current.isSuccess).toBe(true));
     expect(mockSocialWorkApi.getIntervention).toHaveBeenCalledWith(14);
   });
@@ -245,18 +272,102 @@ describe('social work mutation hooks', () => {
 
   it('invalidates referral and case queries for referral and case mutations', async () => {
     const cases = [
-      { useHook: useCreateSWReferral, apiMock: mockSocialWorkApi.createReferral, input: { patient_id: 1, encounter_id: 100, reason: 'FINANCIAL' }, calledWith: [{ patient_id: 1, encounter_id: 100, reason: 'FINANCIAL' }], resolved: mockReferral, keys: [socialWorkKeys.referrals()] },
-      { useHook: useUpdateSWReferral, apiMock: mockSocialWorkApi.updateReferral, input: { id: 4, data: { urgency: 'URGENT' } }, calledWith: [4, { urgency: 'URGENT' }], resolved: mockReferral, keys: [socialWorkKeys.referral(4), socialWorkKeys.referrals()] },
-      { useHook: useDeleteSWReferral, apiMock: mockSocialWorkApi.deleteReferral, input: 4, calledWith: [4], resolved: undefined, keys: [socialWorkKeys.referrals()] },
-      { useHook: useAcceptSWReferral, apiMock: mockSocialWorkApi.acceptReferral, input: 4, calledWith: [4], resolved: { ...mockReferral, status: 'ACCEPTED' }, keys: [socialWorkKeys.referral(4), socialWorkKeys.referrals()] },
-      { useHook: useRejectSWReferral, apiMock: mockSocialWorkApi.rejectReferral, input: { id: 4, reason: 'Duplicate' }, calledWith: [4, 'Duplicate'], resolved: { ...mockReferral, status: 'DECLINED' }, keys: [socialWorkKeys.referral(4), socialWorkKeys.referrals()] },
-      { useHook: useAssignSWWorker, apiMock: mockSocialWorkApi.assignWorker, input: { id: 4, workerId: 22 }, calledWith: [4, 22], resolved: mockReferral, keys: [socialWorkKeys.referral(4), socialWorkKeys.referrals()] },
-      { useHook: useCreateCaseFromReferral, apiMock: mockSocialWorkApi.createCaseFromReferral, input: { referralId: 4, caseData: { case_plan: 'Support plan' } }, calledWith: [4, { case_plan: 'Support plan' }], resolved: mockCase, keys: [socialWorkKeys.referral(4), socialWorkKeys.referrals(), socialWorkKeys.cases()] },
-      { useHook: useCreateSWCase, apiMock: mockSocialWorkApi.createCase, input: { patient_id: 1, case_plan: 'Support plan' }, calledWith: [{ patient_id: 1, case_plan: 'Support plan' }], resolved: mockCase, keys: [socialWorkKeys.cases(), socialWorkKeys.referrals()] },
-      { useHook: useUpdateSWCase, apiMock: mockSocialWorkApi.updateCase, input: { id: 8, data: { case_plan: 'Updated plan' } }, calledWith: [8, { case_plan: 'Updated plan' }], resolved: mockCase, keys: [socialWorkKeys.case(8), socialWorkKeys.cases()] },
-      { useHook: useDeleteSWCase, apiMock: mockSocialWorkApi.deleteCase, input: 8, calledWith: [8], resolved: undefined, keys: [socialWorkKeys.cases()] },
-      { useHook: useCloseSWCase, apiMock: mockSocialWorkApi.closeCase, input: { id: 8, closureReason: 'GOALS_MET', outcomeSummary: 'Stable housing secured' }, calledWith: [8, 'GOALS_MET', 'Stable housing secured'], resolved: { ...mockCase, status: 'CLOSED' }, keys: [socialWorkKeys.case(8), socialWorkKeys.cases()] },
-      { useHook: useReopenSWCase, apiMock: mockSocialWorkApi.reopenCase, input: { id: 8, reason: 'Needs follow-up' }, calledWith: [8, 'Needs follow-up'], resolved: { ...mockCase, status: 'OPEN' }, keys: [socialWorkKeys.case(8), socialWorkKeys.cases()] },
+      {
+        useHook: useCreateSWReferral,
+        apiMock: mockSocialWorkApi.createReferral,
+        input: { patient_id: 1, encounter_id: 100, reason: 'FINANCIAL' },
+        calledWith: [{ patient_id: 1, encounter_id: 100, reason: 'FINANCIAL' }],
+        resolved: mockReferral,
+        keys: [socialWorkKeys.referrals()],
+      },
+      {
+        useHook: useUpdateSWReferral,
+        apiMock: mockSocialWorkApi.updateReferral,
+        input: { id: 4, data: { urgency: 'URGENT' } },
+        calledWith: [4, { urgency: 'URGENT' }],
+        resolved: mockReferral,
+        keys: [socialWorkKeys.referral(4), socialWorkKeys.referrals()],
+      },
+      {
+        useHook: useDeleteSWReferral,
+        apiMock: mockSocialWorkApi.deleteReferral,
+        input: 4,
+        calledWith: [4],
+        resolved: undefined,
+        keys: [socialWorkKeys.referrals()],
+      },
+      {
+        useHook: useAcceptSWReferral,
+        apiMock: mockSocialWorkApi.acceptReferral,
+        input: 4,
+        calledWith: [4],
+        resolved: { ...mockReferral, status: 'ACCEPTED' },
+        keys: [socialWorkKeys.referral(4), socialWorkKeys.referrals()],
+      },
+      {
+        useHook: useRejectSWReferral,
+        apiMock: mockSocialWorkApi.rejectReferral,
+        input: { id: 4, reason: 'Duplicate' },
+        calledWith: [4, 'Duplicate'],
+        resolved: { ...mockReferral, status: 'DECLINED' },
+        keys: [socialWorkKeys.referral(4), socialWorkKeys.referrals()],
+      },
+      {
+        useHook: useAssignSWWorker,
+        apiMock: mockSocialWorkApi.assignWorker,
+        input: { id: 4, workerId: 22 },
+        calledWith: [4, 22],
+        resolved: mockReferral,
+        keys: [socialWorkKeys.referral(4), socialWorkKeys.referrals()],
+      },
+      {
+        useHook: useCreateCaseFromReferral,
+        apiMock: mockSocialWorkApi.createCaseFromReferral,
+        input: { referralId: 4, caseData: { case_plan: 'Support plan' } },
+        calledWith: [4, { case_plan: 'Support plan' }],
+        resolved: mockCase,
+        keys: [socialWorkKeys.referral(4), socialWorkKeys.referrals(), socialWorkKeys.cases()],
+      },
+      {
+        useHook: useCreateSWCase,
+        apiMock: mockSocialWorkApi.createCase,
+        input: { patient_id: 1, case_plan: 'Support plan' },
+        calledWith: [{ patient_id: 1, case_plan: 'Support plan' }],
+        resolved: mockCase,
+        keys: [socialWorkKeys.cases(), socialWorkKeys.referrals()],
+      },
+      {
+        useHook: useUpdateSWCase,
+        apiMock: mockSocialWorkApi.updateCase,
+        input: { id: 8, data: { case_plan: 'Updated plan' } },
+        calledWith: [8, { case_plan: 'Updated plan' }],
+        resolved: mockCase,
+        keys: [socialWorkKeys.case(8), socialWorkKeys.cases()],
+      },
+      {
+        useHook: useDeleteSWCase,
+        apiMock: mockSocialWorkApi.deleteCase,
+        input: 8,
+        calledWith: [8],
+        resolved: undefined,
+        keys: [socialWorkKeys.cases()],
+      },
+      {
+        useHook: useCloseSWCase,
+        apiMock: mockSocialWorkApi.closeCase,
+        input: { id: 8, closureReason: 'GOALS_MET', outcomeSummary: 'Stable housing secured' },
+        calledWith: [8, 'GOALS_MET', 'Stable housing secured'],
+        resolved: { ...mockCase, status: 'CLOSED' },
+        keys: [socialWorkKeys.case(8), socialWorkKeys.cases()],
+      },
+      {
+        useHook: useReopenSWCase,
+        apiMock: mockSocialWorkApi.reopenCase,
+        input: { id: 8, reason: 'Needs follow-up' },
+        calledWith: [8, 'Needs follow-up'],
+        resolved: { ...mockCase, status: 'OPEN' },
+        keys: [socialWorkKeys.case(8), socialWorkKeys.cases()],
+      },
     ];
 
     for (const testCase of cases) {
@@ -275,15 +386,82 @@ describe('social work mutation hooks', () => {
 
   it('invalidates note and intervention queries for note and intervention mutations', async () => {
     const cases = [
-      { useHook: useCreateCaseNote, apiMock: mockSocialWorkApi.createCaseNote, input: { case: 8, content: 'Initial note' }, calledWith: [{ case: 8, content: 'Initial note' }], resolved: mockCaseNote, keys: [socialWorkKeys.notes(), socialWorkKeys.caseNotes(8), socialWorkKeys.case(8)] },
-      { useHook: useUpdateCaseNote, apiMock: mockSocialWorkApi.updateCaseNote, input: { id: 11, data: { content: 'Updated note' } }, calledWith: [11, { content: 'Updated note' }], resolved: mockCaseNote, keys: [socialWorkKeys.note(11), socialWorkKeys.notes()] },
-      { useHook: useDeleteCaseNote, apiMock: mockSocialWorkApi.deleteCaseNote, input: 11, calledWith: [11], resolved: undefined, keys: [socialWorkKeys.notes()] },
-      { useHook: useCreateIntervention, apiMock: mockSocialWorkApi.createIntervention, input: { case: 8, description: 'Linked to NHIF desk' }, calledWith: [{ case: 8, description: 'Linked to NHIF desk' }], resolved: mockIntervention, keys: [socialWorkKeys.interventions(), socialWorkKeys.caseInterventions(8), socialWorkKeys.case(8)] },
-      { useHook: useUpdateIntervention, apiMock: mockSocialWorkApi.updateIntervention, input: { id: 14, data: { description: 'Updated intervention' } }, calledWith: [14, { description: 'Updated intervention' }], resolved: mockIntervention, keys: [socialWorkKeys.intervention(14), socialWorkKeys.interventions()] },
-      { useHook: useDeleteIntervention, apiMock: mockSocialWorkApi.deleteIntervention, input: 14, calledWith: [14], resolved: undefined, keys: [socialWorkKeys.interventions()] },
-      { useHook: useStartIntervention, apiMock: mockSocialWorkApi.startIntervention, input: 14, calledWith: [14], resolved: { ...mockIntervention, status: 'IN_PROGRESS' }, keys: [socialWorkKeys.intervention(14), socialWorkKeys.interventions()] },
-      { useHook: useCompleteIntervention, apiMock: mockSocialWorkApi.completeIntervention, input: { id: 14, outcome: 'Patient enrolled' }, calledWith: [14, 'Patient enrolled'], resolved: { ...mockIntervention, status: 'COMPLETED' }, keys: [socialWorkKeys.intervention(14), socialWorkKeys.interventions()] },
-      { useHook: useCancelIntervention, apiMock: mockSocialWorkApi.cancelIntervention, input: { id: 14, reason: 'Not needed' }, calledWith: [14, 'Not needed'], resolved: { ...mockIntervention, status: 'CANCELLED' }, keys: [socialWorkKeys.intervention(14), socialWorkKeys.interventions()] },
+      {
+        useHook: useCreateCaseNote,
+        apiMock: mockSocialWorkApi.createCaseNote,
+        input: { case: 8, content: 'Initial note' },
+        calledWith: [{ case: 8, content: 'Initial note' }],
+        resolved: mockCaseNote,
+        keys: [socialWorkKeys.notes(), socialWorkKeys.caseNotes(8), socialWorkKeys.case(8)],
+      },
+      {
+        useHook: useUpdateCaseNote,
+        apiMock: mockSocialWorkApi.updateCaseNote,
+        input: { id: 11, data: { content: 'Updated note' } },
+        calledWith: [11, { content: 'Updated note' }],
+        resolved: mockCaseNote,
+        keys: [socialWorkKeys.note(11), socialWorkKeys.notes()],
+      },
+      {
+        useHook: useDeleteCaseNote,
+        apiMock: mockSocialWorkApi.deleteCaseNote,
+        input: 11,
+        calledWith: [11],
+        resolved: undefined,
+        keys: [socialWorkKeys.notes()],
+      },
+      {
+        useHook: useCreateIntervention,
+        apiMock: mockSocialWorkApi.createIntervention,
+        input: { case: 8, description: 'Linked to NHIF desk' },
+        calledWith: [{ case: 8, description: 'Linked to NHIF desk' }],
+        resolved: mockIntervention,
+        keys: [
+          socialWorkKeys.interventions(),
+          socialWorkKeys.caseInterventions(8),
+          socialWorkKeys.case(8),
+        ],
+      },
+      {
+        useHook: useUpdateIntervention,
+        apiMock: mockSocialWorkApi.updateIntervention,
+        input: { id: 14, data: { description: 'Updated intervention' } },
+        calledWith: [14, { description: 'Updated intervention' }],
+        resolved: mockIntervention,
+        keys: [socialWorkKeys.intervention(14), socialWorkKeys.interventions()],
+      },
+      {
+        useHook: useDeleteIntervention,
+        apiMock: mockSocialWorkApi.deleteIntervention,
+        input: 14,
+        calledWith: [14],
+        resolved: undefined,
+        keys: [socialWorkKeys.interventions()],
+      },
+      {
+        useHook: useStartIntervention,
+        apiMock: mockSocialWorkApi.startIntervention,
+        input: 14,
+        calledWith: [14],
+        resolved: { ...mockIntervention, status: 'IN_PROGRESS' },
+        keys: [socialWorkKeys.intervention(14), socialWorkKeys.interventions()],
+      },
+      {
+        useHook: useCompleteIntervention,
+        apiMock: mockSocialWorkApi.completeIntervention,
+        input: { id: 14, outcome: 'Patient enrolled' },
+        calledWith: [14, 'Patient enrolled'],
+        resolved: { ...mockIntervention, status: 'COMPLETED' },
+        keys: [socialWorkKeys.intervention(14), socialWorkKeys.interventions()],
+      },
+      {
+        useHook: useCancelIntervention,
+        apiMock: mockSocialWorkApi.cancelIntervention,
+        input: { id: 14, reason: 'Not needed' },
+        calledWith: [14, 'Not needed'],
+        resolved: { ...mockIntervention, status: 'CANCELLED' },
+        keys: [socialWorkKeys.intervention(14), socialWorkKeys.interventions()],
+      },
     ];
 
     for (const testCase of cases) {

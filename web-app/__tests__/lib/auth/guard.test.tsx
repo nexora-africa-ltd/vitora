@@ -231,9 +231,7 @@ describe('RouteGuard', () => {
   });
 
   it('renders children on unrestricted route', () => {
-    mockUseAuth.mockReturnValue(
-      createMockAuthState({ user: createMockUser({ permissions: [] }) })
-    );
+    mockUseAuth.mockReturnValue(createMockAuthState({ user: createMockUser({ permissions: [] }) }));
 
     mockPathname.mockReturnValue('/dashboard');
 
@@ -309,7 +307,7 @@ describe('RouteGuard', () => {
       hasModule: jest.fn((module: string) => module !== 'laboratory'),
       setFacilityOverride: jest.fn(),
       clearFacilityOverride: jest.fn(),
-    } as any);
+    } as unknown);
 
     mockPathname.mockReturnValue('/laboratory');
 

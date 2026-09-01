@@ -37,9 +37,7 @@ describe('OrderStatusBadge', () => {
   });
 
   it('applies custom className', () => {
-    const { container } = render(
-      <OrderStatusBadge status="COMPLETED" className="custom-class" />
-    );
+    const { container } = render(<OrderStatusBadge status="COMPLETED" className="custom-class" />);
     expect(container.firstChild).toHaveClass('custom-class');
   });
 

@@ -25,10 +25,7 @@ jest.mock('@/lib/api/patients', () => ({
 }));
 
 import { patientsApi } from '@/lib/api/patients';
-import {
-  mockPatient,
-  mockPatientMinimal,
-} from '../../fixtures/patient-shell-fixtures';
+import { mockPatient, mockPatientMinimal } from '../../fixtures/patient-shell-fixtures';
 
 const mockPatientsApi = patientsApi as jest.Mocked<typeof patientsApi>;
 
@@ -41,11 +38,7 @@ function createWrapper() {
     },
   });
   return function Wrapper({ children }: { children: React.ReactNode }) {
-    return (
-      <QueryClientProvider client={queryClient}>
-        {children}
-      </QueryClientProvider>
-    );
+    return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
   };
 }
 
@@ -381,9 +374,7 @@ describe('PatientContext', () => {
   describe('Patient Change Detection', () => {
     it('should refetch when patientId changes', async () => {
       const patient2 = { ...mockPatient, id: 2, mrn: 'MRN-20260115-0002', first_name: 'John' };
-      mockPatientsApi.getPatient
-        .mockResolvedValueOnce(mockPatient)
-        .mockResolvedValueOnce(patient2);
+      mockPatientsApi.getPatient.mockResolvedValueOnce(mockPatient).mockResolvedValueOnce(patient2);
 
       const Wrapper = createWrapper();
       const { rerender } = render(

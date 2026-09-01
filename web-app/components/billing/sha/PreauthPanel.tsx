@@ -10,14 +10,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import {
-  CheckCircle2,
-  XCircle,
-  Clock,
-  Loader2,
-  FileCheck,
-  AlertTriangle,
-} from 'lucide-react';
+import { CheckCircle2, XCircle, Clock, Loader2, FileCheck, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -85,7 +78,10 @@ function getDecisionBadge(decision: PreauthDecision) {
   switch (decision) {
     case 'APPROVED':
       return (
-        <Badge variant="default" className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
+        <Badge
+          variant="default"
+          className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
+        >
           <CheckCircle2 className="mr-1 h-3 w-3" />
           Approved
         </Badge>
@@ -167,7 +163,7 @@ export function PreauthPanel({
 
   const primaryBenefitCode = useMemo(
     () => (activeInterventionCodes.length > 0 ? getBenefitCode(activeInterventionCodes[0]!) : null),
-    [activeInterventionCodes],
+    [activeInterventionCodes]
   );
 
   const allowedBenefitCodes = useMemo(() => {
@@ -199,16 +195,22 @@ export function PreauthPanel({
         value: opt.code,
         label: `${opt.code} - ${opt.name || 'Unnamed intervention'}`,
       })),
-    [filteredPreauthInterventions],
+    [filteredPreauthInterventions]
   );
 
   useEffect(() => {
     if (selectedBenefitPkgCode) return;
     const preferred =
-      (primaryBenefitCode && filteredBenefitPackageOptions.find((pkg) => pkg.code === primaryBenefitCode))
-      || filteredBenefitPackageOptions[0];
+      (primaryBenefitCode &&
+        filteredBenefitPackageOptions.find((pkg) => pkg.code === primaryBenefitCode)) ||
+      filteredBenefitPackageOptions[0];
     if (preferred) setSelectedBenefitPkgCode(preferred.code);
-  }, [selectedBenefitPkgCode, primaryBenefitCode, filteredBenefitPackageOptions, setSelectedBenefitPkgCode]);
+  }, [
+    selectedBenefitPkgCode,
+    primaryBenefitCode,
+    filteredBenefitPackageOptions,
+    setSelectedBenefitPkgCode,
+  ]);
 
   useEffect(() => {
     const selected = filteredPreauthInterventions.find((opt) => opt.code === procedureCode);
@@ -245,7 +247,9 @@ export function PreauthPanel({
       return;
     }
     if (isElective && !electiveAuthorized) {
-      setError('Elective pre-authorizations require patient authorization (OTP or biometric) before submission.');
+      setError(
+        'Elective pre-authorizations require patient authorization (OTP or biometric) before submission.'
+      );
       return;
     }
 
@@ -322,11 +326,11 @@ export function PreauthPanel({
 
           {preauthStatus.decision === 'DENIED' && preauthStatus.denial_reason && (
             <div className="rounded-md bg-destructive/10 p-3">
-              <p className="text-sm font-medium text-destructive flex items-center gap-1">
+              <p className="flex items-center gap-1 text-sm font-medium text-destructive">
                 <AlertTriangle className="h-3.5 w-3.5" />
                 Denial Reason
               </p>
-              <p className="text-sm text-destructive/80 mt-1">{preauthStatus.denial_reason}</p>
+              <p className="mt-1 text-sm text-destructive/80">{preauthStatus.denial_reason}</p>
             </div>
           )}
 
@@ -364,8 +368,8 @@ export function PreauthPanel({
       </CardHeader>
       <CardContent className="space-y-4">
         {!consentTokenId && (
-          <div className="rounded-md bg-amber-50 dark:bg-amber-900/10 p-3">
-            <p className="text-sm text-amber-800 dark:text-amber-400 flex items-center gap-1">
+          <div className="rounded-md bg-amber-50 p-3 dark:bg-amber-900/10">
+            <p className="flex items-center gap-1 text-sm text-amber-800 dark:text-amber-400">
               <AlertTriangle className="h-3.5 w-3.5" />
               Obtain patient consent first before submitting pre-authorization.
             </p>
@@ -373,9 +377,10 @@ export function PreauthPanel({
         )}
 
         {!!patientCrId && (
-          <div className="rounded-md bg-slate-50 dark:bg-slate-900/30 p-3 space-y-2">
+          <div className="space-y-2 rounded-md bg-slate-50 p-3 dark:bg-slate-900/30">
             <p className="text-xs text-muted-foreground">
-              Pre-auth shortlist is built from DHA eligible benefits and filtered to combination-compliant interventions that require pre-authorization.
+              Pre-auth shortlist is built from DHA eligible benefits and filtered to
+              combination-compliant interventions that require pre-authorization.
             </p>
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
@@ -387,7 +392,9 @@ export function PreauthPanel({
                 >
                   <SelectTrigger id="preauth-benefit-package">
                     <SelectValue
-                      placeholder={benefitPackagesLoading ? 'Loading packages...' : 'Select benefit package'}
+                      placeholder={
+                        benefitPackagesLoading ? 'Loading packages...' : 'Select benefit package'
+                      }
                     />
                   </SelectTrigger>
                   <SelectContent>
@@ -411,7 +418,9 @@ export function PreauthPanel({
                       setEstimatedCost(String(match.price));
                     }
                   }}
-                  placeholder={interventionsLoading ? 'Loading interventions...' : 'Select intervention'}
+                  placeholder={
+                    interventionsLoading ? 'Loading interventions...' : 'Select intervention'
+                  }
                   searchPlaceholder="Search intervention code or name..."
                   emptyMessage="No pre-auth interventions found"
                   disabled={interventionsLoading || filteredPreauthInterventions.length === 0}
@@ -423,11 +432,14 @@ export function PreauthPanel({
                 No eligible benefit package currently matches this claim&apos;s combination rules.
               </p>
             )}
-            {!interventionsLoading && !!selectedBenefitPkgCode && filteredPreauthInterventions.length === 0 && (
-              <p className="text-xs text-amber-700 dark:text-amber-400">
-                No pre-auth-required interventions found under the selected package for this claim context.
-              </p>
-            )}
+            {!interventionsLoading &&
+              !!selectedBenefitPkgCode &&
+              filteredPreauthInterventions.length === 0 && (
+                <p className="text-xs text-amber-700 dark:text-amber-400">
+                  No pre-auth-required interventions found under the selected package for this claim
+                  context.
+                </p>
+              )}
             <div className="pt-1">
               <Button
                 type="button"
@@ -458,8 +470,9 @@ export function PreauthPanel({
 
         {manualOverrideOpen && (
           <div className="rounded-md border border-dashed p-3">
-            <p className="text-xs text-muted-foreground mb-3">
-              Override the selected procedure when DHA shortlist is unavailable or clinical judgement requires a custom code.
+            <p className="mb-3 text-xs text-muted-foreground">
+              Override the selected procedure when DHA shortlist is unavailable or clinical
+              judgement requires a custom code.
             </p>
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
@@ -529,20 +542,20 @@ export function PreauthPanel({
           />
         </div>
 
-        {error && (
-          <p className="text-sm text-destructive">{error}</p>
-        )}
+        {error && <p className="text-sm text-destructive">{error}</p>}
 
         {/* Elective preauth: require patient authorize step first */}
         {isElective && !electiveAuthorized && (
-          <div className="rounded-md border border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-900/10 p-3 space-y-2">
-            <p className="text-sm text-amber-800 dark:text-amber-400 flex items-center gap-1">
+          <div className="space-y-2 rounded-md border border-amber-200 bg-amber-50/50 p-3 dark:border-amber-800 dark:bg-amber-900/10">
+            <p className="flex items-center gap-1 text-sm text-amber-800 dark:text-amber-400">
               <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
               Elective pre-authorizations require patient authorization before submission.
             </p>
             <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
               <div className="flex-1">
-                <Label htmlFor="elective-auth-guid" className="text-xs">Auth GUID (from biometric consent)</Label>
+                <Label htmlFor="elective-auth-guid" className="text-xs">
+                  Auth GUID (from biometric consent)
+                </Label>
                 <Input
                   id="elective-auth-guid"
                   value={electiveAuthGuid}
@@ -564,10 +577,13 @@ export function PreauthPanel({
                       if (result.status === 'AUTHORIZED') {
                         setElectiveAuthorized(true);
                       } else {
-                        setError(`Authorization status: ${result.status}. Patient must complete biometric.`);
+                        setError(
+                          `Authorization status: ${result.status}. Patient must complete biometric.`
+                        );
                       }
-                    } catch (e: any) {
-                      setError(e?.message ?? 'Failed to verify authorization');
+                    } catch (e: unknown) {
+                      const err = e as { message?: string };
+                      setError(err.message ?? 'Failed to verify authorization');
                     } finally {
                       setAuthBusy(false);
                     }
@@ -591,8 +607,9 @@ export function PreauthPanel({
                           agent_national_id: facilityDetail?.biometrics_agent_national_id || '',
                         });
                         setElectiveAuthGuid(result.auth_guid);
-                      } catch (e: any) {
-                        setError(e?.message ?? 'Failed to initiate biometric');
+                      } catch (e: unknown) {
+                        const err = e as { message?: string };
+                        setError(err.message ?? 'Failed to initiate biometric');
                       } finally {
                         setAuthBusy(false);
                       }
@@ -608,8 +625,8 @@ export function PreauthPanel({
         )}
 
         {isElective && electiveAuthorized && (
-          <div className="rounded-md bg-green-50 dark:bg-green-900/10 p-2">
-            <p className="text-sm text-green-700 dark:text-green-400 flex items-center gap-1">
+          <div className="rounded-md bg-green-50 p-2 dark:bg-green-900/10">
+            <p className="flex items-center gap-1 text-sm text-green-700 dark:text-green-400">
               <CheckCircle2 className="h-3.5 w-3.5" />
               Patient authorized for elective pre-authorization.
             </p>
@@ -618,7 +635,9 @@ export function PreauthPanel({
 
         <Button
           onClick={handleSubmit}
-          disabled={submitPreauth.isPending || !consentTokenId || (isElective && !electiveAuthorized)}
+          disabled={
+            submitPreauth.isPending || !consentTokenId || (isElective && !electiveAuthorized)
+          }
           size="sm"
         >
           {submitPreauth.isPending ? (

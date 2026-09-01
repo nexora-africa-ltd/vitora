@@ -135,10 +135,22 @@ describe('KardexPage', () => {
     });
 
     (useUpdateKardex as jest.Mock).mockReturnValue({ mutateAsync: jest.fn(), isPending: false });
-    (useAddKardexShiftNote as jest.Mock).mockReturnValue({ mutateAsync: jest.fn(), isPending: false });
-    (useAddKardexHandoverNote as jest.Mock).mockReturnValue({ mutateAsync: jest.fn(), isPending: false });
-    (useAddCarePlanEntry as jest.Mock).mockReturnValue({ mutateAsync: jest.fn(), isPending: false });
-    (useUpdateCarePlanEntry as jest.Mock).mockReturnValue({ mutateAsync: jest.fn(), isPending: false });
+    (useAddKardexShiftNote as jest.Mock).mockReturnValue({
+      mutateAsync: jest.fn(),
+      isPending: false,
+    });
+    (useAddKardexHandoverNote as jest.Mock).mockReturnValue({
+      mutateAsync: jest.fn(),
+      isPending: false,
+    });
+    (useAddCarePlanEntry as jest.Mock).mockReturnValue({
+      mutateAsync: jest.fn(),
+      isPending: false,
+    });
+    (useUpdateCarePlanEntry as jest.Mock).mockReturnValue({
+      mutateAsync: jest.fn(),
+      isPending: false,
+    });
     (useAIEnabled as jest.Mock).mockReturnValue(true);
     (useAIStatus as jest.Mock).mockReturnValue({
       data: { enabled: true, service_available: true, demo_mode: false },

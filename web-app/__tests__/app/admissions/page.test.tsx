@@ -83,9 +83,7 @@ describe('AdmissionsPage', () => {
   it('renders the Admissions page title and help popover', () => {
     render(<AdmissionsPage />);
 
-    expect(
-      screen.getByRole('heading', { name: /^admissions$/i })
-    ).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /^admissions$/i })).toBeInTheDocument();
 
     // Description is now in HelpPopover, check that popover trigger exists
     expect(screen.getByRole('button', { name: /help/i })).toBeInTheDocument();
@@ -98,9 +96,7 @@ describe('AdmissionsPage', () => {
     expect(screen.getAllByText(/Pending Recommendations/i).length).toBeGreaterThan(0);
 
     // Text may appear in both list and card views - use getAllByText
-    expect(
-      screen.getAllByText(/severe malaria requiring iv treatment/i).length
-    ).toBeGreaterThan(0);
+    expect(screen.getAllByText(/severe malaria requiring iv treatment/i).length).toBeGreaterThan(0);
 
     // Shows diagnosis text, not code - may appear in multiple places
     expect(screen.getAllByText(/severe falciparum malaria/i).length).toBeGreaterThan(0);

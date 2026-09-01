@@ -67,7 +67,9 @@ describe('Settings navigation mode controls', () => {
     fireEvent.click(screen.getByRole('tab', { name: /appearance/i }));
 
     await waitFor(() => {
-      expect(screen.getByText(/clinical mode is currently available to clinical roles/i)).toBeInTheDocument();
+      expect(
+        screen.getByText(/clinical mode is currently available to clinical roles/i)
+      ).toBeInTheDocument();
     });
     expect(screen.queryByLabelText('Clinical Mode')).not.toBeInTheDocument();
   });

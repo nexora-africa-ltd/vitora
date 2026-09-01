@@ -35,10 +35,7 @@ jest.mock('@/lib/api/encounters', () => ({
 
 import { patientsApi } from '@/lib/api/patients';
 import { encountersApi } from '@/lib/api/encounters';
-import {
-  mockPatient,
-  mockEncounter,
-} from '../../fixtures/patient-shell-fixtures';
+import { mockPatient, mockEncounter } from '../../fixtures/patient-shell-fixtures';
 
 const mockPatientsApi = patientsApi as jest.Mocked<typeof patientsApi>;
 const mockEncountersApi = encountersApi as jest.Mocked<typeof encountersApi>;
@@ -52,11 +49,7 @@ function createWrapper() {
     },
   });
   return function Wrapper({ children }: { children: React.ReactNode }) {
-    return (
-      <QueryClientProvider client={queryClient}>
-        {children}
-      </QueryClientProvider>
-    );
+    return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
   };
 }
 
@@ -248,7 +241,9 @@ describe('EncounterContext', () => {
       );
 
       await waitFor(() => {
-        expect(screen.getByTestId('error')).toHaveTextContent('Encounter does not belong to current patient');
+        expect(screen.getByTestId('error')).toHaveTextContent(
+          'Encounter does not belong to current patient'
+        );
       });
     });
 

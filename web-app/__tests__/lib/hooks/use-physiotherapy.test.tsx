@@ -140,12 +140,7 @@ describe('physiotherapyKeys', () => {
   it('generates correct query keys', () => {
     expect(physiotherapyKeys.all).toEqual(['physiotherapy']);
     expect(physiotherapyKeys.orders()).toEqual(['physiotherapy', 'orders']);
-    expect(physiotherapyKeys.order(1)).toEqual([
-      'physiotherapy',
-      'orders',
-      'detail',
-      1,
-    ]);
+    expect(physiotherapyKeys.order(1)).toEqual(['physiotherapy', 'orders', 'detail', 1]);
     expect(physiotherapyKeys.orderByNumber('PHYSIO-001')).toEqual([
       'physiotherapy',
       'orders',
@@ -153,12 +148,7 @@ describe('physiotherapyKeys', () => {
       'PHYSIO-001',
     ]);
     expect(physiotherapyKeys.sessions()).toEqual(['physiotherapy', 'sessions']);
-    expect(physiotherapyKeys.orderSessions(1)).toEqual([
-      'physiotherapy',
-      'sessions',
-      'order',
-      1,
-    ]);
+    expect(physiotherapyKeys.orderSessions(1)).toEqual(['physiotherapy', 'sessions', 'order', 1]);
   });
 });
 
@@ -289,10 +279,9 @@ describe('usePhysioSessions', () => {
 
     mockPhysiotherapyApi.listSessions.mockResolvedValueOnce(mockSessions);
 
-    const { result } = renderHook(
-      () => usePhysioSessions({ order_id: 1 }),
-      { wrapper: createWrapper() }
-    );
+    const { result } = renderHook(() => usePhysioSessions({ order_id: 1 }), {
+      wrapper: createWrapper(),
+    });
 
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false);

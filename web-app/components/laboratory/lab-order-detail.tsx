@@ -59,11 +59,14 @@ interface LabOrderDetailProps {
   orderNumber: string;
 }
 
-const STATUS_CONFIG: Record<LabOrderStatus, {
-  label: string;
-  variant: 'default' | 'secondary' | 'destructive' | 'outline';
-  icon: React.ComponentType<{ className?: string }>;
-}> = {
+const STATUS_CONFIG: Record<
+  LabOrderStatus,
+  {
+    label: string;
+    variant: 'default' | 'secondary' | 'destructive' | 'outline';
+    icon: React.ComponentType<{ className?: string }>;
+  }
+> = {
   DRAFT: { label: 'Draft', variant: 'outline', icon: FileText },
   ORDERED: { label: 'Ordered', variant: 'secondary', icon: Clock },
   SPECIMEN_COLLECTED: { label: 'Specimen Collected', variant: 'secondary', icon: Beaker },
@@ -74,9 +77,18 @@ const STATUS_CONFIG: Record<LabOrderStatus, {
 };
 
 const PRIORITY_CONFIG: Record<LabPriority, { label: string; className: string }> = {
-  ROUTINE: { label: 'Routine', className: 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300' },
-  URGENT: { label: 'Urgent', className: 'bg-orange-100 dark:bg-orange-950/40 text-orange-700 dark:text-orange-400' },
-  STAT: { label: 'STAT', className: 'bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-400 font-bold' },
+  ROUTINE: {
+    label: 'Routine',
+    className: 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300',
+  },
+  URGENT: {
+    label: 'Urgent',
+    className: 'bg-orange-100 dark:bg-orange-950/40 text-orange-700 dark:text-orange-400',
+  },
+  STAT: {
+    label: 'STAT',
+    className: 'bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-400 font-bold',
+  },
 };
 
 export function LabOrderDetail({ orderNumber }: LabOrderDetailProps) {
@@ -92,27 +104,24 @@ export function LabOrderDetail({ orderNumber }: LabOrderDetailProps) {
 
   // Real-time WebSocket updates for this specific order
   // Pass orderNumber and encounterId for proper cache invalidation
-  const { isConnected: isWsConnected } = useLabOrderSocket(
-    order?.id ?? null,
-    {
-      orderNumber,
-      encounterId: order?.encounter ?? undefined,
-      onMessage: (message) => {
-        // Show toast for result verification
-        if (message.event === 'result_verified') {
-          toast({
-            title: 'Result Verified',
-            description: 'A lab result has been verified for this order.',
-          });
-        } else if (message.event === 'order_completed') {
-          toast({
-            title: 'Order Completed',
-            description: 'All results for this order have been verified.',
-          });
-        }
-      },
-    }
-  );
+  const { isConnected: isWsConnected } = useLabOrderSocket(order?.id ?? null, {
+    orderNumber,
+    encounterId: order?.encounter ?? undefined,
+    onMessage: (message) => {
+      // Show toast for result verification
+      if (message.event === 'result_verified') {
+        toast({
+          title: 'Result Verified',
+          description: 'A lab result has been verified for this order.',
+        });
+      } else if (message.event === 'order_completed') {
+        toast({
+          title: 'Order Completed',
+          description: 'All results for this order have been verified.',
+        });
+      }
+    },
+  });
 
   // Must be called before early returns to maintain consistent hook order
   const { data: linkedReports = [] } = useDiagnosticReports(
@@ -125,10 +134,10 @@ export function LabOrderDetail({ orderNumber }: LabOrderDetailProps) {
 
   if (error || !order) {
     return (
-      <div className="text-center py-12">
-        <AlertTriangle className="h-12 w-12 mx-auto text-yellow-500 mb-4" />
-        <h2 className="text-xl font-semibold mb-2">Order Not Found</h2>
-        <p className="text-muted-foreground mb-4">
+      <div className="py-12 text-center">
+        <AlertTriangle className="mx-auto mb-4 h-12 w-12 text-yellow-500" />
+        <h2 className="mb-2 text-xl font-semibold">Order Not Found</h2>
+        <p className="mb-4 text-muted-foreground">
           {error?.message || 'Unable to load lab order details.'}
         </p>
         <Button variant="outline" onClick={() => router.push('/laboratory')}>
@@ -143,17 +152,18 @@ export function LabOrderDetail({ orderNumber }: LabOrderDetailProps) {
   const StatusIcon = statusConfig.icon;
 
   const orderItems = order.items ?? [];
+  const externalLabName = (order as { external_lab_name?: string | null }).external_lab_name;
   const canSubmit = order.status === 'DRAFT' && orderItems.length > 0;
   const canCollectSpecimen = order.status === 'ORDERED';
   const canEnterResults = order.status === 'SPECIMEN_COLLECTED' || order.status === 'IN_PROGRESS';
   const canCancel = ['DRAFT', 'ORDERED'].includes(order.status);
-  const hasCriticalResults = orderItems.some(item => item.result?.is_critical_result);
+  const hasCriticalResults = orderItems.some((item) => item.result?.is_critical_result);
   const canGenerateReport = order.status === 'COMPLETED' && linkedReports.length === 0;
   const isDonorUnitScreening = order.patient === null && !!order.blood_bank_unit;
 
   // Check if all tests have results entered
-  const allResultsEntered = orderItems.length > 0 && orderItems.every(item => item.has_result);
-  const pendingResults = orderItems.filter(item => !item.has_result).length;
+  const allResultsEntered = orderItems.length > 0 && orderItems.every((item) => item.has_result);
+  const pendingResults = orderItems.filter((item) => !item.has_result).length;
 
   const handleSubmit = async () => {
     try {
@@ -182,7 +192,8 @@ export function LabOrderDetail({ orderNumber }: LabOrderDetailProps) {
     } catch (error) {
       toast({
         title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to record specimen collection',
+        description:
+          error instanceof Error ? error.message : 'Failed to record specimen collection',
         variant: 'destructive',
       });
     }
@@ -244,7 +255,7 @@ export function LabOrderDetail({ orderNumber }: LabOrderDetailProps) {
             {order.order_type === 'EXTERNAL' ? (
               <>
                 <Button variant="outline" onClick={handleDownloadRequisition}>
-                  <Download className="h-4 w-4 mr-2" />
+                  <Download className="mr-2 h-4 w-4" />
                   Requisition PDF
                 </Button>
                 <Button
@@ -268,7 +279,7 @@ export function LabOrderDetail({ orderNumber }: LabOrderDetailProps) {
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button>
-                    <Beaker className="h-4 w-4 mr-2" />
+                    <Beaker className="mr-2 h-4 w-4" />
                     Collect Specimen
                   </Button>
                 </AlertDialogTrigger>
@@ -300,7 +311,7 @@ export function LabOrderDetail({ orderNumber }: LabOrderDetailProps) {
             {canEnterResults ? (
               <Link href={`/laboratory/orders/${orderNumber}/results`}>
                 <Button>
-                  <FlaskConical className="h-4 w-4 mr-2" />
+                  <FlaskConical className="mr-2 h-4 w-4" />
                   {pendingResults > 0
                     ? `Enter Results (${pendingResults} pending)`
                     : 'View/Edit Results'}
@@ -308,9 +319,7 @@ export function LabOrderDetail({ orderNumber }: LabOrderDetailProps) {
               </Link>
             ) : null}
 
-            {canGenerateReport ? (
-              <DiagnosticReportForm labOrderId={order.id} />
-            ) : null}
+            {canGenerateReport ? <DiagnosticReportForm labOrderId={order.id} /> : null}
 
             {canCancel ? (
               <AlertDialog>
@@ -350,20 +359,30 @@ export function LabOrderDetail({ orderNumber }: LabOrderDetailProps) {
       />
 
       {/* Status & Info Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
-              <div className={cn(
-                'p-2 rounded-full',
-                statusConfig.variant === 'destructive' ? 'bg-red-100 dark:bg-red-950/40' :
-                statusConfig.variant === 'default' ? 'bg-green-100 dark:bg-green-950/40' : 'bg-gray-100 dark:bg-gray-800'
-              )}>
-                <StatusIcon className={cn(
-                  'h-5 w-5',
-                  statusConfig.variant === 'destructive' ? 'text-red-600 dark:text-red-400' :
-                  statusConfig.variant === 'default' ? 'text-green-600 dark:text-green-400' : 'text-gray-600 dark:text-gray-400'
-                )} />
+              <div
+                className={cn(
+                  'rounded-full p-2',
+                  statusConfig.variant === 'destructive'
+                    ? 'bg-red-100 dark:bg-red-950/40'
+                    : statusConfig.variant === 'default'
+                      ? 'bg-green-100 dark:bg-green-950/40'
+                      : 'bg-gray-100 dark:bg-gray-800'
+                )}
+              >
+                <StatusIcon
+                  className={cn(
+                    'h-5 w-5',
+                    statusConfig.variant === 'destructive'
+                      ? 'text-red-600 dark:text-red-400'
+                      : statusConfig.variant === 'default'
+                        ? 'text-green-600 dark:text-green-400'
+                        : 'text-gray-600 dark:text-gray-400'
+                  )}
+                />
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Status</p>
@@ -376,7 +395,7 @@ export function LabOrderDetail({ orderNumber }: LabOrderDetailProps) {
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-full bg-green-100 dark:bg-green-950/40">
+              <div className="rounded-full bg-green-100 p-2 dark:bg-green-950/40">
                 <User className="h-5 w-5 text-green-600 dark:text-green-400" />
               </div>
               <div>
@@ -384,7 +403,9 @@ export function LabOrderDetail({ orderNumber }: LabOrderDetailProps) {
                 <div className="flex items-center gap-2">
                   <p className="font-medium">{order.patient_name}</p>
                   {isDonorUnitScreening && (
-                    <Badge variant="outline" className="text-[10px]">Donor Unit Screening</Badge>
+                    <Badge variant="outline" className="text-[10px]">
+                      Donor Unit Screening
+                    </Badge>
                   )}
                 </div>
                 <p className="text-xs text-muted-foreground">{order.patient_mrn}</p>
@@ -396,7 +417,7 @@ export function LabOrderDetail({ orderNumber }: LabOrderDetailProps) {
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
-              <div className={cn('p-2 rounded-full', priorityConfig.className)}>
+              <div className={cn('rounded-full p-2', priorityConfig.className)}>
                 <Clock className="h-5 w-5" />
               </div>
               <div>
@@ -414,15 +435,17 @@ export function LabOrderDetail({ orderNumber }: LabOrderDetailProps) {
           <CardTitle>Order Details</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+          <div className="grid grid-cols-2 gap-4 text-sm md:grid-cols-4">
             <div>
               <p className="text-muted-foreground">Order Type</p>
-              <p className="font-medium">{order.order_type === 'IN_HOUSE' ? 'In-House' : 'External'}</p>
+              <p className="font-medium">
+                {order.order_type === 'IN_HOUSE' ? 'In-House' : 'External'}
+              </p>
             </div>
-            {(order.external_lab || (order as any).external_lab_name) && (
+            {(order.external_lab || externalLabName) && (
               <div>
                 <p className="text-muted-foreground">External Lab</p>
-                <p className="font-medium">{order.external_lab || (order as any).external_lab_name}</p>
+                <p className="font-medium">{order.external_lab || externalLabName}</p>
               </div>
             )}
             <div>
@@ -439,7 +462,7 @@ export function LabOrderDetail({ orderNumber }: LabOrderDetailProps) {
             <>
               <Separator />
               <div>
-                <p className="text-sm text-muted-foreground mb-1">Clinical Notes</p>
+                <p className="mb-1 text-sm text-muted-foreground">Clinical Notes</p>
                 <p className="text-sm">{order.clinical_notes}</p>
               </div>
             </>
@@ -448,9 +471,13 @@ export function LabOrderDetail({ orderNumber }: LabOrderDetailProps) {
           {order.cancellation_reason && (
             <>
               <Separator />
-              <div className="bg-red-50 dark:bg-red-950/30 p-3 rounded-md">
-                <p className="text-sm font-medium text-red-700 dark:text-red-400 mb-1">Cancellation Reason</p>
-                <p className="text-sm text-red-600 dark:text-red-300">{order.cancellation_reason}</p>
+              <div className="rounded-md bg-red-50 p-3 dark:bg-red-950/30">
+                <p className="mb-1 text-sm font-medium text-red-700 dark:text-red-400">
+                  Cancellation Reason
+                </p>
+                <p className="text-sm text-red-600 dark:text-red-300">
+                  {order.cancellation_reason}
+                </p>
               </div>
             </>
           )}
@@ -471,8 +498,8 @@ export function LabOrderDetail({ orderNumber }: LabOrderDetailProps) {
               <div
                 key={item.id}
                 className={cn(
-                  'p-4 border rounded-lg',
-                  item.result?.is_critical_result && 'border-red-500 dark:border-red-600 border-2'
+                  'rounded-lg border p-4',
+                  item.result?.is_critical_result && 'border-2 border-red-500 dark:border-red-600'
                 )}
               >
                 <div className="flex items-start justify-between">
@@ -483,34 +510,34 @@ export function LabOrderDetail({ orderNumber }: LabOrderDetailProps) {
                         {item.test_code}
                       </Badge>
                       {item.loinc_code && (
-                        <Badge variant="secondary" className="text-xs font-mono">
+                        <Badge variant="secondary" className="font-mono text-xs">
                           LOINC: {item.loinc_code}
                         </Badge>
                       )}
                     </div>
                     {item.special_instructions && (
-                      <p className="text-sm text-muted-foreground mt-1">
+                      <p className="mt-1 text-sm text-muted-foreground">
                         Note: {item.special_instructions}
                       </p>
                     )}
                   </div>
                   <div className="text-right">
                     <p className="text-sm font-medium">{formatCurrency(item.unit_cost)}</p>
-                    <LabResultsBadge
-                      hasResult={item.has_result}
-                      result={item.result}
-                    />
+                    <LabResultsBadge hasResult={item.has_result} result={item.result} />
                   </div>
                 </div>
 
                 {/* Show result details if available */}
                 {item.result && (
-                  <div className="mt-3 pt-3 border-t">
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                  <div className="mt-3 border-t pt-3">
+                    <div className="grid grid-cols-2 gap-3 text-sm md:grid-cols-4">
                       <div>
                         <p className="text-muted-foreground">Value</p>
                         <p className="font-medium">
-                          {item.result.numeric_value ?? item.result.text_value ?? item.result.option_value ?? '-'}
+                          {item.result.numeric_value ??
+                            item.result.text_value ??
+                            item.result.option_value ??
+                            '-'}
                         </p>
                       </div>
                       {item.result.reference_range_text && (
@@ -524,9 +551,11 @@ export function LabOrderDetail({ orderNumber }: LabOrderDetailProps) {
                           <p className="text-muted-foreground">Flag</p>
                           <Badge
                             variant={
-                              item.result.result_flag.includes('CRITICAL') ? 'destructive' :
-                              ['LOW', 'HIGH', 'ABNORMAL'].includes(item.result.result_flag) ? 'secondary' :
-                              'outline'
+                              item.result.result_flag.includes('CRITICAL')
+                                ? 'destructive'
+                                : ['LOW', 'HIGH', 'ABNORMAL'].includes(item.result.result_flag)
+                                  ? 'secondary'
+                                  : 'outline'
                             }
                           >
                             {item.result.result_flag}
@@ -535,7 +564,11 @@ export function LabOrderDetail({ orderNumber }: LabOrderDetailProps) {
                       )}
                       <div>
                         <p className="text-muted-foreground">Status</p>
-                        <Badge variant={item.result.verification_status === 'VERIFIED' ? 'default' : 'outline'}>
+                        <Badge
+                          variant={
+                            item.result.verification_status === 'VERIFIED' ? 'default' : 'outline'
+                          }
+                        >
                           {item.result.verification_status}
                         </Badge>
                       </div>
@@ -567,19 +600,20 @@ export function LabOrderDetail({ orderNumber }: LabOrderDetailProps) {
               {linkedReports.map((report) => (
                 <div
                   key={report.id}
-                  className="flex items-center justify-between p-3 border rounded-lg"
+                  className="flex items-center justify-between rounded-lg border p-3"
                 >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <FileText className="h-5 w-5 text-muted-foreground shrink-0" />
+                  <div className="flex min-w-0 items-center gap-3">
+                    <FileText className="h-5 w-5 shrink-0 text-muted-foreground" />
                     <div className="min-w-0">
                       <Link
                         href={`/laboratory/reports/${report.report_number}`}
-                        className="font-medium text-primary hover:underline truncate block"
+                        className="block truncate font-medium text-primary hover:underline"
                       >
                         {report.report_number}
                       </Link>
                       <p className="text-xs text-muted-foreground">
-                        {report.issued_by_name}{report.issued_at ? ` • ${formatDate(report.issued_at)}` : ''}
+                        {report.issued_by_name}
+                        {report.issued_at ? ` • ${formatDate(report.issued_at)}` : ''}
                       </p>
                     </div>
                   </div>
@@ -601,10 +635,10 @@ function LabOrderCommentsCard({ orderId }: { orderId: number }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base flex items-center gap-2">
+        <CardTitle className="flex items-center gap-2 text-base">
           Comments
           {commentCount > 0 && (
-            <Badge variant="secondary" className="h-5 min-w-5 px-1.5 text-[10px] rounded-full">
+            <Badge variant="secondary" className="h-5 min-w-5 rounded-full px-1.5 text-[10px]">
               {commentCount}
             </Badge>
           )}
@@ -636,12 +670,12 @@ function LabOrderDetailSkeleton() {
       <div className="flex items-center gap-4">
         <Skeleton className="h-10 w-10 rounded-full" />
         <div>
-          <Skeleton className="h-8 w-48 mb-2" />
+          <Skeleton className="mb-2 h-8 w-48" />
           <Skeleton className="h-4 w-32" />
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         {[1, 2, 3].map((i) => (
           <Card key={i}>
             <CardContent className="pt-6">

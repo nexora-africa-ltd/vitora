@@ -46,7 +46,11 @@ describe('Label Component', () => {
   });
 
   it('should pass through other props', () => {
-    render(<Label data-testid="test-label" id="custom-id">Label</Label>);
+    render(
+      <Label data-testid="test-label" id="custom-id">
+        Label
+      </Label>
+    );
 
     expect(screen.getByTestId('test-label')).toHaveAttribute('id', 'custom-id');
   });

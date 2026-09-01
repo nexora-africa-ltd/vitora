@@ -107,7 +107,9 @@ describe('NavigationModeProvider', () => {
   it('throws when hook is used outside the provider', () => {
     const renderOutsideProvider = () => renderHook(() => useNavigationMode());
 
-    expect(renderOutsideProvider).toThrow('useNavigationMode must be used within a NavigationModeProvider');
+    expect(renderOutsideProvider).toThrow(
+      'useNavigationMode must be used within a NavigationModeProvider'
+    );
   });
 
   it('renders children normally', () => {

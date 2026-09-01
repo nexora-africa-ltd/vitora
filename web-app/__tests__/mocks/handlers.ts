@@ -15,12 +15,7 @@ import {
   mockAdmissionRecommendations,
   mockAdmissions,
 } from './inpatient-data';
-import {
-  mockDrugs,
-  mockStockBatches,
-  mockStockAlerts,
-  mockPrescriptions,
-} from './pharmacy-data';
+import { mockDrugs, mockStockBatches, mockStockAlerts, mockPrescriptions } from './pharmacy-data';
 
 const API_BASE = 'http://127.0.0.1:9088';
 
@@ -39,10 +34,7 @@ export const handlers = [
       });
     }
 
-    return HttpResponse.json(
-      { detail: 'Invalid credentials' },
-      { status: 401 }
-    );
+    return HttpResponse.json({ detail: 'Invalid credentials' }, { status: 401 });
   }),
 
   http.post(`${API_BASE}/api/token/refresh/`, async ({ request }) => {
@@ -54,10 +46,7 @@ export const handlers = [
       });
     }
 
-    return HttpResponse.json(
-      { detail: 'Token is invalid or expired' },
-      { status: 401 }
-    );
+    return HttpResponse.json({ detail: 'Token is invalid or expired' }, { status: 401 });
   }),
 
   http.post(`${API_BASE}/api/token/verify/`, async ({ request }) => {
@@ -67,10 +56,7 @@ export const handlers = [
       return HttpResponse.json({});
     }
 
-    return HttpResponse.json(
-      { detail: 'Token is invalid or expired' },
-      { status: 401 }
-    );
+    return HttpResponse.json({ detail: 'Token is invalid or expired' }, { status: 401 });
   }),
 
   // ===================
@@ -114,14 +100,11 @@ export const handlers = [
       return HttpResponse.json(patient);
     }
 
-    return HttpResponse.json(
-      { detail: 'Not found.' },
-      { status: 404 }
-    );
+    return HttpResponse.json({ detail: 'Not found.' }, { status: 404 });
   }),
 
   http.post(`${API_BASE}/api/patients/`, async ({ request }) => {
-    const body = await request.json() as Record<string, unknown>;
+    const body = (await request.json()) as Record<string, unknown>;
     const newPatient = {
       id: mockPatients.length + 1,
       mrn: `MRN-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${String(mockPatients.length + 1).padStart(4, '0')}`,
@@ -136,7 +119,7 @@ export const handlers = [
   http.patch(`${API_BASE}/api/patients/:id/`, async ({ params, request }) => {
     const id = Number(params.id);
     const patient = mockPatients.find((p) => p.id === id);
-    const body = await request.json() as Record<string, unknown>;
+    const body = (await request.json()) as Record<string, unknown>;
 
     if (patient) {
       const updatedPatient = {
@@ -147,10 +130,7 @@ export const handlers = [
       return HttpResponse.json(updatedPatient);
     }
 
-    return HttpResponse.json(
-      { detail: 'Not found.' },
-      { status: 404 }
-    );
+    return HttpResponse.json({ detail: 'Not found.' }, { status: 404 });
   }),
 
   http.delete(`${API_BASE}/api/patients/:id/`, ({ params }) => {
@@ -161,10 +141,7 @@ export const handlers = [
       return new HttpResponse(null, { status: 204 });
     }
 
-    return HttpResponse.json(
-      { detail: 'Not found.' },
-      { status: 404 }
-    );
+    return HttpResponse.json({ detail: 'Not found.' }, { status: 404 });
   }),
 
   // ===================
@@ -179,9 +156,7 @@ export const handlers = [
     let filteredEncounters = [...mockEncounters];
 
     if (patientId) {
-      filteredEncounters = filteredEncounters.filter(
-        (e) => e.patient === Number(patientId)
-      );
+      filteredEncounters = filteredEncounters.filter((e) => e.patient === Number(patientId));
     }
 
     const start = (page - 1) * pageSize;
@@ -204,14 +179,11 @@ export const handlers = [
       return HttpResponse.json(encounter);
     }
 
-    return HttpResponse.json(
-      { detail: 'Not found.' },
-      { status: 404 }
-    );
+    return HttpResponse.json({ detail: 'Not found.' }, { status: 404 });
   }),
 
   http.post(`${API_BASE}/api/encounters/`, async ({ request }) => {
-    const body = await request.json() as Record<string, unknown>;
+    const body = (await request.json()) as Record<string, unknown>;
     const newEncounter = {
       id: mockEncounters.length + 1,
       ...body,
@@ -225,7 +197,7 @@ export const handlers = [
   http.patch(`${API_BASE}/api/encounters/:id/`, async ({ params, request }) => {
     const id = Number(params.id);
     const encounter = mockEncounters.find((e) => e.id === id);
-    const body = await request.json() as Record<string, unknown>;
+    const body = (await request.json()) as Record<string, unknown>;
 
     if (encounter) {
       const updatedEncounter = {
@@ -236,10 +208,7 @@ export const handlers = [
       return HttpResponse.json(updatedEncounter);
     }
 
-    return HttpResponse.json(
-      { detail: 'Not found.' },
-      { status: 404 }
-    );
+    return HttpResponse.json({ detail: 'Not found.' }, { status: 404 });
   }),
 
   // ===================
@@ -384,8 +353,12 @@ export const handlers = [
     // Return paginated shape to match DRF pagination behavior
     return HttpResponse.json({
       count: beds.length,
-      next: end < beds.length ? `${API_BASE}/api/inpatient/wards/${wardId}/beds/?page=${page + 1}` : null,
-      previous: page > 1 ? `${API_BASE}/api/inpatient/wards/${wardId}/beds/?page=${page - 1}` : null,
+      next:
+        end < beds.length
+          ? `${API_BASE}/api/inpatient/wards/${wardId}/beds/?page=${page + 1}`
+          : null,
+      previous:
+        page > 1 ? `${API_BASE}/api/inpatient/wards/${wardId}/beds/?page=${page - 1}` : null,
       results: paginatedBeds,
     });
   }),
@@ -456,8 +429,12 @@ export const handlers = [
 
     return HttpResponse.json({
       count: recs.length,
-      next: end < recs.length ? `${API_BASE}/api/inpatient/admission-recommendations/?page=${page + 1}` : null,
-      previous: page > 1 ? `${API_BASE}/api/inpatient/admission-recommendations/?page=${page - 1}` : null,
+      next:
+        end < recs.length
+          ? `${API_BASE}/api/inpatient/admission-recommendations/?page=${page + 1}`
+          : null,
+      previous:
+        page > 1 ? `${API_BASE}/api/inpatient/admission-recommendations/?page=${page - 1}` : null,
       results: paginated,
     });
   }),
@@ -483,31 +460,37 @@ export const handlers = [
     return HttpResponse.json(created, { status: 201 });
   }),
 
-  http.post(`${API_BASE}/api/inpatient/admission-recommendations/:id/accept/`, async ({ params, request }) => {
-    const id = Number(params.id);
-    const rec = mockAdmissionRecommendations.find((r) => r.id === id);
-    if (!rec) {
-      return HttpResponse.json({ error: 'Not found' }, { status: 404 });
+  http.post(
+    `${API_BASE}/api/inpatient/admission-recommendations/:id/accept/`,
+    async ({ params, request }) => {
+      const id = Number(params.id);
+      const rec = mockAdmissionRecommendations.find((r) => r.id === id);
+      if (!rec) {
+        return HttpResponse.json({ error: 'Not found' }, { status: 404 });
+      }
+      const body = (await request.json()) as { user?: number };
+      if (!body.user) {
+        return HttpResponse.json({ error: 'User ID required' }, { status: 400 });
+      }
+      return HttpResponse.json({ ...rec, status: 'ACCEPTED' });
     }
-    const body = (await request.json()) as { user?: number };
-    if (!body.user) {
-      return HttpResponse.json({ error: 'User ID required' }, { status: 400 });
-    }
-    return HttpResponse.json({ ...rec, status: 'ACCEPTED' });
-  }),
+  ),
 
-  http.post(`${API_BASE}/api/inpatient/admission-recommendations/:id/decline/`, async ({ params, request }) => {
-    const id = Number(params.id);
-    const rec = mockAdmissionRecommendations.find((r) => r.id === id);
-    if (!rec) {
-      return HttpResponse.json({ error: 'Not found' }, { status: 404 });
+  http.post(
+    `${API_BASE}/api/inpatient/admission-recommendations/:id/decline/`,
+    async ({ params, request }) => {
+      const id = Number(params.id);
+      const rec = mockAdmissionRecommendations.find((r) => r.id === id);
+      if (!rec) {
+        return HttpResponse.json({ error: 'Not found' }, { status: 404 });
+      }
+      const body = (await request.json()) as { user?: number; reason?: string };
+      if (!body.user || !body.reason) {
+        return HttpResponse.json({ error: 'User ID and reason required' }, { status: 400 });
+      }
+      return HttpResponse.json({ ...rec, status: 'DECLINED' });
     }
-    const body = (await request.json()) as { user?: number; reason?: string };
-    if (!body.user || !body.reason) {
-      return HttpResponse.json({ error: 'User ID and reason required' }, { status: 400 });
-    }
-    return HttpResponse.json({ ...rec, status: 'DECLINED' });
-  }),
+  ),
 
   http.get(`${API_BASE}/api/inpatient/admissions/`, ({ request }) => {
     const url = new URL(request.url);
@@ -530,7 +513,8 @@ export const handlers = [
 
     return HttpResponse.json({
       count: admissions.length,
-      next: end < admissions.length ? `${API_BASE}/api/inpatient/admissions/?page=${page + 1}` : null,
+      next:
+        end < admissions.length ? `${API_BASE}/api/inpatient/admissions/?page=${page + 1}` : null,
       previous: page > 1 ? `${API_BASE}/api/inpatient/admissions/?page=${page - 1}` : null,
       results: paginated,
     });
@@ -583,9 +567,7 @@ export const handlers = [
     const countyId = url.searchParams.get('county');
 
     if (countyId) {
-      const filtered = mockSubCounties.filter(
-        (sc) => sc.county === Number(countyId)
-      );
+      const filtered = mockSubCounties.filter((sc) => sc.county === Number(countyId));
       return HttpResponse.json(filtered);
     }
 
@@ -597,9 +579,7 @@ export const handlers = [
     const subCountyId = url.searchParams.get('sub_county');
 
     if (subCountyId) {
-      const filtered = mockWards.filter(
-        (w) => w.sub_county === Number(subCountyId)
-      );
+      const filtered = mockWards.filter((w) => w.sub_county === Number(subCountyId));
       return HttpResponse.json(filtered);
     }
 
@@ -708,7 +688,8 @@ export const handlers = [
 
     return HttpResponse.json({
       count: filteredBatches.length,
-      next: end < filteredBatches.length ? `${API_BASE}/api/pharmacy/stock/?page=${page + 1}` : null,
+      next:
+        end < filteredBatches.length ? `${API_BASE}/api/pharmacy/stock/?page=${page + 1}` : null,
       previous: page > 1 ? `${API_BASE}/api/pharmacy/stock/?page=${page - 1}` : null,
       results: paginatedBatches,
     });
@@ -745,7 +726,8 @@ export const handlers = [
 
     return HttpResponse.json({
       count: filteredAlerts.length,
-      next: end < filteredAlerts.length ? `${API_BASE}/api/pharmacy/alerts/?page=${page + 1}` : null,
+      next:
+        end < filteredAlerts.length ? `${API_BASE}/api/pharmacy/alerts/?page=${page + 1}` : null,
       previous: page > 1 ? `${API_BASE}/api/pharmacy/alerts/?page=${page - 1}` : null,
       results: paginatedAlerts,
     });
@@ -761,7 +743,9 @@ export const handlers = [
   http.get(`${API_BASE}/api/pharmacy/alerts/expiring/`, () => {
     const expiringAlerts = mockStockAlerts.filter(
       (a) =>
-        (a.alert_type === 'EXPIRING_SOON' || a.alert_type === 'EXPIRING_CRITICAL' || a.alert_type === 'EXPIRED') &&
+        (a.alert_type === 'EXPIRING_SOON' ||
+          a.alert_type === 'EXPIRING_CRITICAL' ||
+          a.alert_type === 'EXPIRED') &&
         !a.resolved
     );
     return HttpResponse.json(expiringAlerts);
@@ -854,8 +838,14 @@ export const handlers = [
       total_stock: drug.current_stock,
       total_value: drug.current_stock * (drug.reference_price || 0),
       reorder_level: drug.default_reorder_level,
-      status: drug.current_stock === 0 ? 'OUT_OF_STOCK' : drug.current_stock < drug.default_reorder_level ? 'LOW' : 'OK',
-      batches_count: mockStockBatches.filter((b) => b.drug === drug.id && b.status === 'AVAILABLE').length,
+      status:
+        drug.current_stock === 0
+          ? 'OUT_OF_STOCK'
+          : drug.current_stock < drug.default_reorder_level
+            ? 'LOW'
+            : 'OK',
+      batches_count: mockStockBatches.filter((b) => b.drug === drug.id && b.status === 'AVAILABLE')
+        .length,
       expiring_within_30_days: 0,
       expired_quantity: mockStockBatches
         .filter((b) => b.drug === drug.id && b.is_expired)

@@ -17,37 +17,19 @@ jest.mock('@/components/charts', () => ({
 
 describe('StatsCard Component', () => {
   it('should render title', () => {
-    render(
-      <StatsCard
-        title="Total Patients"
-        value={150}
-        icon={Users}
-      />
-    );
+    render(<StatsCard title="Total Patients" value={150} icon={Users} />);
 
     expect(screen.getByText('Total Patients')).toBeInTheDocument();
   });
 
   it('should render value', () => {
-    render(
-      <StatsCard
-        title="Total Patients"
-        value={150}
-        icon={Users}
-      />
-    );
+    render(<StatsCard title="Total Patients" value={150} icon={Users} />);
 
     expect(screen.getByText('150')).toBeInTheDocument();
   });
 
   it('should render string value', () => {
-    render(
-      <StatsCard
-        title="Revenue"
-        value="$10,000"
-        icon={Users}
-      />
-    );
+    render(<StatsCard title="Revenue" value="$10,000" icon={Users} />);
 
     expect(screen.getByText('$10,000')).toBeInTheDocument();
   });
@@ -67,38 +49,21 @@ describe('StatsCard Component', () => {
 
   it('should render meta when provided', () => {
     render(
-      <StatsCard
-        title="Total Patients"
-        value={150}
-        meta="12 registered today"
-        icon={Users}
-      />
+      <StatsCard title="Total Patients" value={150} meta="12 registered today" icon={Users} />
     );
 
     expect(screen.getByText('12 registered today')).toBeInTheDocument();
   });
 
   it('should render icon', () => {
-    const { container } = render(
-      <StatsCard
-        title="Total"
-        value={100}
-        icon={Users}
-      />
-    );
+    const { container } = render(<StatsCard title="Total" value={100} icon={Users} />);
 
     expect(container.querySelector('svg')).toBeInTheDocument();
   });
 
   it('should render up trend with TrendIndicator', () => {
     render(
-      <StatsCard
-        title="Total"
-        value={100}
-        description="Trending up"
-        icon={Users}
-        trend="up"
-      />
+      <StatsCard title="Total" value={100} description="Trending up" icon={Users} trend="up" />
     );
 
     const indicator = screen.getByTestId('trend-indicator');
@@ -107,13 +72,7 @@ describe('StatsCard Component', () => {
 
   it('should render down trend with TrendIndicator', () => {
     render(
-      <StatsCard
-        title="Total"
-        value={100}
-        description="Trending down"
-        icon={Users}
-        trend="down"
-      />
+      <StatsCard title="Total" value={100} description="Trending down" icon={Users} trend="down" />
     );
 
     const indicator = screen.getByTestId('trend-indicator');
@@ -122,13 +81,7 @@ describe('StatsCard Component', () => {
 
   it('should render neutral trend with TrendIndicator', () => {
     render(
-      <StatsCard
-        title="Total"
-        value={100}
-        description="No change"
-        icon={Users}
-        trend="neutral"
-      />
+      <StatsCard title="Total" value={100} description="No change" icon={Users} trend="neutral" />
     );
 
     const indicator = screen.getByTestId('trend-indicator');
@@ -137,12 +90,7 @@ describe('StatsCard Component', () => {
 
   it('should apply warning variant to icon', () => {
     const { container } = render(
-      <StatsCard
-        title="Total"
-        value={100}
-        icon={Users}
-        variant="warning"
-      />
+      <StatsCard title="Total" value={100} icon={Users} variant="warning" />
     );
 
     expect(container.querySelector('[class*="text-warning"]')).toBeInTheDocument();
@@ -150,25 +98,14 @@ describe('StatsCard Component', () => {
 
   it('should apply success variant to icon', () => {
     const { container } = render(
-      <StatsCard
-        title="Total"
-        value={100}
-        icon={Users}
-        variant="success"
-      />
+      <StatsCard title="Total" value={100} icon={Users} variant="success" />
     );
 
     expect(container.querySelector('[class*="text-success"]')).toBeInTheDocument();
   });
 
   it('should default to neutral trend', () => {
-    render(
-      <StatsCard
-        title="Total"
-        value={100}
-        icon={Users}
-      />
-    );
+    render(<StatsCard title="Total" value={100} icon={Users} />);
 
     // Should render without errors with default values
     expect(screen.getByText('Total')).toBeInTheDocument();
@@ -199,6 +136,9 @@ describe('StatsCard Component', () => {
       />
     );
 
-    expect(screen.getByRole('link', { name: 'Open patient list' })).toHaveAttribute('href', '/patients');
+    expect(screen.getByRole('link', { name: 'Open patient list' })).toHaveAttribute(
+      'href',
+      '/patients'
+    );
   });
 });

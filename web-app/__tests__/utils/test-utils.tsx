@@ -40,11 +40,7 @@ interface AllProvidersProps {
 function AllProviders({ children, queryClient }: AllProvidersProps) {
   const client = queryClient || createTestQueryClient();
 
-  return (
-    <QueryClientProvider client={client}>
-      {children}
-    </QueryClientProvider>
-  );
+  return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
 }
 
 interface CustomRenderOptions extends Omit<RenderOptions, 'wrapper'> {
@@ -54,16 +50,11 @@ interface CustomRenderOptions extends Omit<RenderOptions, 'wrapper'> {
 /**
  * Custom render function that wraps with providers
  */
-function customRender(
-  ui: ReactElement,
-  options?: CustomRenderOptions
-) {
+function customRender(ui: ReactElement, options?: CustomRenderOptions) {
   const { queryClient, ...renderOptions } = options || {};
 
   return render(ui, {
-    wrapper: ({ children }) => (
-      <AllProviders queryClient={queryClient}>{children}</AllProviders>
-    ),
+    wrapper: ({ children }) => <AllProviders queryClient={queryClient}>{children}</AllProviders>,
     ...renderOptions,
   });
 }

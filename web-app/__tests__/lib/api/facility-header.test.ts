@@ -34,7 +34,11 @@ describe('Facility header on API requests', () => {
     setActiveFacilityId(1);
 
     // Run the request interceptor manually (without actually sending a request)
-    const interceptors = (apiClient.interceptors.request as unknown as { handlers: Array<{ fulfilled: (config: Record<string, unknown>) => unknown }> }).handlers;
+    const interceptors = (
+      apiClient.interceptors.request as unknown as {
+        handlers: Array<{ fulfilled: (config: Record<string, unknown>) => unknown }>;
+      }
+    ).handlers;
     const interceptor = interceptors.find((h) => h.fulfilled);
     expect(interceptor).toBeDefined();
 
@@ -52,11 +56,17 @@ describe('Facility header on API requests', () => {
   it('does not attach X-Facility-Id when no facility is set', async () => {
     setActiveFacilityId(null);
 
-    const interceptors = (apiClient.interceptors.request as unknown as { handlers: Array<{ fulfilled: (config: Record<string, unknown>) => unknown }> }).handlers;
+    const interceptors = (
+      apiClient.interceptors.request as unknown as {
+        handlers: Array<{ fulfilled: (config: Record<string, unknown>) => unknown }>;
+      }
+    ).handlers;
     const interceptor = interceptors.find((h) => h.fulfilled);
 
     const config = { headers: {} as Record<string, string>, url: '/api/patients/' };
     const result = await interceptor!.fulfilled(config);
-    expect((result as Record<string, Record<string, string>>).headers['X-Facility-Id']).toBeUndefined();
+    expect(
+      (result as Record<string, Record<string, string>>).headers['X-Facility-Id']
+    ).toBeUndefined();
   });
 });

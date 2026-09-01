@@ -104,34 +104,134 @@ describe('use-occupational-therapy hooks', () => {
   it('invalidates OT caches for order and session mutations', async () => {
     const ctx = createWrapper();
     const cases = [
-      { useHook: useCreateOTOrder, api: mockOtApi.createOrder, input: { patient: 1 }, called: [{ patient: 1 }], keys: [otKeys.orders()] },
-      { useHook: useUpdateOTOrder, api: mockOtApi.updateOrder, input: { id: 2, data: { notes: 'updated' } }, called: [2, { notes: 'updated' }], keys: [otKeys.order(2), otKeys.orders()] },
-      { useHook: useDeleteOTOrder, api: mockOtApi.deleteOrder, input: 2, called: [2], keys: [otKeys.orders()] },
-      { useHook: useApproveOTOrder, api: mockOtApi.approveOrder, input: 2, called: [2], keys: [otKeys.order(2), otKeys.orders()] },
-      { useHook: useRejectOTOrder, api: mockOtApi.rejectOrder, input: { id: 2, reason: 'reject' }, called: [2, 'reject'], keys: [otKeys.order(2), otKeys.orders()] },
-      { useHook: useAssignOTTherapist, api: mockOtApi.assignTherapist, input: { id: 2, therapistId: 7 }, called: [2, 7], keys: [otKeys.order(2), otKeys.orders()] },
-      { useHook: useGenerateOTSessions, api: mockOtApi.generateSessions, input: { id: 2, count: 2 }, called: [2, 2], keys: [otKeys.order(2), otKeys.orderSessions(2), otKeys.sessions()] },
-      { useHook: useStartOTOrder, api: mockOtApi.startOrder, input: 2, called: [2], keys: [otKeys.order(2), otKeys.orders()] },
-      { useHook: useCompleteOTOrder, api: mockOtApi.completeOrder, input: 2, called: [2], keys: [otKeys.order(2), otKeys.orders()] },
-      { useHook: useCancelOTOrder, api: mockOtApi.cancelOrder, input: { id: 2, reason: 'cancel' }, called: [2, 'cancel'], keys: [otKeys.order(2), otKeys.orders()] },
-      { useHook: useCreateOTSession, api: mockOtApi.createSession, input: { order: 2 }, called: [{ order: 2 }], keys: [otKeys.sessions(), otKeys.orderSessions(2)] },
-      { useHook: useStartOTSession, api: mockOtApi.startSession, input: 3, called: [3], keys: [otKeys.session(3), otKeys.sessions()] },
-      { useHook: useCompleteOTSession, api: mockOtApi.completeSession, input: { id: 3, data: { summary: 'done' } }, called: [3, { summary: 'done' }], resolved: { order: 2 }, keys: [otKeys.session(3), otKeys.sessions(), otKeys.order(2)] },
-      { useHook: useCancelOTSession, api: mockOtApi.cancelSession, input: { id: 3, reason: 'cancel' }, called: [3, 'cancel'], keys: [otKeys.session(3), otKeys.sessions()] },
-      { useHook: useMarkOTSessionNoShow, api: mockOtApi.markNoShow, input: 3, called: [3], keys: [otKeys.session(3), otKeys.sessions()] },
-      { useHook: useRescheduleOTSession, api: mockOtApi.rescheduleSession, input: { id: 3, newDate: '2026-03-20', newTime: '11:00' }, called: [3, '2026-03-20', '11:00'], keys: [otKeys.session(3), otKeys.sessions()] },
+      {
+        useHook: useCreateOTOrder,
+        api: mockOtApi.createOrder,
+        input: { patient: 1 },
+        called: [{ patient: 1 }],
+        keys: [otKeys.orders()],
+      },
+      {
+        useHook: useUpdateOTOrder,
+        api: mockOtApi.updateOrder,
+        input: { id: 2, data: { notes: 'updated' } },
+        called: [2, { notes: 'updated' }],
+        keys: [otKeys.order(2), otKeys.orders()],
+      },
+      {
+        useHook: useDeleteOTOrder,
+        api: mockOtApi.deleteOrder,
+        input: 2,
+        called: [2],
+        keys: [otKeys.orders()],
+      },
+      {
+        useHook: useApproveOTOrder,
+        api: mockOtApi.approveOrder,
+        input: 2,
+        called: [2],
+        keys: [otKeys.order(2), otKeys.orders()],
+      },
+      {
+        useHook: useRejectOTOrder,
+        api: mockOtApi.rejectOrder,
+        input: { id: 2, reason: 'reject' },
+        called: [2, 'reject'],
+        keys: [otKeys.order(2), otKeys.orders()],
+      },
+      {
+        useHook: useAssignOTTherapist,
+        api: mockOtApi.assignTherapist,
+        input: { id: 2, therapistId: 7 },
+        called: [2, 7],
+        keys: [otKeys.order(2), otKeys.orders()],
+      },
+      {
+        useHook: useGenerateOTSessions,
+        api: mockOtApi.generateSessions,
+        input: { id: 2, count: 2 },
+        called: [2, 2],
+        keys: [otKeys.order(2), otKeys.orderSessions(2), otKeys.sessions()],
+      },
+      {
+        useHook: useStartOTOrder,
+        api: mockOtApi.startOrder,
+        input: 2,
+        called: [2],
+        keys: [otKeys.order(2), otKeys.orders()],
+      },
+      {
+        useHook: useCompleteOTOrder,
+        api: mockOtApi.completeOrder,
+        input: 2,
+        called: [2],
+        keys: [otKeys.order(2), otKeys.orders()],
+      },
+      {
+        useHook: useCancelOTOrder,
+        api: mockOtApi.cancelOrder,
+        input: { id: 2, reason: 'cancel' },
+        called: [2, 'cancel'],
+        keys: [otKeys.order(2), otKeys.orders()],
+      },
+      {
+        useHook: useCreateOTSession,
+        api: mockOtApi.createSession,
+        input: { order: 2 },
+        called: [{ order: 2 }],
+        keys: [otKeys.sessions(), otKeys.orderSessions(2)],
+      },
+      {
+        useHook: useStartOTSession,
+        api: mockOtApi.startSession,
+        input: 3,
+        called: [3],
+        keys: [otKeys.session(3), otKeys.sessions()],
+      },
+      {
+        useHook: useCompleteOTSession,
+        api: mockOtApi.completeSession,
+        input: { id: 3, data: { summary: 'done' } },
+        called: [3, { summary: 'done' }],
+        resolved: { order: 2 },
+        keys: [otKeys.session(3), otKeys.sessions(), otKeys.order(2)],
+      },
+      {
+        useHook: useCancelOTSession,
+        api: mockOtApi.cancelSession,
+        input: { id: 3, reason: 'cancel' },
+        called: [3, 'cancel'],
+        keys: [otKeys.session(3), otKeys.sessions()],
+      },
+      {
+        useHook: useMarkOTSessionNoShow,
+        api: mockOtApi.markNoShow,
+        input: 3,
+        called: [3],
+        keys: [otKeys.session(3), otKeys.sessions()],
+      },
+      {
+        useHook: useRescheduleOTSession,
+        api: mockOtApi.rescheduleSession,
+        input: { id: 3, newDate: '2026-03-20', newTime: '11:00' },
+        called: [3, '2026-03-20', '11:00'],
+        keys: [otKeys.session(3), otKeys.sessions()],
+      },
     ];
     for (const testCase of cases) {
-      testCase.api.mockResolvedValueOnce((testCase as any).resolved ?? { ok: true });
+      testCase.api.mockResolvedValueOnce((testCase as unknown).resolved ?? { ok: true });
       const { result } = renderHook(() => testCase.useHook(), { wrapper: ctx.wrapper });
       await act(async () => {
         await result.current.mutateAsync(testCase.input as never);
       });
       expect(testCase.api).toHaveBeenCalledWith(...(testCase.called as []));
-      testCase.keys.forEach((key) => expect(ctx.invalidateQueries).toHaveBeenCalledWith({ queryKey: key }));
+      testCase.keys.forEach((key) =>
+        expect(ctx.invalidateQueries).toHaveBeenCalledWith({ queryKey: key })
+      );
     }
   });
-});import { act, renderHook, waitFor } from '@testing-library/react';
+});
+import { act, renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import {
@@ -260,7 +360,10 @@ describe('occupational therapy query hooks', () => {
   });
 
   it('fetches treatment types, orders, and sessions', async () => {
-    mockOTApi.listTreatmentTypes.mockResolvedValueOnce({ count: 1, results: [mockTreatmentType] } as never);
+    mockOTApi.listTreatmentTypes.mockResolvedValueOnce({
+      count: 1,
+      results: [mockTreatmentType],
+    } as never);
     mockOTApi.getTreatmentType.mockResolvedValueOnce(mockTreatmentType as never);
     mockOTApi.listOrders.mockResolvedValueOnce({ count: 1, results: [mockOrder] } as never);
     mockOTApi.getOrder.mockResolvedValueOnce(mockOrder as never);
@@ -269,15 +372,21 @@ describe('occupational therapy query hooks', () => {
     mockOTApi.getSession.mockResolvedValueOnce(mockSession as never);
     mockOTApi.getOrderSessions.mockResolvedValueOnce([mockSession] as never);
 
-    const treatmentTypes = renderHook(() => useOTTreatmentTypes({ is_active: true } as never), { wrapper: createWrapper().wrapper });
+    const treatmentTypes = renderHook(() => useOTTreatmentTypes({ is_active: true } as never), {
+      wrapper: createWrapper().wrapper,
+    });
     await waitFor(() => expect(treatmentTypes.result.current.isSuccess).toBe(true));
     expect(mockOTApi.listTreatmentTypes).toHaveBeenCalledWith({ is_active: true });
 
-    const treatmentType = renderHook(() => useOTTreatmentType(1), { wrapper: createWrapper().wrapper });
+    const treatmentType = renderHook(() => useOTTreatmentType(1), {
+      wrapper: createWrapper().wrapper,
+    });
     await waitFor(() => expect(treatmentType.result.current.isSuccess).toBe(true));
     expect(mockOTApi.getTreatmentType).toHaveBeenCalledWith(1);
 
-    const orders = renderHook(() => useOTOrders({ status: 'PENDING' as never }), { wrapper: createWrapper().wrapper });
+    const orders = renderHook(() => useOTOrders({ status: 'PENDING' as never }), {
+      wrapper: createWrapper().wrapper,
+    });
     await waitFor(() => expect(orders.result.current.isSuccess).toBe(true));
     expect(mockOTApi.listOrders).toHaveBeenCalledWith({ status: 'PENDING' });
 
@@ -285,11 +394,15 @@ describe('occupational therapy query hooks', () => {
     await waitFor(() => expect(order.result.current.isSuccess).toBe(true));
     expect(mockOTApi.getOrder).toHaveBeenCalledWith(7);
 
-    const orderByNumber = renderHook(() => useOTOrderByNumber('OT-20260315-0001'), { wrapper: createWrapper().wrapper });
+    const orderByNumber = renderHook(() => useOTOrderByNumber('OT-20260315-0001'), {
+      wrapper: createWrapper().wrapper,
+    });
     await waitFor(() => expect(orderByNumber.result.current.isSuccess).toBe(true));
     expect(mockOTApi.getOrderByNumber).toHaveBeenCalledWith('OT-20260315-0001');
 
-    const sessions = renderHook(() => useOTSessions({ status: 'SCHEDULED' as never }), { wrapper: createWrapper().wrapper });
+    const sessions = renderHook(() => useOTSessions({ status: 'SCHEDULED' as never }), {
+      wrapper: createWrapper().wrapper,
+    });
     await waitFor(() => expect(sessions.result.current.isSuccess).toBe(true));
     expect(mockOTApi.listSessions).toHaveBeenCalledWith({ status: 'SCHEDULED' });
 
@@ -297,7 +410,9 @@ describe('occupational therapy query hooks', () => {
     await waitFor(() => expect(session.result.current.isSuccess).toBe(true));
     expect(mockOTApi.getSession).toHaveBeenCalledWith(9);
 
-    const orderSessions = renderHook(() => useOTOrderSessions(7), { wrapper: createWrapper().wrapper });
+    const orderSessions = renderHook(() => useOTOrderSessions(7), {
+      wrapper: createWrapper().wrapper,
+    });
     await waitFor(() => expect(orderSessions.result.current.isSuccess).toBe(true));
     expect(mockOTApi.getOrderSessions).toHaveBeenCalledWith(7);
   });
@@ -324,16 +439,98 @@ describe('occupational therapy mutation hooks', () => {
 
   it('invalidates order queries for order mutations', async () => {
     const cases = [
-      { useHook: useCreateOTOrder, apiMock: mockOTApi.createOrder, input: { patient_id: 1, encounter_id: 100, treatment_type_id: 1, clinical_indication: 'ADL support' }, calledWith: [{ patient_id: 1, encounter_id: 100, treatment_type_id: 1, clinical_indication: 'ADL support' }], resolved: mockOrder, keys: [otKeys.orders()] },
-      { useHook: useUpdateOTOrder, apiMock: mockOTApi.updateOrder, input: { id: 7, data: { clinical_indication: 'Updated' } }, calledWith: [7, { clinical_indication: 'Updated' }], resolved: mockOrder, keys: [otKeys.order(7), otKeys.orders()] },
-      { useHook: useDeleteOTOrder, apiMock: mockOTApi.deleteOrder, input: 7, calledWith: [7], resolved: undefined, keys: [otKeys.orders()] },
-      { useHook: useApproveOTOrder, apiMock: mockOTApi.approveOrder, input: 7, calledWith: [7], resolved: { ...mockOrder, status: 'APPROVED' }, keys: [otKeys.order(7), otKeys.orders()] },
-      { useHook: useRejectOTOrder, apiMock: mockOTApi.rejectOrder, input: { id: 7, reason: 'Contraindication' }, calledWith: [7, 'Contraindication'], resolved: { ...mockOrder, status: 'REJECTED' }, keys: [otKeys.order(7), otKeys.orders()] },
-      { useHook: useAssignOTTherapist, apiMock: mockOTApi.assignTherapist, input: { id: 7, therapistId: 11 }, calledWith: [7, 11], resolved: mockOrder, keys: [otKeys.order(7), otKeys.orders()] },
-      { useHook: useGenerateOTSessions, apiMock: mockOTApi.generateSessions, input: { id: 7, count: 3 }, calledWith: [7, 3], resolved: [mockSession], keys: [otKeys.order(7), otKeys.orderSessions(7), otKeys.sessions()] },
-      { useHook: useStartOTOrder, apiMock: mockOTApi.startOrder, input: 7, calledWith: [7], resolved: { ...mockOrder, status: 'IN_PROGRESS' }, keys: [otKeys.order(7), otKeys.orders()] },
-      { useHook: useCompleteOTOrder, apiMock: mockOTApi.completeOrder, input: 7, calledWith: [7], resolved: { ...mockOrder, status: 'COMPLETED' }, keys: [otKeys.order(7), otKeys.orders()] },
-      { useHook: useCancelOTOrder, apiMock: mockOTApi.cancelOrder, input: { id: 7, reason: 'Patient declined' }, calledWith: [7, 'Patient declined'], resolved: { ...mockOrder, status: 'CANCELLED' }, keys: [otKeys.order(7), otKeys.orders()] },
+      {
+        useHook: useCreateOTOrder,
+        apiMock: mockOTApi.createOrder,
+        input: {
+          patient_id: 1,
+          encounter_id: 100,
+          treatment_type_id: 1,
+          clinical_indication: 'ADL support',
+        },
+        calledWith: [
+          {
+            patient_id: 1,
+            encounter_id: 100,
+            treatment_type_id: 1,
+            clinical_indication: 'ADL support',
+          },
+        ],
+        resolved: mockOrder,
+        keys: [otKeys.orders()],
+      },
+      {
+        useHook: useUpdateOTOrder,
+        apiMock: mockOTApi.updateOrder,
+        input: { id: 7, data: { clinical_indication: 'Updated' } },
+        calledWith: [7, { clinical_indication: 'Updated' }],
+        resolved: mockOrder,
+        keys: [otKeys.order(7), otKeys.orders()],
+      },
+      {
+        useHook: useDeleteOTOrder,
+        apiMock: mockOTApi.deleteOrder,
+        input: 7,
+        calledWith: [7],
+        resolved: undefined,
+        keys: [otKeys.orders()],
+      },
+      {
+        useHook: useApproveOTOrder,
+        apiMock: mockOTApi.approveOrder,
+        input: 7,
+        calledWith: [7],
+        resolved: { ...mockOrder, status: 'APPROVED' },
+        keys: [otKeys.order(7), otKeys.orders()],
+      },
+      {
+        useHook: useRejectOTOrder,
+        apiMock: mockOTApi.rejectOrder,
+        input: { id: 7, reason: 'Contraindication' },
+        calledWith: [7, 'Contraindication'],
+        resolved: { ...mockOrder, status: 'REJECTED' },
+        keys: [otKeys.order(7), otKeys.orders()],
+      },
+      {
+        useHook: useAssignOTTherapist,
+        apiMock: mockOTApi.assignTherapist,
+        input: { id: 7, therapistId: 11 },
+        calledWith: [7, 11],
+        resolved: mockOrder,
+        keys: [otKeys.order(7), otKeys.orders()],
+      },
+      {
+        useHook: useGenerateOTSessions,
+        apiMock: mockOTApi.generateSessions,
+        input: { id: 7, count: 3 },
+        calledWith: [7, 3],
+        resolved: [mockSession],
+        keys: [otKeys.order(7), otKeys.orderSessions(7), otKeys.sessions()],
+      },
+      {
+        useHook: useStartOTOrder,
+        apiMock: mockOTApi.startOrder,
+        input: 7,
+        calledWith: [7],
+        resolved: { ...mockOrder, status: 'IN_PROGRESS' },
+        keys: [otKeys.order(7), otKeys.orders()],
+      },
+      {
+        useHook: useCompleteOTOrder,
+        apiMock: mockOTApi.completeOrder,
+        input: 7,
+        calledWith: [7],
+        resolved: { ...mockOrder, status: 'COMPLETED' },
+        keys: [otKeys.order(7), otKeys.orders()],
+      },
+      {
+        useHook: useCancelOTOrder,
+        apiMock: mockOTApi.cancelOrder,
+        input: { id: 7, reason: 'Patient declined' },
+        calledWith: [7, 'Patient declined'],
+        resolved: { ...mockOrder, status: 'CANCELLED' },
+        keys: [otKeys.order(7), otKeys.orders()],
+      },
     ];
 
     for (const testCase of cases) {
@@ -352,12 +549,54 @@ describe('occupational therapy mutation hooks', () => {
 
   it('invalidates session queries for session mutations', async () => {
     const cases = [
-      { useHook: useCreateOTSession, apiMock: mockOTApi.createSession, input: { order: 7, session_date: '2026-03-16' }, calledWith: [{ order: 7, session_date: '2026-03-16' }], resolved: mockSession, keys: [otKeys.sessions(), otKeys.orderSessions(7)] },
-      { useHook: useStartOTSession, apiMock: mockOTApi.startSession, input: 9, calledWith: [9], resolved: { ...mockSession, status: 'IN_PROGRESS' }, keys: [otKeys.session(9), otKeys.sessions()] },
-      { useHook: useCompleteOTSession, apiMock: mockOTApi.completeSession, input: { id: 9, data: { progress_notes: 'Improved', independence_score: 70 } }, calledWith: [9, { progress_notes: 'Improved', independence_score: 70 }], resolved: { ...mockSession, status: 'COMPLETED', order: 7 }, keys: [otKeys.session(9), otKeys.sessions(), otKeys.order(7)] },
-      { useHook: useCancelOTSession, apiMock: mockOTApi.cancelSession, input: { id: 9, reason: 'Unwell' }, calledWith: [9, 'Unwell'], resolved: { ...mockSession, status: 'CANCELLED' }, keys: [otKeys.session(9), otKeys.sessions()] },
-      { useHook: useMarkOTSessionNoShow, apiMock: mockOTApi.markNoShow, input: 9, calledWith: [9], resolved: { ...mockSession, status: 'NO_SHOW' }, keys: [otKeys.session(9), otKeys.sessions()] },
-      { useHook: useRescheduleOTSession, apiMock: mockOTApi.rescheduleSession, input: { id: 9, newDate: '2026-03-20', newTime: '10:00:00' }, calledWith: [9, '2026-03-20', '10:00:00'], resolved: { ...mockSession, session_date: '2026-03-20' }, keys: [otKeys.session(9), otKeys.sessions()] },
+      {
+        useHook: useCreateOTSession,
+        apiMock: mockOTApi.createSession,
+        input: { order: 7, session_date: '2026-03-16' },
+        calledWith: [{ order: 7, session_date: '2026-03-16' }],
+        resolved: mockSession,
+        keys: [otKeys.sessions(), otKeys.orderSessions(7)],
+      },
+      {
+        useHook: useStartOTSession,
+        apiMock: mockOTApi.startSession,
+        input: 9,
+        calledWith: [9],
+        resolved: { ...mockSession, status: 'IN_PROGRESS' },
+        keys: [otKeys.session(9), otKeys.sessions()],
+      },
+      {
+        useHook: useCompleteOTSession,
+        apiMock: mockOTApi.completeSession,
+        input: { id: 9, data: { progress_notes: 'Improved', independence_score: 70 } },
+        calledWith: [9, { progress_notes: 'Improved', independence_score: 70 }],
+        resolved: { ...mockSession, status: 'COMPLETED', order: 7 },
+        keys: [otKeys.session(9), otKeys.sessions(), otKeys.order(7)],
+      },
+      {
+        useHook: useCancelOTSession,
+        apiMock: mockOTApi.cancelSession,
+        input: { id: 9, reason: 'Unwell' },
+        calledWith: [9, 'Unwell'],
+        resolved: { ...mockSession, status: 'CANCELLED' },
+        keys: [otKeys.session(9), otKeys.sessions()],
+      },
+      {
+        useHook: useMarkOTSessionNoShow,
+        apiMock: mockOTApi.markNoShow,
+        input: 9,
+        calledWith: [9],
+        resolved: { ...mockSession, status: 'NO_SHOW' },
+        keys: [otKeys.session(9), otKeys.sessions()],
+      },
+      {
+        useHook: useRescheduleOTSession,
+        apiMock: mockOTApi.rescheduleSession,
+        input: { id: 9, newDate: '2026-03-20', newTime: '10:00:00' },
+        calledWith: [9, '2026-03-20', '10:00:00'],
+        resolved: { ...mockSession, session_date: '2026-03-20' },
+        keys: [otKeys.session(9), otKeys.sessions()],
+      },
     ];
 
     for (const testCase of cases) {

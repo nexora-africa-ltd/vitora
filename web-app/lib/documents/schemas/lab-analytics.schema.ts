@@ -8,7 +8,7 @@
 import type { DocumentDefinition } from '../types';
 
 export const labAnalyticsSchema: DocumentDefinition = {
-  document_type: 'lab_analytics' as any,
+  document_type: 'lab_analytics',
   version: '1.0',
   layout: 'a4',
   template: 'lab-analytics.html',

@@ -17,16 +17,16 @@ jest.mock('@/lib/hooks/use-locations', () => ({
     isLoading: false,
   })),
   useSubCounties: jest.fn((countyId) => ({
-    data: countyId ? [
-      { id: 101, name: 'Westlands' },
-      { id: 102, name: 'Langata' },
-    ] : [],
+    data: countyId
+      ? [
+          { id: 101, name: 'Westlands' },
+          { id: 102, name: 'Langata' },
+        ]
+      : [],
     isLoading: false,
   })),
   useWards: jest.fn((subCountyId) => ({
-    data: subCountyId ? [
-      { id: 1001, name: 'Parklands' },
-    ] : [],
+    data: subCountyId ? [{ id: 1001, name: 'Parklands' }] : [],
     isLoading: false,
   })),
 }));
@@ -79,42 +79,32 @@ describe('PatientForm Component', () => {
   });
 
   it('should render form with personal information section', () => {
-    render(
-      <PatientForm onSubmit={mockOnSubmit} onCancel={mockOnCancel} />
-    );
+    render(<PatientForm onSubmit={mockOnSubmit} onCancel={mockOnCancel} />);
 
     // Section is now called "Personal Information" not "Basic Information"
     expect(screen.getByText('Personal Information')).toBeInTheDocument();
   });
 
   it('should render first name field', () => {
-    render(
-      <PatientForm onSubmit={mockOnSubmit} onCancel={mockOnCancel} />
-    );
+    render(<PatientForm onSubmit={mockOnSubmit} onCancel={mockOnCancel} />);
 
     expect(screen.getByPlaceholderText(/Enter first name/i)).toBeInTheDocument();
   });
 
   it('should render last name field', () => {
-    render(
-      <PatientForm onSubmit={mockOnSubmit} onCancel={mockOnCancel} />
-    );
+    render(<PatientForm onSubmit={mockOnSubmit} onCancel={mockOnCancel} />);
 
     expect(screen.getByPlaceholderText(/Enter last name/i)).toBeInTheDocument();
   });
 
   it('should render contact information section', () => {
-    render(
-      <PatientForm onSubmit={mockOnSubmit} onCancel={mockOnCancel} />
-    );
+    render(<PatientForm onSubmit={mockOnSubmit} onCancel={mockOnCancel} />);
 
     expect(screen.getByText('Contact Information')).toBeInTheDocument();
   });
 
   it('should render location section', () => {
-    render(
-      <PatientForm onSubmit={mockOnSubmit} onCancel={mockOnCancel} />
-    );
+    render(<PatientForm onSubmit={mockOnSubmit} onCancel={mockOnCancel} />);
 
     expect(screen.getByText('Location')).toBeInTheDocument();
   });
@@ -122,9 +112,7 @@ describe('PatientForm Component', () => {
   it('should call onCancel when cancel button is clicked', async () => {
     const user = userEvent.setup();
 
-    render(
-      <PatientForm onSubmit={mockOnSubmit} onCancel={mockOnCancel} />
-    );
+    render(<PatientForm onSubmit={mockOnSubmit} onCancel={mockOnCancel} />);
 
     const cancelButton = screen.getByRole('button', { name: /Cancel/i });
     await user.click(cancelButton);
@@ -133,13 +121,7 @@ describe('PatientForm Component', () => {
   });
 
   it('should show loading state when isLoading is true', () => {
-    render(
-      <PatientForm
-        onSubmit={mockOnSubmit}
-        onCancel={mockOnCancel}
-        isLoading={true}
-      />
-    );
+    render(<PatientForm onSubmit={mockOnSubmit} onCancel={mockOnCancel} isLoading={true} />);
 
     // Submit button should be disabled
     const submitButton = screen.getByRole('button', { name: /Register Patient/i });
@@ -147,17 +129,13 @@ describe('PatientForm Component', () => {
   });
 
   it('should render date of birth picker', () => {
-    render(
-      <PatientForm onSubmit={mockOnSubmit} onCancel={mockOnCancel} />
-    );
+    render(<PatientForm onSubmit={mockOnSubmit} onCancel={mockOnCancel} />);
 
     expect(screen.getByText(/Date of Birth/i)).toBeInTheDocument();
   });
 
   it('should render emergency contact section', () => {
-    render(
-      <PatientForm onSubmit={mockOnSubmit} onCancel={mockOnCancel} />
-    );
+    render(<PatientForm onSubmit={mockOnSubmit} onCancel={mockOnCancel} />);
 
     expect(screen.getByText(/Emergency Contact/i)).toBeInTheDocument();
   });
@@ -168,11 +146,7 @@ describe('PatientForm Component', () => {
     };
 
     render(
-      <PatientForm
-        onSubmit={mockOnSubmit}
-        onCancel={mockOnCancel}
-        defaultValues={defaultValues}
-      />
+      <PatientForm onSubmit={mockOnSubmit} onCancel={mockOnCancel} defaultValues={defaultValues} />
     );
 
     expect(screen.getByDisplayValue('John')).toBeInTheDocument();
@@ -184,11 +158,7 @@ describe('PatientForm Component', () => {
     };
 
     render(
-      <PatientForm
-        onSubmit={mockOnSubmit}
-        onCancel={mockOnCancel}
-        defaultValues={defaultValues}
-      />
+      <PatientForm onSubmit={mockOnSubmit} onCancel={mockOnCancel} defaultValues={defaultValues} />
     );
 
     expect(screen.getByDisplayValue('Doe')).toBeInTheDocument();
@@ -197,9 +167,7 @@ describe('PatientForm Component', () => {
   it('should fill in first name field', async () => {
     const user = userEvent.setup();
 
-    render(
-      <PatientForm onSubmit={mockOnSubmit} onCancel={mockOnCancel} />
-    );
+    render(<PatientForm onSubmit={mockOnSubmit} onCancel={mockOnCancel} />);
 
     const firstNameInput = screen.getByPlaceholderText(/Enter first name/i);
     await user.type(firstNameInput, 'Jane');
@@ -210,9 +178,7 @@ describe('PatientForm Component', () => {
   it('should fill in last name field', async () => {
     const user = userEvent.setup();
 
-    render(
-      <PatientForm onSubmit={mockOnSubmit} onCancel={mockOnCancel} />
-    );
+    render(<PatientForm onSubmit={mockOnSubmit} onCancel={mockOnCancel} />);
 
     const lastNameInput = screen.getByPlaceholderText(/Enter last name/i);
     await user.type(lastNameInput, 'Smith');
@@ -221,18 +187,14 @@ describe('PatientForm Component', () => {
   });
 
   it('should have phone description text', () => {
-    render(
-      <PatientForm onSubmit={mockOnSubmit} onCancel={mockOnCancel} />
-    );
+    render(<PatientForm onSubmit={mockOnSubmit} onCancel={mockOnCancel} />);
 
     // Text is now "Kenya format" not "Kenya phone format"
     expect(screen.getByText(/Kenya format/i)).toBeInTheDocument();
   });
 
   it('should render gender selection', () => {
-    render(
-      <PatientForm onSubmit={mockOnSubmit} onCancel={mockOnCancel} />
-    );
+    render(<PatientForm onSubmit={mockOnSubmit} onCancel={mockOnCancel} />);
 
     // Gender is now a RadioGroup - check the label and that radio buttons exist
     expect(screen.getByText('Gender *')).toBeInTheDocument();
@@ -242,9 +204,7 @@ describe('PatientForm Component', () => {
   });
 
   it('should render county selection', () => {
-    render(
-      <PatientForm onSubmit={mockOnSubmit} onCancel={mockOnCancel} />
-    );
+    render(<PatientForm onSubmit={mockOnSubmit} onCancel={mockOnCancel} />);
 
     // Use getAllByText since sub-county shows "Select county first"
     const countyElements = screen.getAllByText(/Select county/i);

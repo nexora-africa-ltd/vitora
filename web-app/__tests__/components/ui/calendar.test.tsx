@@ -51,12 +51,7 @@ describe('Calendar Component', () => {
   it('should call onSelect when date is selected', () => {
     const onSelect = jest.fn();
 
-    render(
-      <Calendar
-        mode="single"
-        onSelect={onSelect}
-      />
-    );
+    render(<Calendar mode="single" onSelect={onSelect} />);
 
     // Find a day button and click it
     const dayButtons = screen.getAllByRole('gridcell');
@@ -75,12 +70,7 @@ describe('Calendar Component', () => {
   it('should show selected date', () => {
     const selectedDate = new Date(2025, 0, 15); // Jan 15, 2025
 
-    render(
-      <Calendar
-        mode="single"
-        selected={selectedDate}
-      />
-    );
+    render(<Calendar mode="single" selected={selectedDate} />);
 
     // The calendar should render with the selected month visible
     expect(screen.getByRole('grid')).toBeInTheDocument();
@@ -99,31 +89,19 @@ describe('Calendar Component', () => {
   it('should support disabled dates', () => {
     const today = new Date();
 
-    render(
-      <Calendar
-        disabled={[today]}
-      />
-    );
+    render(<Calendar disabled={[today]} />);
 
     expect(screen.getByRole('grid')).toBeInTheDocument();
   });
 
   it('should support date range selection mode', () => {
-    render(
-      <Calendar
-        mode="range"
-      />
-    );
+    render(<Calendar mode="range" />);
 
     expect(screen.getByRole('grid')).toBeInTheDocument();
   });
 
   it('should support multiple selection mode', () => {
-    render(
-      <Calendar
-        mode="multiple"
-      />
-    );
+    render(<Calendar mode="multiple" />);
 
     expect(screen.getByRole('grid')).toBeInTheDocument();
   });

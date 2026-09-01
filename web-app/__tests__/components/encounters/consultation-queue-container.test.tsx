@@ -23,7 +23,8 @@ import type { ConsultationQueueItem } from '@/lib/types/encounter';
 // Helper to get HTMLElement from closest() for use with within()
 const getClosestElement = (text: string, selector: string): HTMLElement => {
   const element = screen.getByText(text).closest(selector);
-  if (!element) throw new Error(`Could not find element with selector "${selector}" near "${text}"`);
+  if (!element)
+    throw new Error(`Could not find element with selector "${selector}" near "${text}"`);
   return element as HTMLElement;
 };
 
@@ -72,15 +73,13 @@ const createTestQueryClient = () =>
 const createWrapper = () => {
   const queryClient = createTestQueryClient();
   return function Wrapper({ children }: { children: React.ReactNode }) {
-    return (
-      <QueryClientProvider client={queryClient}>
-        {children}
-      </QueryClientProvider>
-    );
+    return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
   };
 };
 
-const createQueueItem = (overrides: Partial<ConsultationQueueItem> = {}): ConsultationQueueItem => ({
+const createQueueItem = (
+  overrides: Partial<ConsultationQueueItem> = {}
+): ConsultationQueueItem => ({
   id: 1,
   patient_id: 101,
   patient_name: 'John Kamau',
@@ -103,8 +102,18 @@ const createQueueItem = (overrides: Partial<ConsultationQueueItem> = {}): Consul
 
 const mockQueueData = {
   results: [
-    createQueueItem({ id: 1, patient_name: 'John Kamau', triage_category: 'RED', wait_time_minutes: 45 }),
-    createQueueItem({ id: 2, patient_name: 'Mary Wanjiku', triage_category: 'YELLOW', wait_time_minutes: 30 }),
+    createQueueItem({
+      id: 1,
+      patient_name: 'John Kamau',
+      triage_category: 'RED',
+      wait_time_minutes: 45,
+    }),
+    createQueueItem({
+      id: 2,
+      patient_name: 'Mary Wanjiku',
+      triage_category: 'YELLOW',
+      wait_time_minutes: 30,
+    }),
     createQueueItem({
       id: 3,
       patient_name: 'Peter Ochieng',
@@ -160,10 +169,13 @@ describe('ConsultationQueueContainer Integration', () => {
 
       render(<ConsultationQueueContainer />, { wrapper: createWrapper() });
 
-      await waitFor(() => {
-        // Container shows "Failed to load consultation queue" on error
-        expect(screen.getByText(/Failed to load/i)).toBeInTheDocument();
-      }, { timeout: 3000 });
+      await waitFor(
+        () => {
+          // Container shows "Failed to load consultation queue" on error
+          expect(screen.getByText(/Failed to load/i)).toBeInTheDocument();
+        },
+        { timeout: 3000 }
+      );
     });
 
     it('should show empty state when no patients in queue', async () => {
@@ -183,7 +195,10 @@ describe('ConsultationQueueContainer Integration', () => {
   describe('Call Patient Flow', () => {
     it('should call patient when Call Patient button is clicked', async () => {
       const user = userEvent.setup();
-      mockedApi.callPatient.mockResolvedValueOnce({ id: 1, consultation_status: 'CALLED' } as any);
+      mockedApi.callPatient.mockResolvedValueOnce({
+        id: 1,
+        consultation_status: 'CALLED',
+      } as unknown);
 
       render(<ConsultationQueueContainer />, { wrapper: createWrapper() });
 
@@ -204,7 +219,10 @@ describe('ConsultationQueueContainer Integration', () => {
 
     it('should show success toast after calling patient', async () => {
       const user = userEvent.setup();
-      mockedApi.callPatient.mockResolvedValueOnce({ id: 1, consultation_status: 'CALLED' } as any);
+      mockedApi.callPatient.mockResolvedValueOnce({
+        id: 1,
+        consultation_status: 'CALLED',
+      } as unknown);
 
       render(<ConsultationQueueContainer />, { wrapper: createWrapper() });
 
@@ -251,7 +269,10 @@ describe('ConsultationQueueContainer Integration', () => {
 
     it('should start consultation and navigate on confirm', async () => {
       const user = userEvent.setup();
-      mockedApi.startConsultation.mockResolvedValueOnce({ id: 3, consultation_status: 'IN_PROGRESS' } as any);
+      mockedApi.startConsultation.mockResolvedValueOnce({
+        id: 3,
+        consultation_status: 'IN_PROGRESS',
+      } as unknown);
 
       render(<ConsultationQueueContainer />, { wrapper: createWrapper() });
 
@@ -342,7 +363,9 @@ describe('ConsultationQueueContainer Integration', () => {
 
       // Peter has Start Consultation button (only shown for CALLED patients)
       const peterRow = getClosestElement('Peter Ochieng', '[data-testid="queue-item"]');
-      expect(within(peterRow).getByRole('button', { name: /Start Consultation/i })).toBeInTheDocument();
+      expect(
+        within(peterRow).getByRole('button', { name: /Start Consultation/i })
+      ).toBeInTheDocument();
     });
   });
 

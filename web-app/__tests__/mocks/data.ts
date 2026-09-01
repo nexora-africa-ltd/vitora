@@ -164,9 +164,24 @@ export const mockTokens = {
 };
 
 export const mockICD10Codes = [
-  { id: 1, code: 'J00', description: 'Acute nasopharyngitis [common cold]', category: 'Respiratory' },
-  { id: 2, code: 'J06.9', description: 'Acute upper respiratory infection, unspecified', category: 'Respiratory' },
-  { id: 3, code: 'A09', description: 'Infectious gastroenteritis and colitis, unspecified', category: 'Infectious' },
+  {
+    id: 1,
+    code: 'J00',
+    description: 'Acute nasopharyngitis [common cold]',
+    category: 'Respiratory',
+  },
+  {
+    id: 2,
+    code: 'J06.9',
+    description: 'Acute upper respiratory infection, unspecified',
+    category: 'Respiratory',
+  },
+  {
+    id: 3,
+    code: 'A09',
+    description: 'Infectious gastroenteritis and colitis, unspecified',
+    category: 'Infectious',
+  },
   { id: 4, code: 'B54', description: 'Unspecified malaria', category: 'Infectious' },
   { id: 5, code: 'R51', description: 'Headache', category: 'Symptoms' },
 ];

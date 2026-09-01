@@ -27,7 +27,7 @@ export async function initDesktopApiUrl(): Promise<string> {
   if (!isDesktop()) return API_BASE_URL;
   if (_desktopApiUrl) return _desktopApiUrl;
   if (!_desktopApiUrlPromise) {
-    _desktopApiUrlPromise = getApiUrl().then(url => {
+    _desktopApiUrlPromise = getApiUrl().then((url) => {
       _desktopApiUrl = url;
       // Update the axios instance default for any requests that bypass the interceptor
       apiClient.defaults.baseURL = url;
@@ -56,7 +56,9 @@ const _facilityChangeListeners = new Set<FacilityChangeListener>();
 /** Subscribe to facility ID changes. Returns an unsubscribe function. */
 export function onFacilityChange(listener: FacilityChangeListener): () => void {
   _facilityChangeListeners.add(listener);
-  return () => { _facilityChangeListeners.delete(listener); };
+  return () => {
+    _facilityChangeListeners.delete(listener);
+  };
 }
 
 /** Called by FacilityProvider when the active facility changes. */
@@ -64,7 +66,7 @@ export function setActiveFacilityId(id: number | null): void {
   const prev = _activeFacilityId;
   _activeFacilityId = id;
   if (id !== prev) {
-    _facilityChangeListeners.forEach(fn => fn(id));
+    _facilityChangeListeners.forEach((fn) => fn(id));
   }
 }
 
@@ -87,11 +89,11 @@ export function getActiveOrganizationId(): number | null {
 export const apiClient: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
   timeout: 30000,
-  withCredentials: true,  // Send httpOnly auth cookies with every request
+  withCredentials: true, // Send httpOnly auth cookies with every request
   headers: {
     'Content-Type': 'application/json',
   },
-  xsrfCookieName: 'csrftoken',   // Django's CSRF cookie name
+  xsrfCookieName: 'csrftoken', // Django's CSRF cookie name
   xsrfHeaderName: 'X-CSRFToken', // Header Django expects
 });
 
@@ -183,7 +185,12 @@ apiClient.interceptors.response.use(
         return Promise.reject(error);
       }
       // Hub license guard codes — redirect to activate page instead of logging out
-      if (data && (data.code === 'hub_not_activated' || data.code === 'hub_license_invalid' || data.code === 'hub_license_locked')) {
+      if (
+        data &&
+        (data.code === 'hub_not_activated' ||
+          data.code === 'hub_license_invalid' ||
+          data.code === 'hub_license_locked')
+      ) {
         if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/activate')) {
           window.location.href = '/activate';
         }
@@ -206,10 +213,7 @@ apiClient.interceptors.response.use(
     if (error.response?.status === 401 && !originalRequest._retry) {
       // On the change-password page the session is restricted —
       // don't redirect to /login, just reject silently.
-      if (
-        typeof window !== 'undefined' &&
-        window.location.pathname === '/change-password'
-      ) {
+      if (typeof window !== 'undefined' && window.location.pathname === '/change-password') {
         return Promise.reject(error);
       }
 
@@ -299,9 +303,7 @@ function notifyPermissionDenied(error: AxiosError): void {
   lastPermissionToastAt = now;
 
   toast.error('Permission denied', {
-    description: requiredPermission
-      ? `${detail} Required: ${requiredPermission}.`
-      : detail,
+    description: requiredPermission ? `${detail} Required: ${requiredPermission}.` : detail,
   });
 }
 
@@ -342,7 +344,15 @@ export interface ApiError {
  */
 export function transformAxiosError(error: AxiosError): ApiError {
   if (error.response) {
-    const data = error.response.data as any;
+    const data = error.response.data as {
+      detail?: string;
+      message?: string;
+      error?: string;
+      non_field_errors?: string[];
+      code?: string;
+      errors?: Record<string, string[]>;
+      [key: string]: unknown;
+    };
     // Extract message from various DRF response formats:
     // - {"detail": "..."} - Standard DRF error
     // - {"message": "..."} - Custom message format
@@ -358,7 +368,7 @@ export function transformAxiosError(error: AxiosError): ApiError {
       message,
       status: error.response.status,
       code: data?.code,
-      details: data?.errors || data,
+      details: data?.errors,
     };
   }
 
@@ -409,25 +419,33 @@ export function getApiErrorMessage(error: unknown): string {
         }
 
         if (Array.isArray(errors)) {
-          errors.forEach(err => {
+          errors.forEach((err) => {
             if (typeof err === 'string') {
               // Special case: unique constraint on identification
-              if (field === 'non_field_errors' && err.includes('identification_type, identification_number must make a unique set')) {
+              if (
+                field === 'non_field_errors' &&
+                err.includes('identification_type, identification_number must make a unique set')
+              ) {
                 messages.push('A patient with this ID number already exists in the system.');
-              } else if (field === 'non_field_errors' && err.includes('patient, plan, member_number must make a unique set')) {
-                messages.push('This patient is already enrolled on the selected plan with this member number.');
+              } else if (
+                field === 'non_field_errors' &&
+                err.includes('patient, plan, member_number must make a unique set')
+              ) {
+                messages.push(
+                  'This patient is already enrolled on the selected plan with this member number.'
+                );
               } else if (field === 'non_field_errors') {
                 // Don't prefix non_field_errors with field name
                 messages.push(err);
               } else {
                 // Format: "Code: drug with this code already exists"
-                const fieldName = field.replace(/_/g, ' ').replace(/^\w/, c => c.toUpperCase());
+                const fieldName = field.replace(/_/g, ' ').replace(/^\w/, (c) => c.toUpperCase());
                 messages.push(`${fieldName}: ${err}`);
               }
             }
           });
         } else if (typeof errors === 'string') {
-          const fieldName = field.replace(/_/g, ' ').replace(/^\w/, c => c.toUpperCase());
+          const fieldName = field.replace(/_/g, ' ').replace(/^\w/, (c) => c.toUpperCase());
           messages.push(`${fieldName}: ${errors}`);
         }
       }

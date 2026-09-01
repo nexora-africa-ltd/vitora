@@ -22,9 +22,17 @@ jest.mock('@/lib/hooks/use-pharmacy', () => ({
   useStockBatches: jest.fn(),
 }));
 
-const mockUseAdmissionConsumableUsage = useAdmissionConsumableUsage as jest.MockedFunction<typeof useAdmissionConsumableUsage>;
-const mockUseRecordAdmissionConsumableUsage = useRecordAdmissionConsumableUsage as jest.MockedFunction<typeof useRecordAdmissionConsumableUsage>;
-const mockUseReverseAdmissionConsumableUsage = useReverseAdmissionConsumableUsage as jest.MockedFunction<typeof useReverseAdmissionConsumableUsage>;
+const mockUseAdmissionConsumableUsage = useAdmissionConsumableUsage as jest.MockedFunction<
+  typeof useAdmissionConsumableUsage
+>;
+const mockUseRecordAdmissionConsumableUsage =
+  useRecordAdmissionConsumableUsage as jest.MockedFunction<
+    typeof useRecordAdmissionConsumableUsage
+  >;
+const mockUseReverseAdmissionConsumableUsage =
+  useReverseAdmissionConsumableUsage as jest.MockedFunction<
+    typeof useReverseAdmissionConsumableUsage
+  >;
 const mockUseStockBatches = useStockBatches as jest.MockedFunction<typeof useStockBatches>;
 
 describe('ConsumableUsagePanel', () => {

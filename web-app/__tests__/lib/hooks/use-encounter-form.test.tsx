@@ -46,7 +46,9 @@ describe('use-encounter-form hooks', () => {
 
   it('fetches ICD-10 search, patient search, and recent patients', async () => {
     mockApiClient.get
-      .mockResolvedValueOnce({ data: { results: [{ code: 'A01', description: 'Typhoid fever' }] } } as never)
+      .mockResolvedValueOnce({
+        data: { results: [{ code: 'A01', description: 'Typhoid fever' }] },
+      } as never)
       .mockResolvedValueOnce({ data: { results: [{ id: 1, full_name: 'John Doe' }] } } as never)
       .mockResolvedValueOnce({ data: { results: [{ id: 2, full_name: 'Jane Doe' }] } } as never);
 
@@ -65,10 +67,7 @@ describe('use-encounter-form hooks', () => {
       1,
       '/api/icd10-codes/?search=ty&page_size=20'
     );
-    expect(mockApiClient.get).toHaveBeenNthCalledWith(
-      2,
-      '/api/patients/?search=jo&page_size=10'
-    );
+    expect(mockApiClient.get).toHaveBeenNthCalledWith(2, '/api/patients/?search=jo&page_size=10');
     expect(mockApiClient.get).toHaveBeenNthCalledWith(
       3,
       '/api/patients/?ordering=-updated_at&page_size=5'
@@ -126,7 +125,9 @@ describe('use-encounter-form hooks', () => {
       icd10_code: 'A01',
       diagnosis_text: 'Typhoid',
     });
-    expect(ctx.invalidateQueries).toHaveBeenCalledWith({ queryKey: ['encounters', 5, 'diagnoses'] });
+    expect(ctx.invalidateQueries).toHaveBeenCalledWith({
+      queryKey: ['encounters', 5, 'diagnoses'],
+    });
   });
 
   it('calculates vital alerts across warning and critical ranges', () => {

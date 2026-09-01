@@ -89,8 +89,22 @@ const mockInpatientApi = inpatientApi as jest.Mocked<typeof inpatientApi>;
 
 // Mock data
 const mockWards = [
-  { id: 1, name: 'Medical Ward 1', code: 'MED-01', ward_type: 'MEDICAL', capacity: 20, available_beds: 5 },
-  { id: 2, name: 'Surgical Ward 1', code: 'SUR-01', ward_type: 'SURGICAL', capacity: 15, available_beds: 3 },
+  {
+    id: 1,
+    name: 'Medical Ward 1',
+    code: 'MED-01',
+    ward_type: 'MEDICAL',
+    capacity: 20,
+    available_beds: 5,
+  },
+  {
+    id: 2,
+    name: 'Surgical Ward 1',
+    code: 'SUR-01',
+    ward_type: 'SURGICAL',
+    capacity: 15,
+    available_beds: 3,
+  },
 ];
 
 const mockBeds = [
@@ -106,8 +120,22 @@ const mockRecommendations = [
 ];
 
 const mockAdmissions = [
-  { id: 1, admission_number: 'ADM-20260103-0001', patient: 1, patient_name: 'John Doe', ward: 1, admission_status: 'ACTIVE' },
-  { id: 2, admission_number: 'ADM-20260102-0001', patient: 2, patient_name: 'Mary Wanjiku', ward: 2, admission_status: 'ACTIVE' },
+  {
+    id: 1,
+    admission_number: 'ADM-20260103-0001',
+    patient: 1,
+    patient_name: 'John Doe',
+    ward: 1,
+    admission_status: 'ACTIVE',
+  },
+  {
+    id: 2,
+    admission_number: 'ADM-20260102-0001',
+    patient: 2,
+    patient_name: 'Mary Wanjiku',
+    ward: 2,
+    admission_status: 'ACTIVE',
+  },
 ];
 
 const mockTransfer = {
@@ -219,15 +247,15 @@ describe('useInpatientWards', () => {
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
     // Data could be paginated or array
-    const data = result.current.data as any;
-    const wards = Array.isArray(data) ? data : data?.results ?? [];
+    const data = result.current.data as unknown;
+    const wards = Array.isArray(data) ? data : (data?.results ?? []);
     expect(wards).toHaveLength(2);
     expect(wards[0].name).toBe('Medical Ward 1');
     expect(mockInpatientApi.listWards).toHaveBeenCalled();
   });
 
   it('should fetch a single ward by id', async () => {
-    mockInpatientApi.getWard.mockResolvedValue(mockWards[0] as any);
+    mockInpatientApi.getWard.mockResolvedValue(mockWards[0] as unknown);
 
     const { result } = renderHook(() => useInpatientWard(1), {
       wrapper: createWrapper(),
@@ -259,7 +287,7 @@ describe('ward management mutations', () => {
     mockInpatientApi.updateWard.mockResolvedValue({
       ...mockWards[0],
       available_beds: 6,
-    } as any);
+    } as unknown);
 
     const { result } = renderHook(() => useUpdateWard(), {
       wrapper: createWrapper(),
@@ -285,7 +313,7 @@ describe('ward management mutations', () => {
       total: 20,
       capacity: 20,
       message: 'Generated 5 bed(s)',
-    } as any);
+    } as unknown);
 
     const { result } = renderHook(() => useGenerateWardBeds(), {
       wrapper: createWrapper(),
@@ -297,8 +325,12 @@ describe('ward management mutations', () => {
 
     expect(mockInpatientApi.generateWardBeds).toHaveBeenCalledWith(1);
     expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: ['inpatient', 'wards', 1] });
-    expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: ['inpatient', 'wards', 1, 'beds', undefined] });
-    expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: ['inpatient', 'beds', undefined] });
+    expect(invalidateQueriesSpy).toHaveBeenCalledWith({
+      queryKey: ['inpatient', 'wards', 1, 'beds', undefined],
+    });
+    expect(invalidateQueriesSpy).toHaveBeenCalledWith({
+      queryKey: ['inpatient', 'beds', undefined],
+    });
     invalidateQueriesSpy.mockRestore();
   });
 });
@@ -323,7 +355,7 @@ describe('useBeds', () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
-    const beds = (result.current.data as any)?.results || result.current.data;
+    const beds = (result.current.data as unknown)?.results || result.current.data;
     expect(beds.length).toBeGreaterThan(0);
   });
 
@@ -342,8 +374,8 @@ describe('useBeds', () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
-    const beds = (result.current.data as any)?.results || result.current.data;
-    expect(beds.every((b: any) => b.ward === 1)).toBe(true);
+    const beds = (result.current.data as unknown)?.results || result.current.data;
+    expect(beds.every((b: unknown) => b.ward === 1)).toBe(true);
   });
 
   it('should filter beds by status', async () => {
@@ -362,8 +394,8 @@ describe('useBeds', () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
-    const beds = (result.current.data as any)?.results || result.current.data;
-    expect(beds.every((b: any) => b.status === 'AVAILABLE')).toBe(true);
+    const beds = (result.current.data as unknown)?.results || result.current.data;
+    expect(beds.every((b: unknown) => b.status === 'AVAILABLE')).toBe(true);
   });
 });
 
@@ -387,9 +419,9 @@ describe('useWardBeds', () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
-    const data = result.current.data as any;
+    const data = result.current.data as unknown;
     const beds = data?.results || data;
-    expect(beds.every((b: any) => b.ward === 1)).toBe(true);
+    expect(beds.every((b: unknown) => b.ward === 1)).toBe(true);
   });
 
   it('should not fetch when wardId is undefined', () => {
@@ -410,7 +442,7 @@ describe('ward compatibility checks', () => {
     mockInpatientApi.checkWardCompatibility.mockResolvedValue({
       compatible: true,
       reasons: [],
-    } as any);
+    } as unknown);
 
     const { result } = renderHook(() => useCheckWardCompatibility(), {
       wrapper: createWrapper(),
@@ -422,14 +454,20 @@ describe('ward compatibility checks', () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
-    expect(mockInpatientApi.checkWardCompatibility).toHaveBeenCalledWith(1, 99, false, undefined, undefined);
+    expect(mockInpatientApi.checkWardCompatibility).toHaveBeenCalledWith(
+      1,
+      99,
+      false,
+      undefined,
+      undefined
+    );
     expect(result.current.data?.compatible).toBe(true);
   });
 
   it('should bulk check patient compatibility across wards', async () => {
     mockInpatientApi.bulkCheckCompatibility.mockResolvedValue({
       results: [{ patient_id: 1, compatible_wards: [1, 2] }],
-    } as any);
+    } as unknown);
 
     const { result } = renderHook(() => useBulkCompatibilityCheck(), {
       wrapper: createWrapper(),
@@ -456,7 +494,7 @@ describe('useAdmissionRecommendations', () => {
       count: mockRecommendations.length,
       next: null,
       previous: null,
-      results: mockRecommendations as any,
+      results: mockRecommendations as unknown,
     });
 
     const { result } = renderHook(() => useAdmissionRecommendations(), {
@@ -475,13 +513,12 @@ describe('useAdmissionRecommendations', () => {
       count: pendingRecs.length,
       next: null,
       previous: null,
-      results: pendingRecs as any,
+      results: pendingRecs as unknown,
     });
 
-    const { result } = renderHook(
-      () => useAdmissionRecommendations({ status: 'PENDING' }),
-      { wrapper: createWrapper() }
-    );
+    const { result } = renderHook(() => useAdmissionRecommendations({ status: 'PENDING' }), {
+      wrapper: createWrapper(),
+    });
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
@@ -495,13 +532,12 @@ describe('useAdmissionRecommendations', () => {
       count: urgentRecs.length,
       next: null,
       previous: null,
-      results: urgentRecs as any,
+      results: urgentRecs as unknown,
     });
 
-    const { result } = renderHook(
-      () => useAdmissionRecommendations({ urgency: 'URGENT' }),
-      { wrapper: createWrapper() }
-    );
+    const { result } = renderHook(() => useAdmissionRecommendations({ urgency: 'URGENT' }), {
+      wrapper: createWrapper(),
+    });
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
@@ -516,7 +552,9 @@ describe('useAdmissionRecommendation', () => {
   });
 
   it('should fetch a single recommendation by id', async () => {
-    mockInpatientApi.getAdmissionRecommendation.mockResolvedValue(mockRecommendations[0] as any);
+    mockInpatientApi.getAdmissionRecommendation.mockResolvedValue(
+      mockRecommendations[0] as unknown
+    );
 
     const { result } = renderHook(() => useAdmissionRecommendation(1), {
       wrapper: createWrapper(),
@@ -545,7 +583,7 @@ describe('useCreateAdmissionRecommendation', () => {
 
   it('should create a new admission recommendation', async () => {
     const newRec = { id: 4, status: 'PENDING', encounter: 5, reason: 'Test' };
-    mockInpatientApi.createAdmissionRecommendation.mockResolvedValue(newRec as any);
+    mockInpatientApi.createAdmissionRecommendation.mockResolvedValue(newRec as unknown);
 
     const { result } = renderHook(() => useCreateAdmissionRecommendation(), {
       wrapper: createWrapper(),
@@ -573,7 +611,7 @@ describe('useAcceptAdmissionRecommendation', () => {
     mockInpatientApi.acceptAdmissionRecommendation.mockResolvedValue({
       ...mockRecommendations[0],
       status: 'ACCEPTED',
-    } as any);
+    } as unknown);
 
     const { result } = renderHook(() => useAcceptAdmissionRecommendation(), {
       wrapper: createWrapper(),
@@ -596,7 +634,7 @@ describe('useDeclineAdmissionRecommendation', () => {
     mockInpatientApi.declineAdmissionRecommendation.mockResolvedValue({
       ...mockRecommendations[0],
       status: 'DECLINED',
-    } as any);
+    } as unknown);
 
     const { result } = renderHook(() => useDeclineAdmissionRecommendation(), {
       wrapper: createWrapper(),
@@ -620,7 +658,7 @@ describe('useAdmissions', () => {
       count: mockAdmissions.length,
       next: null,
       previous: null,
-      results: mockAdmissions as any,
+      results: mockAdmissions as unknown,
     });
 
     const { result } = renderHook(() => useAdmissions(), {
@@ -639,13 +677,12 @@ describe('useAdmissions', () => {
       count: activeAdmissions.length,
       next: null,
       previous: null,
-      results: activeAdmissions as any,
+      results: activeAdmissions as unknown,
     });
 
-    const { result } = renderHook(
-      () => useAdmissions({ admission_status: 'ACTIVE' }),
-      { wrapper: createWrapper() }
-    );
+    const { result } = renderHook(() => useAdmissions({ admission_status: 'ACTIVE' }), {
+      wrapper: createWrapper(),
+    });
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
@@ -659,7 +696,7 @@ describe('useAdmissions', () => {
       count: patientAdmissions.length,
       next: null,
       previous: null,
-      results: patientAdmissions as any,
+      results: patientAdmissions as unknown,
     });
 
     const { result } = renderHook(() => useAdmissions({ patient: 1 }), {
@@ -678,7 +715,7 @@ describe('useAdmissions', () => {
       count: wardAdmissions.length,
       next: null,
       previous: null,
-      results: wardAdmissions as any,
+      results: wardAdmissions as unknown,
     });
 
     const { result } = renderHook(() => useAdmissions({ ward: 1 }), {
@@ -698,7 +735,7 @@ describe('useAdmission', () => {
   });
 
   it('should fetch a single admission by ID', async () => {
-    mockInpatientApi.getAdmission.mockResolvedValue(mockAdmissions[0] as any);
+    mockInpatientApi.getAdmission.mockResolvedValue(mockAdmissions[0] as unknown);
 
     const { result } = renderHook(() => useAdmission(1), {
       wrapper: createWrapper(),
@@ -731,7 +768,7 @@ describe('useCreateAdmission', () => {
       admission_status: 'ACTIVE',
       patient: 3,
     };
-    mockInpatientApi.createAdmission.mockResolvedValue(newAdmission as any);
+    mockInpatientApi.createAdmission.mockResolvedValue(newAdmission as unknown);
 
     const { result } = renderHook(() => useCreateAdmission(), {
       wrapper: createWrapper(),
@@ -762,7 +799,7 @@ describe('useUpdateAdmission', () => {
     mockInpatientApi.updateAdmission.mockResolvedValue({
       ...mockAdmissions[0],
       admission_status: 'DISCHARGED',
-    } as any);
+    } as unknown);
 
     const { result } = renderHook(() => useUpdateAdmission(), {
       wrapper: createWrapper(),
@@ -789,7 +826,7 @@ describe('useUpdateBed', () => {
       ...mockBeds[0],
       status: 'OCCUPIED',
       notes: 'Patient admitted',
-    } as any);
+    } as unknown);
 
     const { result } = renderHook(() => useUpdateBed(), {
       wrapper: createWrapper(),
@@ -824,10 +861,10 @@ describe('discharge hooks', () => {
       next: null,
       previous: null,
       results: [mockDischarge],
-    } as any);
-    mockInpatientApi.getDischarge.mockResolvedValue(mockDischarge as any);
+    } as unknown);
+    mockInpatientApi.getDischarge.mockResolvedValue(mockDischarge as unknown);
 
-    const list = renderHook(() => useDischarges({ admission: 1 } as any), {
+    const list = renderHook(() => useDischarges({ admission: 1 } as unknown), {
       wrapper: createWrapper(),
     });
     await waitFor(() => expect(list.result.current.isSuccess).toBe(true));
@@ -847,7 +884,7 @@ describe('discharge hooks', () => {
       admission: 1,
       discharge_date: '2026-03-15',
       disposition: 'HOME',
-    } as any);
+    } as unknown);
 
     const { result } = renderHook(() => useCreateDischarge(), {
       wrapper: createWrapper(),
@@ -858,14 +895,16 @@ describe('discharge hooks', () => {
         admission: 1,
         discharge_date: '2026-03-15',
         disposition: 'HOME',
-      } as any);
+      } as unknown);
     });
 
     expect(mockInpatientApi.createDischarge).toHaveBeenCalled();
     expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: ['inpatient', 'discharges'] });
     expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: ['inpatient', 'admissions', 1] });
     expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: ['inpatient', 'admissions'] });
-    expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: ['inpatient', 'beds', undefined] });
+    expect(invalidateQueriesSpy).toHaveBeenCalledWith({
+      queryKey: ['inpatient', 'beds', undefined],
+    });
     expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: ['inpatient', 'wards'] });
     invalidateQueriesSpy.mockRestore();
   });
@@ -876,7 +915,7 @@ describe('discharge hooks', () => {
       id: 1,
       admission: 1,
       disposition: 'TRANSFER',
-    } as any);
+    } as unknown);
 
     const { result } = renderHook(() => useUpdateDischarge(), {
       wrapper: createWrapper(),
@@ -902,44 +941,96 @@ describe('additional inpatient hooks', () => {
   });
 
   it('fetches transfers, ward rounds, review requests, kardex, handovers, orders, readings, sheets, transfusions, and BP readings', async () => {
-    mockInpatientApi.listTransfers.mockResolvedValue({ count: 1, next: null, previous: null, results: [mockTransfer] } as any);
-    mockInpatientApi.getTransfer.mockResolvedValue(mockTransfer as any);
-    mockInpatientApi.listWardRounds.mockResolvedValue({ count: 1, next: null, previous: null, results: [mockWardRound] } as any);
-    mockInpatientApi.getWardRound.mockResolvedValue(mockWardRound as any);
-    mockInpatientApi.listReviewRequests.mockResolvedValue({ count: 1, next: null, previous: null, results: [mockReviewRequest] } as any);
-    mockInpatientApi.getReviewRequest.mockResolvedValue(mockReviewRequest as any);
-    mockInpatientApi.listKardex.mockResolvedValue({ count: 1, next: null, previous: null, results: [mockKardex] } as any);
-    mockInpatientApi.getKardex.mockResolvedValue(mockKardex as any);
-    mockInpatientApi.getKardexByAdmission.mockResolvedValue(mockKardex as any);
-    mockInpatientApi.listShiftHandovers.mockResolvedValue({ count: 1, next: null, previous: null, results: [mockShiftHandover] } as any);
-    mockInpatientApi.getShiftHandover.mockResolvedValue(mockShiftHandover as any);
-    mockInpatientApi.getAdmissionOrders.mockResolvedValue([{ id: 1 }] as any);
-    mockInpatientApi.getAdmissionLabOrders.mockResolvedValue([{ id: 2 }] as any);
-    mockInpatientApi.getAdmissionImagingOrders.mockResolvedValue([{ id: 3 }] as any);
-    mockInpatientApi.getAdmissionPrescriptions.mockResolvedValue([{ id: 4 }] as any);
-    mockInpatientApi.getAdmissionConsumableUsage.mockResolvedValue([mockConsumableUsage] as any);
-    mockInpatientApi.listTemperatureReadings.mockResolvedValue({ count: 1, next: null, previous: null, results: [mockTemperatureReading] } as any);
-    mockInpatientApi.listFluidBalanceSheets.mockResolvedValue({ count: 1, next: null, previous: null, results: [mockFluidBalanceSheet] } as any);
-    mockInpatientApi.listFluidBalanceEntries.mockResolvedValue({ count: 1, next: null, previous: null, results: [mockFluidBalanceEntry] } as any);
-    mockInpatientApi.listBloodTransfusions.mockResolvedValue({ count: 1, next: null, previous: null, results: [mockBloodTransfusion] } as any);
-    mockInpatientApi.getBloodTransfusion.mockResolvedValue(mockBloodTransfusion as any);
-    mockInpatientApi.listBPReadings.mockResolvedValue({ count: 1, next: null, previous: null, results: [mockBPReading] } as any);
+    mockInpatientApi.listTransfers.mockResolvedValue({
+      count: 1,
+      next: null,
+      previous: null,
+      results: [mockTransfer],
+    } as unknown);
+    mockInpatientApi.getTransfer.mockResolvedValue(mockTransfer as unknown);
+    mockInpatientApi.listWardRounds.mockResolvedValue({
+      count: 1,
+      next: null,
+      previous: null,
+      results: [mockWardRound],
+    } as unknown);
+    mockInpatientApi.getWardRound.mockResolvedValue(mockWardRound as unknown);
+    mockInpatientApi.listReviewRequests.mockResolvedValue({
+      count: 1,
+      next: null,
+      previous: null,
+      results: [mockReviewRequest],
+    } as unknown);
+    mockInpatientApi.getReviewRequest.mockResolvedValue(mockReviewRequest as unknown);
+    mockInpatientApi.listKardex.mockResolvedValue({
+      count: 1,
+      next: null,
+      previous: null,
+      results: [mockKardex],
+    } as unknown);
+    mockInpatientApi.getKardex.mockResolvedValue(mockKardex as unknown);
+    mockInpatientApi.getKardexByAdmission.mockResolvedValue(mockKardex as unknown);
+    mockInpatientApi.listShiftHandovers.mockResolvedValue({
+      count: 1,
+      next: null,
+      previous: null,
+      results: [mockShiftHandover],
+    } as unknown);
+    mockInpatientApi.getShiftHandover.mockResolvedValue(mockShiftHandover as unknown);
+    mockInpatientApi.getAdmissionOrders.mockResolvedValue([{ id: 1 }] as unknown);
+    mockInpatientApi.getAdmissionLabOrders.mockResolvedValue([{ id: 2 }] as unknown);
+    mockInpatientApi.getAdmissionImagingOrders.mockResolvedValue([{ id: 3 }] as unknown);
+    mockInpatientApi.getAdmissionPrescriptions.mockResolvedValue([{ id: 4 }] as unknown);
+    mockInpatientApi.getAdmissionConsumableUsage.mockResolvedValue([
+      mockConsumableUsage,
+    ] as unknown);
+    mockInpatientApi.listTemperatureReadings.mockResolvedValue({
+      count: 1,
+      next: null,
+      previous: null,
+      results: [mockTemperatureReading],
+    } as unknown);
+    mockInpatientApi.listFluidBalanceSheets.mockResolvedValue({
+      count: 1,
+      next: null,
+      previous: null,
+      results: [mockFluidBalanceSheet],
+    } as unknown);
+    mockInpatientApi.listFluidBalanceEntries.mockResolvedValue({
+      count: 1,
+      next: null,
+      previous: null,
+      results: [mockFluidBalanceEntry],
+    } as unknown);
+    mockInpatientApi.listBloodTransfusions.mockResolvedValue({
+      count: 1,
+      next: null,
+      previous: null,
+      results: [mockBloodTransfusion],
+    } as unknown);
+    mockInpatientApi.getBloodTransfusion.mockResolvedValue(mockBloodTransfusion as unknown);
+    mockInpatientApi.listBPReadings.mockResolvedValue({
+      count: 1,
+      next: null,
+      previous: null,
+      results: [mockBPReading],
+    } as unknown);
 
     const wrapper = createWrapper();
     const hooks = [
-      renderHook(() => useTransfers({ admission: 1 } as any), { wrapper }),
+      renderHook(() => useTransfers({ admission: 1 } as unknown), { wrapper }),
       renderHook(() => useTransfer(1), { wrapper }),
-      renderHook(() => useWardRounds({ admission: 1 } as any), { wrapper }),
+      renderHook(() => useWardRounds({ admission: 1 } as unknown), { wrapper }),
       renderHook(() => useWardRound(1), { wrapper }),
       renderHook(() => useAdmissionWardRounds(1), { wrapper }),
-      renderHook(() => useReviewRequests({ admission: 1 } as any), { wrapper }),
+      renderHook(() => useReviewRequests({ admission: 1 } as unknown), { wrapper }),
       renderHook(() => useReviewRequest(1), { wrapper }),
       renderHook(() => useAdmissionReviewRequests(1), { wrapper }),
       renderHook(() => usePendingReviewRequests(), { wrapper }),
-      renderHook(() => useKardexList({ admission: 1 } as any), { wrapper }),
+      renderHook(() => useKardexList({ admission: 1 } as unknown), { wrapper }),
       renderHook(() => useKardex(1), { wrapper }),
       renderHook(() => useKardexByAdmission(1), { wrapper }),
-      renderHook(() => useShiftHandovers({ admission: 1 } as any), { wrapper }),
+      renderHook(() => useShiftHandovers({ admission: 1 } as unknown), { wrapper }),
       renderHook(() => useShiftHandover(1), { wrapper }),
       renderHook(() => useAdmissionOrders(1), { wrapper }),
       renderHook(() => useAdmissionLabOrders(1), { wrapper }),
@@ -959,9 +1050,18 @@ describe('additional inpatient hooks', () => {
     });
 
     expect(mockInpatientApi.listReviewRequests).toHaveBeenCalledWith({ status: 'PENDING' });
-    expect(mockInpatientApi.listTemperatureReadings).toHaveBeenCalledWith({ admission: 1, page_size: 100 });
-    expect(mockInpatientApi.listFluidBalanceSheets).toHaveBeenCalledWith({ admission: 1, page_size: 30 });
-    expect(mockInpatientApi.listFluidBalanceEntries).toHaveBeenCalledWith({ fluid_balance_sheet: 1, page_size: 200 });
+    expect(mockInpatientApi.listTemperatureReadings).toHaveBeenCalledWith({
+      admission: 1,
+      page_size: 100,
+    });
+    expect(mockInpatientApi.listFluidBalanceSheets).toHaveBeenCalledWith({
+      admission: 1,
+      page_size: 30,
+    });
+    expect(mockInpatientApi.listFluidBalanceEntries).toHaveBeenCalledWith({
+      fluid_balance_sheet: 1,
+      page_size: 200,
+    });
     expect(mockInpatientApi.listBPReadings).toHaveBeenCalledWith({ admission: 1, page_size: 100 });
   });
 
@@ -993,42 +1093,247 @@ describe('additional inpatient hooks', () => {
   it('invalidates the correct caches for additional inpatient mutations', async () => {
     const invalidateQueriesSpy = jest.spyOn(QueryClient.prototype, 'invalidateQueries');
     const cases = [
-      { useHook: useCreateTransfer, api: mockInpatientApi.createTransfer, input: { admission: 1, to_ward: 2 }, called: [{ admission: 1, to_ward: 2 }], resolved: mockTransfer, keys: [inpatientQueryKeys.transfers(), inpatientQueryKeys.admission(1), inpatientQueryKeys.admissions(), inpatientQueryKeys.beds(), inpatientQueryKeys.wards()] },
-      { useHook: useCreateWardRound, api: mockInpatientApi.createWardRound, input: { admission: 1, notes: 'review' }, called: [{ admission: 1, notes: 'review' }], resolved: mockWardRound, keys: [inpatientQueryKeys.wardRounds(), inpatientQueryKeys.wardRounds({ admission: 1 })] },
-      { useHook: useUpdateWardRound, api: mockInpatientApi.updateWardRound, input: { id: 1, data: { notes: 'updated' } }, called: [1, { notes: 'updated' }], resolved: mockWardRound, keys: [inpatientQueryKeys.wardRound(1), inpatientQueryKeys.wardRounds()] },
-      { useHook: useCreateReviewRequest, api: mockInpatientApi.createReviewRequest, input: { admission: 1, reason: 'review' }, called: [{ admission: 1, reason: 'review' }], resolved: mockReviewRequest, keys: [inpatientQueryKeys.reviewRequests(), inpatientQueryKeys.reviewRequests({ admission: 1 })] },
-      { useHook: useAcknowledgeReviewRequest, api: mockInpatientApi.acknowledgeReviewRequest, input: 1, called: [1], resolved: mockReviewRequest, keys: [inpatientQueryKeys.reviewRequest(1), inpatientQueryKeys.reviewRequests()] },
-      { useHook: useCompleteReviewRequest, api: mockInpatientApi.completeReviewRequest, input: 1, called: [1], resolved: { ...mockReviewRequest, status: 'COMPLETED' }, keys: [inpatientQueryKeys.reviewRequest(1), inpatientQueryKeys.reviewRequests()] },
-      { useHook: useCancelReviewRequest, api: mockInpatientApi.cancelReviewRequest, input: { requestId: 1, reason: 'cancel' }, called: [1, 'cancel'], resolved: { ...mockReviewRequest, status: 'CANCELLED' }, keys: [inpatientQueryKeys.reviewRequest(1), inpatientQueryKeys.reviewRequests()] },
-      { useHook: useUpdateKardex, api: mockInpatientApi.updateKardex, input: { id: 1, data: { diagnosis: 'Dx' } }, called: [1, { diagnosis: 'Dx' }], resolved: mockKardex, keys: [inpatientQueryKeys.kardexById(1), inpatientQueryKeys.kardex()] },
-      { useHook: useAddKardexShiftNote, api: mockInpatientApi.addKardexShiftNote, input: { kardexId: 1, data: { note: 'shift' } }, called: [1, { note: 'shift' }], resolved: {}, keys: [inpatientQueryKeys.kardexById(1)] },
-      { useHook: useAddKardexHandoverNote, api: mockInpatientApi.addKardexHandoverNote, input: { kardexId: 1, data: { note: 'handover' } }, called: [1, { note: 'handover' }], resolved: {}, keys: [inpatientQueryKeys.kardexById(1)] },
-      { useHook: useAddCarePlanEntry, api: mockInpatientApi.addCarePlanEntry, input: { kardexId: 1, data: { problem: 'Pain' } }, called: [1, { problem: 'Pain' }], resolved: {}, keys: [inpatientQueryKeys.kardexById(1)] },
-      { useHook: useUpdateCarePlanEntry, api: mockInpatientApi.updateCarePlanEntry, input: { kardexId: 1, entryId: 9, data: { status: 'DONE' } }, called: [1, 9, { status: 'DONE' }], resolved: {}, keys: [inpatientQueryKeys.kardexById(1)] },
-      { useHook: useCreateShiftHandover, api: mockInpatientApi.createShiftHandover, input: { admission: 1 }, called: [{ admission: 1 }], resolved: mockShiftHandover, keys: [inpatientQueryKeys.shiftHandovers()] },
-      { useHook: useAcknowledgeShiftHandover, api: mockInpatientApi.acknowledgeShiftHandover, input: 1, called: [1], resolved: mockShiftHandover, keys: [inpatientQueryKeys.shiftHandover(1), inpatientQueryKeys.shiftHandovers()] },
-      { useHook: useAutoPopulateShiftHandover, api: mockInpatientApi.autoPopulateShiftHandover, input: 1, called: [1], resolved: mockShiftHandover, keys: [inpatientQueryKeys.shiftHandover(1)] },
-      { useHook: useRecordAdmissionConsumableUsage, api: mockInpatientApi.recordAdmissionConsumableUsage, input: { admissionId: 1, data: { stock_batch: 9, quantity: 2 } }, called: [1, { stock_batch: 9, quantity: 2 }], resolved: mockConsumableUsage, keys: [inpatientQueryKeys.admissionConsumableUsage(1), inpatientQueryKeys.admission(1), ['stock-batches']] },
-      { useHook: useReverseAdmissionConsumableUsage, api: mockInpatientApi.reverseAdmissionConsumableUsage, input: { admissionId: 1, usageId: 1, data: { reason: 'error' } }, called: [1, 1, { reason: 'error' }], resolved: mockConsumableUsage, keys: [inpatientQueryKeys.admissionConsumableUsage(1), inpatientQueryKeys.admission(1), ['stock-batches']] },
-      { useHook: useCreateTemperatureReading, api: mockInpatientApi.createTemperatureReading, input: { admission: 1, temperature_celsius: 37.5 }, called: [{ admission: 1, temperature_celsius: 37.5 }], resolved: mockTemperatureReading, keys: [inpatientQueryKeys.temperatureReadings(1)] },
-      { useHook: useCreateFluidBalanceSheet, api: mockInpatientApi.createFluidBalanceSheet, input: { admission: 1, chart_date: '2026-03-15' }, called: [{ admission: 1, chart_date: '2026-03-15' }], resolved: mockFluidBalanceSheet, keys: [[...inpatientQueryKeys.all, 'fluid-balance-sheets']] },
-      { useHook: useUpdateFluidBalanceSheet, api: mockInpatientApi.updateFluidBalanceSheet, input: { id: 1, data: { chart_date: '2026-03-16' } }, called: [1, { chart_date: '2026-03-16' }], resolved: mockFluidBalanceSheet, keys: [inpatientQueryKeys.fluidBalanceSheet(1), [...inpatientQueryKeys.all, 'fluid-balance-sheets']] },
-      { useHook: useCreateFluidBalanceEntry, api: mockInpatientApi.createFluidBalanceEntry, input: { fluid_balance_sheet: 1, entry_type: 'INPUT', amount_ml: 500 }, called: [{ fluid_balance_sheet: 1, entry_type: 'INPUT', amount_ml: 500 }], resolved: mockFluidBalanceEntry, keys: [inpatientQueryKeys.fluidBalanceEntries({ fluid_balance_sheet: 1, page_size: 200 }), [...inpatientQueryKeys.all, 'fluid-balance-sheets']] },
-      { useHook: useCreateBloodTransfusion, api: mockInpatientApi.createBloodTransfusion, input: { admission: 1, blood_product: 'PRBC' }, called: [{ admission: 1, blood_product: 'PRBC' }], resolved: mockBloodTransfusion, keys: [inpatientQueryKeys.bloodTransfusions(1)] },
-      { useHook: useAddTransfusionObservation, api: mockInpatientApi.addTransfusionObservation, input: { transfusionId: 1, data: { temperature: 37.2 } }, called: [1, { temperature: 37.2 }], resolved: {}, keys: [inpatientQueryKeys.all] },
-      { useHook: useMarkTransfusionReaction, api: mockInpatientApi.markTransfusionReaction, input: { transfusionId: 1, data: { reaction_type: 'FEVER', action_taken: 'Stopped' } }, called: [1, { reaction_type: 'FEVER', action_taken: 'Stopped' }], resolved: {}, keys: [inpatientQueryKeys.all] },
-      { useHook: useCompleteTransfusion, api: mockInpatientApi.completeTransfusion, input: { transfusionId: 1, data: { time_ended: '12:00' } }, called: [1, { time_ended: '12:00' }], resolved: {}, keys: [inpatientQueryKeys.all] },
-      { useHook: useCreateBPReading, api: mockInpatientApi.createBPReading, input: { admission: 1, systolic: 120, diastolic: 80 }, called: [{ admission: 1, systolic: 120, diastolic: 80 }], resolved: mockBPReading, keys: [inpatientQueryKeys.bpReadings(1)] },
+      {
+        useHook: useCreateTransfer,
+        api: mockInpatientApi.createTransfer,
+        input: { admission: 1, to_ward: 2 },
+        called: [{ admission: 1, to_ward: 2 }],
+        resolved: mockTransfer,
+        keys: [
+          inpatientQueryKeys.transfers(),
+          inpatientQueryKeys.admission(1),
+          inpatientQueryKeys.admissions(),
+          inpatientQueryKeys.beds(),
+          inpatientQueryKeys.wards(),
+        ],
+      },
+      {
+        useHook: useCreateWardRound,
+        api: mockInpatientApi.createWardRound,
+        input: { admission: 1, notes: 'review' },
+        called: [{ admission: 1, notes: 'review' }],
+        resolved: mockWardRound,
+        keys: [inpatientQueryKeys.wardRounds(), inpatientQueryKeys.wardRounds({ admission: 1 })],
+      },
+      {
+        useHook: useUpdateWardRound,
+        api: mockInpatientApi.updateWardRound,
+        input: { id: 1, data: { notes: 'updated' } },
+        called: [1, { notes: 'updated' }],
+        resolved: mockWardRound,
+        keys: [inpatientQueryKeys.wardRound(1), inpatientQueryKeys.wardRounds()],
+      },
+      {
+        useHook: useCreateReviewRequest,
+        api: mockInpatientApi.createReviewRequest,
+        input: { admission: 1, reason: 'review' },
+        called: [{ admission: 1, reason: 'review' }],
+        resolved: mockReviewRequest,
+        keys: [
+          inpatientQueryKeys.reviewRequests(),
+          inpatientQueryKeys.reviewRequests({ admission: 1 }),
+        ],
+      },
+      {
+        useHook: useAcknowledgeReviewRequest,
+        api: mockInpatientApi.acknowledgeReviewRequest,
+        input: 1,
+        called: [1],
+        resolved: mockReviewRequest,
+        keys: [inpatientQueryKeys.reviewRequest(1), inpatientQueryKeys.reviewRequests()],
+      },
+      {
+        useHook: useCompleteReviewRequest,
+        api: mockInpatientApi.completeReviewRequest,
+        input: 1,
+        called: [1],
+        resolved: { ...mockReviewRequest, status: 'COMPLETED' },
+        keys: [inpatientQueryKeys.reviewRequest(1), inpatientQueryKeys.reviewRequests()],
+      },
+      {
+        useHook: useCancelReviewRequest,
+        api: mockInpatientApi.cancelReviewRequest,
+        input: { requestId: 1, reason: 'cancel' },
+        called: [1, 'cancel'],
+        resolved: { ...mockReviewRequest, status: 'CANCELLED' },
+        keys: [inpatientQueryKeys.reviewRequest(1), inpatientQueryKeys.reviewRequests()],
+      },
+      {
+        useHook: useUpdateKardex,
+        api: mockInpatientApi.updateKardex,
+        input: { id: 1, data: { diagnosis: 'Dx' } },
+        called: [1, { diagnosis: 'Dx' }],
+        resolved: mockKardex,
+        keys: [inpatientQueryKeys.kardexById(1), inpatientQueryKeys.kardex()],
+      },
+      {
+        useHook: useAddKardexShiftNote,
+        api: mockInpatientApi.addKardexShiftNote,
+        input: { kardexId: 1, data: { note: 'shift' } },
+        called: [1, { note: 'shift' }],
+        resolved: {},
+        keys: [inpatientQueryKeys.kardexById(1)],
+      },
+      {
+        useHook: useAddKardexHandoverNote,
+        api: mockInpatientApi.addKardexHandoverNote,
+        input: { kardexId: 1, data: { note: 'handover' } },
+        called: [1, { note: 'handover' }],
+        resolved: {},
+        keys: [inpatientQueryKeys.kardexById(1)],
+      },
+      {
+        useHook: useAddCarePlanEntry,
+        api: mockInpatientApi.addCarePlanEntry,
+        input: { kardexId: 1, data: { problem: 'Pain' } },
+        called: [1, { problem: 'Pain' }],
+        resolved: {},
+        keys: [inpatientQueryKeys.kardexById(1)],
+      },
+      {
+        useHook: useUpdateCarePlanEntry,
+        api: mockInpatientApi.updateCarePlanEntry,
+        input: { kardexId: 1, entryId: 9, data: { status: 'DONE' } },
+        called: [1, 9, { status: 'DONE' }],
+        resolved: {},
+        keys: [inpatientQueryKeys.kardexById(1)],
+      },
+      {
+        useHook: useCreateShiftHandover,
+        api: mockInpatientApi.createShiftHandover,
+        input: { admission: 1 },
+        called: [{ admission: 1 }],
+        resolved: mockShiftHandover,
+        keys: [inpatientQueryKeys.shiftHandovers()],
+      },
+      {
+        useHook: useAcknowledgeShiftHandover,
+        api: mockInpatientApi.acknowledgeShiftHandover,
+        input: 1,
+        called: [1],
+        resolved: mockShiftHandover,
+        keys: [inpatientQueryKeys.shiftHandover(1), inpatientQueryKeys.shiftHandovers()],
+      },
+      {
+        useHook: useAutoPopulateShiftHandover,
+        api: mockInpatientApi.autoPopulateShiftHandover,
+        input: 1,
+        called: [1],
+        resolved: mockShiftHandover,
+        keys: [inpatientQueryKeys.shiftHandover(1)],
+      },
+      {
+        useHook: useRecordAdmissionConsumableUsage,
+        api: mockInpatientApi.recordAdmissionConsumableUsage,
+        input: { admissionId: 1, data: { stock_batch: 9, quantity: 2 } },
+        called: [1, { stock_batch: 9, quantity: 2 }],
+        resolved: mockConsumableUsage,
+        keys: [
+          inpatientQueryKeys.admissionConsumableUsage(1),
+          inpatientQueryKeys.admission(1),
+          ['stock-batches'],
+        ],
+      },
+      {
+        useHook: useReverseAdmissionConsumableUsage,
+        api: mockInpatientApi.reverseAdmissionConsumableUsage,
+        input: { admissionId: 1, usageId: 1, data: { reason: 'error' } },
+        called: [1, 1, { reason: 'error' }],
+        resolved: mockConsumableUsage,
+        keys: [
+          inpatientQueryKeys.admissionConsumableUsage(1),
+          inpatientQueryKeys.admission(1),
+          ['stock-batches'],
+        ],
+      },
+      {
+        useHook: useCreateTemperatureReading,
+        api: mockInpatientApi.createTemperatureReading,
+        input: { admission: 1, temperature_celsius: 37.5 },
+        called: [{ admission: 1, temperature_celsius: 37.5 }],
+        resolved: mockTemperatureReading,
+        keys: [inpatientQueryKeys.temperatureReadings(1)],
+      },
+      {
+        useHook: useCreateFluidBalanceSheet,
+        api: mockInpatientApi.createFluidBalanceSheet,
+        input: { admission: 1, chart_date: '2026-03-15' },
+        called: [{ admission: 1, chart_date: '2026-03-15' }],
+        resolved: mockFluidBalanceSheet,
+        keys: [[...inpatientQueryKeys.all, 'fluid-balance-sheets']],
+      },
+      {
+        useHook: useUpdateFluidBalanceSheet,
+        api: mockInpatientApi.updateFluidBalanceSheet,
+        input: { id: 1, data: { chart_date: '2026-03-16' } },
+        called: [1, { chart_date: '2026-03-16' }],
+        resolved: mockFluidBalanceSheet,
+        keys: [
+          inpatientQueryKeys.fluidBalanceSheet(1),
+          [...inpatientQueryKeys.all, 'fluid-balance-sheets'],
+        ],
+      },
+      {
+        useHook: useCreateFluidBalanceEntry,
+        api: mockInpatientApi.createFluidBalanceEntry,
+        input: { fluid_balance_sheet: 1, entry_type: 'INPUT', amount_ml: 500 },
+        called: [{ fluid_balance_sheet: 1, entry_type: 'INPUT', amount_ml: 500 }],
+        resolved: mockFluidBalanceEntry,
+        keys: [
+          inpatientQueryKeys.fluidBalanceEntries({ fluid_balance_sheet: 1, page_size: 200 }),
+          [...inpatientQueryKeys.all, 'fluid-balance-sheets'],
+        ],
+      },
+      {
+        useHook: useCreateBloodTransfusion,
+        api: mockInpatientApi.createBloodTransfusion,
+        input: { admission: 1, blood_product: 'PRBC' },
+        called: [{ admission: 1, blood_product: 'PRBC' }],
+        resolved: mockBloodTransfusion,
+        keys: [inpatientQueryKeys.bloodTransfusions(1)],
+      },
+      {
+        useHook: useAddTransfusionObservation,
+        api: mockInpatientApi.addTransfusionObservation,
+        input: { transfusionId: 1, data: { temperature: 37.2 } },
+        called: [1, { temperature: 37.2 }],
+        resolved: {},
+        keys: [inpatientQueryKeys.all],
+      },
+      {
+        useHook: useMarkTransfusionReaction,
+        api: mockInpatientApi.markTransfusionReaction,
+        input: { transfusionId: 1, data: { reaction_type: 'FEVER', action_taken: 'Stopped' } },
+        called: [1, { reaction_type: 'FEVER', action_taken: 'Stopped' }],
+        resolved: {},
+        keys: [inpatientQueryKeys.all],
+      },
+      {
+        useHook: useCompleteTransfusion,
+        api: mockInpatientApi.completeTransfusion,
+        input: { transfusionId: 1, data: { time_ended: '12:00' } },
+        called: [1, { time_ended: '12:00' }],
+        resolved: {},
+        keys: [inpatientQueryKeys.all],
+      },
+      {
+        useHook: useCreateBPReading,
+        api: mockInpatientApi.createBPReading,
+        input: { admission: 1, systolic: 120, diastolic: 80 },
+        called: [{ admission: 1, systolic: 120, diastolic: 80 }],
+        resolved: mockBPReading,
+        keys: [inpatientQueryKeys.bpReadings(1)],
+      },
     ];
 
     for (const testCase of cases) {
-      testCase.api.mockResolvedValueOnce(testCase.resolved as any);
+      testCase.api.mockResolvedValueOnce(testCase.resolved as unknown);
       const { result } = renderHook(() => testCase.useHook(), {
         wrapper: createWrapper(),
       });
 
       await act(async () => {
-        await result.current.mutateAsync(testCase.input as any);
+        await result.current.mutateAsync(testCase.input as unknown);
       });
 
       expect(testCase.api).toHaveBeenCalledWith(...(testCase.called as []));

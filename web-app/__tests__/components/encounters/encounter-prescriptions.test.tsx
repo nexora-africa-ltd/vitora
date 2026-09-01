@@ -15,7 +15,9 @@ jest.mock('@/lib/hooks/use-pharmacy', () => ({
 
 import { useEncounterPrescriptions } from '@/lib/hooks/use-pharmacy';
 
-const mockUseEncounterPrescriptions = useEncounterPrescriptions as jest.MockedFunction<typeof useEncounterPrescriptions>;
+const mockUseEncounterPrescriptions = useEncounterPrescriptions as jest.MockedFunction<
+  typeof useEncounterPrescriptions
+>;
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -41,10 +43,7 @@ describe('EncounterPrescriptions', () => {
       error: null,
     } as ReturnType<typeof useEncounterPrescriptions>);
 
-    render(
-      <EncounterPrescriptions encounterId={1} patientId={1} />,
-      { wrapper }
-    );
+    render(<EncounterPrescriptions encounterId={1} patientId={1} />, { wrapper });
 
     expect(screen.getByText('Prescriptions')).toBeInTheDocument();
   });
@@ -56,10 +55,7 @@ describe('EncounterPrescriptions', () => {
       error: null,
     } as unknown as ReturnType<typeof useEncounterPrescriptions>);
 
-    render(
-      <EncounterPrescriptions encounterId={1} patientId={1} />,
-      { wrapper }
-    );
+    render(<EncounterPrescriptions encounterId={1} patientId={1} />, { wrapper });
 
     expect(screen.getByText('No prescriptions for this encounter')).toBeInTheDocument();
   });
@@ -81,10 +77,7 @@ describe('EncounterPrescriptions', () => {
       error: null,
     } as unknown as ReturnType<typeof useEncounterPrescriptions>);
 
-    render(
-      <EncounterPrescriptions encounterId={1} patientId={1} />,
-      { wrapper }
-    );
+    render(<EncounterPrescriptions encounterId={1} patientId={1} />, { wrapper });
 
     expect(screen.getByText('RX-2025-001')).toBeInTheDocument();
     expect(screen.getByText(/Amoxicillin 500mg/)).toBeInTheDocument();
@@ -98,10 +91,7 @@ describe('EncounterPrescriptions', () => {
       error: null,
     } as unknown as ReturnType<typeof useEncounterPrescriptions>);
 
-    render(
-      <EncounterPrescriptions encounterId={1} patientId={1} disabled={false} />,
-      { wrapper }
-    );
+    render(<EncounterPrescriptions encounterId={1} patientId={1} disabled={false} />, { wrapper });
 
     expect(screen.getByRole('button', { name: /new prescription/i })).toBeInTheDocument();
   });
@@ -113,10 +103,7 @@ describe('EncounterPrescriptions', () => {
       error: null,
     } as unknown as ReturnType<typeof useEncounterPrescriptions>);
 
-    render(
-      <EncounterPrescriptions encounterId={1} patientId={1} disabled={true} />,
-      { wrapper }
-    );
+    render(<EncounterPrescriptions encounterId={1} patientId={1} disabled={true} />, { wrapper });
 
     expect(screen.queryByRole('link', { name: /new prescription/i })).not.toBeInTheDocument();
   });
@@ -145,10 +132,7 @@ describe('EncounterPrescriptions', () => {
       error: null,
     } as unknown as ReturnType<typeof useEncounterPrescriptions>);
 
-    render(
-      <EncounterPrescriptions encounterId={1} patientId={1} />,
-      { wrapper }
-    );
+    render(<EncounterPrescriptions encounterId={1} patientId={1} />, { wrapper });
 
     expect(screen.getByText('Awaiting Dispensing (1)')).toBeInTheDocument();
     expect(screen.getByText('Dispensed (1)')).toBeInTheDocument();

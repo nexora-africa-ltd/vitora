@@ -112,10 +112,9 @@ export const imagingApi = {
    * Search procedures by name or code.
    */
   async searchProcedures(query: string): Promise<ImagingProcedure[]> {
-    const response = await apiClient.get<ImagingProcedure[]>(
-      '/api/imaging/procedures/',
-      { params: { search: query } }
-    );
+    const response = await apiClient.get<ImagingProcedure[]>('/api/imaging/procedures/', {
+      params: { search: query },
+    });
     // API returns paginated response, extract results
     const data = response.data as unknown as PaginatedResponse<ImagingProcedure>;
     return parseResponse(ImagingProcedureArraySchema, data.results || data, {
@@ -127,10 +126,7 @@ export const imagingApi = {
    * Create a new imaging procedure.
    */
   async createProcedure(data: ImagingProcedureCreateData): Promise<ImagingProcedureDetail> {
-    const response = await apiClient.post<ImagingProcedureDetail>(
-      '/api/imaging/procedures/',
-      data
-    );
+    const response = await apiClient.post<ImagingProcedureDetail>('/api/imaging/procedures/', data);
     return parseResponse(ImagingProcedureDetailSchema, response.data, {
       context: 'imagingApi.createProcedure',
     }) as ImagingProcedureDetail;
@@ -139,7 +135,10 @@ export const imagingApi = {
   /**
    * Update an existing imaging procedure.
    */
-  async updateProcedure(code: string, data: Partial<ImagingProcedureCreateData>): Promise<ImagingProcedureDetail> {
+  async updateProcedure(
+    code: string,
+    data: Partial<ImagingProcedureCreateData>
+  ): Promise<ImagingProcedureDetail> {
     const response = await apiClient.patch<ImagingProcedureDetail>(
       `/api/imaging/procedures/${code}/`,
       data
@@ -175,13 +174,10 @@ export const imagingApi = {
   /**
    * Get paginated list of imaging orders.
    */
-  async listOrders(
-    params?: ImagingOrderListParams
-  ): Promise<PaginatedResponse<ImagingOrder>> {
-    const response = await apiClient.get<PaginatedResponse<ImagingOrder>>(
-      '/api/imaging/orders/',
-      { params }
-    );
+  async listOrders(params?: ImagingOrderListParams): Promise<PaginatedResponse<ImagingOrder>> {
+    const response = await apiClient.get<PaginatedResponse<ImagingOrder>>('/api/imaging/orders/', {
+      params,
+    });
     return parseResponse(PaginatedImagingOrderSchema, response.data, {
       context: 'imagingApi.listOrders',
     }) as PaginatedResponse<ImagingOrder>;
@@ -191,9 +187,7 @@ export const imagingApi = {
    * Get a single imaging order by order number.
    */
   async getOrder(orderNumber: string): Promise<ImagingOrder> {
-    const response = await apiClient.get<ImagingOrder>(
-      `/api/imaging/orders/${orderNumber}/`
-    );
+    const response = await apiClient.get<ImagingOrder>(`/api/imaging/orders/${orderNumber}/`);
     return parseResponse(ImagingOrderSchema, response.data, {
       context: 'imagingApi.getOrder',
     }) as ImagingOrder;
@@ -203,10 +197,9 @@ export const imagingApi = {
    * Get imaging orders for a specific patient.
    */
   async getPatientOrders(patientId: number): Promise<ImagingOrder[]> {
-    const response = await apiClient.get<PaginatedResponse<ImagingOrder>>(
-      '/api/imaging/orders/',
-      { params: { patient: patientId } }
-    );
+    const response = await apiClient.get<PaginatedResponse<ImagingOrder>>('/api/imaging/orders/', {
+      params: { patient: patientId },
+    });
     const data = response.data;
     return parseResponse(ImagingOrderArraySchema, data.results || [], {
       context: 'imagingApi.getPatientOrders',
@@ -217,10 +210,9 @@ export const imagingApi = {
    * Get imaging orders for a specific encounter.
    */
   async getEncounterOrders(encounterId: number): Promise<ImagingOrder[]> {
-    const response = await apiClient.get<PaginatedResponse<ImagingOrder>>(
-      '/api/imaging/orders/',
-      { params: { encounter: encounterId } }
-    );
+    const response = await apiClient.get<PaginatedResponse<ImagingOrder>>('/api/imaging/orders/', {
+      params: { encounter: encounterId },
+    });
     const data = response.data;
     return parseResponse(ImagingOrderArraySchema, data.results || [], {
       context: 'imagingApi.getEncounterOrders',
@@ -286,10 +278,7 @@ export const imagingApi = {
   /**
    * Update an imaging order.
    */
-  async updateOrder(
-    orderNumber: string,
-    data: Partial<ImagingOrder>
-  ): Promise<ImagingOrder> {
+  async updateOrder(orderNumber: string, data: Partial<ImagingOrder>): Promise<ImagingOrder> {
     const response = await apiClient.patch<ImagingOrder>(
       `/api/imaging/orders/${orderNumber}/`,
       data
@@ -323,10 +312,7 @@ export const imagingApi = {
   /**
    * Schedule order (ORDERED -> SCHEDULED).
    */
-  async scheduleOrder(
-    orderNumber: string,
-    data: ScheduleOrderData
-  ): Promise<ImagingOrder> {
+  async scheduleOrder(orderNumber: string, data: ScheduleOrderData): Promise<ImagingOrder> {
     const response = await apiClient.post<ImagingOrder>(
       `/api/imaging/orders/${orderNumber}/schedule/`,
       data
@@ -363,10 +349,7 @@ export const imagingApi = {
   /**
    * Cancel order.
    */
-  async cancelOrder(
-    orderNumber: string,
-    data?: CancelOrderData
-  ): Promise<ImagingOrder> {
+  async cancelOrder(orderNumber: string, data?: CancelOrderData): Promise<ImagingOrder> {
     const response = await apiClient.post<ImagingOrder>(
       `/api/imaging/orders/${orderNumber}/cancel/`,
       data || {}
@@ -382,9 +365,7 @@ export const imagingApi = {
    * Get worklist orders (orders that need action).
    * Filters by status: ORDERED, SCHEDULED, IN_PROGRESS
    */
-  async getWorklist(
-    params?: Omit<ImagingOrderListParams, 'status'>
-  ): Promise<ImagingOrder[]> {
+  async getWorklist(params?: Omit<ImagingOrderListParams, 'status'>): Promise<ImagingOrder[]> {
     // Get all actionable orders
     const statuses = ['ORDERED', 'SCHEDULED', 'IN_PROGRESS'];
     const orders: ImagingOrder[] = [];
@@ -490,10 +471,9 @@ export const imagingApi = {
     resourceId: number,
     params?: ResourceAvailabilityParams
   ): Promise<ImagingCalendarSlot[]> {
-    const response = await apiClient.get(
-      `/api/imaging/resources/${resourceId}/availability/`,
-      { params }
-    );
+    const response = await apiClient.get(`/api/imaging/resources/${resourceId}/availability/`, {
+      params,
+    });
     const data = parseResponse(ImagingResourceAvailabilityResponseSchema, response.data, {
       context: 'imagingApi.getResourceAvailability',
     });
@@ -556,13 +536,10 @@ export const imagingApi = {
   /**
    * Get paginated list of DICOM studies.
    */
-  async listStudies(
-    params?: DICOMStudyListParams
-  ): Promise<PaginatedResponse<DICOMStudy>> {
-    const response = await apiClient.get<PaginatedResponse<DICOMStudy>>(
-      '/api/imaging/studies/',
-      { params }
-    );
+  async listStudies(params?: DICOMStudyListParams): Promise<PaginatedResponse<DICOMStudy>> {
+    const response = await apiClient.get<PaginatedResponse<DICOMStudy>>('/api/imaging/studies/', {
+      params,
+    });
     return parseResponse(PaginatedDICOMStudySchema, response.data, {
       context: 'imagingApi.listStudies',
     }) as PaginatedResponse<DICOMStudy>;
@@ -595,7 +572,10 @@ export const imagingApi = {
   /**
    * Get all instances for a DICOM study, optionally filtered by series.
    */
-  async getStudyInstances(studyInstanceUid: string, seriesInstanceUid?: string): Promise<DICOMInstance[]> {
+  async getStudyInstances(
+    studyInstanceUid: string,
+    seriesInstanceUid?: string
+  ): Promise<DICOMInstance[]> {
     const params = seriesInstanceUid ? `?series=${seriesInstanceUid}` : '';
     const response = await apiClient.get<DICOMInstance[]>(
       `/api/imaging/studies/${studyInstanceUid}/instances/${params}`
@@ -725,10 +705,9 @@ export const imagingApi = {
    * Download a DICOM study as a ZIP archive.
    */
   async downloadStudy(studyInstanceUid: string): Promise<Blob> {
-    const response = await apiClient.get(
-      `/api/imaging/studies/${studyInstanceUid}/download/`,
-      { responseType: 'blob' }
-    );
+    const response = await apiClient.get(`/api/imaging/studies/${studyInstanceUid}/download/`, {
+      responseType: 'blob',
+    });
     return response.data as Blob;
   },
 
@@ -736,9 +715,7 @@ export const imagingApi = {
    * List share links for a study.
    */
   async listShareLinks(studyInstanceUid: string): Promise<StudyShareLink[]> {
-    const response = await apiClient.get(
-      `/api/imaging/studies/${studyInstanceUid}/share/`
-    );
+    const response = await apiClient.get(`/api/imaging/studies/${studyInstanceUid}/share/`);
     const validated = parseResponse(StudyShareLinkListResponseSchema, response.data, {
       context: 'imagingApi.listShareLinks',
     }) as { results: StudyShareLink[] };
@@ -764,13 +741,8 @@ export const imagingApi = {
   /**
    * Revoke a share link.
    */
-  async revokeShareLink(
-    studyInstanceUid: string,
-    linkId: number
-  ): Promise<void> {
-    await apiClient.delete(
-      `/api/imaging/studies/${studyInstanceUid}/share/${linkId}/`
-    );
+  async revokeShareLink(studyInstanceUid: string, linkId: number): Promise<void> {
+    await apiClient.delete(`/api/imaging/studies/${studyInstanceUid}/share/${linkId}/`);
   },
 
   // ============ Imaging Equipment (Phase E) ============
@@ -798,9 +770,7 @@ export const imagingApi = {
    * Get a single equipment record.
    */
   async getEquipment(id: number): Promise<ImagingEquipment> {
-    const response = await apiClient.get<ImagingEquipment>(
-      `/api/imaging/equipment/${id}/`
-    );
+    const response = await apiClient.get<ImagingEquipment>(`/api/imaging/equipment/${id}/`);
     return parseResponse(ImagingEquipmentSchema, response.data, {
       context: 'imagingApi.getEquipment',
     }) as ImagingEquipment;
@@ -809,13 +779,8 @@ export const imagingApi = {
   /**
    * Create new equipment record.
    */
-  async createEquipment(
-    data: Partial<ImagingEquipment>
-  ): Promise<ImagingEquipment> {
-    const response = await apiClient.post<ImagingEquipment>(
-      '/api/imaging/equipment/',
-      data
-    );
+  async createEquipment(data: Partial<ImagingEquipment>): Promise<ImagingEquipment> {
+    const response = await apiClient.post<ImagingEquipment>('/api/imaging/equipment/', data);
     return parseResponse(ImagingEquipmentSchema, response.data, {
       context: 'imagingApi.createEquipment',
     }) as ImagingEquipment;
@@ -824,14 +789,8 @@ export const imagingApi = {
   /**
    * Update equipment record.
    */
-  async updateEquipment(
-    id: number,
-    data: Partial<ImagingEquipment>
-  ): Promise<ImagingEquipment> {
-    const response = await apiClient.patch<ImagingEquipment>(
-      `/api/imaging/equipment/${id}/`,
-      data
-    );
+  async updateEquipment(id: number, data: Partial<ImagingEquipment>): Promise<ImagingEquipment> {
+    const response = await apiClient.patch<ImagingEquipment>(`/api/imaging/equipment/${id}/`, data);
     return parseResponse(ImagingEquipmentSchema, response.data, {
       context: 'imagingApi.updateEquipment',
     }) as ImagingEquipment;
@@ -901,9 +860,7 @@ export const imagingApi = {
    * Get a radiology report by report number.
    */
   async getReport(reportNumber: string): Promise<RadiologyReport> {
-    const response = await apiClient.get<RadiologyReport>(
-      `/api/imaging/reports/${reportNumber}/`
-    );
+    const response = await apiClient.get<RadiologyReport>(`/api/imaging/reports/${reportNumber}/`);
     return parseResponse(RadiologyReportSchema, response.data, {
       context: 'imagingApi.getReport',
     }) as RadiologyReport;
@@ -923,9 +880,7 @@ export const imagingApi = {
         context: 'imagingApi.getReportByOrder',
       }) as PaginatedResponse<RadiologyReport>;
 
-      const activeRevision = data.results.find(
-        (report) => !report.superseded_by_report_number
-      );
+      const activeRevision = data.results.find((report) => !report.superseded_by_report_number);
       if (activeRevision) {
         return activeRevision;
       }
@@ -938,8 +893,9 @@ export const imagingApi = {
       }
 
       return data.results[0] ?? null;
-    } catch (error: any) {
-      if (error?.response?.status === 404) {
+    } catch (error: unknown) {
+      const apiError = error as { response?: { status?: number } };
+      if (apiError.response?.status === 404) {
         return null;
       }
       throw error;
@@ -950,10 +906,7 @@ export const imagingApi = {
    * Create a new radiology report draft.
    */
   async createReport(data: RadiologyReportCreateData): Promise<RadiologyReport> {
-    const response = await apiClient.post<RadiologyReport>(
-      '/api/imaging/reports/',
-      data
-    );
+    const response = await apiClient.post<RadiologyReport>('/api/imaging/reports/', data);
     return parseResponse(RadiologyReportSchema, response.data, {
       context: 'imagingApi.createReport',
     }) as RadiologyReport;

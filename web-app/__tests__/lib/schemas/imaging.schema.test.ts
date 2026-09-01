@@ -53,17 +53,12 @@ describe('Imaging Zod Schemas', () => {
   });
 
   describe('ImagingOrderStatusSchema', () => {
-    it.each([
-      'DRAFT',
-      'ORDERED',
-      'SCHEDULED',
-      'IN_PROGRESS',
-      'COMPLETED',
-      'REPORTED',
-      'CANCELLED',
-    ])('accepts valid status: %s', (status) => {
-      expect(ImagingOrderStatusSchema.parse(status)).toBe(status);
-    });
+    it.each(['DRAFT', 'ORDERED', 'SCHEDULED', 'IN_PROGRESS', 'COMPLETED', 'REPORTED', 'CANCELLED'])(
+      'accepts valid status: %s',
+      (status) => {
+        expect(ImagingOrderStatusSchema.parse(status)).toBe(status);
+      }
+    );
 
     it('rejects invalid status', () => {
       expect(() => ImagingOrderStatusSchema.parse('INVALID')).toThrow();

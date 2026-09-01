@@ -52,25 +52,13 @@ describe('Encounter Referrals -> Admission recommendation', () => {
   });
 
   it('shows Create Referral button for active encounters', () => {
-    render(
-      <EncounterReferralsContent
-        encounterId={1}
-        patientId={42}
-      />
-    );
+    render(<EncounterReferralsContent encounterId={1} patientId={42} />);
 
-    expect(
-      screen.getByRole('button', { name: /create referral/i })
-    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /create referral/i })).toBeInTheDocument();
   });
 
   it('opens referral creation dialog (which supports admission type)', () => {
-    render(
-      <EncounterReferralsContent
-        encounterId={1}
-        patientId={42}
-      />
-    );
+    render(<EncounterReferralsContent encounterId={1} patientId={42} />);
 
     fireEvent.click(screen.getByRole('button', { name: /create referral/i }));
 
@@ -79,17 +67,9 @@ describe('Encounter Referrals -> Admission recommendation', () => {
   });
 
   it('hides Create Referral button when encounter is disabled (closed)', () => {
-    render(
-      <EncounterReferralsContent
-        encounterId={1}
-        patientId={42}
-        disabled
-      />
-    );
+    render(<EncounterReferralsContent encounterId={1} patientId={42} disabled />);
 
-    expect(
-      screen.queryByRole('button', { name: /create referral/i })
-    ).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /create referral/i })).not.toBeInTheDocument();
   });
 
   it('displays existing admission referrals under Admission Referrals group', () => {
@@ -111,24 +91,14 @@ describe('Encounter Referrals -> Admission recommendation', () => {
       error: null,
     });
 
-    render(
-      <EncounterReferralsContent
-        encounterId={1}
-        patientId={42}
-      />
-    );
+    render(<EncounterReferralsContent encounterId={1} patientId={42} />);
 
     expect(screen.getByText('Admission Referrals')).toBeInTheDocument();
     expect(screen.getByText(/severe pneumonia/i)).toBeInTheDocument();
   });
 
   it('shows empty state when no referrals exist', () => {
-    render(
-      <EncounterReferralsContent
-        encounterId={1}
-        patientId={42}
-      />
-    );
+    render(<EncounterReferralsContent encounterId={1} patientId={42} />);
 
     expect(screen.getByText('No referrals')).toBeInTheDocument();
   });

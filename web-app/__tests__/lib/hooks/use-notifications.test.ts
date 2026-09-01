@@ -9,9 +9,18 @@
 import { renderHook, waitFor, act } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React, { ReactNode } from 'react';
-import { useNotifications, useUnreadCount, useMarkNotificationRead, useMarkAllRead } from '@/lib/hooks/use-notifications';
+import {
+  useNotifications,
+  useUnreadCount,
+  useMarkNotificationRead,
+  useMarkAllRead,
+} from '@/lib/hooks/use-notifications';
 import { notificationApi } from '@/lib/api/notifications';
-import type { Notification, NotificationListResponse, UnreadCountResponse } from '@/lib/types/notification';
+import type {
+  Notification,
+  NotificationListResponse,
+  UnreadCountResponse,
+} from '@/lib/types/notification';
 
 // Mock the notification API
 jest.mock('@/lib/api/notifications', () => ({
@@ -124,9 +133,7 @@ describe('useNotifications Hooks', () => {
     });
 
     it('should return 0 for convenience when loading', () => {
-      mockNotificationApi.getUnreadCount.mockImplementation(
-        () => new Promise(() => {})
-      );
+      mockNotificationApi.getUnreadCount.mockImplementation(() => new Promise(() => {}));
 
       const { result } = renderHook(() => useUnreadCount(), { wrapper });
 

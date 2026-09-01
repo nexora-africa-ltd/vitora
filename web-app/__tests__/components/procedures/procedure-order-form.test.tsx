@@ -98,10 +98,9 @@ describe('ProcedureOrderForm external request flow', () => {
     const user = userEvent.setup();
     const onSuccess = jest.fn();
 
-    render(
-      <ProcedureOrderForm patientId={12} encounterId={7} onSuccess={onSuccess} />,
-      { wrapper: createWrapper() }
-    );
+    render(<ProcedureOrderForm patientId={12} encounterId={7} onSuccess={onSuccess} />, {
+      wrapper: createWrapper(),
+    });
 
     await user.type(screen.getByPlaceholderText(/search by procedure name or code/i), 'app');
     await user.click(await screen.findByRole('button', { name: /appendectomy/i }));

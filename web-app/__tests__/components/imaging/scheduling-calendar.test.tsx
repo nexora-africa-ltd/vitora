@@ -9,10 +9,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SchedulingCalendar } from '@/components/imaging/scheduling-calendar';
 import { imagingApi } from '@/lib/api/imaging';
 import { format, addDays, subDays } from 'date-fns';
-import {
-  ImagingCalendarResponse,
-  ImagingModality,
-} from '@/lib/types/imaging';
+import { ImagingCalendarResponse, ImagingModality } from '@/lib/types/imaging';
 
 // Mock the imaging API
 jest.mock('@/lib/api/imaging', () => ({
@@ -127,11 +124,7 @@ const createWrapper = () => {
   });
 
   return function TestWrapper({ children }: { children: React.ReactNode }) {
-    return (
-      <QueryClientProvider client={queryClient}>
-        {children}
-      </QueryClientProvider>
-    );
+    return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
   };
 };
 

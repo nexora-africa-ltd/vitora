@@ -133,7 +133,9 @@ describe('Patients API', () => {
 
       const result = await patientsApi.createPatient(patientData);
 
-      expect(mockApiClient.post).toHaveBeenCalledWith('/api/patients/', patientData, { headers: {} });
+      expect(mockApiClient.post).toHaveBeenCalledWith('/api/patients/', patientData, {
+        headers: {},
+      });
       expect(result.mrn).toBe('MRN-002');
     });
   });

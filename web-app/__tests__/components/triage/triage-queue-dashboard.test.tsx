@@ -369,7 +369,9 @@ describe('TriageQueueDashboard - Queue Actions', () => {
 
       // Use within to scope to the specific queue item card
       const queueCard = screen.getByTestId('queue-item-99');
-      const withClinicianButton = within(queueCard).getByRole('button', { name: /with (clinician|doctor)/i });
+      const withClinicianButton = within(queueCard).getByRole('button', {
+        name: /with (clinician|doctor)/i,
+      });
       await user.click(withClinicianButton);
 
       expect(handleWithClinician).toHaveBeenCalledWith(99);

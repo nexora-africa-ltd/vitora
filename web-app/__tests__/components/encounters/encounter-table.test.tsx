@@ -17,7 +17,7 @@ jest.mock('next/navigation', () => ({
 
 // Mock EmptyState component
 jest.mock('@/components/shared/empty-state', () => ({
-  EmptyState: ({ title, description, action }: any) => (
+  EmptyState: ({ title, description, action }: unknown) => (
     <div data-testid="empty-state">
       <h2>{title}</h2>
       <p>{description}</p>
@@ -126,7 +126,9 @@ describe('EncounterTable', () => {
     expect(screen.getByTestId('empty-state')).toBeInTheDocument();
     expect(screen.getByText('No encounters are currently waiting on results.')).toBeInTheDocument();
     expect(
-      screen.getByText('Results will appear here once ordered investigations are still pending review.')
+      screen.getByText(
+        'Results will appear here once ordered investigations are still pending review.'
+      )
     ).toBeInTheDocument();
   });
 
@@ -149,6 +151,8 @@ describe('EncounterTable', () => {
 
     // The component should have a visual indicator for critical vitals
     // This is typically shown via AlertTriangle icon or styling
-    expect(document.querySelector('[class*="destructive"]') || document.querySelector('svg')).toBeTruthy();
+    expect(
+      document.querySelector('[class*="destructive"]') || document.querySelector('svg')
+    ).toBeTruthy();
   });
 });

@@ -75,7 +75,12 @@ describe('use-sha hooks', () => {
   it('builds stable SHA query keys', () => {
     expect(shaQueryKeys.membersByPatient(1)).toEqual(['sha', 'members', 'patient', 1]);
     expect(shaQueryKeys.claim(2)).toEqual(['sha', 'claims', 2]);
-    expect(shaQueryKeys.icd11({ search: 'ab' } as never)).toEqual(['sha', 'terminology', 'icd11', { search: 'ab' }]);
+    expect(shaQueryKeys.icd11({ search: 'ab' } as never)).toEqual([
+      'sha',
+      'terminology',
+      'icd11',
+      { search: 'ab' },
+    ]);
   });
 
   it('fetches member, eligibility, claims, and terminology queries', async () => {
@@ -117,16 +122,76 @@ describe('use-sha hooks', () => {
   it('invalidates correct caches for SHA mutations and exposes passthrough actions', async () => {
     const ctx = createWrapper();
     const mutationCases = [
-      { useHook: useCheckEligibility, api: mockShaApi.checkEligibility, input: { patient_id: 1 }, called: [{ patient_id: 1 }], keys: [shaQueryKeys.eligibility()] },
-      { useHook: useCreateClaim, api: mockShaApi.createClaim, input: { patient_id: 1 }, called: [{ patient_id: 1 }], keys: [shaQueryKeys.claims()] },
-      { useHook: useSubmitClaim, api: mockShaApi.submitClaim, input: 2, called: [2], keys: [shaQueryKeys.claim(2), shaQueryKeys.claims()] },
-      { useHook: useResubmitClaim, api: mockShaApi.resubmitClaim, input: 2, called: [2], keys: [shaQueryKeys.claim(2), shaQueryKeys.claims()] },
-      { useHook: useCancelClaim, api: mockShaApi.cancelClaim, input: 2, called: [2], keys: [shaQueryKeys.claim(2), shaQueryKeys.claims()] },
-      { useHook: useFetchFromCR, api: mockShaApi.fetchFromClientRegistry, input: { patient_id: 1 }, called: [{ patient_id: 1 }], keys: [] },
-      { useHook: useRegisterInCR, api: mockShaApi.registerInClientRegistry, input: { patient_id: 1 }, called: [{ patient_id: 1 }], keys: [['patient', 1], ['patients']] },
-      { useHook: useUpdateCR, api: mockShaApi.updateClientRegistry, input: { patient_id: 1 }, called: [{ patient_id: 1 }], keys: [] },
-      { useHook: useValidateFacility, api: mockShaApi.validateFacility, input: { code: '001' }, called: [{ code: '001' }], keys: [] },
-      { useHook: useValidatePractitioner, api: mockShaApi.validatePractitioner, input: { license: 'ABC' }, called: [{ license: 'ABC' }], keys: [] },
+      {
+        useHook: useCheckEligibility,
+        api: mockShaApi.checkEligibility,
+        input: { patient_id: 1 },
+        called: [{ patient_id: 1 }],
+        keys: [shaQueryKeys.eligibility()],
+      },
+      {
+        useHook: useCreateClaim,
+        api: mockShaApi.createClaim,
+        input: { patient_id: 1 },
+        called: [{ patient_id: 1 }],
+        keys: [shaQueryKeys.claims()],
+      },
+      {
+        useHook: useSubmitClaim,
+        api: mockShaApi.submitClaim,
+        input: 2,
+        called: [2],
+        keys: [shaQueryKeys.claim(2), shaQueryKeys.claims()],
+      },
+      {
+        useHook: useResubmitClaim,
+        api: mockShaApi.resubmitClaim,
+        input: 2,
+        called: [2],
+        keys: [shaQueryKeys.claim(2), shaQueryKeys.claims()],
+      },
+      {
+        useHook: useCancelClaim,
+        api: mockShaApi.cancelClaim,
+        input: 2,
+        called: [2],
+        keys: [shaQueryKeys.claim(2), shaQueryKeys.claims()],
+      },
+      {
+        useHook: useFetchFromCR,
+        api: mockShaApi.fetchFromClientRegistry,
+        input: { patient_id: 1 },
+        called: [{ patient_id: 1 }],
+        keys: [],
+      },
+      {
+        useHook: useRegisterInCR,
+        api: mockShaApi.registerInClientRegistry,
+        input: { patient_id: 1 },
+        called: [{ patient_id: 1 }],
+        keys: [['patient', 1], ['patients']],
+      },
+      {
+        useHook: useUpdateCR,
+        api: mockShaApi.updateClientRegistry,
+        input: { patient_id: 1 },
+        called: [{ patient_id: 1 }],
+        keys: [],
+      },
+      {
+        useHook: useValidateFacility,
+        api: mockShaApi.validateFacility,
+        input: { code: '001' },
+        called: [{ code: '001' }],
+        keys: [],
+      },
+      {
+        useHook: useValidatePractitioner,
+        api: mockShaApi.validatePractitioner,
+        input: { license: 'ABC' },
+        called: [{ license: 'ABC' }],
+        keys: [],
+      },
     ];
 
     for (const testCase of mutationCases) {
@@ -135,8 +200,10 @@ describe('use-sha hooks', () => {
       await act(async () => {
         await result.current.mutateAsync(testCase.input as never);
       });
-      expect(testCase.api.mock.calls[0]?.[0]).toEqual((testCase.called as any[])[0]);
-      testCase.keys.forEach((key) => expect(ctx.invalidateQueries).toHaveBeenCalledWith({ queryKey: key }));
+      expect(testCase.api.mock.calls[0]?.[0]).toEqual((testCase.called as unknown[])[0]);
+      testCase.keys.forEach((key) =>
+        expect(ctx.invalidateQueries).toHaveBeenCalledWith({ queryKey: key })
+      );
     }
   });
 });

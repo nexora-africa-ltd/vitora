@@ -29,9 +29,7 @@ describe('PriorityBadge', () => {
   });
 
   it('applies custom className', () => {
-    const { container } = render(
-      <PriorityBadge priority="STAT" className="custom-class" />
-    );
+    const { container } = render(<PriorityBadge priority="STAT" className="custom-class" />);
     expect(container.firstChild).toHaveClass('custom-class');
   });
 

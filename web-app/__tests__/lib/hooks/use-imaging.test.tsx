@@ -67,24 +67,9 @@ describe('imagingKeys', () => {
     expect(imagingKeys.all).toEqual(['imaging']);
     expect(imagingKeys.procedures()).toEqual(['imaging', 'procedures']);
     expect(imagingKeys.orders()).toEqual(['imaging', 'orders']);
-    expect(imagingKeys.orderDetail('IMG-001')).toEqual([
-      'imaging',
-      'orders',
-      'detail',
-      'IMG-001',
-    ]);
-    expect(imagingKeys.patientOrders(123)).toEqual([
-      'imaging',
-      'orders',
-      'patient',
-      123,
-    ]);
-    expect(imagingKeys.encounterOrders(456)).toEqual([
-      'imaging',
-      'orders',
-      'encounter',
-      456,
-    ]);
+    expect(imagingKeys.orderDetail('IMG-001')).toEqual(['imaging', 'orders', 'detail', 'IMG-001']);
+    expect(imagingKeys.patientOrders(123)).toEqual(['imaging', 'orders', 'patient', 123]);
+    expect(imagingKeys.encounterOrders(456)).toEqual(['imaging', 'orders', 'encounter', 456]);
   });
 });
 
@@ -142,10 +127,9 @@ describe('useImagingProcedures', () => {
       results: [],
     });
 
-    const { result } = renderHook(
-      () => useImagingProcedures({ modality: 'CT', page: 2 }),
-      { wrapper: createWrapper() }
-    );
+    const { result } = renderHook(() => useImagingProcedures({ modality: 'CT', page: 2 }), {
+      wrapper: createWrapper(),
+    });
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 

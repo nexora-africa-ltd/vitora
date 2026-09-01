@@ -123,13 +123,21 @@ describe('laboratory hooks', () => {
   });
 
   it('fetches catalog, orders, queue, reports, and detail queries', async () => {
-    mockLaboratoryApi.listTests.mockResolvedValueOnce({ count: 1, results: [{ code: 'CBC' }] } as never);
+    mockLaboratoryApi.listTests.mockResolvedValueOnce({
+      count: 1,
+      results: [{ code: 'CBC' }],
+    } as never);
     mockLaboratoryApi.getTest.mockResolvedValueOnce({ code: 'CBC' } as never);
     mockLaboratoryApi.searchTests.mockResolvedValueOnce([{ code: 'CBC' }] as never);
-    mockLaboratoryApi.listOrders.mockResolvedValueOnce({ count: 1, results: [{ order_number: 'LAB-1' }] } as never);
+    mockLaboratoryApi.listOrders.mockResolvedValueOnce({
+      count: 1,
+      results: [{ order_number: 'LAB-1' }],
+    } as never);
     mockLaboratoryApi.getOrder.mockResolvedValueOnce({ order_number: 'LAB-1' } as never);
     mockLaboratoryApi.getPatientOrders.mockResolvedValueOnce([{ order_number: 'LAB-1' }] as never);
-    mockLaboratoryApi.getEncounterOrders.mockResolvedValueOnce([{ order_number: 'LAB-1' }] as never);
+    mockLaboratoryApi.getEncounterOrders.mockResolvedValueOnce([
+      { order_number: 'LAB-1' },
+    ] as never);
     mockLaboratoryApi.getOrderResults.mockResolvedValueOnce([{ id: 1 }] as never);
     mockLaboratoryApi.getPatientResults.mockResolvedValueOnce([{ id: 2 }] as never);
     mockLaboratoryApi.getPendingVerification.mockResolvedValue([{ id: 3 }] as never);
@@ -146,15 +154,27 @@ describe('laboratory hooks', () => {
 
     const wrappers = createWrapper();
     await waitFor(async () => {
-      expect((await renderHook(() => useTestCatalog({ search: 'cbc' } as never), { wrapper: wrappers.wrapper }).result.current.data)?.count).toBeUndefined();
+      expect(
+        (
+          await renderHook(() => useTestCatalog({ search: 'cbc' } as never), {
+            wrapper: wrappers.wrapper,
+          }).result.current.data
+        )?.count
+      ).toBeUndefined();
     });
   });
 
   it('covers enabled query behavior and report fetchers', async () => {
-    mockLaboratoryApi.listTests.mockResolvedValue({ count: 1, results: [{ code: 'CBC' }] } as never);
+    mockLaboratoryApi.listTests.mockResolvedValue({
+      count: 1,
+      results: [{ code: 'CBC' }],
+    } as never);
     mockLaboratoryApi.getTest.mockResolvedValue({ code: 'CBC' } as never);
     mockLaboratoryApi.searchTests.mockResolvedValue([{ code: 'CBC' }] as never);
-    mockLaboratoryApi.listOrders.mockResolvedValue({ count: 1, results: [{ order_number: 'LAB-1' }] } as never);
+    mockLaboratoryApi.listOrders.mockResolvedValue({
+      count: 1,
+      results: [{ order_number: 'LAB-1' }],
+    } as never);
     mockLaboratoryApi.getOrder.mockResolvedValue({ order_number: 'LAB-1' } as never);
     mockLaboratoryApi.getPatientOrders.mockResolvedValue([{ order_number: 'LAB-1' }] as never);
     mockLaboratoryApi.getEncounterOrders.mockResolvedValue([{ order_number: 'LAB-1' }] as never);
@@ -184,7 +204,9 @@ describe('laboratory hooks', () => {
       renderHook(() => useOrderResults('LAB-1'), { wrapper }),
       renderHook(() => usePatientLabResults(1), { wrapper }),
       renderHook(() => usePendingVerification(), { wrapper }),
-      renderHook(() => usePendingValidations({ validationType: 'TECHNICAL' as never }), { wrapper }),
+      renderHook(() => usePendingValidations({ validationType: 'TECHNICAL' as never }), {
+        wrapper,
+      }),
       renderHook(() => useLabQueue('PENDING'), { wrapper }),
       renderHook(() => useLabTechnicians(), { wrapper }),
       renderHook(() => useCriticalAlerts('LAB-1'), { wrapper }),
@@ -208,31 +230,214 @@ describe('laboratory hooks', () => {
 
   it('invalidates correct queries for laboratory mutations', async () => {
     const cases = [
-      { useHook: useCreateLabOrder, api: mockLaboratoryApi.createOrder, input: { patient: 1, encounter: 2 }, called: [{ patient: 1, encounter: 2 }], resolved: { patient: 1, encounter: 2 }, keys: [['lab-orders'], ['patients', 1, 'lab-orders'], ['encounters', 2, 'lab-orders']] },
-      { useHook: useUpdateLabOrder, api: mockLaboratoryApi.updateOrder, input: { orderNumber: 'LAB-1', data: { status: 'DRAFT' } }, called: ['LAB-1', { status: 'DRAFT' }], resolved: { order_number: 'LAB-1' }, keys: [['lab-orders'], ['lab-orders', 'LAB-1']] },
-      { useHook: useSubmitLabOrder, api: mockLaboratoryApi.submitOrder, input: 'LAB-1', called: ['LAB-1'], resolved: { order_number: 'LAB-1' }, keys: [['lab-orders'], ['lab-orders', 'LAB-1'], ['lab-queue']] },
-      { useHook: useCollectSpecimen, api: mockLaboratoryApi.collectSpecimen, input: { orderNumber: 'LAB-1', sampleId: 'S1' }, called: ['LAB-1', 'S1'], resolved: { order_number: 'LAB-1' }, keys: [['lab-orders'], ['lab-orders', 'LAB-1'], ['lab-queue']] },
-      { useHook: useCancelLabOrder, api: mockLaboratoryApi.cancelOrder, input: { orderNumber: 'LAB-1', reason: 'Error' }, called: ['LAB-1', 'Error'], resolved: { order_number: 'LAB-1' }, keys: [['lab-orders'], ['lab-orders', 'LAB-1']] },
-      { useHook: useAddOrderItem, api: mockLaboratoryApi.addOrderItem, input: { orderNumber: 'LAB-1', testId: 1, specialInstructions: 'Urgent' }, called: ['LAB-1', 1, 'Urgent'], resolved: {}, keys: [['lab-orders', 'LAB-1']] },
-      { useHook: useRemoveOrderItem, api: mockLaboratoryApi.removeOrderItem, input: { orderNumber: 'LAB-1', itemId: 8 }, called: ['LAB-1', 8], resolved: {}, keys: [['lab-orders', 'LAB-1']] },
-      { useHook: useAddLabResult, api: mockLaboratoryApi.addResult, input: { orderNumber: 'LAB-1', data: { result_value: '5.0' } }, called: ['LAB-1', { result_value: '5.0' }], resolved: {}, keys: [['lab-orders', 'LAB-1'], ['lab-orders', 'LAB-1', 'results']] },
-      { useHook: useUpdateLabResult, api: mockLaboratoryApi.updateResult, input: { resultId: 2, data: { result_value: '6.0' } }, called: [2, { result_value: '6.0' }], resolved: {}, keys: [['lab-orders'], ['lab-results']] },
-      { useHook: useVerifyLabResult, api: mockLaboratoryApi.verifyResult, input: 2, called: [2], resolved: {}, keys: [['lab-orders'], ['lab-results'], ['lab-results', 'pending-verification']] },
-      { useHook: useUploadResultAttachment, api: mockLaboratoryApi.uploadResultAttachment, input: { resultId: 2, file: new File(['x'], 'r.pdf') }, called: [2, expect.any(File)], resolved: {}, keys: [['lab-orders'], ['lab-results']] },
-      { useHook: useCollectSample, api: mockLaboratoryApi.collectSample, input: { queueNumber: 'Q1', sampleId: 'S1' }, called: ['Q1', 'S1'], resolved: {}, keys: [['lab-queue']] },
-      { useHook: useAssignQueueEntry, api: mockLaboratoryApi.assignQueueEntry, input: { queueNumber: 'Q1', technicianId: 4 }, called: ['Q1', 4], resolved: {}, keys: [['lab-queue']] },
-      { useHook: useStartProcessing, api: mockLaboratoryApi.startProcessing, input: 'Q1', called: ['Q1'], resolved: {}, keys: [['lab-queue']] },
-      { useHook: useSubmitForReview, api: mockLaboratoryApi.submitForReview, input: 'Q1', called: ['Q1'], resolved: {}, keys: [['lab-queue']] },
-      { useHook: useReleaseResults, api: mockLaboratoryApi.releaseResults, input: 'Q1', called: ['Q1'], resolved: {}, keys: [['lab-queue'], ['lab-orders']] },
-      { useHook: useRejectSample, api: mockLaboratoryApi.rejectSample, input: { queueNumber: 'Q1', reason: 'Bad sample' }, called: ['Q1', 'Bad sample'], resolved: {}, keys: [['lab-queue']] },
-      { useHook: useUpdateNotes, api: mockLaboratoryApi.updateNotes, input: { queueNumber: 'Q1', notes: 'Done', append: true }, called: ['Q1', 'Done', true], resolved: {}, keys: [['lab-queue']] },
-      { useHook: useBarcodeLookup, api: mockLaboratoryApi.lookupByBarcode, input: 'BC123', called: ['BC123'], resolved: {}, keys: [['lab-queue']] },
-      { useHook: useCreateResultValidation, api: mockLaboratoryApi.createResultValidation, input: { resultId: 7, data: { validation_type: 'TECHNICAL' } }, called: [7, { validation_type: 'TECHNICAL' }], resolved: { result: 7 }, keys: [['lab-results', 7, 'validations'], ['lab-results', 'pending-validations'], ['lab-orders'], ['lab-results']] },
-      { useHook: useCreateDiagnosticReport, api: mockLaboratoryApi.createDiagnosticReport, input: { lab_order: 1 }, called: [{ lab_order: 1 }], resolved: { lab_order_number: 'LAB-1' }, keys: [['diagnostic-reports'], ['lab-orders', 'LAB-1']] },
-      { useHook: useUpdateDiagnosticReport, api: mockLaboratoryApi.updateDiagnosticReport, input: { id: 1, data: { conclusion: 'ok' } }, called: [1, { conclusion: 'ok' }], resolved: { report_number: 'DR-1' }, keys: [['diagnostic-reports'], ['diagnostic-reports', 'DR-1']] },
-      { useHook: useFinalizeDiagnosticReport, api: mockLaboratoryApi.finalizeDiagnosticReport, input: 1, called: [1], resolved: { report_number: 'DR-1' }, keys: [['diagnostic-reports'], ['diagnostic-reports', 'DR-1']] },
-      { useHook: useAmendDiagnosticReport, api: mockLaboratoryApi.amendDiagnosticReport, input: { id: 1, conclusion: 'amended' }, called: [1, 'amended'], resolved: { report_number: 'DR-1' }, keys: [['diagnostic-reports'], ['diagnostic-reports', 'DR-1']] },
-      { useHook: useCancelDiagnosticReport, api: mockLaboratoryApi.cancelDiagnosticReport, input: { id: 1, reason: 'bad data' }, called: [1, 'bad data'], resolved: { report_number: 'DR-1' }, keys: [['diagnostic-reports'], ['diagnostic-reports', 'DR-1']] },
+      {
+        useHook: useCreateLabOrder,
+        api: mockLaboratoryApi.createOrder,
+        input: { patient: 1, encounter: 2 },
+        called: [{ patient: 1, encounter: 2 }],
+        resolved: { patient: 1, encounter: 2 },
+        keys: [['lab-orders'], ['patients', 1, 'lab-orders'], ['encounters', 2, 'lab-orders']],
+      },
+      {
+        useHook: useUpdateLabOrder,
+        api: mockLaboratoryApi.updateOrder,
+        input: { orderNumber: 'LAB-1', data: { status: 'DRAFT' } },
+        called: ['LAB-1', { status: 'DRAFT' }],
+        resolved: { order_number: 'LAB-1' },
+        keys: [['lab-orders'], ['lab-orders', 'LAB-1']],
+      },
+      {
+        useHook: useSubmitLabOrder,
+        api: mockLaboratoryApi.submitOrder,
+        input: 'LAB-1',
+        called: ['LAB-1'],
+        resolved: { order_number: 'LAB-1' },
+        keys: [['lab-orders'], ['lab-orders', 'LAB-1'], ['lab-queue']],
+      },
+      {
+        useHook: useCollectSpecimen,
+        api: mockLaboratoryApi.collectSpecimen,
+        input: { orderNumber: 'LAB-1', sampleId: 'S1' },
+        called: ['LAB-1', 'S1'],
+        resolved: { order_number: 'LAB-1' },
+        keys: [['lab-orders'], ['lab-orders', 'LAB-1'], ['lab-queue']],
+      },
+      {
+        useHook: useCancelLabOrder,
+        api: mockLaboratoryApi.cancelOrder,
+        input: { orderNumber: 'LAB-1', reason: 'Error' },
+        called: ['LAB-1', 'Error'],
+        resolved: { order_number: 'LAB-1' },
+        keys: [['lab-orders'], ['lab-orders', 'LAB-1']],
+      },
+      {
+        useHook: useAddOrderItem,
+        api: mockLaboratoryApi.addOrderItem,
+        input: { orderNumber: 'LAB-1', testId: 1, specialInstructions: 'Urgent' },
+        called: ['LAB-1', 1, 'Urgent'],
+        resolved: {},
+        keys: [['lab-orders', 'LAB-1']],
+      },
+      {
+        useHook: useRemoveOrderItem,
+        api: mockLaboratoryApi.removeOrderItem,
+        input: { orderNumber: 'LAB-1', itemId: 8 },
+        called: ['LAB-1', 8],
+        resolved: {},
+        keys: [['lab-orders', 'LAB-1']],
+      },
+      {
+        useHook: useAddLabResult,
+        api: mockLaboratoryApi.addResult,
+        input: { orderNumber: 'LAB-1', data: { result_value: '5.0' } },
+        called: ['LAB-1', { result_value: '5.0' }],
+        resolved: {},
+        keys: [
+          ['lab-orders', 'LAB-1'],
+          ['lab-orders', 'LAB-1', 'results'],
+        ],
+      },
+      {
+        useHook: useUpdateLabResult,
+        api: mockLaboratoryApi.updateResult,
+        input: { resultId: 2, data: { result_value: '6.0' } },
+        called: [2, { result_value: '6.0' }],
+        resolved: {},
+        keys: [['lab-orders'], ['lab-results']],
+      },
+      {
+        useHook: useVerifyLabResult,
+        api: mockLaboratoryApi.verifyResult,
+        input: 2,
+        called: [2],
+        resolved: {},
+        keys: [['lab-orders'], ['lab-results'], ['lab-results', 'pending-verification']],
+      },
+      {
+        useHook: useUploadResultAttachment,
+        api: mockLaboratoryApi.uploadResultAttachment,
+        input: { resultId: 2, file: new File(['x'], 'r.pdf') },
+        called: [2, expect.any(File)],
+        resolved: {},
+        keys: [['lab-orders'], ['lab-results']],
+      },
+      {
+        useHook: useCollectSample,
+        api: mockLaboratoryApi.collectSample,
+        input: { queueNumber: 'Q1', sampleId: 'S1' },
+        called: ['Q1', 'S1'],
+        resolved: {},
+        keys: [['lab-queue']],
+      },
+      {
+        useHook: useAssignQueueEntry,
+        api: mockLaboratoryApi.assignQueueEntry,
+        input: { queueNumber: 'Q1', technicianId: 4 },
+        called: ['Q1', 4],
+        resolved: {},
+        keys: [['lab-queue']],
+      },
+      {
+        useHook: useStartProcessing,
+        api: mockLaboratoryApi.startProcessing,
+        input: 'Q1',
+        called: ['Q1'],
+        resolved: {},
+        keys: [['lab-queue']],
+      },
+      {
+        useHook: useSubmitForReview,
+        api: mockLaboratoryApi.submitForReview,
+        input: 'Q1',
+        called: ['Q1'],
+        resolved: {},
+        keys: [['lab-queue']],
+      },
+      {
+        useHook: useReleaseResults,
+        api: mockLaboratoryApi.releaseResults,
+        input: 'Q1',
+        called: ['Q1'],
+        resolved: {},
+        keys: [['lab-queue'], ['lab-orders']],
+      },
+      {
+        useHook: useRejectSample,
+        api: mockLaboratoryApi.rejectSample,
+        input: { queueNumber: 'Q1', reason: 'Bad sample' },
+        called: ['Q1', 'Bad sample'],
+        resolved: {},
+        keys: [['lab-queue']],
+      },
+      {
+        useHook: useUpdateNotes,
+        api: mockLaboratoryApi.updateNotes,
+        input: { queueNumber: 'Q1', notes: 'Done', append: true },
+        called: ['Q1', 'Done', true],
+        resolved: {},
+        keys: [['lab-queue']],
+      },
+      {
+        useHook: useBarcodeLookup,
+        api: mockLaboratoryApi.lookupByBarcode,
+        input: 'BC123',
+        called: ['BC123'],
+        resolved: {},
+        keys: [['lab-queue']],
+      },
+      {
+        useHook: useCreateResultValidation,
+        api: mockLaboratoryApi.createResultValidation,
+        input: { resultId: 7, data: { validation_type: 'TECHNICAL' } },
+        called: [7, { validation_type: 'TECHNICAL' }],
+        resolved: { result: 7 },
+        keys: [
+          ['lab-results', 7, 'validations'],
+          ['lab-results', 'pending-validations'],
+          ['lab-orders'],
+          ['lab-results'],
+        ],
+      },
+      {
+        useHook: useCreateDiagnosticReport,
+        api: mockLaboratoryApi.createDiagnosticReport,
+        input: { lab_order: 1 },
+        called: [{ lab_order: 1 }],
+        resolved: { lab_order_number: 'LAB-1' },
+        keys: [['diagnostic-reports'], ['lab-orders', 'LAB-1']],
+      },
+      {
+        useHook: useUpdateDiagnosticReport,
+        api: mockLaboratoryApi.updateDiagnosticReport,
+        input: { id: 1, data: { conclusion: 'ok' } },
+        called: [1, { conclusion: 'ok' }],
+        resolved: { report_number: 'DR-1' },
+        keys: [['diagnostic-reports'], ['diagnostic-reports', 'DR-1']],
+      },
+      {
+        useHook: useFinalizeDiagnosticReport,
+        api: mockLaboratoryApi.finalizeDiagnosticReport,
+        input: 1,
+        called: [1],
+        resolved: { report_number: 'DR-1' },
+        keys: [['diagnostic-reports'], ['diagnostic-reports', 'DR-1']],
+      },
+      {
+        useHook: useAmendDiagnosticReport,
+        api: mockLaboratoryApi.amendDiagnosticReport,
+        input: { id: 1, conclusion: 'amended' },
+        called: [1, 'amended'],
+        resolved: { report_number: 'DR-1' },
+        keys: [['diagnostic-reports'], ['diagnostic-reports', 'DR-1']],
+      },
+      {
+        useHook: useCancelDiagnosticReport,
+        api: mockLaboratoryApi.cancelDiagnosticReport,
+        input: { id: 1, reason: 'bad data' },
+        called: [1, 'bad data'],
+        resolved: { report_number: 'DR-1' },
+        keys: [['diagnostic-reports'], ['diagnostic-reports', 'DR-1']],
+      },
     ];
 
     for (const item of cases) {
@@ -262,7 +467,9 @@ describe('laboratory hooks', () => {
     const appendSpy = jest.spyOn(document.body, 'appendChild').mockImplementation((node) => node);
     const removeSpy = jest.spyOn(document.body, 'removeChild').mockImplementation((node) => node);
     const originalCreateElement = document.createElement.bind(document);
-    const createElementSpy = jest.spyOn(document, 'createElement').mockImplementation(((tag: string) => {
+    const createElementSpy = jest.spyOn(document, 'createElement').mockImplementation(((
+      tag: string
+    ) => {
       if (tag === 'a') {
         return { href: '', download: '', click } as unknown as HTMLAnchorElement;
       }
@@ -270,7 +477,9 @@ describe('laboratory hooks', () => {
     }) as typeof document.createElement);
     mockLaboratoryApi.downloadDiagnosticReportPdf.mockResolvedValueOnce(new Blob(['pdf']) as never);
 
-    const { result } = renderHook(() => useGenerateReportPdf(), { wrapper: createWrapper().wrapper });
+    const { result } = renderHook(() => useGenerateReportPdf(), {
+      wrapper: createWrapper().wrapper,
+    });
     await act(async () => {
       await result.current.mutateAsync(1);
     });

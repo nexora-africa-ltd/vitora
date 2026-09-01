@@ -47,10 +47,7 @@ describe('ChartCard', () => {
 
   it('renders action element when provided', () => {
     render(
-      <ChartCard
-        title="Test Chart"
-        action={<button>Refresh</button>}
-      >
+      <ChartCard title="Test Chart" action={<button>Refresh</button>}>
         <div>Chart content</div>
       </ChartCard>
     );

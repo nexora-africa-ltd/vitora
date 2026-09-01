@@ -47,7 +47,7 @@ describe('usePermissions Hook', () => {
       mockUseAuth.mockReturnValue({
         user: { ...mockUser, permissions: ['view_patient'] },
         isAuthenticated: true,
-      } as any);
+      } as unknown);
 
       const { usePermissions } = await import('@/lib/hooks/use-permissions');
       const { result } = renderHook(() => usePermissions());
@@ -59,7 +59,7 @@ describe('usePermissions Hook', () => {
       mockUseAuth.mockReturnValue({
         user: { ...mockUser, permissions: ['view_patient', 'edit_patient'] },
         isAuthenticated: true,
-      } as any);
+      } as unknown);
 
       const { usePermissions } = await import('@/lib/hooks/use-permissions');
       const { result } = renderHook(() => usePermissions());
@@ -71,7 +71,7 @@ describe('usePermissions Hook', () => {
       mockUseAuth.mockReturnValue({
         user: { ...mockUser, permissions: ['view_patient', 'create_encounter'] },
         isAuthenticated: true,
-      } as any);
+      } as unknown);
 
       const { usePermissions } = await import('@/lib/hooks/use-permissions');
       const { result } = renderHook(() => usePermissions());
@@ -90,7 +90,7 @@ describe('usePermissions Hook', () => {
       mockUseAuth.mockReturnValue({
         user: { ...mockUser, permissions: ['view_patient', 'edit_patient'] },
         isAuthenticated: true,
-      } as any);
+      } as unknown);
 
       const { usePermissions } = await import('@/lib/hooks/use-permissions');
       const { result } = renderHook(() => usePermissions());
@@ -102,9 +102,12 @@ describe('usePermissions Hook', () => {
 
     it('should return canEditIdentity = true only with manage_patient_identity permission', async () => {
       mockUseAuth.mockReturnValue({
-        user: { ...mockUser, permissions: ['view_patient', 'edit_patient', 'manage_patient_identity'] },
+        user: {
+          ...mockUser,
+          permissions: ['view_patient', 'edit_patient', 'manage_patient_identity'],
+        },
         isAuthenticated: true,
-      } as any);
+      } as unknown);
 
       const { usePermissions } = await import('@/lib/hooks/use-permissions');
       const { result } = renderHook(() => usePermissions());
@@ -121,7 +124,7 @@ describe('usePermissions Hook', () => {
       mockUseAuth.mockReturnValue({
         user: { ...mockUser, role: 'ADMIN', permissions: [] },
         isAuthenticated: true,
-      } as any);
+      } as unknown);
 
       const { usePermissions } = await import('@/lib/hooks/use-permissions');
       const { result } = renderHook(() => usePermissions());
@@ -136,7 +139,7 @@ describe('usePermissions Hook', () => {
       mockUseAuth.mockReturnValue({
         user: { ...mockUser, role: 'NURSE', permissions: ['view_patient', 'edit_patient'] },
         isAuthenticated: true,
-      } as any);
+      } as unknown);
 
       const { usePermissions } = await import('@/lib/hooks/use-permissions');
       const { result } = renderHook(() => usePermissions());
@@ -146,9 +149,13 @@ describe('usePermissions Hook', () => {
 
     it('should deny identity editing to DOCTOR role by default', async () => {
       mockUseAuth.mockReturnValue({
-        user: { ...mockUser, role: 'DOCTOR', permissions: ['view_patient', 'create_encounter', 'edit_patient'] },
+        user: {
+          ...mockUser,
+          role: 'DOCTOR',
+          permissions: ['view_patient', 'create_encounter', 'edit_patient'],
+        },
         isAuthenticated: true,
-      } as any);
+      } as unknown);
 
       const { usePermissions } = await import('@/lib/hooks/use-permissions');
       const { result } = renderHook(() => usePermissions());
@@ -161,10 +168,10 @@ describe('usePermissions Hook', () => {
         user: {
           ...mockUser,
           role: 'RECEPTIONIST',
-          permissions: ['view_patient', 'edit_patient', 'manage_patient_identity']
+          permissions: ['view_patient', 'edit_patient', 'manage_patient_identity'],
         },
         isAuthenticated: true,
-      } as any);
+      } as unknown);
 
       const { usePermissions } = await import('@/lib/hooks/use-permissions');
       const { result } = renderHook(() => usePermissions());
@@ -179,9 +186,13 @@ describe('usePermissions Hook', () => {
   describe('Billing Permissions', () => {
     it('should return canCreateInvoice based on create_invoice permission', async () => {
       mockUseAuth.mockReturnValue({
-        user: { ...mockUser, role: 'BILLING_CLERK', permissions: ['view_patient', 'create_invoice'] },
+        user: {
+          ...mockUser,
+          role: 'BILLING_CLERK',
+          permissions: ['view_patient', 'create_invoice'],
+        },
         isAuthenticated: true,
-      } as any);
+      } as unknown);
 
       const { usePermissions } = await import('@/lib/hooks/use-permissions');
       const { result } = renderHook(() => usePermissions());
@@ -193,7 +204,7 @@ describe('usePermissions Hook', () => {
       mockUseAuth.mockReturnValue({
         user: { ...mockUser, role: 'DOCTOR', permissions: ['view_patient', 'create_encounter'] },
         isAuthenticated: true,
-      } as any);
+      } as unknown);
 
       const { usePermissions } = await import('@/lib/hooks/use-permissions');
       const { result } = renderHook(() => usePermissions());
@@ -210,7 +221,7 @@ describe('usePermissions Hook', () => {
       mockUseAuth.mockReturnValue({
         user: { ...mockUser, role: 'DOCTOR', permissions: ['view_patient', 'create_encounter'] },
         isAuthenticated: true,
-      } as any);
+      } as unknown);
 
       const { usePermissions } = await import('@/lib/hooks/use-permissions');
       const { result } = renderHook(() => usePermissions());
@@ -220,9 +231,13 @@ describe('usePermissions Hook', () => {
 
     it('should deny encounter creation to billing staff', async () => {
       mockUseAuth.mockReturnValue({
-        user: { ...mockUser, role: 'BILLING_CLERK', permissions: ['view_patient', 'create_invoice'] },
+        user: {
+          ...mockUser,
+          role: 'BILLING_CLERK',
+          permissions: ['view_patient', 'create_invoice'],
+        },
         isAuthenticated: true,
-      } as any);
+      } as unknown);
 
       const { usePermissions } = await import('@/lib/hooks/use-permissions');
       const { result } = renderHook(() => usePermissions());
@@ -239,7 +254,7 @@ describe('usePermissions Hook', () => {
       mockUseAuth.mockReturnValue({
         user: { ...mockUser, role: 'RECEPTIONIST', permissions: ['triage.view_triage_queue'] },
         isAuthenticated: true,
-      } as any);
+      } as unknown);
 
       const { usePermissions } = await import('@/lib/hooks/use-permissions');
       const { result } = renderHook(() => usePermissions());
@@ -251,7 +266,7 @@ describe('usePermissions Hook', () => {
       mockUseAuth.mockReturnValue({
         user: { ...mockUser, role: 'NURSE', permissions: ['triage.perform_triage'] },
         isAuthenticated: true,
-      } as any);
+      } as unknown);
 
       const { usePermissions } = await import('@/lib/hooks/use-permissions');
       const { result } = renderHook(() => usePermissions());
@@ -265,7 +280,7 @@ describe('usePermissions Hook', () => {
       mockUseAuth.mockReturnValue({
         user: { ...mockUser, role: 'BILLING_CLERK', permissions: ['billing.submit_sha_claim'] },
         isAuthenticated: true,
-      } as any);
+      } as unknown);
 
       const { usePermissions } = await import('@/lib/hooks/use-permissions');
       const { result } = renderHook(() => usePermissions());
@@ -277,7 +292,7 @@ describe('usePermissions Hook', () => {
       mockUseAuth.mockReturnValue({
         user: { ...mockUser, role: 'NURSE', permissions: ['inpatient.view_ward'] },
         isAuthenticated: true,
-      } as any);
+      } as unknown);
 
       const { usePermissions } = await import('@/lib/hooks/use-permissions');
       const { result } = renderHook(() => usePermissions());
@@ -287,9 +302,13 @@ describe('usePermissions Hook', () => {
 
     it('should allow surveillance module access for users with alert or IHR permissions', async () => {
       mockUseAuth.mockReturnValue({
-        user: { ...mockUser, role: 'SURVEILLANCE_OFFICER', permissions: ['surveillance.notify_ihr_to_who'] },
+        user: {
+          ...mockUser,
+          role: 'SURVEILLANCE_OFFICER',
+          permissions: ['surveillance.notify_ihr_to_who'],
+        },
         isAuthenticated: true,
-      } as any);
+      } as unknown);
 
       const { usePermissions } = await import('@/lib/hooks/use-permissions');
       const { result } = renderHook(() => usePermissions());
@@ -301,7 +320,7 @@ describe('usePermissions Hook', () => {
       mockUseAuth.mockReturnValue({
         user: { ...mockUser, role: 'SURGEON', permissions: ['scheduling.view_schedule'] },
         isAuthenticated: true,
-      } as any);
+      } as unknown);
 
       const { usePermissions } = await import('@/lib/hooks/use-permissions');
       const { result } = renderHook(() => usePermissions());
@@ -318,7 +337,7 @@ describe('usePermissions Hook', () => {
       mockUseAuth.mockReturnValue({
         user: null,
         isAuthenticated: false,
-      } as any);
+      } as unknown);
 
       const { usePermissions } = await import('@/lib/hooks/use-permissions');
       const { result } = renderHook(() => usePermissions());

@@ -9,7 +9,7 @@ import { useToastNotification } from '@/lib/hooks/use-toast-notification';
 const mockToast = jest.fn();
 jest.mock('@/lib/hooks/use-toast', () => ({
   useToast: jest.fn(),
-  toast: (...args: any[]) => mockToast(...args),
+  toast: (...args: unknown[]) => mockToast(...args),
 }));
 
 describe('useToastNotification', () => {

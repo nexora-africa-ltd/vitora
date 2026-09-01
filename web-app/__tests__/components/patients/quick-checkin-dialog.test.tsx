@@ -6,7 +6,7 @@ import { QuickCheckinDialog } from '@/components/patients/quick-checkin-dialog';
 
 beforeAll(() => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (window as any).PointerEvent = window.MouseEvent;
+  (window as unknown).PointerEvent = window.MouseEvent;
 });
 
 const mockToast = jest.fn();
@@ -29,9 +29,7 @@ jest.mock('@/lib/hooks/use-checkin', () => ({
 jest.mock('@/lib/hooks/use-clinics', () => ({
   useClinics: () => ({
     data: {
-      results: [
-        { id: 7, name: 'Eye Clinic', clinic_type: 'SPECIALIST' },
-      ],
+      results: [{ id: 7, name: 'Eye Clinic', clinic_type: 'SPECIALIST' }],
     },
   }),
 }));
@@ -84,7 +82,9 @@ describe('QuickCheckinDialog', () => {
 
     await user.click(screen.getByRole('button', { name: /check-in patient/i }));
 
-    expect(screen.getByText(/default workflow for assessment and vitals capture/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/default workflow for assessment and vitals capture/i)
+    ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /^check-in to triage$/i })).toBeInTheDocument();
   });
 

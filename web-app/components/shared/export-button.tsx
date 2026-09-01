@@ -14,7 +14,7 @@ import { exportToCSV, exportToPDF, downloadPDF } from '@/lib/export-utils';
 
 interface ExportButtonProps {
   /** Data to export (array for tables, object for single record) */
-  data: any;
+  data: Record<string, unknown> | Record<string, unknown>[] | null | undefined;
   /** Filename without extension */
   filename: string;
   /** Document title */
@@ -84,7 +84,7 @@ export function ExportButton({
     if (!data) return;
 
     // Ensure data is an array for CSV export
-    const arrayData = Array.isArray(data) ? data : [data];
+    const arrayData: Record<string, unknown>[] = Array.isArray(data) ? data : [data];
     exportToCSV(arrayData, filename);
   };
 
@@ -100,9 +100,9 @@ export function ExportButton({
       <DropdownMenuTrigger asChild>
         <Button variant={variant} size={size} disabled={exporting || !data}>
           {exporting ? (
-            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
           ) : (
-            <Download className="h-4 w-4 mr-2" />
+            <Download className="mr-2 h-4 w-4" />
           )}
           Export
         </Button>
@@ -110,20 +110,20 @@ export function ExportButton({
       <DropdownMenuContent align="end">
         {showPDF && (
           <DropdownMenuItem onClick={handleExportPDF} disabled={exporting}>
-            <FileText className="h-4 w-4 mr-2" />
+            <FileText className="mr-2 h-4 w-4" />
             Export as PDF
           </DropdownMenuItem>
         )}
         {showCSV && (
           <DropdownMenuItem onClick={handleExportCSV}>
-            <FileSpreadsheet className="h-4 w-4 mr-2" />
+            <FileSpreadsheet className="mr-2 h-4 w-4" />
             Export as CSV
           </DropdownMenuItem>
         )}
         {showPrint && (showPDF || showCSV) && <DropdownMenuSeparator />}
         {showPrint && (
           <DropdownMenuItem onClick={handlePrint}>
-            <Printer className="h-4 w-4 mr-2" />
+            <Printer className="mr-2 h-4 w-4" />
             Print
           </DropdownMenuItem>
         )}

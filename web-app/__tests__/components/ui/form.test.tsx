@@ -18,7 +18,13 @@ import {
 import { Input } from '@/components/ui/input';
 
 // Test wrapper component
-function TestForm({ children, defaultValues = {} }: { children: React.ReactNode; defaultValues?: any }) {
+function TestForm({
+  children,
+  defaultValues = {},
+}: {
+  children: React.ReactNode;
+  defaultValues?: unknown;
+}) {
   const form = useForm({ defaultValues });
   return <FormProvider {...form}>{children}</FormProvider>;
 }
@@ -272,7 +278,6 @@ describe('Form Components', () => {
 
       expect(screen.getByText('Custom message')).toBeInTheDocument();
     });
-
   });
 
   describe('FormControl', () => {

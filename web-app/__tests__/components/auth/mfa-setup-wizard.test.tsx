@@ -42,8 +42,10 @@ beforeAll(() => {
 
 const mockSetupData = {
   secret: 'ABCDEFGHIJKLMNOP',
-  qr_code: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
-  provisioning_uri: 'otpauth://totp/Vitora%20HMIS:test@example.com?secret=ABCDEFGHIJKLMNOP&issuer=Vitora%20HMIS',
+  qr_code:
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+  provisioning_uri:
+    'otpauth://totp/Vitora%20HMIS:test@example.com?secret=ABCDEFGHIJKLMNOP&issuer=Vitora%20HMIS',
 };
 
 const mockBackupCodes = [

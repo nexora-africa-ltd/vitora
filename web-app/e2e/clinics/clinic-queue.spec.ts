@@ -174,10 +174,12 @@ function openSession(clinicId: number) {
 
 async function setupMocks(page: Page) {
   // Start session as OPEN so queue tests see patients immediately
-  let sessionState: any = openSession(1);
-  let queueState: any[] = [makeVisit()];
+  let sessionState: unknown = openSession(1);
+  let queueState: unknown[] = [makeVisit()];
 
-  const patientById = new Map<number, any>(mockPatients.map((p) => [p.id, p]));
+  const patientById = new Map<number, (typeof mockPatients)[number]>(
+    mockPatients.map((p) => [p.id, p])
+  );
   let queueGetCount = 0;
 
   // Auth
@@ -202,44 +204,74 @@ async function setupMocks(page: Page) {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({ count: mockClinicList.length, next: null, previous: null, results: mockClinicList }),
+      body: JSON.stringify({
+        count: mockClinicList.length,
+        next: null,
+        previous: null,
+        results: mockClinicList,
+      }),
     });
   });
 
   // Clinic detail
   await page.route(/.*\/api\/clinics\/(\d+)\/$/, async (route) => {
-    const match = route.request().url().match(/\/api\/clinics\/(\d+)\/$/);
+    const match = route
+      .request()
+      .url()
+      .match(/\/api\/clinics\/(\d+)\/$/);
     const id = match ? Number(match[1]) : NaN;
     const clinic = mockClinicDetail(id);
 
     if (!clinic) {
-      await route.fulfill({ status: 404, contentType: 'application/json', body: JSON.stringify({ detail: 'Not found' }) });
+      await route.fulfill({
+        status: 404,
+        contentType: 'application/json',
+        body: JSON.stringify({ detail: 'Not found' }),
+      });
       return;
     }
 
-    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(clinic) });
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(clinic),
+    });
   });
 
   // Today session (GET)
   await page.route(/.*\/api\/clinics\/\d+\/sessions\/today\/$/, async (route) => {
-    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(sessionState) });
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(sessionState),
+    });
   });
 
   // Open today's session (POST)
   await page.route(/.*\/api\/clinics\/\d+\/sessions\/today\/open\/$/, async (route) => {
     sessionState = openSession(1);
-    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(sessionState) });
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(sessionState),
+    });
   });
 
   // Close today's session (POST)
   await page.route(/.*\/api\/clinics\/\d+\/sessions\/today\/close\/$/, async (route) => {
     sessionState = closedSession(1);
-    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(sessionState) });
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(sessionState),
+    });
   });
 
   // Queue stats
   await page.route(/.*\/api\/clinics\/\d+\/queue\/stats\/$/, async (route) => {
-    const waiting = queueState.filter((v) => v.status === 'WAITING' || v.status === 'CALLED').length;
+    const waiting = queueState.filter(
+      (v) => v.status === 'WAITING' || v.status === 'CALLED'
+    ).length;
     const inConsult = queueState.filter((v) => v.status === 'IN_CONSULTATION').length;
     const completed = queueState.filter((v) => v.status === 'COMPLETED').length;
 
@@ -276,18 +308,25 @@ async function setupMocks(page: Page) {
       // After 2+ reads (initial load + first poll), simulate an external update ("real-time").
       // This ensures Jane appears only after polling kicks in.
       if (queueGetCount >= 2 && !queueState.some((v) => v.patient.full_name === 'Jane Wanjiku')) {
-        queueState = [...queueState, makeVisit({
-          id: 102,
-          queue_number: 2,
-          patient: patientById.get(11),
-          chief_complaint: 'Routine follow-up',
-          wait_time_minutes: 0,
-          registered_at: nowIso(),
-        })];
+        queueState = [
+          ...queueState,
+          makeVisit({
+            id: 102,
+            queue_number: 2,
+            patient: patientById.get(11),
+            chief_complaint: 'Routine follow-up',
+            wait_time_minutes: 0,
+            registered_at: nowIso(),
+          }),
+        ];
       }
 
       // API returns { results: [...] } wrapper
-      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ results: queueState }) });
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ results: queueState }),
+      });
       return;
     }
 
@@ -297,7 +336,11 @@ async function setupMocks(page: Page) {
       const patient = patientById.get(patientId);
 
       if (!patient) {
-        await route.fulfill({ status: 400, contentType: 'application/json', body: JSON.stringify({ detail: 'Invalid patient_id' }) });
+        await route.fulfill({
+          status: 400,
+          contentType: 'application/json',
+          body: JSON.stringify({ detail: 'Invalid patient_id' }),
+        });
         return;
       }
 
@@ -323,7 +366,11 @@ async function setupMocks(page: Page) {
 
       queueState = [...queueState, visit];
 
-      await route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify(visit) });
+      await route.fulfill({
+        status: 201,
+        contentType: 'application/json',
+        body: JSON.stringify(visit),
+      });
       return;
     }
 
@@ -362,60 +409,90 @@ async function setupMocks(page: Page) {
 
   // Visit actions: call/start/complete/refer
   // Accept optional trailing slash and optional query params.
-  await page.route(/.*\/api\/clinic-visits\/(\d+)\/(call|start|complete|refer)\/?(\?.*)?$/, async (route) => {
-    const url = route.request().url();
-    const match = url.match(/\/api\/clinic-visits\/(\d+)\/(call|start|complete|refer)\/?(\?.*)?$/);
-    const visitId = match ? Number(match[1]) : NaN;
-    const action = match ? match[2] : '';
+  await page.route(
+    /.*\/api\/clinic-visits\/(\d+)\/(call|start|complete|refer)\/?(\?.*)?$/,
+    async (route) => {
+      const url = route.request().url();
+      const match = url.match(
+        /\/api\/clinic-visits\/(\d+)\/(call|start|complete|refer)\/?(\?.*)?$/
+      );
+      const visitId = match ? Number(match[1]) : NaN;
+      const action = match ? match[2] : '';
 
-    const visitIndex = queueState.findIndex((v) => Number(v.id) === visitId);
-    if (visitIndex < 0) {
-      await route.fulfill({ status: 404, contentType: 'application/json', body: JSON.stringify({ detail: 'Not found' }) });
-      return;
+      const visitIndex = queueState.findIndex((v) => Number(v.id) === visitId);
+      if (visitIndex < 0) {
+        await route.fulfill({
+          status: 404,
+          contentType: 'application/json',
+          body: JSON.stringify({ detail: 'Not found' }),
+        });
+        return;
+      }
+
+      const current = queueState[visitIndex];
+
+      if (action === 'call') {
+        const updated = {
+          ...current,
+          status: 'CALLED',
+          status_display: 'Called',
+          called_at: nowIso(),
+        };
+        queueState = queueState.map((v, i) => (i === visitIndex ? updated : v));
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify(updated),
+        });
+        return;
+      }
+
+      if (action === 'start') {
+        const updated = {
+          ...current,
+          status: 'IN_CONSULTATION',
+          status_display: 'In Consultation',
+          consultation_started_at: nowIso(),
+          encounter: null,
+        };
+        queueState = queueState.map((v, i) => (i === visitIndex ? updated : v));
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify(updated),
+        });
+        return;
+      }
+
+      if (action === 'complete') {
+        const updated = {
+          ...current,
+          status: 'COMPLETED',
+          status_display: 'Completed',
+          completed_at: nowIso(),
+        };
+        queueState = queueState.map((v, i) => (i === visitIndex ? updated : v));
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify(updated),
+        });
+        return;
+      }
+
+      if (action === 'refer') {
+        queueState = queueState.filter((v) => Number(v.id) !== visitId);
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ ...current, status: 'REFERRED', status_display: 'Referred' }),
+        });
+        return;
+      }
+
+      await route.fulfill({ status: 400 });
     }
-
-    const current = queueState[visitIndex];
-
-    if (action === 'call') {
-      const updated = { ...current, status: 'CALLED', status_display: 'Called', called_at: nowIso() };
-      queueState = queueState.map((v, i) => (i === visitIndex ? updated : v));
-      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(updated) });
-      return;
-    }
-
-    if (action === 'start') {
-      const updated = {
-        ...current,
-        status: 'IN_CONSULTATION',
-        status_display: 'In Consultation',
-        consultation_started_at: nowIso(),
-        encounter: null,
-      };
-      queueState = queueState.map((v, i) => (i === visitIndex ? updated : v));
-      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(updated) });
-      return;
-    }
-
-    if (action === 'complete') {
-      const updated = {
-        ...current,
-        status: 'COMPLETED',
-        status_display: 'Completed',
-        completed_at: nowIso(),
-      };
-      queueState = queueState.map((v, i) => (i === visitIndex ? updated : v));
-      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(updated) });
-      return;
-    }
-
-    if (action === 'refer') {
-      queueState = queueState.filter((v) => Number(v.id) !== visitId);
-      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ...current, status: 'REFERRED', status_display: 'Referred' }) });
-      return;
-    }
-
-    await route.fulfill({ status: 400 });
-  });
+  );
 }
 
 async function login(page: Page) {
@@ -453,7 +530,10 @@ test.describe('Clinic Queue Management', () => {
     await page.waitForResponse(/.*\/api\/clinics\/\d+\/queue\//);
 
     // Use .first() to avoid strict mode violation (header + empty-queue placeholder both have Add Patient)
-    await page.getByRole('button', { name: /^Add Patient$/i }).first().click();
+    await page
+      .getByRole('button', { name: /^Add Patient$/i })
+      .first()
+      .click();
     await expect(page.getByRole('heading', { name: /Add Patient to Queue/i })).toBeVisible();
 
     const dialog = page.getByRole('dialog', { name: /Add Patient to Queue/i });
@@ -505,7 +585,9 @@ test.describe('Clinic Queue Management', () => {
     // Scroll button into view and click without force
     await startButton.scrollIntoViewIfNeeded();
     const [startResponse] = await Promise.all([
-      page.waitForResponse((resp) => resp.url().includes('/api/clinic-visits/') && resp.url().includes('/start')),
+      page.waitForResponse(
+        (resp) => resp.url().includes('/api/clinic-visits/') && resp.url().includes('/start')
+      ),
       startButton.click(),
     ]);
     expect(startResponse.status()).toBe(200);
@@ -550,7 +632,9 @@ test.describe('Clinic Queue Management', () => {
     // Scroll button into view and click without force
     await startButton.scrollIntoViewIfNeeded();
     const [startResponse] = await Promise.all([
-      page.waitForResponse((resp) => resp.url().includes('/api/clinic-visits/') && resp.url().includes('/start')),
+      page.waitForResponse(
+        (resp) => resp.url().includes('/api/clinic-visits/') && resp.url().includes('/start')
+      ),
       startButton.click(),
     ]);
     expect(startResponse.status()).toBe(200);
@@ -569,7 +653,9 @@ test.describe('Clinic Queue Management', () => {
     await page.getByRole('tab', { name: /In Consultation/i }).click();
     // Use the card's heading/name text to avoid strict mode conflicts with toast messages.
     const consultationSection = page.locator('main');
-    await expect(consultationSection.getByText('John Kamau', { exact: true }).first()).toBeVisible();
+    await expect(
+      consultationSection.getByText('John Kamau', { exact: true }).first()
+    ).toBeVisible();
 
     // Completing visits is available in cards view.
     await page.getByRole('button', { name: 'Cards view', exact: true }).click();
@@ -580,7 +666,9 @@ test.describe('Clinic Queue Management', () => {
     // Scroll button into view and click without force
     await completeButton.scrollIntoViewIfNeeded();
     const [completeResponse] = await Promise.all([
-      page.waitForResponse((resp) => resp.url().includes('/api/clinic-visits/') && resp.url().includes('/complete')),
+      page.waitForResponse(
+        (resp) => resp.url().includes('/api/clinic-visits/') && resp.url().includes('/complete')
+      ),
       completeButton.click(),
     ]);
     expect(completeResponse.status()).toBe(200);
@@ -605,7 +693,9 @@ test.describe('Clinic Queue Management', () => {
     await dialog.getByRole('button', { name: /Refer To Clinic/i }).click();
     await page.getByRole('option', { name: /Dental Clinic/i }).click();
 
-    await dialog.getByPlaceholder(/Why is this patient being referred\?/i).fill('Needs specialist review');
+    await dialog
+      .getByPlaceholder(/Why is this patient being referred\?/i)
+      .fill('Needs specialist review');
     await dialog.getByRole('button', { name: /^Refer Patient$/i }).click();
 
     await expect(page.getByRole('cell', { name: /John Kamau/i })).toHaveCount(0);

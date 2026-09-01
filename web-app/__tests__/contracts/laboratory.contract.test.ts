@@ -38,14 +38,17 @@ import {
 
 interface OpenAPISchema {
   components: {
-    schemas: Record<string, {
-      type?: string;
-      properties?: Record<string, unknown>;
-      required?: string[];
-      enum?: string[];
-      allOf?: Array<{ $ref?: string }>;
-      description?: string;
-    }>;
+    schemas: Record<
+      string,
+      {
+        type?: string;
+        properties?: Record<string, unknown>;
+        required?: string[];
+        enum?: string[];
+        allOf?: Array<{ $ref?: string }>;
+        description?: string;
+      }
+    >;
   };
 }
 
@@ -74,10 +77,7 @@ function getSchemaProperties(
 /**
  * Get enum values from a component schema.
  */
-function getSchemaEnumValues(
-  openapi: OpenAPISchema,
-  schemaName: string
-): string[] | null {
+function getSchemaEnumValues(openapi: OpenAPISchema, schemaName: string): string[] | null {
   const schema = openapi.components.schemas[schemaName];
   if (!schema || !schema.enum) return null;
   return schema.enum;
@@ -145,9 +145,8 @@ describe('Laboratory Contract Tests', () => {
       }
 
       // Critical fields should cause test failure
-      const criticalMissingFields = missingInZod.filter(
-        (field) =>
-          ['id', 'code', 'name', 'category', 'specimen_type'].includes(field)
+      const criticalMissingFields = missingInZod.filter((field) =>
+        ['id', 'code', 'name', 'category', 'specimen_type'].includes(field)
       );
 
       expect(criticalMissingFields).toEqual([]);
@@ -191,8 +190,8 @@ describe('Laboratory Contract Tests', () => {
       }
 
       // Critical fields
-      const criticalMissing = missingInZod.filter(
-        (field) => ['id', 'order_number', 'patient', 'encounter', 'status'].includes(field)
+      const criticalMissing = missingInZod.filter((field) =>
+        ['id', 'order_number', 'patient', 'encounter', 'status'].includes(field)
       );
       expect(criticalMissing).toEqual([]);
     });
@@ -216,8 +215,8 @@ describe('Laboratory Contract Tests', () => {
       }
 
       // Critical fields
-      const criticalMissing = missingInZod.filter(
-        (field) => ['id', 'test_name', 'test_code', 'status'].includes(field)
+      const criticalMissing = missingInZod.filter((field) =>
+        ['id', 'test_name', 'test_code', 'status'].includes(field)
       );
       expect(criticalMissing).toEqual([]);
     });
@@ -243,8 +242,8 @@ describe('Laboratory Contract Tests', () => {
       }
 
       // Critical fields
-      const criticalMissing = missingInZod.filter(
-        (field) => ['id', 'order_item', 'verification_status'].includes(field)
+      const criticalMissing = missingInZod.filter((field) =>
+        ['id', 'order_item', 'verification_status'].includes(field)
       );
       expect(criticalMissing).toEqual([]);
     });
@@ -270,8 +269,8 @@ describe('Laboratory Contract Tests', () => {
       }
 
       // Critical fields
-      const criticalMissing = missingInZod.filter(
-        (field) => ['id', 'lab_order', 'queue_number', 'priority', 'queue_status'].includes(field)
+      const criticalMissing = missingInZod.filter((field) =>
+        ['id', 'lab_order', 'queue_number', 'priority', 'queue_status'].includes(field)
       );
       expect(criticalMissing).toEqual([]);
     });

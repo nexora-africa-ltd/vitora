@@ -8,7 +8,7 @@ import { useAutoSave } from '@/lib/hooks/use-auto-save';
 
 // Mock the dependencies
 jest.mock('@/lib/hooks/use-debounce', () => ({
-  useDebounce: <T,>(value: T, _delay: number) => value,
+  useDebounce: <T>(value: T, _delay: number) => value,
 }));
 
 let mockIsOnline = true;

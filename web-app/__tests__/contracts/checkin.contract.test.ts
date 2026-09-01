@@ -32,14 +32,17 @@ import {
 
 interface OpenAPISchema {
   components: {
-    schemas: Record<string, {
-      type?: string;
-      properties?: Record<string, unknown>;
-      required?: string[];
-      enum?: string[];
-      allOf?: Array<{ $ref?: string }>;
-      description?: string;
-    }>;
+    schemas: Record<
+      string,
+      {
+        type?: string;
+        properties?: Record<string, unknown>;
+        required?: string[];
+        enum?: string[];
+        allOf?: Array<{ $ref?: string }>;
+        description?: string;
+      }
+    >;
   };
 }
 
@@ -68,10 +71,7 @@ function getSchemaProperties(
 /**
  * Get enum values from a component schema.
  */
-function getSchemaEnumValues(
-  openapi: OpenAPISchema,
-  schemaName: string
-): string[] | null {
+function getSchemaEnumValues(openapi: OpenAPISchema, schemaName: string): string[] | null {
   const schema = openapi.components.schemas[schemaName];
   if (!schema || !schema.enum) return null;
   return schema.enum;
@@ -138,8 +138,8 @@ describe('Check-in Contract Tests', () => {
       }
 
       // Critical fields should cause test failure
-      const criticalMissingFields = missingInZod.filter(
-        (field) => ['checkin_id', 'patient_name', 'status', 'destination'].includes(field)
+      const criticalMissingFields = missingInZod.filter((field) =>
+        ['checkin_id', 'patient_name', 'status', 'destination'].includes(field)
       );
 
       expect(criticalMissingFields).toEqual([]);
@@ -200,8 +200,8 @@ describe('Check-in Contract Tests', () => {
       }
 
       // Critical fields should cause test failure
-      const criticalMissingFields = missingInZod.filter(
-        (field) => ['id', 'patient_name', 'patient_mrn', 'status'].includes(field)
+      const criticalMissingFields = missingInZod.filter((field) =>
+        ['id', 'patient_name', 'patient_mrn', 'status'].includes(field)
       );
 
       expect(criticalMissingFields).toEqual([]);
@@ -229,10 +229,7 @@ describe('Check-in Contract Tests', () => {
     it('should include staff and clinic fields', () => {
       const zodFields = getZodSchemaFields(TodayCheckinSchema);
 
-      const staffFields = [
-        'destination_clinic_id',
-        'checked_in_by_name',
-      ];
+      const staffFields = ['destination_clinic_id', 'checked_in_by_name'];
 
       const missing = staffFields.filter((field) => !zodFields.includes(field));
       expect(missing).toEqual([]);
@@ -257,8 +254,8 @@ describe('Check-in Contract Tests', () => {
       }
 
       // Critical fields should cause test failure
-      const criticalMissingFields = missingInZod.filter(
-        (field) => ['id', 'mrn', 'first_name', 'last_name'].includes(field)
+      const criticalMissingFields = missingInZod.filter((field) =>
+        ['id', 'mrn', 'first_name', 'last_name'].includes(field)
       );
 
       expect(criticalMissingFields).toEqual([]);
@@ -356,11 +353,7 @@ describe('Check-in Contract Tests', () => {
     it('should have required lab result fields', () => {
       const zodFields = getZodSchemaFields(PendingResultSchema);
 
-      const requiredFields = [
-        'test_name',
-        'ordered_date',
-        'status',
-      ];
+      const requiredFields = ['test_name', 'ordered_date', 'status'];
 
       const missing = requiredFields.filter((field) => !zodFields.includes(field));
       expect(missing).toEqual([]);
@@ -391,13 +384,7 @@ describe('Check-in Contract Tests', () => {
     it('should include all visit types', () => {
       const zodValues = getZodEnumValues(VisitTypeSchema);
 
-      const allTypes = [
-        'NEW',
-        'RETURN',
-        'FOLLOW_UP',
-        'EMERGENCY',
-        'SCHEDULED',
-      ];
+      const allTypes = ['NEW', 'RETURN', 'FOLLOW_UP', 'EMERGENCY', 'SCHEDULED'];
 
       const missing = allTypes.filter((t) => !zodValues.includes(t));
       expect(missing).toEqual([]);

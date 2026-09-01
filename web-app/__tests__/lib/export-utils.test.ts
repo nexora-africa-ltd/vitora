@@ -95,11 +95,17 @@ describe('export-utils', () => {
       facility: { name: 'Demo Health Facility', address: 'Nairobi', phone: '0700000000' },
       subtitle: 'Summary',
     });
-    const objectBlob = await exportToPDF('Single Record', { id: 1, active: true, nested: { ok: true } });
+    const objectBlob = await exportToPDF('Single Record', {
+      id: 1,
+      active: true,
+      nested: { ok: true },
+    });
 
     expect(tableBlob).toBeInstanceOf(Blob);
     expect(objectBlob).toBeInstanceOf(Blob);
-    expect(mockText).toHaveBeenCalledWith('Daily Report', 105, expect.any(Number), { align: 'center' });
+    expect(mockText).toHaveBeenCalledWith('Daily Report', 105, expect.any(Number), {
+      align: 'center',
+    });
     expect(mockAutoTable).toHaveBeenCalledTimes(2);
   });
 
@@ -115,7 +121,9 @@ describe('export-utils', () => {
     });
 
     expect(blob).toBeInstanceOf(Blob);
-    expect(mockText).toHaveBeenCalledWith('PAYMENT RECEIPT', 105, expect.any(Number), { align: 'center' });
+    expect(mockText).toHaveBeenCalledWith('PAYMENT RECEIPT', 105, expect.any(Number), {
+      align: 'center',
+    });
   });
 
   it('exports CSV data and triggers downloads for csv and pdf blobs', () => {

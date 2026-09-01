@@ -32,7 +32,7 @@ jest.mock('@/lib/hooks/use-toast', () => ({
 
 // Mock EmptyState component
 jest.mock('@/components/shared/empty-state', () => ({
-  EmptyState: ({ title, description, action }: any) => (
+  EmptyState: ({ title, description, action }: unknown) => (
     <div data-testid="empty-state">
       <h2>{title}</h2>
       <p>{description}</p>
@@ -117,7 +117,10 @@ describe('PatientTable', () => {
 
     // MRN appears in both mobile and desktop views, use getAllByText
     const mrnElements = screen.getAllByText('MRN-20251230-0001');
-    const row = mrnElements[0].closest('tr') || mrnElements[0].closest('[data-testid="patient-card"]') || mrnElements[0].closest('.cursor-pointer');
+    const row =
+      mrnElements[0].closest('tr') ||
+      mrnElements[0].closest('[data-testid="patient-card"]') ||
+      mrnElements[0].closest('.cursor-pointer');
     if (row) {
       fireEvent.click(row);
       expect(mockPush).toHaveBeenCalledWith('/patients/1');

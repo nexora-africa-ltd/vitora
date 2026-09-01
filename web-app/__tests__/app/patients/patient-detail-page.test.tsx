@@ -78,9 +78,7 @@ jest.mock('@/lib/auth/context', () => ({
 import { useParams } from 'next/navigation';
 import { patientsApi } from '@/lib/api/patients';
 import { useAuth } from '@/lib/auth/context';
-import {
-  mockPatient,
-} from '../../fixtures/patient-shell-fixtures';
+import { mockPatient } from '../../fixtures/patient-shell-fixtures';
 
 const mockPatientsApi = patientsApi as jest.Mocked<typeof patientsApi>;
 const mockUseAuth = useAuth as jest.MockedFunction<typeof useAuth>;
@@ -94,11 +92,7 @@ function createWrapper() {
     },
   });
   return function Wrapper({ children }: { children: React.ReactNode }) {
-    return (
-      <QueryClientProvider client={queryClient}>
-        {children}
-      </QueryClientProvider>
-    );
+    return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
   };
 }
 
@@ -110,7 +104,9 @@ describe('Patient Detail Page - Context Integration', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockPatientsApi.getPatient.mockResolvedValue(mockPatient);
-    mockUseAuth.mockReturnValue({ user: mockUser, isAuthenticated: true } as ReturnType<typeof useAuth>);
+    mockUseAuth.mockReturnValue({ user: mockUser, isAuthenticated: true } as ReturnType<
+      typeof useAuth
+    >);
   });
 
   // ===========================================================================
@@ -205,7 +201,7 @@ describe('Patient Detail Page - Context Integration', () => {
     it('should HIDE edit button for users without edit_patient permission', async () => {
       mockUseAuth.mockReturnValue({
         user: { ...mockUser, permissions: ['view_patient'] },
-        isAuthenticated: true
+        isAuthenticated: true,
       } as ReturnType<typeof useAuth>);
 
       const PatientDetailPage = (await import('@/app/(dashboard)/patients/[id]/page')).default;
@@ -232,7 +228,7 @@ describe('Patient Detail Page - Context Integration', () => {
     it('should SHOW edit button for users with edit_patient permission', async () => {
       mockUseAuth.mockReturnValue({
         user: { ...mockUser, permissions: ['view_patient', 'edit_patient'] },
-        isAuthenticated: true
+        isAuthenticated: true,
       } as ReturnType<typeof useAuth>);
 
       const PatientDetailPage = (await import('@/app/(dashboard)/patients/[id]/page')).default;
@@ -252,15 +248,16 @@ describe('Patient Detail Page - Context Integration', () => {
       });
 
       // Edit button SHOULD be visible
-      const editButton = screen.getByRole('link', { name: /edit/i }) ||
-                         screen.getByRole('button', { name: /edit/i });
+      const editButton =
+        screen.getByRole('link', { name: /edit/i }) ||
+        screen.getByRole('button', { name: /edit/i });
       expect(editButton).toBeInTheDocument();
     });
 
     it('should SHOW edit button for ADMIN role regardless of permissions', async () => {
       mockUseAuth.mockReturnValue({
         user: mockAdminUser,
-        isAuthenticated: true
+        isAuthenticated: true,
       } as ReturnType<typeof useAuth>);
 
       const PatientDetailPage = (await import('@/app/(dashboard)/patients/[id]/page')).default;
@@ -280,15 +277,16 @@ describe('Patient Detail Page - Context Integration', () => {
       });
 
       // Admin should always see edit button
-      const editButton = screen.getByRole('link', { name: /edit/i }) ||
-                         screen.getByRole('button', { name: /edit/i });
+      const editButton =
+        screen.getByRole('link', { name: /edit/i }) ||
+        screen.getByRole('button', { name: /edit/i });
       expect(editButton).toBeInTheDocument();
     });
 
     it('should HIDE edit button for clinical roles (NURSE, DOCTOR) by default', async () => {
       mockUseAuth.mockReturnValue({
         user: { ...mockUser, role: 'DOCTOR', permissions: ['view_patient', 'create_encounter'] },
-        isAuthenticated: true
+        isAuthenticated: true,
       } as ReturnType<typeof useAuth>);
 
       const PatientDetailPage = (await import('@/app/(dashboard)/patients/[id]/page')).default;
@@ -335,12 +333,13 @@ describe('Patient Detail Page - Context Integration', () => {
 
       // Should show loading indicator (from context, not page's own loading)
       // Check for any loading indicator - skeleton, status, or text
-      const loadingIndicator = screen.queryByTestId('patient-shell-loading') ||
-             screen.queryByRole('status') ||
-             screen.queryByText(/loading/i) ||
-             screen.queryByTestId('patient-detail-skeleton') ||
-             document.querySelector('[class*="skeleton"]') ||
-             document.querySelector('[class*="animate-pulse"]');
+      const loadingIndicator =
+        screen.queryByTestId('patient-shell-loading') ||
+        screen.queryByRole('status') ||
+        screen.queryByText(/loading/i) ||
+        screen.queryByTestId('patient-detail-skeleton') ||
+        document.querySelector('[class*="skeleton"]') ||
+        document.querySelector('[class*="animate-pulse"]');
       expect(loadingIndicator).toBeTruthy();
     });
 
@@ -361,9 +360,10 @@ describe('Patient Detail Page - Context Integration', () => {
 
       await waitFor(() => {
         // Check for any error indication
-        const errorElement = screen.queryByRole('alert') ||
-               screen.queryByText(/error/i) ||
-               screen.queryByText(/not found/i);
+        const errorElement =
+          screen.queryByRole('alert') ||
+          screen.queryByText(/error/i) ||
+          screen.queryByText(/not found/i);
         expect(errorElement).toBeTruthy();
       });
     });

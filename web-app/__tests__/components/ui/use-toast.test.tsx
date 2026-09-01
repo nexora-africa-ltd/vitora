@@ -28,7 +28,7 @@ describe('useToast Hook', () => {
 });
 
 describe('Toast Reducer', () => {
-  const initialState = { toasts: [] as any[] };
+  const initialState = { toasts: [] as unknown[] };
 
   it('should add toast', () => {
     const toast = { id: '1', title: 'Test', open: true };
@@ -42,7 +42,7 @@ describe('Toast Reducer', () => {
   });
 
   it('should update toast', () => {
-    const state = { toasts: [{ id: '1', title: 'Original', open: true }] as any[] };
+    const state = { toasts: [{ id: '1', title: 'Original', open: true }] as unknown[] };
     const newState = reducer(state, {
       type: 'UPDATE_TOAST',
       toast: { id: '1', title: 'Updated' },
@@ -52,7 +52,7 @@ describe('Toast Reducer', () => {
   });
 
   it('should dismiss toast by id', () => {
-    const state = { toasts: [{ id: '1', title: 'Test', open: true }] as any[] };
+    const state = { toasts: [{ id: '1', title: 'Test', open: true }] as unknown[] };
     const newState = reducer(state, {
       type: 'DISMISS_TOAST',
       toastId: '1',
@@ -66,13 +66,13 @@ describe('Toast Reducer', () => {
       toasts: [
         { id: '1', title: 'Test 1', open: true },
         { id: '2', title: 'Test 2', open: true },
-      ] as any[],
+      ] as unknown[],
     };
     const newState = reducer(state, {
       type: 'DISMISS_TOAST',
     });
 
-    newState.toasts.forEach(t => {
+    newState.toasts.forEach((t) => {
       expect(t.open).toBe(false);
     });
   });
@@ -82,7 +82,7 @@ describe('Toast Reducer', () => {
       toasts: [
         { id: '1', title: 'Test 1', open: true },
         { id: '2', title: 'Test 2', open: true },
-      ] as any[],
+      ] as unknown[],
     };
     const newState = reducer(state, {
       type: 'REMOVE_TOAST',
@@ -98,7 +98,7 @@ describe('Toast Reducer', () => {
       toasts: [
         { id: '1', title: 'Test 1', open: true },
         { id: '2', title: 'Test 2', open: true },
-      ] as any[],
+      ] as unknown[],
     };
     const newState = reducer(state, {
       type: 'REMOVE_TOAST',

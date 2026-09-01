@@ -39,7 +39,10 @@ jest.mock('@/lib/hooks/use-patients', () => ({
   usePatient: jest.fn(),
 }));
 
-import { useCreateSocialWorkReferral, useUpdateSocialWorkReferral } from '@/lib/hooks/use-social-work';
+import {
+  useCreateSocialWorkReferral,
+  useUpdateSocialWorkReferral,
+} from '@/lib/hooks/use-social-work';
 import { usePatient } from '@/lib/hooks/use-patients';
 
 const mockUseCreateSocialWorkReferral = useCreateSocialWorkReferral as jest.Mock;
@@ -83,11 +86,7 @@ const createTestQueryClient = () =>
 const createWrapper = () => {
   const queryClient = createTestQueryClient();
   return function Wrapper({ children }: { children: React.ReactNode }) {
-    return (
-      <QueryClientProvider client={queryClient}>
-        {children}
-      </QueryClientProvider>
-    );
+    return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
   };
 };
 

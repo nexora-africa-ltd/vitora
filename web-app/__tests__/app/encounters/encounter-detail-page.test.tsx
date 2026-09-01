@@ -75,11 +75,7 @@ function createWrapper() {
     },
   });
   return function Wrapper({ children }: { children: React.ReactNode }) {
-    return (
-      <QueryClientProvider client={queryClient}>
-        {children}
-      </QueryClientProvider>
-    );
+    return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
   };
 }
 
@@ -92,7 +88,9 @@ describe('Encounter Detail Page - Context Integration', () => {
     jest.clearAllMocks();
     mockEncountersApi.get.mockResolvedValue(mockEncounter);
     mockPatientsApi.getPatient.mockResolvedValue(mockPatient);
-    mockUseAuth.mockReturnValue({ user: mockUser, isAuthenticated: true } as ReturnType<typeof useAuth>);
+    mockUseAuth.mockReturnValue({ user: mockUser, isAuthenticated: true } as ReturnType<
+      typeof useAuth
+    >);
   });
 
   // ===========================================================================
@@ -115,8 +113,8 @@ describe('Encounter Detail Page - Context Integration', () => {
       // Wait for data to load
       await waitFor(() => {
         // Should display encounter type or chief complaint
-        const encounterInfo = screen.queryByText(/OPD/i) ||
-                             screen.queryByText(mockEncounter.chief_complaint);
+        const encounterInfo =
+          screen.queryByText(/OPD/i) || screen.queryByText(mockEncounter.chief_complaint);
         expect(encounterInfo).toBeTruthy();
       });
 
@@ -202,8 +200,9 @@ describe('Encounter Detail Page - Context Integration', () => {
 
       await waitFor(() => {
         // Should show continue encounter button for active encounters
-        const continueButton = screen.queryByRole('link', { name: /continue/i }) ||
-                              screen.queryByText(/continue encounter/i);
+        const continueButton =
+          screen.queryByRole('link', { name: /continue/i }) ||
+          screen.queryByText(/continue encounter/i);
         expect(continueButton).toBeTruthy();
       });
     });
@@ -257,9 +256,10 @@ describe('Encounter Detail Page - Context Integration', () => {
       );
 
       // Should show loading indicator
-      const loadingIndicator = screen.queryByRole('status') ||
-             document.querySelector('[class*="skeleton"]') ||
-             document.querySelector('[class*="animate-pulse"]');
+      const loadingIndicator =
+        screen.queryByRole('status') ||
+        document.querySelector('[class*="skeleton"]') ||
+        document.querySelector('[class*="animate-pulse"]');
       expect(loadingIndicator).toBeTruthy();
     });
 
@@ -279,9 +279,10 @@ describe('Encounter Detail Page - Context Integration', () => {
       );
 
       await waitFor(() => {
-        const errorElement = screen.queryByRole('alert') ||
-               screen.queryByText(/error/i) ||
-               screen.queryByText(/not found/i);
+        const errorElement =
+          screen.queryByRole('alert') ||
+          screen.queryByText(/error/i) ||
+          screen.queryByText(/not found/i);
         expect(errorElement).toBeTruthy();
       });
     });

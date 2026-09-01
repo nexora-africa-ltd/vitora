@@ -45,7 +45,13 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
@@ -165,7 +171,12 @@ function toIsoOrUndefined(value: string): string | undefined {
 
 function getLinkedProcedureOrder(
   surgeryCase: SurgeryCaseDetail,
-  orders: Array<{ id: number; procedure: number; scheduled_date: string | null; encounter?: number | null }>
+  orders: Array<{
+    id: number;
+    procedure: number;
+    scheduled_date: string | null;
+    encounter?: number | null;
+  }>
 ) {
   const exactEncounterAndProcedure = orders.find(
     (order) =>
@@ -188,7 +199,9 @@ function getLinkedProcedureOrder(
     return exactProcedure;
   }
 
-  return orders.find((order) => order.procedure === surgeryCase.primary_procedure) ?? orders[0] ?? null;
+  return (
+    orders.find((order) => order.procedure === surgeryCase.primary_procedure) ?? orders[0] ?? null
+  );
 }
 
 export function PreOpReadinessCard({
@@ -212,7 +225,9 @@ export function PreOpReadinessCard({
     {
       label: 'Surgical consent',
       complete: consentReady,
-      detail: consentReady ? 'Signed and linked to the procedure order.' : 'Consent is still pending or not linked.',
+      detail: consentReady
+        ? 'Signed and linked to the procedure order.'
+        : 'Consent is still pending or not linked.',
     },
     {
       label: 'Pre-op labs',
@@ -242,7 +257,9 @@ export function PreOpReadinessCard({
     {
       label: 'Anesthesia assessment',
       complete: anesthesiaReady,
-      detail: anesthesiaReady ? 'Assessment captured with NPO confirmation.' : 'Assessment is missing or NPO is not confirmed.',
+      detail: anesthesiaReady
+        ? 'Assessment captured with NPO confirmation.'
+        : 'Assessment is missing or NPO is not confirmed.',
     },
   ];
   const readyForTheatre = checks.every((check) => check.complete);
@@ -254,23 +271,34 @@ export function PreOpReadinessCard({
         aria-hidden="true"
       />
       <CardHeader className="relative pb-3">
-        <CardTitle className="text-base flex items-center gap-2">
+        <CardTitle className="flex items-center gap-2 text-base">
           <ShieldCheck className="h-4 w-4" />
           Pre-Op Readiness
           <HelpPopover content="Automated checklist evaluating whether all pre-operative requirements are met: consent, labs, imaging, WHO Sign-In, and anesthesia assessment." />
-          <Badge variant={readyForTheatre ? 'success' : 'warning'} size="sm" className="ml-auto w-fit">
+          <Badge
+            variant={readyForTheatre ? 'success' : 'warning'}
+            size="sm"
+            className="ml-auto w-fit"
+          >
             {readyForTheatre ? 'Ready for theatre' : 'Needs attention'}
           </Badge>
         </CardTitle>
       </CardHeader>
       <CardContent className="relative space-y-3">
         {checks.map((check) => (
-          <div key={check.label} className="flex items-start justify-between gap-3 rounded-lg border p-3">
+          <div
+            key={check.label}
+            className="flex items-start justify-between gap-3 rounded-lg border p-3"
+          >
             <div className="min-w-0">
               <p className="text-sm font-medium">{check.label}</p>
               <p className="text-xs text-muted-foreground">{check.detail}</p>
             </div>
-            <Badge variant={check.complete ? 'success' : 'outline'} size="sm" className="shrink-0 w-fit">
+            <Badge
+              variant={check.complete ? 'success' : 'outline'}
+              size="sm"
+              className="w-fit shrink-0"
+            >
               {check.complete ? 'Complete' : 'Pending'}
             </Badge>
           </div>
@@ -306,13 +334,20 @@ export function PreOpWorkspace({
   const [showLabOrderForm, setShowLabOrderForm] = useState(false);
   const [showImagingOrderForm, setShowImagingOrderForm] = useState(false);
   const [freshInsight, setFreshInsight] = useState(false);
-  const [storedPreOpAssessments, setStoredPreOpAssessments] = useState<StoredSurgicalPreOpAssessResult[]>([]);
+  const [storedPreOpAssessments, setStoredPreOpAssessments] = useState<
+    StoredSurgicalPreOpAssessResult[]
+  >([]);
   const [advisoryOpenSections, setAdvisoryOpenSections] = useState<string[]>([]);
 
   const ALL_ADVISORY_SECTIONS = [
-    'procedure-info', 'pre-op-checklist', 'anaesthesia',
-    'equipment-personnel', 'procedure-steps', 'post-op-care',
-    'complications', 'discharge-followup',
+    'procedure-info',
+    'pre-op-checklist',
+    'anaesthesia',
+    'equipment-personnel',
+    'procedure-steps',
+    'post-op-care',
+    'complications',
+    'discharge-followup',
   ];
   const allAdvisoryExpanded = advisoryOpenSections.length === ALL_ADVISORY_SECTIONS.length;
 
@@ -393,131 +428,150 @@ export function PreOpWorkspace({
     },
   });
 
-  const loadPreOpData = useCallback(async (showLoadingState = true) => {
-    if (showLoadingState) {
-      setLoading(true);
-    } else {
-      setRefreshing(true);
-    }
-
-    try {
-      const procedureOrderPromise = proceduresApi.listOrders(
-        surgeryCase.encounter != null
-          ? {
-              encounter: String(surgeryCase.encounter),
-              patient: String(surgeryCase.patient),
-            }
-          : {
-              patient: String(surgeryCase.patient),
-            }
-      );
-
-      const [catalogEntry, orderListing, linkedLabOrders, linkedImagingOrders, checklist, anesthesia, caseSchedulingContext, preOpAssessments] = await Promise.all([
-        proceduresApi.getCatalogEntry(surgeryCase.primary_procedure).catch(() => null),
-        procedureOrderPromise.catch(() => null),
-        (surgeryCase.encounter != null
-          ? laboratoryApi.getEncounterOrders(surgeryCase.encounter)
-          : laboratoryApi.getPatientOrders(surgeryCase.patient)
-        ).catch(() => []),
-        (surgeryCase.encounter != null
-          ? imagingApi.getEncounterOrders(surgeryCase.encounter)
-          : imagingApi.getPatientOrders(surgeryCase.patient)
-        ).catch(() => []),
-        theatreApi.getWHOChecklist(surgeryCase.case_number).catch(() => null),
-        theatreApi.getAnesthesiaRecord(surgeryCase.case_number).catch(() => null),
-        theatreApi.getCaseSchedulingContext(surgeryCase.case_number).catch(() => null),
-        aiApi.getStoredSurgicalPreOpAssessments({ surgery_case_id: surgeryCase.id }).catch(() => []),
-      ]);
-
-      const linkedOrderList = orderListing?.results ?? [];
-      let linkedOrderListItem = getLinkedProcedureOrder(surgeryCase, linkedOrderList);
-
-      // Auto-create a linked procedure order if none exists
-      if (!linkedOrderListItem) {
-        try {
-          const created = await proceduresApi.createOrder({
-            patient: surgeryCase.patient,
-            procedure: surgeryCase.primary_procedure,
-            encounter: surgeryCase.encounter ?? undefined,
-            indication: surgeryCase.diagnosis,
-            clinical_notes: surgeryCase.procedure_notes,
-            laterality: surgeryCase.laterality,
-            priority: surgeryCase.priority,
-          });
-          linkedOrderListItem = { id: created.id, procedure: created.procedure, scheduled_date: created.scheduled_date ?? null };
-        } catch {
-          // Silently fall back — consent card will show "Not linked"
-        }
+  const loadPreOpData = useCallback(
+    async (showLoadingState = true) => {
+      if (showLoadingState) {
+        setLoading(true);
+      } else {
+        setRefreshing(true);
       }
 
-      const linkedOrder = linkedOrderListItem
-        ? await proceduresApi.getOrder(linkedOrderListItem.id).catch(() => null)
-        : null;
+      try {
+        const procedureOrderPromise = proceduresApi.listOrders(
+          surgeryCase.encounter != null
+            ? {
+                encounter: String(surgeryCase.encounter),
+                patient: String(surgeryCase.patient),
+              }
+            : {
+                patient: String(surgeryCase.patient),
+              }
+        );
 
-      setProcedureCatalog((catalogEntry as ProcedureCatalogDetail | null) ?? null);
-      setProcedureOrder(linkedOrder as ProcedureOrder | null);
-      setLabOrders(linkedLabOrders);
-      setImagingOrders(linkedImagingOrders);
-      setWhoChecklist(checklist);
-      setAnesthesiaRecord(anesthesia);
-      setSchedulingContext(caseSchedulingContext);
-      setStoredPreOpAssessments(preOpAssessments);
+        const [
+          catalogEntry,
+          orderListing,
+          linkedLabOrders,
+          linkedImagingOrders,
+          checklist,
+          anesthesia,
+          caseSchedulingContext,
+          preOpAssessments,
+        ] = await Promise.all([
+          proceduresApi.getCatalogEntry(surgeryCase.primary_procedure).catch(() => null),
+          procedureOrderPromise.catch(() => null),
+          (surgeryCase.encounter != null
+            ? laboratoryApi.getEncounterOrders(surgeryCase.encounter)
+            : laboratoryApi.getPatientOrders(surgeryCase.patient)
+          ).catch(() => []),
+          (surgeryCase.encounter != null
+            ? imagingApi.getEncounterOrders(surgeryCase.encounter)
+            : imagingApi.getPatientOrders(surgeryCase.patient)
+          ).catch(() => []),
+          theatreApi.getWHOChecklist(surgeryCase.case_number).catch(() => null),
+          theatreApi.getAnesthesiaRecord(surgeryCase.case_number).catch(() => null),
+          theatreApi.getCaseSchedulingContext(surgeryCase.case_number).catch(() => null),
+          aiApi
+            .getStoredSurgicalPreOpAssessments({ surgery_case_id: surgeryCase.id })
+            .catch(() => []),
+        ]);
 
-      consentForm.reset({
-        consent_text:
-          linkedOrder?.consent?.consent_text ||
-          (catalogEntry as ProcedureCatalogDetail | null)?.consent_template ||
-          `I consent to ${surgeryCase.primary_procedure_name}.`,
-        procedure_explained: linkedOrder?.consent?.procedure_explained ?? true,
-        risks_explained: linkedOrder?.consent?.risks_explained ?? true,
-        alternatives_explained: linkedOrder?.consent?.alternatives_explained ?? true,
-        questions_answered: linkedOrder?.consent?.questions_answered ?? true,
-        signed_by_patient: linkedOrder?.consent?.signed_by_patient ?? true,
-        patient_signature: linkedOrder?.consent?.patient_signature || '',
-        signed_by_guardian: linkedOrder?.consent?.signed_by_guardian ?? false,
-        guardian_name: linkedOrder?.consent?.guardian_name || '',
-        guardian_relationship: linkedOrder?.consent?.guardian_relationship || '',
-        guardian_id_number: linkedOrder?.consent?.guardian_id_number || '',
-        guardian_signature: linkedOrder?.consent?.guardian_signature || '',
-        witness_required: linkedOrder?.consent?.witness_required ?? false,
-        witness_name: linkedOrder?.consent?.witness_name || '',
-        witness_signature: linkedOrder?.consent?.witness_signature || '',
-      });
+        const linkedOrderList = orderListing?.results ?? [];
+        let linkedOrderListItem = getLinkedProcedureOrder(surgeryCase, linkedOrderList);
 
-      whoForm.reset({
-        patient_identity_confirmed: checklist?.patient_identity_confirmed ?? false,
-        procedure_site_marked: checklist?.procedure_site_marked ?? false,
-        consent_signed: checklist?.consent_signed ?? false,
-        anesthesia_machine_checked: checklist?.anesthesia_machine_checked ?? false,
-        pulse_oximeter_attached: checklist?.pulse_oximeter_attached ?? false,
-        allergies_reviewed: checklist?.allergies_reviewed ?? false,
-        allergy_notes: checklist?.allergy_notes ?? '',
-        difficult_airway_risk: checklist?.difficult_airway_risk ?? false,
-        aspiration_risk: checklist?.aspiration_risk ?? false,
-        airway_equipment_available: checklist?.airway_equipment_available ?? false,
-        blood_loss_risk: checklist?.blood_loss_risk ?? '',
-        iv_access_adequate: checklist?.iv_access_adequate ?? false,
-        blood_products_available: checklist?.blood_products_available ?? false,
-      });
+        // Auto-create a linked procedure order if none exists
+        if (!linkedOrderListItem) {
+          try {
+            const created = await proceduresApi.createOrder({
+              patient: surgeryCase.patient,
+              procedure: surgeryCase.primary_procedure,
+              encounter: surgeryCase.encounter ?? undefined,
+              indication: surgeryCase.diagnosis,
+              clinical_notes: surgeryCase.procedure_notes,
+              laterality: surgeryCase.laterality,
+              priority: surgeryCase.priority,
+            });
+            linkedOrderListItem = {
+              id: created.id,
+              procedure:
+                typeof created.procedure === 'number' ? created.procedure : created.procedure.id,
+              scheduled_date: created.scheduled_date ?? null,
+            };
+          } catch {
+            // Silently fall back — consent card will show "Not linked"
+          }
+        }
 
-      anesthesiaForm.reset({
-        anesthesiologist: anesthesia?.anesthesiologist ?? surgeryCase.requesting_doctor,
-        mallampati_class: anesthesia?.mallampati_class ?? '',
-        mouth_opening: anesthesia?.mouth_opening ?? '',
-        neck_mobility: anesthesia?.neck_mobility ?? '',
-        dentition_notes: anesthesia?.dentition_notes ?? '',
-        last_solid_food: toDateTimeLocalValue(anesthesia?.last_solid_food),
-        last_clear_fluids: toDateTimeLocalValue(anesthesia?.last_clear_fluids),
-        npo_confirmed: anesthesia?.npo_confirmed ?? false,
-        premedication_given: anesthesia?.premedication_given ?? '',
-        anesthesia_consent_obtained: anesthesia?.anesthesia_consent_obtained ?? false,
-        risks_explained: anesthesia?.risks_explained ?? false,
-      });
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, [anesthesiaForm, consentForm, surgeryCase, whoForm]);
+        const linkedOrder = linkedOrderListItem
+          ? await proceduresApi.getOrder(linkedOrderListItem.id).catch(() => null)
+          : null;
+
+        setProcedureCatalog((catalogEntry as ProcedureCatalogDetail | null) ?? null);
+        setProcedureOrder(linkedOrder as ProcedureOrder | null);
+        setLabOrders(linkedLabOrders);
+        setImagingOrders(linkedImagingOrders);
+        setWhoChecklist(checklist);
+        setAnesthesiaRecord(anesthesia);
+        setSchedulingContext(caseSchedulingContext);
+        setStoredPreOpAssessments(preOpAssessments);
+
+        consentForm.reset({
+          consent_text:
+            linkedOrder?.consent?.consent_text ||
+            (catalogEntry as ProcedureCatalogDetail | null)?.consent_template ||
+            `I consent to ${surgeryCase.primary_procedure_name}.`,
+          procedure_explained: linkedOrder?.consent?.procedure_explained ?? true,
+          risks_explained: linkedOrder?.consent?.risks_explained ?? true,
+          alternatives_explained: linkedOrder?.consent?.alternatives_explained ?? true,
+          questions_answered: linkedOrder?.consent?.questions_answered ?? true,
+          signed_by_patient: linkedOrder?.consent?.signed_by_patient ?? true,
+          patient_signature: linkedOrder?.consent?.patient_signature || '',
+          signed_by_guardian: linkedOrder?.consent?.signed_by_guardian ?? false,
+          guardian_name: linkedOrder?.consent?.guardian_name || '',
+          guardian_relationship: linkedOrder?.consent?.guardian_relationship || '',
+          guardian_id_number: linkedOrder?.consent?.guardian_id_number || '',
+          guardian_signature: linkedOrder?.consent?.guardian_signature || '',
+          witness_required: linkedOrder?.consent?.witness_required ?? false,
+          witness_name: linkedOrder?.consent?.witness_name || '',
+          witness_signature: linkedOrder?.consent?.witness_signature || '',
+        });
+
+        whoForm.reset({
+          patient_identity_confirmed: checklist?.patient_identity_confirmed ?? false,
+          procedure_site_marked: checklist?.procedure_site_marked ?? false,
+          consent_signed: checklist?.consent_signed ?? false,
+          anesthesia_machine_checked: checklist?.anesthesia_machine_checked ?? false,
+          pulse_oximeter_attached: checklist?.pulse_oximeter_attached ?? false,
+          allergies_reviewed: checklist?.allergies_reviewed ?? false,
+          allergy_notes: checklist?.allergy_notes ?? '',
+          difficult_airway_risk: checklist?.difficult_airway_risk ?? false,
+          aspiration_risk: checklist?.aspiration_risk ?? false,
+          airway_equipment_available: checklist?.airway_equipment_available ?? false,
+          blood_loss_risk: checklist?.blood_loss_risk ?? '',
+          iv_access_adequate: checklist?.iv_access_adequate ?? false,
+          blood_products_available: checklist?.blood_products_available ?? false,
+        });
+
+        anesthesiaForm.reset({
+          anesthesiologist: anesthesia?.anesthesiologist ?? surgeryCase.requesting_doctor,
+          mallampati_class: anesthesia?.mallampati_class ?? '',
+          mouth_opening: anesthesia?.mouth_opening ?? '',
+          neck_mobility: anesthesia?.neck_mobility ?? '',
+          dentition_notes: anesthesia?.dentition_notes ?? '',
+          last_solid_food: toDateTimeLocalValue(anesthesia?.last_solid_food),
+          last_clear_fluids: toDateTimeLocalValue(anesthesia?.last_clear_fluids),
+          npo_confirmed: anesthesia?.npo_confirmed ?? false,
+          premedication_given: anesthesia?.premedication_given ?? '',
+          anesthesia_consent_obtained: anesthesia?.anesthesia_consent_obtained ?? false,
+          risks_explained: anesthesia?.risks_explained ?? false,
+        });
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
+      }
+    },
+    [anesthesiaForm, consentForm, surgeryCase, whoForm]
+  );
 
   useEffect(() => {
     void loadPreOpData(true);
@@ -529,7 +583,8 @@ export function PreOpWorkspace({
   );
   const labsReady = pendingLabOrders.length === 0;
   const pendingImagingOrders = useMemo(
-    () => imagingOrders.filter((order) => order.status !== 'REPORTED' && order.status !== 'CANCELLED'),
+    () =>
+      imagingOrders.filter((order) => order.status !== 'REPORTED' && order.status !== 'CANCELLED'),
     [imagingOrders]
   );
   const imagingReady = pendingImagingOrders.length === 0;
@@ -540,29 +595,39 @@ export function PreOpWorkspace({
     anesthesiaRecord && anesthesiaRecord.pre_op_assessment_at && anesthesiaRecord.npo_confirmed
   );
   const canManageTeam = hasPermission('theatre.manage_theatre');
-  const mappedProcedureKey = procedureCatalog?.tibabot_procedure_key || surgeryCase.primary_procedure_tibabot_key || '';
+  const mappedProcedureKey =
+    procedureCatalog?.tibabot_procedure_key || surgeryCase.primary_procedure_tibabot_key || '';
   const latestStoredPreOp = storedPreOpAssessments[0] ?? null;
-  const latestStoredPreOpData = latestStoredPreOp?.result_data as Record<string, unknown> | undefined;
-  const latestStoredRiskScores = latestStoredPreOpData?.risk_scores as Record<string, unknown> | undefined;
-  const latestProcedureTemplate = latestStoredPreOpData?.procedure_template as Record<string, unknown> | undefined;
+  const latestStoredPreOpData = latestStoredPreOp?.result_data as
+    | Record<string, unknown>
+    | undefined;
+  const latestStoredRiskScores = latestStoredPreOpData?.risk_scores as
+    | Record<string, unknown>
+    | undefined;
+  const latestProcedureTemplate = latestStoredPreOpData?.procedure_template as
+    | Record<string, unknown>
+    | undefined;
 
   // Advisory links (seed on mount, track suggestion → order links)
   const preOpResultId = latestStoredPreOp?.id;
-  const { getLink, actionLink, hasOrders: preOpHasOrders, refresh: refreshAdvisoryLinks } = useAdvisoryLinks(
-    preOpResultId,
-    'pre_op_assessment',
-  );
+  const {
+    getLink,
+    actionLink,
+    hasOrders: preOpHasOrders,
+    refresh: refreshAdvisoryLinks,
+  } = useAdvisoryLinks(preOpResultId, 'pre_op_assessment');
 
   const aiAsaClass = ['I', 'II', 'III', 'IV', 'V', 'VI'].includes(surgeryCase.asa_class)
     ? (surgeryCase.asa_class as 'I' | 'II' | 'III' | 'IV' | 'V' | 'VI')
     : 'II';
   const coverageByMember = useMemo(
-    () => new Map(
-      (schedulingContext?.members || []).map((member) => [
-        `${member.staff_member_id}:${member.role}`,
-        member,
-      ])
-    ),
+    () =>
+      new Map(
+        (schedulingContext?.members || []).map((member) => [
+          `${member.staff_member_id}:${member.role}`,
+          member,
+        ])
+      ),
     [schedulingContext]
   );
 
@@ -573,7 +638,11 @@ export function PreOpWorkspace({
     }
   }, [loadPreOpData, onCaseRefresh]);
 
-  const handleAssignTeamMember = async (data: { staffUserId: number; role: string; notes: string }) => {
+  const handleAssignTeamMember = async (data: {
+    staffUserId: number;
+    role: string;
+    notes: string;
+  }) => {
     try {
       setTeamMutationLoading(true);
       await theatreApi.addTeamMember(surgeryCase.case_number, {
@@ -636,9 +705,10 @@ export function PreOpWorkspace({
       }
       toast({
         title: 'Consent saved',
-        description: values.signed_by_patient || values.signed_by_guardian
-          ? 'Consent was captured and signed.'
-          : 'Consent draft saved. It still needs signing.',
+        description:
+          values.signed_by_patient || values.signed_by_guardian
+            ? 'Consent was captured and signed.'
+            : 'Consent draft saved. It still needs signing.',
       });
       await refreshEverything();
     } catch (error) {
@@ -746,8 +816,15 @@ export function PreOpWorkspace({
         age: Number(surgicalPatientAge),
         sex: surgicalPatientSex,
         asa_class: aiAsaClass,
-        urgency: surgeryCase.priority === 'EMERGENCY' ? 'emergency' : surgeryCase.priority === 'URGENT' ? 'urgent' : 'elective',
-        mallampati_class: anesthesiaRecord?.mallampati_class ? (anesthesiaRecord.mallampati_class as 'I' | 'II' | 'III' | 'IV') : null,
+        urgency:
+          surgeryCase.priority === 'EMERGENCY'
+            ? 'emergency'
+            : surgeryCase.priority === 'URGENT'
+              ? 'urgent'
+              : 'elective',
+        mallampati_class: anesthesiaRecord?.mallampati_class
+          ? (anesthesiaRecord.mallampati_class as 'I' | 'II' | 'III' | 'IV')
+          : null,
         facility_level: 'H4',
         high_risk_surgery: false,
         caprini_factors: [],
@@ -800,12 +877,17 @@ export function PreOpWorkspace({
     <div className="space-y-4 sm:space-y-6">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h2 className="text-lg font-semibold flex items-center gap-2">
+          <h2 className="flex items-center gap-2 text-lg font-semibold">
             Pre-Operative Workflow
             <HelpPopover content="Capture readiness checks, surgical consent, WHO Sign-In, and anesthesia assessment before the patient enters the operating theatre." />
           </h2>
         </div>
-        <Button variant="outline" size="sm" onClick={() => void refreshEverything()} disabled={refreshing}>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => void refreshEverything()}
+          disabled={refreshing}
+        >
           {refreshing ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Refresh'}
         </Button>
       </div>
@@ -820,41 +902,54 @@ export function PreOpWorkspace({
         imagingOrders={imagingOrders}
       />
 
-      <Card className={`relative overflow-hidden transition-all duration-700 ${
-        freshInsight
-          ? 'border-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.35)]'
-          : latestStoredPreOp
-            ? 'border-emerald-500/40'
-            : ''
-      }`}
-        style={freshInsight ? {
-          animation: 'border-glow 1.5s ease-in-out infinite',
-        } : undefined}
+      <Card
+        className={`relative overflow-hidden transition-all duration-700 ${
+          freshInsight
+            ? 'border-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.35)]'
+            : latestStoredPreOp
+              ? 'border-emerald-500/40'
+              : ''
+        }`}
+        style={
+          freshInsight
+            ? {
+                animation: 'border-glow 1.5s ease-in-out infinite',
+              }
+            : undefined
+        }
       >
         <div
           className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
           aria-hidden="true"
         />
         <CardHeader className="relative pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-base">
             <ClipboardCheck className="h-4 w-4" />
             Surgical AI Pre-Op Advisory
             <HelpPopover content="AI-powered pre-operative risk assessment. Evaluates patient fitness, procedure-specific risks, and suggests preparation steps." />
             {latestStoredPreOp ? <Sparkles className="h-4 w-4 text-teal-400" /> : null}
-            <Badge variant={surgeryCase.ai_surgical_summary.pre_op.has_result ? 'success' : 'outline'} size="sm" className="ml-auto w-fit">
+            <Badge
+              variant={surgeryCase.ai_surgical_summary.pre_op.has_result ? 'success' : 'outline'}
+              size="sm"
+              className="ml-auto w-fit"
+            >
               {surgeryCase.ai_surgical_summary.pre_op.has_result ? 'Result available' : 'Not run'}
             </Badge>
           </CardTitle>
         </CardHeader>
         <CardContent className="relative space-y-4">
           {!mappedProcedureKey ? (
-            <p className="text-sm text-muted-foreground">AI assessment is not available for this procedure.</p>
+            <p className="text-sm text-muted-foreground">
+              AI assessment is not available for this procedure.
+            </p>
           ) : null}
 
           <div className="grid gap-4 sm:grid-cols-4">
             <div>
               <Label>AI procedure key</Label>
-              <div className="flex h-9 items-center rounded-md border bg-muted/50 px-3 text-sm font-medium">{mappedProcedureKey || 'Not mapped'}</div>
+              <div className="flex h-9 items-center rounded-md border bg-muted/50 px-3 text-sm font-medium">
+                {mappedProcedureKey || 'Not mapped'}
+              </div>
             </div>
             <div>
               <Label>Patient age</Label>
@@ -862,12 +957,17 @@ export function PreOpWorkspace({
                 type="number"
                 min={0}
                 value={surgicalPatientAge}
-                onChange={(event) => setSurgicalPatientAge(event.target.value ? Number(event.target.value) : '')}
+                onChange={(event) =>
+                  setSurgicalPatientAge(event.target.value ? Number(event.target.value) : '')
+                }
               />
             </div>
             <div>
               <Label>Patient sex</Label>
-              <Select value={surgicalPatientSex} onValueChange={(value) => setSurgicalPatientSex(value as 'male' | 'female')}>
+              <Select
+                value={surgicalPatientSex}
+                onValueChange={(value) => setSurgicalPatientSex(value as 'male' | 'female')}
+              >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -884,7 +984,11 @@ export function PreOpWorkspace({
                 onClick={() => void handleRunSurgicalAssessment()}
                 disabled={runningSurgicalAssessment || !mappedProcedureKey || preOpHasOrders}
               >
-                {runningSurgicalAssessment ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <BrainCircuit className="mr-2 h-4 w-4" />}
+                {runningSurgicalAssessment ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <BrainCircuit className="mr-2 h-4 w-4" />
+                )}
                 {latestStoredPreOp ? 'Ask again' : 'Ask TibaBot®'}
               </Button>
             </div>
@@ -896,11 +1000,19 @@ export function PreOpWorkspace({
               <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                 <div className="rounded-lg border p-3 text-sm">
                   <p className="text-muted-foreground">Overall risk</p>
-                  <p className="mt-1 font-semibold">{latestStoredPreOp.overall_risk_level || 'Unavailable'}</p>
+                  <p className="mt-1 font-semibold">
+                    {latestStoredPreOp.overall_risk_level || 'Unavailable'}
+                  </p>
                 </div>
                 <div className="rounded-lg border p-3 text-sm">
                   <p className="text-muted-foreground">Facility capable</p>
-                  <p className="mt-1 font-semibold">{latestStoredPreOp.facility_capable == null ? 'Unknown' : latestStoredPreOp.facility_capable ? 'Yes' : 'No'}</p>
+                  <p className="mt-1 font-semibold">
+                    {latestStoredPreOp.facility_capable == null
+                      ? 'Unknown'
+                      : latestStoredPreOp.facility_capable
+                        ? 'Yes'
+                        : 'No'}
+                  </p>
                 </div>
                 {(() => {
                   const asa = latestStoredRiskScores?.asa as Record<string, unknown> | undefined;
@@ -909,7 +1021,9 @@ export function PreOpWorkspace({
                     <div className="rounded-lg border p-3 text-sm">
                       <p className="text-muted-foreground">ASA {asa.classification as string}</p>
                       <p className="mt-1 font-semibold">{asa.label as string}</p>
-                      <p className="mt-0.5 text-xs text-muted-foreground">Mortality {asa.mortality_range as string}</p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">
+                        Mortality {asa.mortality_range as string}
+                      </p>
                     </div>
                   );
                 })()}
@@ -918,8 +1032,12 @@ export function PreOpWorkspace({
                   if (!rcri) return null;
                   return (
                     <div className="rounded-lg border p-3 text-sm">
-                      <p className="text-muted-foreground">RCRI Class {rcri.risk_class as string}</p>
-                      <p className="mt-1 font-semibold">Cardiac risk {rcri.cardiac_risk_percent as string}</p>
+                      <p className="text-muted-foreground">
+                        RCRI Class {rcri.risk_class as string}
+                      </p>
+                      <p className="mt-1 font-semibold">
+                        Cardiac risk {rcri.cardiac_risk_percent as string}
+                      </p>
                     </div>
                   );
                 })()}
@@ -942,404 +1060,558 @@ export function PreOpWorkspace({
                 <Alert>
                   <AlertCircle className="h-4 w-4" />
                   <AlertTitle>Facility Alert</AlertTitle>
-                  <AlertDescription>{latestStoredPreOpData.facility_alert as string}</AlertDescription>
+                  <AlertDescription>
+                    {latestStoredPreOpData.facility_alert as string}
+                  </AlertDescription>
                 </Alert>
               ) : null}
 
               {/* ── Procedure template details (collapsible) ── */}
               {latestProcedureTemplate ? (
                 <>
-                <div className="flex justify-end">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 gap-1.5 text-xs text-muted-foreground"
-                    onClick={() => setAdvisoryOpenSections(allAdvisoryExpanded ? [] : ALL_ADVISORY_SECTIONS)}
+                  <div className="flex justify-end">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 gap-1.5 text-xs text-muted-foreground"
+                      onClick={() =>
+                        setAdvisoryOpenSections(allAdvisoryExpanded ? [] : ALL_ADVISORY_SECTIONS)
+                      }
+                    >
+                      {allAdvisoryExpanded ? (
+                        <ChevronsDownUp className="h-3.5 w-3.5" />
+                      ) : (
+                        <ChevronsUpDown className="h-3.5 w-3.5" />
+                      )}
+                      {allAdvisoryExpanded ? 'Collapse all' : 'Expand all'}
+                    </Button>
+                  </div>
+                  <Accordion
+                    type="multiple"
+                    className="w-full"
+                    value={advisoryOpenSections}
+                    onValueChange={setAdvisoryOpenSections}
                   >
-                    {allAdvisoryExpanded ? <ChevronsDownUp className="h-3.5 w-3.5" /> : <ChevronsUpDown className="h-3.5 w-3.5" />}
-                    {allAdvisoryExpanded ? 'Collapse all' : 'Expand all'}
-                  </Button>
-                </div>
-                <Accordion type="multiple" className="w-full" value={advisoryOpenSections} onValueChange={setAdvisoryOpenSections}>
-                  {/* Procedure Identity */}
-                  <AccordionItem value="procedure-info">
-                    <AccordionTrigger className="text-sm font-medium">
-                      <span className="flex items-center gap-2">
-                        Procedure — {(latestProcedureTemplate.display_name as string) || (latestProcedureTemplate.procedure_key as string)}
-                      </span>
-                    </AccordionTrigger>
-                    <AccordionContent>
-                      <div className="grid gap-2 sm:grid-cols-3 text-sm">
-                        <div>
-                          <p className="text-muted-foreground">ICD-10</p>
-                          <p className="font-medium">{(latestProcedureTemplate.icd10_code as string) || '—'}</p>
-                        </div>
-                        <div>
-                          <p className="text-muted-foreground">CPT Code</p>
-                          <p className="font-medium">{(latestProcedureTemplate.cpt_code as string) || '—'}</p>
-                        </div>
-                        <div>
-                          <p className="text-muted-foreground">Specialty</p>
-                          <p className="font-medium capitalize">{((latestProcedureTemplate.specialty as string) || '—').replace(/_/g, ' ')}</p>
-                        </div>
-                        <div>
-                          <p className="text-muted-foreground">Min Facility Level</p>
-                          <p className="font-medium">{(latestProcedureTemplate.min_facility_level as string) || '—'}</p>
-                        </div>
-                        <div>
-                          <p className="text-muted-foreground">Urgency Categories</p>
-                          <p className="font-medium capitalize">{Array.isArray(latestProcedureTemplate.urgency_categories) ? (latestProcedureTemplate.urgency_categories as string[]).join(', ') : '—'}</p>
-                        </div>
-                        <div>
-                          <p className="text-muted-foreground">MOH Reference</p>
-                          <p className="font-medium text-xs">{(latestProcedureTemplate.kenya_moh_reference as string) || '—'}</p>
-                        </div>
-                      </div>
-                    </AccordionContent>
-                  </AccordionItem>
-
-                  {/* Pre-Op Checklist */}
-                  {(latestProcedureTemplate.pre_op_checklist as Record<string, unknown> | undefined) ? (
-                    <AccordionItem value="pre-op-checklist">
+                    {/* Procedure Identity */}
+                    <AccordionItem value="procedure-info">
                       <AccordionTrigger className="text-sm font-medium">
                         <span className="flex items-center gap-2">
-                          Pre-Op Checklist
-                          <Badge variant="secondary" className="h-5 min-w-5 justify-center rounded-full px-1.5 text-[10px] font-semibold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
-                            {Object.keys(latestProcedureTemplate.pre_op_checklist as Record<string, unknown>).length}
-                          </Badge>
+                          Procedure —{' '}
+                          {(latestProcedureTemplate.display_name as string) ||
+                            (latestProcedureTemplate.procedure_key as string)}
                         </span>
                       </AccordionTrigger>
                       <AccordionContent>
-                        <div className="space-y-3 text-sm">
-                          {(() => {
-                            const checklist = latestProcedureTemplate.pre_op_checklist as Record<string, unknown>;
-                            return (
-                              <>
-                                {checklist.consent ? (
-                                  <div>
-                                    <p className="font-medium text-muted-foreground">Consent</p>
-                                    <p>{checklist.consent as string}</p>
-                                  </div>
-                                ) : null}
-                                {Array.isArray(checklist.investigations) ? (
-                                  <div>
-                                    <p className="font-medium text-muted-foreground">Investigations</p>
-                                    <ul className="ml-4 mt-1 list-disc space-y-1">
-                                      {(checklist.investigations as string[]).map((item, i) => (
-                                        <li key={i} className="flex items-center gap-1">
-                                          <span className="flex-1">{item}</span>
-                                          <SuggestionActionChip
-                                            link={getLink('pre_op_checklist.investigations', i)}
-                                            onAction={actionLink}
-                                            orderable
-                                          />
-                                        </li>
-                                      ))}
-                                    </ul>
-                                  </div>
-                                ) : null}
-                                {Array.isArray(checklist.preparation) ? (
-                                  <div>
-                                    <p className="font-medium text-muted-foreground">Preparation</p>
-                                    <ul className="ml-4 mt-1 list-disc space-y-0.5">
-                                      {(checklist.preparation as string[]).map((item, i) => <li key={i}>{item}</li>)}
-                                    </ul>
-                                  </div>
-                                ) : null}
-                                {checklist.site_marking ? (
-                                  <div>
-                                    <p className="font-medium text-muted-foreground">Site Marking</p>
-                                    <p>{checklist.site_marking as string}</p>
-                                  </div>
-                                ) : null}
-                              </>
-                            );
-                          })()}
+                        <div className="grid gap-2 text-sm sm:grid-cols-3">
+                          <div>
+                            <p className="text-muted-foreground">ICD-10</p>
+                            <p className="font-medium">
+                              {(latestProcedureTemplate.icd10_code as string) || '—'}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-muted-foreground">CPT Code</p>
+                            <p className="font-medium">
+                              {(latestProcedureTemplate.cpt_code as string) || '—'}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-muted-foreground">Specialty</p>
+                            <p className="font-medium capitalize">
+                              {((latestProcedureTemplate.specialty as string) || '—').replace(
+                                /_/g,
+                                ' '
+                              )}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-muted-foreground">Min Facility Level</p>
+                            <p className="font-medium">
+                              {(latestProcedureTemplate.min_facility_level as string) || '—'}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-muted-foreground">Urgency Categories</p>
+                            <p className="font-medium capitalize">
+                              {Array.isArray(latestProcedureTemplate.urgency_categories)
+                                ? (latestProcedureTemplate.urgency_categories as string[]).join(
+                                    ', '
+                                  )
+                                : '—'}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-muted-foreground">MOH Reference</p>
+                            <p className="text-xs font-medium">
+                              {(latestProcedureTemplate.kenya_moh_reference as string) || '—'}
+                            </p>
+                          </div>
                         </div>
                       </AccordionContent>
                     </AccordionItem>
-                  ) : null}
 
-                  {/* Anaesthesia Options */}
-                  {Array.isArray(latestProcedureTemplate.anaesthesia_options) ? (
-                    <AccordionItem value="anaesthesia">
-                      <AccordionTrigger className="text-sm font-medium">
-                        <span className="flex items-center gap-2">
-                          Anaesthesia Options
-                          <Badge variant="secondary" className="h-5 min-w-5 justify-center rounded-full px-1.5 text-[10px] font-semibold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
-                            {(latestProcedureTemplate.anaesthesia_options as unknown[]).length}
-                          </Badge>
-                        </span>
-                      </AccordionTrigger>
-                      <AccordionContent>
-                        <div className="space-y-2 text-sm">
-                          {(latestProcedureTemplate.anaesthesia_options as Record<string, unknown>[]).map((option, i) => (
-                            <div key={i} className="flex items-start gap-2 rounded-md border p-2">
-                              <Badge variant={option.preferred ? 'default' : 'secondary'} className="mt-0.5 shrink-0">
-                                {option.preferred ? 'Preferred' : 'Alternative'}
-                              </Badge>
+                    {/* Pre-Op Checklist */}
+                    {(latestProcedureTemplate.pre_op_checklist as
+                      | Record<string, unknown>
+                      | undefined) ? (
+                      <AccordionItem value="pre-op-checklist">
+                        <AccordionTrigger className="text-sm font-medium">
+                          <span className="flex items-center gap-2">
+                            Pre-Op Checklist
+                            <Badge
+                              variant="secondary"
+                              className="h-5 min-w-5 justify-center rounded-full bg-emerald-500/15 px-1.5 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400"
+                            >
+                              {
+                                Object.keys(
+                                  latestProcedureTemplate.pre_op_checklist as Record<
+                                    string,
+                                    unknown
+                                  >
+                                ).length
+                              }
+                            </Badge>
+                          </span>
+                        </AccordionTrigger>
+                        <AccordionContent>
+                          <div className="space-y-3 text-sm">
+                            {(() => {
+                              const checklist = latestProcedureTemplate.pre_op_checklist as Record<
+                                string,
+                                unknown
+                              >;
+                              return (
+                                <>
+                                  {checklist.consent ? (
+                                    <div>
+                                      <p className="font-medium text-muted-foreground">Consent</p>
+                                      <p>{checklist.consent as string}</p>
+                                    </div>
+                                  ) : null}
+                                  {Array.isArray(checklist.investigations) ? (
+                                    <div>
+                                      <p className="font-medium text-muted-foreground">
+                                        Investigations
+                                      </p>
+                                      <ul className="ml-4 mt-1 list-disc space-y-1">
+                                        {(checklist.investigations as string[]).map((item, i) => (
+                                          <li key={i} className="flex items-center gap-1">
+                                            <span className="flex-1">{item}</span>
+                                            <SuggestionActionChip
+                                              link={getLink('pre_op_checklist.investigations', i)}
+                                              onAction={actionLink}
+                                              orderable
+                                            />
+                                          </li>
+                                        ))}
+                                      </ul>
+                                    </div>
+                                  ) : null}
+                                  {Array.isArray(checklist.preparation) ? (
+                                    <div>
+                                      <p className="font-medium text-muted-foreground">
+                                        Preparation
+                                      </p>
+                                      <ul className="ml-4 mt-1 list-disc space-y-0.5">
+                                        {(checklist.preparation as string[]).map((item, i) => (
+                                          <li key={i}>{item}</li>
+                                        ))}
+                                      </ul>
+                                    </div>
+                                  ) : null}
+                                  {checklist.site_marking ? (
+                                    <div>
+                                      <p className="font-medium text-muted-foreground">
+                                        Site Marking
+                                      </p>
+                                      <p>{checklist.site_marking as string}</p>
+                                    </div>
+                                  ) : null}
+                                </>
+                              );
+                            })()}
+                          </div>
+                        </AccordionContent>
+                      </AccordionItem>
+                    ) : null}
+
+                    {/* Anaesthesia Options */}
+                    {Array.isArray(latestProcedureTemplate.anaesthesia_options) ? (
+                      <AccordionItem value="anaesthesia">
+                        <AccordionTrigger className="text-sm font-medium">
+                          <span className="flex items-center gap-2">
+                            Anaesthesia Options
+                            <Badge
+                              variant="secondary"
+                              className="h-5 min-w-5 justify-center rounded-full bg-emerald-500/15 px-1.5 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400"
+                            >
+                              {(latestProcedureTemplate.anaesthesia_options as unknown[]).length}
+                            </Badge>
+                          </span>
+                        </AccordionTrigger>
+                        <AccordionContent>
+                          <div className="space-y-2 text-sm">
+                            {(
+                              latestProcedureTemplate.anaesthesia_options as Record<
+                                string,
+                                unknown
+                              >[]
+                            ).map((option, i) => (
+                              <div key={i} className="flex items-start gap-2 rounded-md border p-2">
+                                <Badge
+                                  variant={option.preferred ? 'default' : 'secondary'}
+                                  className="mt-0.5 shrink-0"
+                                >
+                                  {option.preferred ? 'Preferred' : 'Alternative'}
+                                </Badge>
+                                <div>
+                                  <p className="font-medium capitalize">
+                                    {(option.type as string) || 'Unknown'}
+                                  </p>
+                                  <p className="text-muted-foreground">{option.notes as string}</p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </AccordionContent>
+                      </AccordionItem>
+                    ) : null}
+
+                    {/* Required Equipment & Personnel */}
+                    {Array.isArray(latestProcedureTemplate.required_equipment) ||
+                    Array.isArray(latestProcedureTemplate.required_personnel) ? (
+                      <AccordionItem value="equipment-personnel">
+                        <AccordionTrigger className="text-sm font-medium">
+                          <span className="flex items-center gap-2">
+                            Equipment &amp; Personnel
+                            <Badge
+                              variant="secondary"
+                              className="h-5 min-w-5 justify-center rounded-full bg-emerald-500/15 px-1.5 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400"
+                            >
+                              {(Array.isArray(latestProcedureTemplate.required_equipment)
+                                ? (latestProcedureTemplate.required_equipment as unknown[]).length
+                                : 0) +
+                                (Array.isArray(latestProcedureTemplate.required_personnel)
+                                  ? (latestProcedureTemplate.required_personnel as unknown[]).length
+                                  : 0)}
+                            </Badge>
+                          </span>
+                        </AccordionTrigger>
+                        <AccordionContent>
+                          <div className="grid gap-4 text-sm sm:grid-cols-2">
+                            {Array.isArray(latestProcedureTemplate.required_equipment) ? (
                               <div>
-                                <p className="font-medium capitalize">{(option.type as string) || 'Unknown'}</p>
-                                <p className="text-muted-foreground">{option.notes as string}</p>
+                                <p className="mb-1 font-medium text-muted-foreground">Equipment</p>
+                                <ul className="ml-4 list-disc space-y-1">
+                                  {(latestProcedureTemplate.required_equipment as string[]).map(
+                                    (item, i) => (
+                                      <li key={i} className="flex items-center gap-1">
+                                        <span className="flex-1">{item}</span>
+                                        <SuggestionActionChip
+                                          link={getLink('required_equipment', i)}
+                                          onAction={actionLink}
+                                        />
+                                      </li>
+                                    )
+                                  )}
+                                </ul>
                               </div>
-                            </div>
-                          ))}
-                        </div>
-                      </AccordionContent>
-                    </AccordionItem>
-                  ) : null}
+                            ) : null}
+                            {Array.isArray(latestProcedureTemplate.required_personnel) ? (
+                              <div>
+                                <p className="mb-1 font-medium text-muted-foreground">Personnel</p>
+                                <ul className="ml-4 list-disc space-y-0.5">
+                                  {(latestProcedureTemplate.required_personnel as string[]).map(
+                                    (item, i) => (
+                                      <li key={i}>{item}</li>
+                                    )
+                                  )}
+                                </ul>
+                              </div>
+                            ) : null}
+                          </div>
+                        </AccordionContent>
+                      </AccordionItem>
+                    ) : null}
 
-                  {/* Required Equipment & Personnel */}
-                  {(Array.isArray(latestProcedureTemplate.required_equipment) || Array.isArray(latestProcedureTemplate.required_personnel)) ? (
-                    <AccordionItem value="equipment-personnel">
-                      <AccordionTrigger className="text-sm font-medium">
-                        <span className="flex items-center gap-2">
-                          Equipment &amp; Personnel
-                          <Badge variant="secondary" className="h-5 min-w-5 justify-center rounded-full px-1.5 text-[10px] font-semibold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
-                            {(Array.isArray(latestProcedureTemplate.required_equipment) ? (latestProcedureTemplate.required_equipment as unknown[]).length : 0) + (Array.isArray(latestProcedureTemplate.required_personnel) ? (latestProcedureTemplate.required_personnel as unknown[]).length : 0)}
-                          </Badge>
-                        </span>
-                      </AccordionTrigger>
-                      <AccordionContent>
-                        <div className="grid gap-4 sm:grid-cols-2 text-sm">
-                          {Array.isArray(latestProcedureTemplate.required_equipment) ? (
-                            <div>
-                              <p className="mb-1 font-medium text-muted-foreground">Equipment</p>
-                              <ul className="ml-4 list-disc space-y-1">
-                                {(latestProcedureTemplate.required_equipment as string[]).map((item, i) => (
-                                  <li key={i} className="flex items-center gap-1">
-                                    <span className="flex-1">{item}</span>
+                    {/* Procedure Steps */}
+                    {(latestProcedureTemplate.procedure_steps as
+                      | Record<string, unknown>
+                      | undefined) ? (
+                      <AccordionItem value="procedure-steps">
+                        <AccordionTrigger className="text-sm font-medium">
+                          <span className="flex items-center gap-2">
+                            Procedure Steps
+                            <Badge
+                              variant="secondary"
+                              className="h-5 min-w-5 justify-center rounded-full bg-emerald-500/15 px-1.5 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400"
+                            >
+                              {Object.values(
+                                latestProcedureTemplate.procedure_steps as Record<string, string[]>
+                              ).reduce((sum, steps) => sum + steps.length, 0)}
+                            </Badge>
+                          </span>
+                        </AccordionTrigger>
+                        <AccordionContent>
+                          <div className="space-y-3 text-sm">
+                            {Object.entries(
+                              latestProcedureTemplate.procedure_steps as Record<string, string[]>
+                            ).map(([approach, steps]) => (
+                              <div key={approach}>
+                                <p className="mb-1 font-medium capitalize">
+                                  {approach.replace(/_/g, ' ')}
+                                </p>
+                                <ol className="ml-4 list-decimal space-y-0.5">
+                                  {steps.map((step, i) => (
+                                    <li key={i}>{step}</li>
+                                  ))}
+                                </ol>
+                              </div>
+                            ))}
+                          </div>
+                        </AccordionContent>
+                      </AccordionItem>
+                    ) : null}
+
+                    {/* Post-Op Care */}
+                    {(latestProcedureTemplate.post_op_care as
+                      | Record<string, unknown>
+                      | undefined) ? (
+                      <AccordionItem value="post-op-care">
+                        <AccordionTrigger className="text-sm font-medium">
+                          <span className="flex items-center gap-2">
+                            Post-Op Care
+                            <Badge
+                              variant="secondary"
+                              className="h-5 min-w-5 justify-center rounded-full bg-emerald-500/15 px-1.5 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400"
+                            >
+                              {
+                                Object.values(
+                                  latestProcedureTemplate.post_op_care as Record<string, unknown>
+                                ).filter(Boolean).length
+                              }
+                            </Badge>
+                          </span>
+                        </AccordionTrigger>
+                        <AccordionContent>
+                          <div className="space-y-3 text-sm">
+                            {(() => {
+                              const postOp = latestProcedureTemplate.post_op_care as Record<
+                                string,
+                                unknown
+                              >;
+                              return (
+                                <>
+                                  {postOp.monitoring ? (
+                                    <div>
+                                      <p className="font-medium text-muted-foreground">
+                                        Monitoring
+                                      </p>
+                                      <p>{postOp.monitoring as string}</p>
+                                    </div>
+                                  ) : null}
+                                  {Array.isArray(postOp.medications) ? (
+                                    <div>
+                                      <p className="font-medium text-muted-foreground">
+                                        Medications
+                                      </p>
+                                      <ul className="ml-4 mt-1 list-disc space-y-1">
+                                        {(postOp.medications as string[]).map((item, i) => (
+                                          <li key={i} className="flex items-center gap-1">
+                                            <span className="flex-1">{item}</span>
+                                            <SuggestionActionChip
+                                              link={getLink('post_op_care.medications', i)}
+                                              onAction={actionLink}
+                                              orderable
+                                            />
+                                          </li>
+                                        ))}
+                                      </ul>
+                                    </div>
+                                  ) : null}
+                                  {postOp.activity ? (
+                                    <div>
+                                      <p className="font-medium text-muted-foreground">Activity</p>
+                                      <p>{postOp.activity as string}</p>
+                                    </div>
+                                  ) : null}
+                                  {postOp.nutrition ? (
+                                    <div>
+                                      <p className="font-medium text-muted-foreground">Nutrition</p>
+                                      <p>{postOp.nutrition as string}</p>
+                                    </div>
+                                  ) : null}
+                                  {postOp.wound_care ? (
+                                    <div>
+                                      <p className="font-medium text-muted-foreground">
+                                        Wound Care
+                                      </p>
+                                      <p>{postOp.wound_care as string}</p>
+                                    </div>
+                                  ) : null}
+                                </>
+                              );
+                            })()}
+                          </div>
+                        </AccordionContent>
+                      </AccordionItem>
+                    ) : null}
+
+                    {/* Complications Watchlist */}
+                    {Array.isArray(latestProcedureTemplate.complications_watchlist) ? (
+                      <AccordionItem value="complications">
+                        <AccordionTrigger className="text-sm font-medium">
+                          <span className="flex items-center gap-2">
+                            Complications Watchlist
+                            <Badge
+                              variant="secondary"
+                              className="h-5 min-w-5 justify-center rounded-full bg-emerald-500/15 px-1.5 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400"
+                            >
+                              {
+                                (latestProcedureTemplate.complications_watchlist as unknown[])
+                                  .length
+                              }
+                            </Badge>
+                          </span>
+                        </AccordionTrigger>
+                        <AccordionContent>
+                          <div className="space-y-3 text-sm">
+                            {(
+                              latestProcedureTemplate.complications_watchlist as Record<
+                                string,
+                                unknown
+                              >[]
+                            ).map((comp, i) => (
+                              <div key={i} className="rounded-md border p-3">
+                                <div className="flex items-center justify-between gap-2">
+                                  <p className="font-medium">{comp.complication as string}</p>
+                                  <span className="flex items-center gap-1.5">
                                     <SuggestionActionChip
-                                      link={getLink('required_equipment', i)}
+                                      link={getLink('complications_to_watch', i)}
                                       onAction={actionLink}
                                     />
-                                  </li>
-                                ))}
-                              </ul>
-                            </div>
-                          ) : null}
-                          {Array.isArray(latestProcedureTemplate.required_personnel) ? (
-                            <div>
-                              <p className="mb-1 font-medium text-muted-foreground">Personnel</p>
-                              <ul className="ml-4 list-disc space-y-0.5">
-                                {(latestProcedureTemplate.required_personnel as string[]).map((item, i) => <li key={i}>{item}</li>)}
-                              </ul>
-                            </div>
-                          ) : null}
-                        </div>
-                      </AccordionContent>
-                    </AccordionItem>
-                  ) : null}
-
-                  {/* Procedure Steps */}
-                  {(latestProcedureTemplate.procedure_steps as Record<string, unknown> | undefined) ? (
-                    <AccordionItem value="procedure-steps">
-                      <AccordionTrigger className="text-sm font-medium">
-                        <span className="flex items-center gap-2">
-                          Procedure Steps
-                          <Badge variant="secondary" className="h-5 min-w-5 justify-center rounded-full px-1.5 text-[10px] font-semibold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
-                            {Object.values(latestProcedureTemplate.procedure_steps as Record<string, string[]>).reduce((sum, steps) => sum + steps.length, 0)}
-                          </Badge>
-                        </span>
-                      </AccordionTrigger>
-                      <AccordionContent>
-                        <div className="space-y-3 text-sm">
-                          {Object.entries(latestProcedureTemplate.procedure_steps as Record<string, string[]>).map(([approach, steps]) => (
-                            <div key={approach}>
-                              <p className="mb-1 font-medium capitalize">{approach.replace(/_/g, ' ')}</p>
-                              <ol className="ml-4 list-decimal space-y-0.5">
-                                {steps.map((step, i) => <li key={i}>{step}</li>)}
-                              </ol>
-                            </div>
-                          ))}
-                        </div>
-                      </AccordionContent>
-                    </AccordionItem>
-                  ) : null}
-
-                  {/* Post-Op Care */}
-                  {(latestProcedureTemplate.post_op_care as Record<string, unknown> | undefined) ? (
-                    <AccordionItem value="post-op-care">
-                      <AccordionTrigger className="text-sm font-medium">
-                        <span className="flex items-center gap-2">
-                          Post-Op Care
-                          <Badge variant="secondary" className="h-5 min-w-5 justify-center rounded-full px-1.5 text-[10px] font-semibold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
-                            {Object.values(latestProcedureTemplate.post_op_care as Record<string, unknown>).filter(Boolean).length}
-                          </Badge>
-                        </span>
-                      </AccordionTrigger>
-                      <AccordionContent>
-                        <div className="space-y-3 text-sm">
-                          {(() => {
-                            const postOp = latestProcedureTemplate.post_op_care as Record<string, unknown>;
-                            return (
-                              <>
-                                {postOp.monitoring ? (
-                                  <div>
-                                    <p className="font-medium text-muted-foreground">Monitoring</p>
-                                    <p>{postOp.monitoring as string}</p>
-                                  </div>
-                                ) : null}
-                                {Array.isArray(postOp.medications) ? (
-                                  <div>
-                                    <p className="font-medium text-muted-foreground">Medications</p>
-                                    <ul className="ml-4 mt-1 list-disc space-y-1">
-                                      {(postOp.medications as string[]).map((item, i) => (
-                                        <li key={i} className="flex items-center gap-1">
-                                          <span className="flex-1">{item}</span>
-                                          <SuggestionActionChip
-                                            link={getLink('post_op_care.medications', i)}
-                                            onAction={actionLink}
-                                            orderable
-                                          />
-                                        </li>
-                                      ))}
-                                    </ul>
-                                  </div>
-                                ) : null}
-                                {postOp.activity ? (
-                                  <div>
-                                    <p className="font-medium text-muted-foreground">Activity</p>
-                                    <p>{postOp.activity as string}</p>
-                                  </div>
-                                ) : null}
-                                {postOp.nutrition ? (
-                                  <div>
-                                    <p className="font-medium text-muted-foreground">Nutrition</p>
-                                    <p>{postOp.nutrition as string}</p>
-                                  </div>
-                                ) : null}
-                                {postOp.wound_care ? (
-                                  <div>
-                                    <p className="font-medium text-muted-foreground">Wound Care</p>
-                                    <p>{postOp.wound_care as string}</p>
-                                  </div>
-                                ) : null}
-                              </>
-                            );
-                          })()}
-                        </div>
-                      </AccordionContent>
-                    </AccordionItem>
-                  ) : null}
-
-                  {/* Complications Watchlist */}
-                  {Array.isArray(latestProcedureTemplate.complications_watchlist) ? (
-                    <AccordionItem value="complications">
-                      <AccordionTrigger className="text-sm font-medium">
-                        <span className="flex items-center gap-2">
-                          Complications Watchlist
-                          <Badge variant="secondary" className="h-5 min-w-5 justify-center rounded-full px-1.5 text-[10px] font-semibold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
-                            {(latestProcedureTemplate.complications_watchlist as unknown[]).length}
-                          </Badge>
-                        </span>
-                      </AccordionTrigger>
-                      <AccordionContent>
-                        <div className="space-y-3 text-sm">
-                          {(latestProcedureTemplate.complications_watchlist as Record<string, unknown>[]).map((comp, i) => (
-                            <div key={i} className="rounded-md border p-3">
-                              <div className="flex items-center justify-between gap-2">
-                                <p className="font-medium">{comp.complication as string}</p>
-                                <span className="flex items-center gap-1.5">
-                                  <SuggestionActionChip
-                                    link={getLink('complications_to_watch', i)}
-                                    onAction={actionLink}
-                                  />
-                                  <Badge variant="secondary" className="shrink-0 text-xs">{comp.incidence as string}</Badge>
-                                </span>
+                                    <Badge variant="secondary" className="shrink-0 text-xs">
+                                      {comp.incidence as string}
+                                    </Badge>
+                                  </span>
+                                </div>
+                                <p className="mt-1 text-muted-foreground">
+                                  <span className="font-medium">Signs:</span> {comp.signs as string}
+                                </p>
+                                <p className="mt-0.5 text-muted-foreground">
+                                  <span className="font-medium">Action:</span>{' '}
+                                  {comp.action as string}
+                                </p>
                               </div>
-                              <p className="mt-1 text-muted-foreground"><span className="font-medium">Signs:</span> {comp.signs as string}</p>
-                              <p className="mt-0.5 text-muted-foreground"><span className="font-medium">Action:</span> {comp.action as string}</p>
-                            </div>
-                          ))}
-                        </div>
-                      </AccordionContent>
-                    </AccordionItem>
-                  ) : null}
+                            ))}
+                          </div>
+                        </AccordionContent>
+                      </AccordionItem>
+                    ) : null}
 
-                  {/* Discharge Criteria & Follow-up */}
-                  {(Array.isArray(latestProcedureTemplate.discharge_criteria) || latestProcedureTemplate.follow_up) ? (
-                    <AccordionItem value="discharge-followup">
-                      <AccordionTrigger className="text-sm font-medium">
-                        <span className="flex items-center gap-2">
-                          Discharge &amp; Follow-up
-                          <Badge variant="secondary" className="h-5 min-w-5 justify-center rounded-full px-1.5 text-[10px] font-semibold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
-                            {(Array.isArray(latestProcedureTemplate.discharge_criteria) ? (latestProcedureTemplate.discharge_criteria as unknown[]).length : 0) + (latestProcedureTemplate.follow_up ? 1 : 0)}
-                          </Badge>
-                        </span>
-                      </AccordionTrigger>
-                      <AccordionContent>
-                        <div className="space-y-3 text-sm">
-                          {Array.isArray(latestProcedureTemplate.discharge_criteria) ? (
-                            <div>
-                              <p className="mb-1 font-medium text-muted-foreground">Discharge Criteria</p>
-                              <ul className="ml-4 list-disc space-y-1">
-                                {(latestProcedureTemplate.discharge_criteria as string[]).map((item, i) => (
-                                  <li key={i} className="flex items-center gap-1">
-                                    <span className="flex-1">{item}</span>
-                                    <SuggestionActionChip
-                                      link={getLink('discharge_criteria', i)}
-                                      onAction={actionLink}
-                                    />
-                                  </li>
-                                ))}
-                              </ul>
-                            </div>
-                          ) : null}
-                          {(() => {
-                            const followUp = latestProcedureTemplate.follow_up as Record<string, unknown> | undefined;
-                            if (!followUp) return null;
-                            return (
-                              <div className="space-y-2">
-                                {followUp.appointment ? (
-                                  <div>
-                                    <p className="font-medium text-muted-foreground">Follow-up Appointment</p>
-                                    <p>{followUp.appointment as string}</p>
-                                  </div>
-                                ) : null}
-                                {followUp.investigations ? (
-                                  <div>
-                                    <p className="font-medium text-muted-foreground">Investigations</p>
-                                    <p>{followUp.investigations as string}</p>
-                                  </div>
-                                ) : null}
-                                {Array.isArray(followUp.red_flags) ? (
-                                  <div>
-                                    <p className="font-medium text-destructive">Red Flags — Advise patient</p>
-                                    <ul className="ml-4 mt-1 list-disc space-y-1">
-                                      {(followUp.red_flags as string[]).map((item, i) => (
-                                        <li key={i} className="flex items-center gap-1">
-                                          <span className="flex-1">{item}</span>
-                                          <SuggestionActionChip
-                                            link={getLink('follow_up.red_flags', i)}
-                                            onAction={actionLink}
-                                          />
-                                        </li>
-                                      ))}
-                                    </ul>
-                                  </div>
-                                ) : null}
+                    {/* Discharge Criteria & Follow-up */}
+                    {Array.isArray(latestProcedureTemplate.discharge_criteria) ||
+                    latestProcedureTemplate.follow_up ? (
+                      <AccordionItem value="discharge-followup">
+                        <AccordionTrigger className="text-sm font-medium">
+                          <span className="flex items-center gap-2">
+                            Discharge &amp; Follow-up
+                            <Badge
+                              variant="secondary"
+                              className="h-5 min-w-5 justify-center rounded-full bg-emerald-500/15 px-1.5 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400"
+                            >
+                              {(Array.isArray(latestProcedureTemplate.discharge_criteria)
+                                ? (latestProcedureTemplate.discharge_criteria as unknown[]).length
+                                : 0) + (latestProcedureTemplate.follow_up ? 1 : 0)}
+                            </Badge>
+                          </span>
+                        </AccordionTrigger>
+                        <AccordionContent>
+                          <div className="space-y-3 text-sm">
+                            {Array.isArray(latestProcedureTemplate.discharge_criteria) ? (
+                              <div>
+                                <p className="mb-1 font-medium text-muted-foreground">
+                                  Discharge Criteria
+                                </p>
+                                <ul className="ml-4 list-disc space-y-1">
+                                  {(latestProcedureTemplate.discharge_criteria as string[]).map(
+                                    (item, i) => (
+                                      <li key={i} className="flex items-center gap-1">
+                                        <span className="flex-1">{item}</span>
+                                        <SuggestionActionChip
+                                          link={getLink('discharge_criteria', i)}
+                                          onAction={actionLink}
+                                        />
+                                      </li>
+                                    )
+                                  )}
+                                </ul>
                               </div>
-                            );
-                          })()}
-                        </div>
-                      </AccordionContent>
-                    </AccordionItem>
-                  ) : null}
-                </Accordion>
+                            ) : null}
+                            {(() => {
+                              const followUp = latestProcedureTemplate.follow_up as
+                                | Record<string, unknown>
+                                | undefined;
+                              if (!followUp) return null;
+                              return (
+                                <div className="space-y-2">
+                                  {followUp.appointment ? (
+                                    <div>
+                                      <p className="font-medium text-muted-foreground">
+                                        Follow-up Appointment
+                                      </p>
+                                      <p>{followUp.appointment as string}</p>
+                                    </div>
+                                  ) : null}
+                                  {followUp.investigations ? (
+                                    <div>
+                                      <p className="font-medium text-muted-foreground">
+                                        Investigations
+                                      </p>
+                                      <p>{followUp.investigations as string}</p>
+                                    </div>
+                                  ) : null}
+                                  {Array.isArray(followUp.red_flags) ? (
+                                    <div>
+                                      <p className="font-medium text-destructive">
+                                        Red Flags — Advise patient
+                                      </p>
+                                      <ul className="ml-4 mt-1 list-disc space-y-1">
+                                        {(followUp.red_flags as string[]).map((item, i) => (
+                                          <li key={i} className="flex items-center gap-1">
+                                            <span className="flex-1">{item}</span>
+                                            <SuggestionActionChip
+                                              link={getLink('follow_up.red_flags', i)}
+                                              onAction={actionLink}
+                                            />
+                                          </li>
+                                        ))}
+                                      </ul>
+                                    </div>
+                                  ) : null}
+                                </div>
+                              );
+                            })()}
+                          </div>
+                        </AccordionContent>
+                      </AccordionItem>
+                    ) : null}
+                  </Accordion>
                 </>
               ) : null}
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground">No advisory pre-op assessment has been saved for this case yet.</p>
+            <p className="text-sm text-muted-foreground">
+              No advisory pre-op assessment has been saved for this case yet.
+            </p>
           )}
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-base">
             <ShieldCheck className="h-4 w-4" />
             Surgical Team
             <HelpPopover content="Assign and review the surgical team: lead surgeon, assistants, anesthesia staff, and theatre nurses. Coverage status reflects shift scheduling." />
@@ -1353,7 +1625,10 @@ export function PreOpWorkspace({
             <div className="flex flex-col gap-2 rounded-lg border border-dashed p-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="text-sm font-medium">Assign team members before sign-in</p>
-                <p className="text-xs text-muted-foreground">Keep the pre-op roster aligned with the scheduled surgeon, anesthesia, and nursing coverage.</p>
+                <p className="text-xs text-muted-foreground">
+                  Keep the pre-op roster aligned with the scheduled surgeon, anesthesia, and nursing
+                  coverage.
+                </p>
               </div>
               <Button type="button" size="sm" onClick={() => setAssignmentDialog(true)}>
                 <Plus className="mr-2 h-4 w-4" />
@@ -1384,7 +1659,7 @@ export function PreOpWorkspace({
       <div className="grid gap-4 xl:grid-cols-2">
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-base">
               <FileSignature className="h-4 w-4" />
               Surgical Consent
               <HelpPopover content="Documents patient informed consent for the procedure. Records consent method, witnesses, and any special considerations or refusals." />
@@ -1404,7 +1679,8 @@ export function PreOpWorkspace({
                 <AlertCircle className="h-4 w-4" />
                 <AlertTitle>No linked procedure order</AlertTitle>
                 <AlertDescription>
-                  Theatre consent is tracked through the procedures module. Create a linked procedure order to capture and sign consent.
+                  Theatre consent is tracked through the procedures module. Create a linked
+                  procedure order to capture and sign consent.
                 </AlertDescription>
               </Alert>
             ) : procedureOrder.consent?.status === 'SIGNED' ? (
@@ -1412,7 +1688,11 @@ export function PreOpWorkspace({
                 <CheckCircle2 className="h-4 w-4" />
                 <AlertTitle>Consent complete</AlertTitle>
                 <AlertDescription>
-                  Consent was signed on {procedureOrder.consent.obtained_at ? new Date(procedureOrder.consent.obtained_at).toLocaleString() : 'this order'}.
+                  Consent was signed on{' '}
+                  {procedureOrder.consent.obtained_at
+                    ? new Date(procedureOrder.consent.obtained_at).toLocaleString()
+                    : 'this order'}
+                  .
                 </AlertDescription>
               </Alert>
             ) : (
@@ -1448,7 +1728,10 @@ export function PreOpWorkspace({
               <>
                 <Separator />
                 <Form {...consentForm}>
-                  <form className="space-y-4" onSubmit={consentForm.handleSubmit(handleCreateConsent)}>
+                  <form
+                    className="space-y-4"
+                    onSubmit={consentForm.handleSubmit(handleCreateConsent)}
+                  >
                     <FormField
                       control={consentForm.control}
                       name="consent_text"
@@ -1456,7 +1739,11 @@ export function PreOpWorkspace({
                         <FormItem>
                           <FormLabel>Consent text</FormLabel>
                           <FormControl>
-                            <Textarea rows={4} placeholder="Explain the procedure, benefits, and risks..." {...field} />
+                            <Textarea
+                              rows={4}
+                              placeholder="Explain the procedure, benefits, and risks..."
+                              {...field}
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -1480,7 +1767,10 @@ export function PreOpWorkspace({
                           render={({ field }) => (
                             <FormItem className="flex flex-row items-center gap-3 space-y-0 rounded-lg border p-3">
                               <FormControl>
-                                <Checkbox checked={field.value as boolean} onCheckedChange={(checked) => field.onChange(checked === true)} />
+                                <Checkbox
+                                  checked={field.value as boolean}
+                                  onCheckedChange={(checked) => field.onChange(checked === true)}
+                                />
                               </FormControl>
                               <FormLabel className="!mt-0">{label}</FormLabel>
                             </FormItem>
@@ -1576,7 +1866,12 @@ export function PreOpWorkspace({
                         Save consent
                       </Button>
                       {procedureOrder.consent && (
-                        <Button type="button" variant="outline" onClick={handleSignExistingConsent} disabled={signingConsent}>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={handleSignExistingConsent}
+                          disabled={signingConsent}
+                        >
                           {signingConsent && <Loader2 className="h-4 w-4 animate-spin" />}
                           Sign consent
                         </Button>
@@ -1592,7 +1887,7 @@ export function PreOpWorkspace({
         <Card>
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between gap-2">
-              <CardTitle className="text-base flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-base">
                 <FlaskConical className="h-4 w-4" />
                 Pre-Op Labs
                 <HelpPopover content="Laboratory investigations required before surgery. Order new tests or review existing results to ensure readiness." />
@@ -1612,7 +1907,11 @@ export function PreOpWorkspace({
           </CardHeader>
           <CardContent className="space-y-3">
             <Alert>
-              {labsReady ? <CheckCircle2 className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
+              {labsReady ? (
+                <CheckCircle2 className="h-4 w-4" />
+              ) : (
+                <AlertCircle className="h-4 w-4" />
+              )}
               <AlertTitle>{labsReady ? 'Lab checks clear' : 'Lab review pending'}</AlertTitle>
               <AlertDescription>
                 {labOrders.length === 0
@@ -1625,7 +1924,8 @@ export function PreOpWorkspace({
 
             {labOrders.length === 0 ? (
               <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
-                No encounter lab orders found. If pre-op investigations are required, create them from the patient encounter before proceeding.
+                No encounter lab orders found. If pre-op investigations are required, create them
+                from the patient encounter before proceeding.
               </div>
             ) : (
               <div className="space-y-2">
@@ -1637,15 +1937,21 @@ export function PreOpWorkspace({
                         <div className="min-w-0">
                           <p className="text-sm font-medium">{order.order_number}</p>
                           <p className="text-xs text-muted-foreground">
-                            {order.items.map((item) => item.test_name).join(', ') || 'No tests listed'}
+                            {order.items.map((item) => item.test_name).join(', ') ||
+                              'No tests listed'}
                           </p>
                         </div>
-                        <Badge variant={order.status === 'COMPLETED' ? 'success' : 'warning'} size="sm" className="w-fit shrink-0">
+                        <Badge
+                          variant={order.status === 'COMPLETED' ? 'success' : 'warning'}
+                          size="sm"
+                          className="w-fit shrink-0"
+                        >
                           {order.status.replace(/_/g, ' ')}
                         </Badge>
                       </div>
                       <p className="mt-2 text-xs text-muted-foreground">
-                        Results ready for {completedItems} of {order.items.length} test{order.items.length === 1 ? '' : 's'}.
+                        Results ready for {completedItems} of {order.items.length} test
+                        {order.items.length === 1 ? '' : 's'}.
                       </p>
                     </div>
                   );
@@ -1658,7 +1964,7 @@ export function PreOpWorkspace({
         <Card>
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between gap-2">
-              <CardTitle className="text-base flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-base">
                 <ScanLine className="h-4 w-4" />
                 Pre-Op Imaging
                 <HelpPopover content="Imaging studies (X-ray, CT, MRI, ultrasound) required for surgical planning. Order new scans or review existing results." />
@@ -1678,8 +1984,14 @@ export function PreOpWorkspace({
           </CardHeader>
           <CardContent className="space-y-3">
             <Alert>
-              {imagingReady ? <CheckCircle2 className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
-              <AlertTitle>{imagingReady ? 'Imaging checks clear' : 'Imaging review pending'}</AlertTitle>
+              {imagingReady ? (
+                <CheckCircle2 className="h-4 w-4" />
+              ) : (
+                <AlertCircle className="h-4 w-4" />
+              )}
+              <AlertTitle>
+                {imagingReady ? 'Imaging checks clear' : 'Imaging review pending'}
+              </AlertTitle>
               <AlertDescription>
                 {imagingOrders.length === 0
                   ? 'No imaging orders were found for the linked encounter or patient.'
@@ -1691,7 +2003,8 @@ export function PreOpWorkspace({
 
             {imagingOrders.length === 0 ? (
               <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
-                No encounter imaging orders found. If pre-op imaging is required, create orders from the patient encounter before proceeding.
+                No encounter imaging orders found. If pre-op imaging is required, create orders from
+                the patient encounter before proceeding.
               </div>
             ) : (
               <div className="space-y-2">
@@ -1703,15 +2016,21 @@ export function PreOpWorkspace({
                         <div className="min-w-0">
                           <p className="text-sm font-medium">{order.order_number}</p>
                           <p className="text-xs text-muted-foreground">
-                            {order.items.map((item) => item.procedure_name).join(', ') || 'No procedures listed'}
+                            {order.items.map((item) => item.procedure_name).join(', ') ||
+                              'No procedures listed'}
                           </p>
                         </div>
-                        <Badge variant={order.status === 'REPORTED' ? 'success' : 'warning'} size="sm" className="w-fit shrink-0">
+                        <Badge
+                          variant={order.status === 'REPORTED' ? 'success' : 'warning'}
+                          size="sm"
+                          className="w-fit shrink-0"
+                        >
                           {order.status.replace(/_/g, ' ')}
                         </Badge>
                       </div>
                       <p className="mt-2 text-xs text-muted-foreground">
-                        {completedItems} of {order.items.length} procedure{order.items.length === 1 ? '' : 's'} completed.
+                        {completedItems} of {order.items.length} procedure
+                        {order.items.length === 1 ? '' : 's'} completed.
                       </p>
                     </div>
                   );
@@ -1723,7 +2042,7 @@ export function PreOpWorkspace({
 
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-base">
               <ClipboardCheck className="h-4 w-4" />
               WHO Sign-In
               <HelpPopover content="WHO Surgical Safety Checklist Sign-In: completed before induction of anesthesia. Confirms patient identity, site marking, allergies, airway, and blood loss risk." />
@@ -1753,7 +2072,10 @@ export function PreOpWorkspace({
                       render={({ field }) => (
                         <FormItem className="flex flex-row items-center gap-3 space-y-0 rounded-lg border p-3">
                           <FormControl>
-                            <Checkbox checked={field.value as boolean} onCheckedChange={(checked) => field.onChange(checked === true)} />
+                            <Checkbox
+                              checked={field.value as boolean}
+                              onCheckedChange={(checked) => field.onChange(checked === true)}
+                            />
                           </FormControl>
                           <FormLabel className="!mt-0">{label}</FormLabel>
                         </FormItem>
@@ -1811,7 +2133,7 @@ export function PreOpWorkspace({
 
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-base">
               <Syringe className="h-4 w-4" />
               Anesthesia Pre-Op Assessment
               <HelpPopover content="Anesthesia pre-operative evaluation: ASA class, airway assessment, planned technique, pre-medication, and fasting status." />
@@ -1819,7 +2141,10 @@ export function PreOpWorkspace({
           </CardHeader>
           <CardContent>
             <Form {...anesthesiaForm}>
-              <form className="space-y-4" onSubmit={anesthesiaForm.handleSubmit(handleAnesthesiaSave)}>
+              <form
+                className="space-y-4"
+                onSubmit={anesthesiaForm.handleSubmit(handleAnesthesiaSave)}
+              >
                 <div className="grid gap-4 sm:grid-cols-2">
                   <FormField
                     control={anesthesiaForm.control}
@@ -1831,7 +2156,8 @@ export function PreOpWorkspace({
                           <Input type="number" min={1} {...field} />
                         </FormControl>
                         <FormDescription>
-                          Staff picker wiring can be added later, but this closes the pre-op documentation gap now.
+                          Staff picker wiring can be added later, but this closes the pre-op
+                          documentation gap now.
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
@@ -1921,7 +2247,11 @@ export function PreOpWorkspace({
                     <FormItem>
                       <FormLabel>Dentition notes</FormLabel>
                       <FormControl>
-                        <Textarea rows={3} placeholder="Loose teeth, dentures, dentures removed..." {...field} />
+                        <Textarea
+                          rows={3}
+                          placeholder="Loose teeth, dentures, dentures removed..."
+                          {...field}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -1955,7 +2285,10 @@ export function PreOpWorkspace({
                       render={({ field }) => (
                         <FormItem className="flex flex-row items-center gap-3 space-y-0 rounded-lg border p-3">
                           <FormControl>
-                            <Checkbox checked={field.value as boolean} onCheckedChange={(checked) => field.onChange(checked === true)} />
+                            <Checkbox
+                              checked={field.value as boolean}
+                              onCheckedChange={(checked) => field.onChange(checked === true)}
+                            />
                           </FormControl>
                           <FormLabel className="!mt-0">{label}</FormLabel>
                         </FormItem>
@@ -1985,7 +2318,10 @@ export function PreOpWorkspace({
       {/* Lab Order Sheet */}
       {surgeryCase.encounter != null && (
         <Sheet open={showLabOrderForm} onOpenChange={setShowLabOrderForm}>
-          <SheetContent side="right" className="w-full sm:max-w-2xl lg:max-w-3xl p-0 overflow-hidden">
+          <SheetContent
+            side="right"
+            className="w-full overflow-hidden p-0 sm:max-w-2xl lg:max-w-3xl"
+          >
             <SheetHeader className="sr-only">
               <SheetTitle>New Pre-Op Lab Order</SheetTitle>
             </SheetHeader>
@@ -2015,7 +2351,10 @@ export function PreOpWorkspace({
       {/* Imaging Order Sheet */}
       {surgeryCase.encounter != null && (
         <Sheet open={showImagingOrderForm} onOpenChange={setShowImagingOrderForm}>
-          <SheetContent side="right" className="w-full sm:max-w-2xl lg:max-w-3xl p-0 overflow-hidden">
+          <SheetContent
+            side="right"
+            className="w-full overflow-hidden p-0 sm:max-w-2xl lg:max-w-3xl"
+          >
             <SheetHeader className="sr-only">
               <SheetTitle>New Pre-Op Imaging Order</SheetTitle>
             </SheetHeader>
@@ -2059,17 +2398,22 @@ function PreOpTeamMemberRow({
         <p className="font-medium">{member.staff_name}</p>
         <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
           <Badge variant="outline" size="sm" className="w-fit">
-            {TEAM_ROLE_LABELS[member.role as (typeof TEAM_ROLES)[number]] ?? member.role.replace(/_/g, ' ')}
+            {TEAM_ROLE_LABELS[member.role as (typeof TEAM_ROLES)[number]] ??
+              member.role.replace(/_/g, ' ')}
           </Badge>
           {member.notes ? <span>{member.notes}</span> : null}
         </div>
         {coverage ? (
           <p className="text-xs text-muted-foreground">
             {coverage.message}
-            {coverage.shift_statuses.length > 0 ? ` Shift status: ${coverage.shift_statuses.join(', ')}.` : ''}
+            {coverage.shift_statuses.length > 0
+              ? ` Shift status: ${coverage.shift_statuses.join(', ')}.`
+              : ''}
           </p>
         ) : (
-          <p className="text-xs text-amber-600">No matching shift coverage found for this assignment.</p>
+          <p className="text-xs text-amber-600">
+            No matching shift coverage found for this assignment.
+          </p>
         )}
       </div>
       {canManageTeam ? (

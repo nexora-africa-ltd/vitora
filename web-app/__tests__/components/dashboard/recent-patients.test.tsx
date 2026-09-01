@@ -59,8 +59,20 @@ describe('RecentPatients Component', () => {
     mockUsePatients.mockReturnValue({
       data: {
         results: [
-          { id: 1, first_name: 'John', last_name: 'Doe', mrn: 'MRN-001', created_at: '2025-01-01T10:00:00Z' },
-          { id: 2, first_name: 'Jane', last_name: 'Smith', mrn: 'MRN-002', created_at: '2025-01-02T10:00:00Z' },
+          {
+            id: 1,
+            first_name: 'John',
+            last_name: 'Doe',
+            mrn: 'MRN-001',
+            created_at: '2025-01-01T10:00:00Z',
+          },
+          {
+            id: 2,
+            first_name: 'Jane',
+            last_name: 'Smith',
+            mrn: 'MRN-002',
+            created_at: '2025-01-02T10:00:00Z',
+          },
         ],
         count: 2,
       },
@@ -78,7 +90,13 @@ describe('RecentPatients Component', () => {
     mockUsePatients.mockReturnValue({
       data: {
         results: [
-          { id: 1, first_name: 'John', last_name: 'Doe', mrn: 'MRN-001', created_at: '2025-01-01T10:00:00Z' },
+          {
+            id: 1,
+            first_name: 'John',
+            last_name: 'Doe',
+            mrn: 'MRN-001',
+            created_at: '2025-01-01T10:00:00Z',
+          },
         ],
         count: 1,
       },
@@ -95,7 +113,13 @@ describe('RecentPatients Component', () => {
     mockUsePatients.mockReturnValue({
       data: {
         results: [
-          { id: 123, first_name: 'John', last_name: 'Doe', mrn: 'MRN-001', created_at: '2025-01-01T10:00:00Z' },
+          {
+            id: 123,
+            first_name: 'John',
+            last_name: 'Doe',
+            mrn: 'MRN-001',
+            created_at: '2025-01-01T10:00:00Z',
+          },
         ],
         count: 1,
       },
@@ -125,7 +149,13 @@ describe('RecentPatients Component', () => {
     mockUsePatients.mockReturnValue({
       data: {
         results: [
-          { id: 1, first_name: 'John', last_name: 'Doe', mrn: 'MRN-001', created_at: '2025-01-01T10:00:00Z' },
+          {
+            id: 1,
+            first_name: 'John',
+            last_name: 'Doe',
+            mrn: 'MRN-001',
+            created_at: '2025-01-01T10:00:00Z',
+          },
         ],
         count: 1,
       },

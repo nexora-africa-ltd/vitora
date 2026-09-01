@@ -175,9 +175,17 @@ describe('EncounterStateTransition', () => {
   it('displays all 11 status choices correctly in VALID_ENCOUNTER_TRANSITIONS', () => {
     // Verify the transition map covers all statuses
     const allStatuses: EncounterStatus[] = [
-      'CREATED', 'CHECKED_IN', 'TRIAGED', 'IN_PROGRESS',
-      'ON_HOLD', 'ORDERS_PLACED', 'RESULTS_PENDING',
-      'READY_TO_CLOSE', 'CLOSED', 'COMPLETED', 'CANCELLED',
+      'CREATED',
+      'CHECKED_IN',
+      'TRIAGED',
+      'IN_PROGRESS',
+      'ON_HOLD',
+      'ORDERS_PLACED',
+      'RESULTS_PENDING',
+      'READY_TO_CLOSE',
+      'CLOSED',
+      'COMPLETED',
+      'CANCELLED',
     ];
 
     const { VALID_ENCOUNTER_TRANSITIONS } = require('@/lib/types/encounter');

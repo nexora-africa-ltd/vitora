@@ -5,7 +5,19 @@ import { useQuery } from '@tanstack/react-query';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { addDays, format, isValid, parseISO, startOfDay } from 'date-fns';
-import { Save, Plus, Trash2, Clock, CheckCircle2, BrainCircuit, Loader2, AlertTriangle, ShieldAlert, Printer, ShieldCheck } from 'lucide-react';
+import {
+  Save,
+  Plus,
+  Trash2,
+  Clock,
+  CheckCircle2,
+  BrainCircuit,
+  Loader2,
+  AlertTriangle,
+  ShieldAlert,
+  Printer,
+  ShieldCheck,
+} from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { PageHeader } from '@/components/shared/page-header';
@@ -67,7 +79,13 @@ import { inpatientApi } from '@/lib/api/inpatient';
 import { facilitiesApi } from '@/lib/api/facilities';
 import { organizationsApi } from '@/lib/api/organizations';
 import { useEncounter, useEncounterDiagnoses } from '@/lib/hooks/use-encounters';
-import { useAIEnabled, useAICDSEvaluate, useStoredCarePlans, useAISuggestionAudit, useStoredDischargeResults } from '@/lib/hooks/use-ai';
+import {
+  useAIEnabled,
+  useAICDSEvaluate,
+  useStoredCarePlans,
+  useAISuggestionAudit,
+  useStoredDischargeResults,
+} from '@/lib/hooks/use-ai';
 import type { DiagnosisCodeValue } from '@/components/shared/diagnosis-code-input';
 import { useOptionalAIChatContext } from '@/lib/context/ai-chat-context';
 import { useOptionalPatientContext } from '@/lib/context/patient-context';
@@ -76,19 +94,39 @@ import { useUser } from '@/lib/auth';
 import { useToast } from '@/lib/hooks/use-toast';
 import { printDischargeDocument } from '@/lib/documents';
 import type {
+  Admission,
   DischargeType,
   DischargeMedication,
   InterFacilityTransferPriority,
   InterFacilityTransferReason,
   MaternityContinuityAction,
 } from '@/lib/types/inpatient';
-import type { AICDSAlertItem, AIPatientContext, AIEncounterContext, ClinicalDocGenerationMode } from '@/lib/types/ai';
+import type {
+  AICDSAlertItem,
+  AIPatientContext,
+  AIEncounterContext,
+  ClinicalDocGenerationMode,
+  StoredCarePlanResult,
+} from '@/lib/types/ai';
 import type { DischargeSummarySection, SuggestedMedication } from '@/lib/discharge/types';
-import { DEFAULT_SECTION_TEMPLATES, DEDICATED_FIELD_KEYS, DISCHARGE_TYPES, MATERNITY_CONTINUITY_ACTIONS } from '@/lib/discharge/types';
-import { createSectionId, assembleSectionsText, buildTemplateAlignedContent, mergeEncounterClinicalText } from '@/lib/discharge/utils';
+import {
+  DEFAULT_SECTION_TEMPLATES,
+  DEDICATED_FIELD_KEYS,
+  DISCHARGE_TYPES,
+  MATERNITY_CONTINUITY_ACTIONS,
+} from '@/lib/discharge/types';
+import {
+  createSectionId,
+  assembleSectionsText,
+  buildTemplateAlignedContent,
+  mergeEncounterClinicalText,
+} from '@/lib/discharge/utils';
 import { useDischargeAI } from '@/lib/discharge/use-discharge-ai';
 import { useDischargeDraft } from '@/lib/discharge/use-discharge-draft';
-import { buildAdmissionAIClinicalNotes, getLatestWardRound } from '@/lib/utils/inpatient-ai-context';
+import {
+  buildAdmissionAIClinicalNotes,
+  getLatestWardRound,
+} from '@/lib/utils/inpatient-ai-context';
 import { resolveCanAmbulate, resolveCanTolerateOral } from '@/lib/utils/kardex-status';
 import type { WardRound } from '@/lib/types/inpatient';
 
@@ -100,8 +138,8 @@ import type { WardRound } from '@/lib/types/inpatient';
  * 4. Admitting officer as last resort
  */
 function deriveConsultantName(
-  admission: any,
-  wardRoundResults?: WardRound[],
+  admission?: Admission | null,
+  wardRoundResults?: WardRound[]
 ): string {
   // 1. Explicit attending doctor on the admission
   if (admission?.attending_doctor_username) {
@@ -110,9 +148,7 @@ function deriveConsultantName(
 
   if (wardRoundResults?.length) {
     // 2. Most recent consultant review
-    const consultantReview = wardRoundResults.find(
-      (wr) => wr.review_type === 'CONSULTANT_REVIEW'
-    );
+    const consultantReview = wardRoundResults.find((wr) => wr.review_type === 'CONSULTANT_REVIEW');
     if (consultantReview?.conducted_by_name) {
       return consultantReview.conducted_by_name;
     }
@@ -126,9 +162,7 @@ function deriveConsultantName(
       }
     }
     if (conductorCounts.size > 0) {
-      const sorted = [...conductorCounts.entries()].sort(
-        (a, b) => b[1] - a[1]
-      );
+      const sorted = [...conductorCounts.entries()].sort((a, b) => b[1] - a[1]);
       if (sorted[0]) return sorted[0][0];
     }
   }
@@ -187,14 +221,14 @@ export default function DischargePage() {
   const { facility, facilityDetail } = useFacility();
   const { data: currentFacilityDetail } = useQuery({
     queryKey: ['facilities', facility?.id, 'discharge-transfer-mini-sheet'],
-    enabled:
-      typeof facility?.id === 'number' &&
-      typeof facilityDetail?.organization !== 'number',
+    enabled: typeof facility?.id === 'number' && typeof facilityDetail?.organization !== 'number',
     queryFn: () => facilitiesApi.get(facility!.id),
   });
   const organizationId =
     (typeof facilityDetail?.organization === 'number' ? facilityDetail.organization : undefined) ??
-    (typeof currentFacilityDetail?.organization === 'number' ? currentFacilityDetail.organization : undefined) ??
+    (typeof currentFacilityDetail?.organization === 'number'
+      ? currentFacilityDetail.organization
+      : undefined) ??
     user?.memberships?.find((membership) => membership.is_primary)?.organization_id ??
     user?.memberships?.[0]?.organization_id;
   const { data: organizationFacilities = [] } = useQuery({
@@ -225,7 +259,9 @@ export default function DischargePage() {
 
   // Discharge readiness state (for warning integration)
   const { data: storedDischargeResults } = useStoredDischargeResults(admissionId);
-  const latestReadiness = storedDischargeResults?.[0]?.result_data as { readiness_level?: string; unmet_criteria_count?: number } | undefined;
+  const latestReadiness = storedDischargeResults?.[0]?.result_data as
+    | { readiness_level?: string; unmet_criteria_count?: number }
+    | undefined;
   const isNotReady = latestReadiness?.readiness_level === 'not_ready';
 
   // Fetch prescriptions for this admission
@@ -238,7 +274,10 @@ export default function DischargePage() {
   const { data: sourceEncounter } = useEncounter(sourceEncounterId);
   const { data: ipdEncounter } = useEncounter(ipdEncounterId);
   const { data: encounterDiagnoses } = useEncounterDiagnoses(sourceEncounterId);
-  const { data: storedCarePlans } = useStoredCarePlans({ encounter_id: sourceEncounterId || undefined, admission_id: admissionId });
+  const { data: storedCarePlans } = useStoredCarePlans({
+    encounter_id: sourceEncounterId || undefined,
+    admission_id: admissionId,
+  });
   const chatCtx = useOptionalAIChatContext();
   const setEncounterAwareContext = chatCtx?.setEncounterAwareContext;
 
@@ -248,21 +287,28 @@ export default function DischargePage() {
   const [patientInstructions, setPatientInstructions] = useState('');
   const [followUpDate, setFollowUpDate] = useState('');
   const [medications, setMedications] = useState<DischargeMedication[]>([]);
-  const [maternityContinuityAction, setMaternityContinuityAction] = useState<MaternityContinuityAction>('NONE');
-  const [transferDestinationFacilitySelection, setTransferDestinationFacilitySelection] = useState('OTHER');
+  const [maternityContinuityAction, setMaternityContinuityAction] =
+    useState<MaternityContinuityAction>('NONE');
+  const [transferDestinationFacilitySelection, setTransferDestinationFacilitySelection] =
+    useState('OTHER');
   const [transferDestinationFacilityName, setTransferDestinationFacilityName] = useState('');
-  const [transferReasonCode, setTransferReasonCode] = useState<InterFacilityTransferReason>('HIGHER_LEVEL_CARE');
+  const [transferReasonCode, setTransferReasonCode] =
+    useState<InterFacilityTransferReason>('HIGHER_LEVEL_CARE');
   const [transferPriority, setTransferPriority] = useState<InterFacilityTransferPriority>('URGENT');
   const [transferReasonDetails, setTransferReasonDetails] = useState('');
   const [transferClinicalSummary, setTransferClinicalSummary] = useState('');
   const [transferHandoverNotes, setTransferHandoverNotes] = useState('');
-  const [transferTransportMode, setTransferTransportMode] = useState<'AMBULANCE' | 'PRIVATE' | 'OTHER'>('AMBULANCE');
+  const [transferTransportMode, setTransferTransportMode] = useState<
+    'AMBULANCE' | 'PRIVATE' | 'OTHER'
+  >('AMBULANCE');
   const [transferEscortRequired, setTransferEscortRequired] = useState(false);
   const [transferEscortName, setTransferEscortName] = useState('');
 
   // Selected prescription IDs for discharge medications + dispensing type overrides
   const [selectedRxIds, setSelectedRxIds] = useState<Set<number>>(new Set());
-  const [rxDispensingTypes, setRxDispensingTypes] = useState<Record<number, 'INTERNAL' | 'EXTERNAL'>>({});
+  const [rxDispensingTypes, setRxDispensingTypes] = useState<
+    Record<number, 'INTERNAL' | 'EXTERNAL'>
+  >({});
 
   // Auto-select prescriptions already marked as discharge medications
   useEffect(() => {
@@ -279,7 +325,9 @@ export default function DischargePage() {
         const types: Record<number, 'INTERNAL' | 'EXTERNAL'> = {};
         admissionPrescriptions
           .filter((rx) => rx.is_discharge_medication)
-          .forEach((rx) => { types[rx.id] = rx.dispensing_type; });
+          .forEach((rx) => {
+            types[rx.id] = rx.dispensing_type;
+          });
         setRxDispensingTypes((prev) => ({ ...prev, ...types }));
       }
     }
@@ -306,7 +354,11 @@ export default function DischargePage() {
   });
   const setGenerationMode = useCallback((mode: ClinicalDocGenerationMode) => {
     setGenerationModeRaw(mode);
-    try { localStorage.setItem(AI_MODE_STORAGE_KEY, mode); } catch { /* ignore */ }
+    try {
+      localStorage.setItem(AI_MODE_STORAGE_KEY, mode);
+    } catch {
+      /* ignore */
+    }
   }, []);
   const [showSuggestModeDialog, setShowSuggestModeDialog] = useState(false);
   const suggestionAudit = useAISuggestionAudit();
@@ -320,34 +372,52 @@ export default function DischargePage() {
   const [generatingSectionId, setGeneratingSectionId] = useState<string | null>(null);
 
   // AI medication suggestions and follow-up generation
-  const [suggestedMeds, setSuggestedMeds] = useState<{ drug_name: string; dosage: string; frequency: string; duration: string }[]>([]);
+  const [suggestedMeds, setSuggestedMeds] = useState<
+    { drug_name: string; dosage: string; frequency: string; duration: string }[]
+  >([]);
   const [generatingMeds, setGeneratingMeds] = useState(false);
   const [generatingPatientInstructions, setGeneratingPatientInstructions] = useState(false);
 
   // ---- Draft auto-save / restore ----
-  const draftSetters = useMemo(() => ({
-    setDischargeType,
-    setSections,
-    setDiagnoses,
-    setPatientInstructions,
-    setFollowUpInstructions,
-    setFollowUpDate,
-    setMedications,
-    setMaternityContinuityAction,
-    setGenerationMode,
-  }), [setGenerationMode]);
+  const draftSetters = useMemo(
+    () => ({
+      setDischargeType,
+      setSections,
+      setDiagnoses,
+      setPatientInstructions,
+      setFollowUpInstructions,
+      setFollowUpDate,
+      setMedications,
+      setMaternityContinuityAction,
+      setGenerationMode,
+    }),
+    [setGenerationMode]
+  );
 
-  const draftValues = useMemo(() => ({
-    dischargeType,
-    sections,
-    diagnoses,
-    patientInstructions,
-    followUpInstructions,
-    followUpDate,
-    medications,
-    maternityContinuityAction,
-    generationMode,
-  }), [dischargeType, sections, diagnoses, patientInstructions, followUpInstructions, followUpDate, medications, maternityContinuityAction, generationMode]);
+  const draftValues = useMemo(
+    () => ({
+      dischargeType,
+      sections,
+      diagnoses,
+      patientInstructions,
+      followUpInstructions,
+      followUpDate,
+      medications,
+      maternityContinuityAction,
+      generationMode,
+    }),
+    [
+      dischargeType,
+      sections,
+      diagnoses,
+      patientInstructions,
+      followUpInstructions,
+      followUpDate,
+      medications,
+      maternityContinuityAction,
+      generationMode,
+    ]
+  );
 
   const { clearDraft, hasDraft } = useDischargeDraft(admissionId, draftValues, draftSetters);
   const [serverDraftHydrated, setServerDraftHydrated] = useState(false);
@@ -384,7 +454,10 @@ export default function DischargePage() {
     setFollowUpDate(persistedDraft.follow_up_date || '');
     setMedications(persistedDraft.discharge_medications || []);
     setMaternityContinuityAction(persistedDraft.maternity_continuity_action || 'NONE');
-    if (persistedDraft.generation_mode === 'suggest' || persistedDraft.generation_mode === 'generate') {
+    if (
+      persistedDraft.generation_mode === 'suggest' ||
+      persistedDraft.generation_mode === 'generate'
+    ) {
       setGenerationMode(persistedDraft.generation_mode);
     }
     if (persistedDraft.treatment_summary) {
@@ -394,12 +467,14 @@ export default function DischargePage() {
         }
         const firstSection = prev[0];
         if (!firstSection) {
-          return [{
-            id: createSectionId(),
-            title: 'Discharge Summary',
-            content: persistedDraft.treatment_summary,
-            source: 'manual',
-          }];
+          return [
+            {
+              id: createSectionId(),
+              title: 'Discharge Summary',
+              content: persistedDraft.treatment_summary,
+              source: 'manual',
+            },
+          ];
         }
         return prev.map((section, index) =>
           index === 0 ? { ...section, content: persistedDraft.treatment_summary } : section
@@ -412,14 +487,7 @@ export default function DischargePage() {
       title: 'Saved Draft Loaded',
       description: 'Recovered a server-saved discharge draft for this admission.',
     });
-  }, [
-    persistedDraft,
-    serverDraftHydrated,
-    hasDraft,
-    admissionId,
-    toast,
-    setGenerationMode,
-  ]);
+  }, [persistedDraft, serverDraftHydrated, hasDraft, admissionId, toast, setGenerationMode]);
 
   // Show restored-draft toast once
   useEffect(() => {
@@ -435,8 +503,8 @@ export default function DischargePage() {
   // Derive editable form sections from the facility's discharge template.
   // Runs once when the template loads, skipped if a draft was restored.
   useEffect(() => {
-    if (sectionsInitFromTemplate) return;   // Already done
-    if (hasDraft) return;                   // Draft restored — keep those sections
+    if (sectionsInitFromTemplate) return; // Already done
+    if (hasDraft) return; // Draft restored — keep those sections
     if (!defaultTemplate?.sections?.length) return;
 
     const templateSections = defaultTemplate.sections
@@ -486,8 +554,10 @@ export default function DischargePage() {
       // Never fall back to admitting_diagnosis_text — that is a DIAGNOSIS, not a complaint.
       fillIfEmpty(
         'complaints',
-        mergeEncounterClinicalText(sourceEncounter?.chief_complaint, ipdEncounter?.chief_complaint)
-          || firstRound?.subjective
+        mergeEncounterClinicalText(
+          sourceEncounter?.chief_complaint,
+          ipdEncounter?.chief_complaint
+        ) || firstRound?.subjective
       );
 
       // Physical Examination → encounter physical_examination → latest ward round objective (stripped of lab/imaging lines)
@@ -497,25 +567,34 @@ export default function DischargePage() {
           /^\s*[\w\s-]+:\s*(?:COMPLETED|CANCELLED|PENDING|REPORTED|ORDERED|COLLECTED)/i,
           /^\s*(?:ultrasound|CT|MRI|X-?ray|echo|ECG|EEG)\b/i,
         ];
-        return text.split('\n').filter((l) => !patterns.some((p) => p.test(l))).join('\n').trim();
+        return text
+          .split('\n')
+          .filter((l) => !patterns.some((p) => p.test(l)))
+          .join('\n')
+          .trim();
       };
       fillIfEmpty(
         'physical_examination',
-        mergeEncounterClinicalText(sourceEncounter?.physical_examination, ipdEncounter?.physical_examination)
-          || (latestRound?.objective ? stripInvestigations(latestRound.objective) : null)
+        mergeEncounterClinicalText(
+          sourceEncounter?.physical_examination,
+          ipdEncounter?.physical_examination
+        ) || (latestRound?.objective ? stripInvestigations(latestRound.objective) : null)
       );
 
       // History → OPD HPI merged with IPD HPI → first ward round subjective
       fillIfEmpty(
         'history',
-        mergeEncounterClinicalText(sourceEncounter?.history_of_present_illness, ipdEncounter?.history_of_present_illness)
-          || firstRound?.subjective
+        mergeEncounterClinicalText(
+          sourceEncounter?.history_of_present_illness,
+          ipdEncounter?.history_of_present_illness
+        ) || firstRound?.subjective
       );
 
       // Investigations → lab and imaging results from orders
       if (orders) {
         const lines: string[] = [];
-        const cleanValue = (v: string) => v.replace(/(\d+\.\d*?)0+(\s)/g, '$1$2').replace(/\.(\s)/g, '$1');
+        const cleanValue = (v: string) =>
+          v.replace(/(\d+\.\d*?)0+(\s)/g, '$1$2').replace(/\.(\s)/g, '$1');
         if (orders.lab_orders) {
           for (const lo of orders.lab_orders) {
             if (lo.status === 'CANCELLED') continue;
@@ -523,7 +602,9 @@ export default function DischargePage() {
               if (item.status === 'CANCELLED') continue;
               const r = item.result;
               if (r?.formatted_value) {
-                lines.push(`${item.test_name}: ${cleanValue(r.formatted_value)}${r.is_critical_result ? ' [CRITICAL]' : ''}`);
+                lines.push(
+                  `${item.test_name}: ${cleanValue(r.formatted_value)}${r.is_critical_result ? ' [CRITICAL]' : ''}`
+                );
               } else {
                 lines.push(`${item.test_name}: ${lo.status}`);
               }
@@ -549,7 +630,14 @@ export default function DischargePage() {
 
       return changed ? updated : prev;
     });
-  }, [sectionsInitFromTemplate, hasDraft, sourceEncounter, ipdEncounter, orders, wardRounds?.results]);
+  }, [
+    sectionsInitFromTemplate,
+    hasDraft,
+    sourceEncounter,
+    ipdEncounter,
+    orders,
+    wardRounds?.results,
+  ]);
 
   // Computed discharge summary from sections (for form submission and validation)
   const dischargeSummary = useMemo(() => assembleSectionsText(sections), [sections]);
@@ -591,7 +679,7 @@ export default function DischargePage() {
     // Chief complaint / complaints — SSOT is OPD + IPD encounters merged
     const complaint = mergeEncounterClinicalText(
       sourceEncounter?.chief_complaint,
-      ipdEncounter?.chief_complaint,
+      ipdEncounter?.chief_complaint
     );
     if (complaint) dedicatedContent['complaints'] = complaint;
 
@@ -599,13 +687,16 @@ export default function DischargePage() {
     if (orders) {
       const lines: string[] = [];
       // Helper: trim trailing zeros from numeric values (e.g. "11.8000 g/dL" → "11.8 g/dL")
-      const cleanValue = (v: string) => v.replace(/(\d+\.\d*?)0+(\s)/g, '$1$2').replace(/\.(\s)/g, '$1');
+      const cleanValue = (v: string) =>
+        v.replace(/(\d+\.\d*?)0+(\s)/g, '$1$2').replace(/\.(\s)/g, '$1');
       if (orders.lab_orders) {
         for (const lo of orders.lab_orders) {
           for (const item of lo.items) {
             const r = item.result;
             if (r?.formatted_value) {
-              lines.push(`- ${item.test_name}: ${cleanValue(r.formatted_value)}${r.is_critical_result ? ' **[CRITICAL]**' : ''}`);
+              lines.push(
+                `- ${item.test_name}: ${cleanValue(r.formatted_value)}${r.is_critical_result ? ' **[CRITICAL]**' : ''}`
+              );
             } else {
               lines.push(`- ${item.test_name}: ${lo.status}`);
             }
@@ -630,12 +721,11 @@ export default function DischargePage() {
     }
 
     // Discharge medications — merge manual meds + selected admission prescriptions
-    const medEntries: { drug_name: string; dosage: string; frequency: string; duration: string }[] = [
-      ...medications.filter((m) => m.drug_name),
-    ];
+    const medEntries: { drug_name: string; dosage: string; frequency: string; duration: string }[] =
+      [...medications.filter((m) => m.drug_name)];
     for (const rx of admissionPrescriptions) {
       if (selectedRxIds.has(rx.id)) {
-        const activeItems = (rx.items || []).filter((item: any) => !item.is_cancelled);
+        const activeItems = (rx.items || []).filter((item) => !item.is_cancelled);
         for (const item of activeItems) {
           medEntries.push({
             drug_name: item.drug_name || '',
@@ -648,7 +738,9 @@ export default function DischargePage() {
     }
     if (medEntries.length > 0) {
       const header = '| Medication | Dosage | Frequency | Duration |\n| --- | --- | --- | --- |';
-      const rows = medEntries.map((m) => `| ${m.drug_name} | ${m.dosage} | ${m.frequency} | ${m.duration || ''} |`);
+      const rows = medEntries.map(
+        (m) => `| ${m.drug_name} | ${m.dosage} | ${m.frequency} | ${m.duration || ''} |`
+      );
       dedicatedContent['discharge_medications'] = [header, ...rows].join('\n');
     }
 
@@ -668,7 +760,21 @@ export default function DischargePage() {
     if (patientInstructions) dedicatedContent['discharge_instructions'] = patientInstructions;
 
     return buildTemplateAlignedContent(defaultTemplate.sections, sections, dedicatedContent, true);
-  }, [sections, defaultTemplate, diagnoses, medications, admissionPrescriptions, selectedRxIds, orders, followUpDate, followUpInstructions, patientInstructions, admission, ipdEncounter?.chief_complaint, sourceEncounter?.chief_complaint]);
+  }, [
+    sections,
+    defaultTemplate,
+    diagnoses,
+    medications,
+    admissionPrescriptions,
+    selectedRxIds,
+    orders,
+    followUpDate,
+    followUpInstructions,
+    patientInstructions,
+    admission,
+    ipdEncounter?.chief_complaint,
+    sourceEncounter?.chief_complaint,
+  ]);
 
   // Calculate length of stay
   const lengthOfStay = useMemo(() => {
@@ -686,8 +792,10 @@ export default function DischargePage() {
   const CLEARANCE_BYPASS_TYPES: DischargeType[] = ['AGAINST_ADVICE', 'DECEASED', 'ABSCONDED'];
   const clearanceRequired = !CLEARANCE_BYPASS_TYPES.includes(dischargeType);
   const clearanceSatisfied = !clearanceRequired || allClearancesComplete;
-  const requiresMaternityContinuityAction = !!admission?.mch_registration && ['NORMAL', 'TRANSFERRED'].includes(dischargeType);
-  const requiresScheduledFollowUpDate = requiresMaternityContinuityAction && maternityContinuityAction === 'SCHEDULE_EARLY_PNC';
+  const requiresMaternityContinuityAction =
+    !!admission?.mch_registration && ['NORMAL', 'TRANSFERRED'].includes(dischargeType);
+  const requiresScheduledFollowUpDate =
+    requiresMaternityContinuityAction && maternityContinuityAction === 'SCHEDULE_EARLY_PNC';
   const minimumFollowUpDate = useMemo(() => startOfDay(addDays(new Date(), 1)), []);
   const isFollowUpDateInvalid = useMemo(() => {
     if (!followUpDate) return false;
@@ -779,17 +887,26 @@ export default function DischargePage() {
     }
     if (fullPatient?.chronic_conditions_summary) {
       comorbidities.push(
-        ...fullPatient.chronic_conditions_summary.split(',').map((c: string) => c.trim()).filter(Boolean)
+        ...fullPatient.chronic_conditions_summary
+          .split(',')
+          .map((c: string) => c.trim())
+          .filter(Boolean)
       );
     }
     if (sourceEncounter?.allergies) {
       allergies.push(
-        ...sourceEncounter.allergies.split(/[\n,]/).map((item: string) => item.trim()).filter(Boolean)
+        ...sourceEncounter.allergies
+          .split(/[\n,]/)
+          .map((item: string) => item.trim())
+          .filter(Boolean)
       );
     }
     if (sourceEncounter?.chronic_conditions) {
       comorbidities.push(
-        ...sourceEncounter.chronic_conditions.split(/[\n,]/).map((item: string) => item.trim()).filter(Boolean)
+        ...sourceEncounter.chronic_conditions
+          .split(/[\n,]/)
+          .map((item: string) => item.trim())
+          .filter(Boolean)
       );
     }
 
@@ -805,7 +922,10 @@ export default function DischargePage() {
     }
     if (sourceEncounter?.current_medications) {
       currentMeds.push(
-        ...sourceEncounter.current_medications.split(/[\n,]/).map((item: string) => item.trim()).filter(Boolean)
+        ...sourceEncounter.current_medications
+          .split(/[\n,]/)
+          .map((item: string) => item.trim())
+          .filter(Boolean)
       );
     }
 
@@ -818,7 +938,10 @@ export default function DischargePage() {
     };
   }, [admission, orders, patientContext?.patient, sourceEncounter]);
 
-  const latestWardRound = useMemo(() => getLatestWardRound(wardRounds?.results ?? []), [wardRounds?.results]);
+  const latestWardRound = useMemo(
+    () => getLatestWardRound(wardRounds?.results ?? []),
+    [wardRounds?.results]
+  );
 
   const admissionClinicalNotes = useMemo(() => {
     return buildAdmissionAIClinicalNotes({
@@ -833,9 +956,14 @@ export default function DischargePage() {
     const vitals = latestRound?.vital_signs;
 
     return {
-      chief_complaint: sourceEncounter?.chief_complaint || admission?.admitting_diagnosis_text || admission?.admitting_diagnosis || undefined,
+      chief_complaint:
+        sourceEncounter?.chief_complaint ||
+        admission?.admitting_diagnosis_text ||
+        admission?.admitting_diagnosis ||
+        undefined,
       clinical_notes: admissionClinicalNotes || undefined,
-      admission_diagnosis: admission?.admitting_diagnosis_text || admission?.admitting_diagnosis || undefined,
+      admission_diagnosis:
+        admission?.admitting_diagnosis_text || admission?.admitting_diagnosis || undefined,
       ward_name: admission?.ward_name || undefined,
       bed_number: admission?.bed_number || undefined,
       admission_status: admission?.admission_status,
@@ -843,12 +971,14 @@ export default function DischargePage() {
       condition_status: latestRound?.condition_status,
       diet: latestRound?.diet_orders || admission?.diet || undefined,
       special_instructions: admission?.special_instructions || undefined,
-      vitals: vitals ? {
-        temperature: vitals.temperature ?? undefined,
-        pulse: vitals.pulse ?? undefined,
-        spo2: vitals.spo2 ?? undefined,
-        rr: vitals.respiratory_rate ?? undefined,
-      } : undefined,
+      vitals: vitals
+        ? {
+            temperature: vitals.temperature ?? undefined,
+            pulse: vitals.pulse ?? undefined,
+            spo2: vitals.spo2 ?? undefined,
+            rr: vitals.respiratory_rate ?? undefined,
+          }
+        : undefined,
     };
   }, [admission, latestWardRound, lengthOfStay, sourceEncounter, admissionClinicalNotes]);
 
@@ -858,8 +988,12 @@ export default function DischargePage() {
 
     if (sourceEncounter) {
       const sourceParts = [
-        sourceEncounter.chief_complaint ? `Chief complaint: ${sourceEncounter.chief_complaint}` : null,
-        sourceEncounter.history_of_present_illness ? `HPI: ${sourceEncounter.history_of_present_illness}` : null,
+        sourceEncounter.chief_complaint
+          ? `Chief complaint: ${sourceEncounter.chief_complaint}`
+          : null,
+        sourceEncounter.history_of_present_illness
+          ? `HPI: ${sourceEncounter.history_of_present_illness}`
+          : null,
         sourceEncounter.assessment ? `Assessment: ${sourceEncounter.assessment}` : null,
       ].filter(Boolean);
       if (sourceParts.length > 0) {
@@ -870,31 +1004,43 @@ export default function DischargePage() {
     // Ward rounds summary (last 3)
     if (wardRounds?.results && wardRounds.results.length > 0) {
       const recentRounds = wardRounds.results.slice(0, 3);
-      const roundsSummary = recentRounds.map((wr) =>
-        `${wr.round_date}: Condition ${wr.condition_status}. S: ${wr.subjective || 'N/A'}. A: ${wr.assessment || 'N/A'}. P: ${wr.plan || 'N/A'}.`
-      ).join(' | ');
+      const roundsSummary = recentRounds
+        .map(
+          (wr) =>
+            `${wr.round_date}: Condition ${wr.condition_status}. S: ${wr.subjective || 'N/A'}. A: ${wr.assessment || 'N/A'}. P: ${wr.plan || 'N/A'}.`
+        )
+        .join(' | ');
       parts.push(`Ward rounds: ${roundsSummary}`);
     }
 
     // Lab orders summary
     if (orders?.lab_orders && orders.lab_orders.length > 0) {
-      const labSummary = orders.lab_orders.map((lo) => {
-        const tests = lo.items.map((item) => {
-          const r = item.result;
-          if (r?.formatted_value) return `${item.test_name}: ${r.formatted_value}${r.is_critical_result ? ' [CRITICAL]' : ''}`;
-          return `${item.test_name}: ${lo.status}`;
-        }).join(', ');
-        return tests;
-      }).join('; ');
+      const labSummary = orders.lab_orders
+        .map((lo) => {
+          const tests = lo.items
+            .map((item) => {
+              const r = item.result;
+              if (r?.formatted_value)
+                return `${item.test_name}: ${r.formatted_value}${r.is_critical_result ? ' [CRITICAL]' : ''}`;
+              return `${item.test_name}: ${lo.status}`;
+            })
+            .join(', ');
+          return tests;
+        })
+        .join('; ');
       parts.push(`Lab results: ${labSummary}`);
     }
 
     // Imaging orders summary
     if (orders?.imaging_orders && orders.imaging_orders.length > 0) {
-      const imagingSummary = orders.imaging_orders.map((io) => {
-        const procs = io.items.map((item) => `${item.procedure_name} (${item.modality})`).join(', ');
-        return `${procs}: ${io.status}`;
-      }).join('; ');
+      const imagingSummary = orders.imaging_orders
+        .map((io) => {
+          const procs = io.items
+            .map((item) => `${item.procedure_name} (${item.modality})`)
+            .join(', ');
+          return `${procs}: ${io.status}`;
+        })
+        .join('; ');
       parts.push(`Imaging: ${imagingSummary}`);
     }
 
@@ -902,7 +1048,9 @@ export default function DischargePage() {
     if (orders?.prescriptions && orders.prescriptions.length > 0) {
       const rxSummary = orders.prescriptions
         .filter((rx) => rx.status !== 'CANCELLED')
-        .map((rx) => rx.items.map((item) => `${item.drug_name} ${item.dosage} ${item.frequency}`).join(', '))
+        .map((rx) =>
+          rx.items.map((item) => `${item.drug_name} ${item.dosage} ${item.frequency}`).join(', ')
+        )
         .join('; ');
       if (rxSummary) parts.push(`Prescriptions during stay: ${rxSummary}`);
     }
@@ -911,15 +1059,24 @@ export default function DischargePage() {
     if (kardex) {
       const kardexParts: string[] = [];
       if (kardex.mobility_status) kardexParts.push(`Mobility: ${kardex.mobility_status}`);
-      if (kardex.dietary_requirements || kardex.diet) kardexParts.push(`Diet: ${kardex.dietary_requirements || kardex.diet}`);
+      if (kardex.dietary_requirements || kardex.diet)
+        kardexParts.push(`Diet: ${kardex.dietary_requirements || kardex.diet}`);
       if (kardex.iv_access) kardexParts.push(`IV: ${kardex.iv_access}`);
-      if (kardex.fall_risk && kardex.fall_risk !== 'LOW') kardexParts.push(`Fall risk: ${kardex.fall_risk}`);
-      if (kardex.pressure_sore_risk && kardex.pressure_sore_risk !== 'LOW') kardexParts.push(`Pressure sore risk: ${kardex.pressure_sore_risk}`);
-      if (kardex.isolation_required) kardexParts.push(`Isolation: ${kardex.isolation_type || 'Yes'}`);
+      if (kardex.fall_risk && kardex.fall_risk !== 'LOW')
+        kardexParts.push(`Fall risk: ${kardex.fall_risk}`);
+      if (kardex.pressure_sore_risk && kardex.pressure_sore_risk !== 'LOW')
+        kardexParts.push(`Pressure sore risk: ${kardex.pressure_sore_risk}`);
+      if (kardex.isolation_required)
+        kardexParts.push(`Isolation: ${kardex.isolation_type || 'Yes'}`);
       // Active nursing care plan entries
-      const activeEntries = (kardex.care_plan_entries || []).filter((e) => e.status === 'ACTIVE' || e.status === 'ONGOING');
+      const activeEntries = (kardex.care_plan_entries || []).filter(
+        (e) => e.status === 'ACTIVE' || e.status === 'ONGOING'
+      );
       if (activeEntries.length > 0) {
-        const cpSummary = activeEntries.slice(0, 3).map((e) => `${e.nursing_diagnosis} (${e.evaluation || e.implementation || 'ongoing'})`).join('; ');
+        const cpSummary = activeEntries
+          .slice(0, 3)
+          .map((e) => `${e.nursing_diagnosis} (${e.evaluation || e.implementation || 'ongoing'})`)
+          .join('; ');
         kardexParts.push(`Active nursing problems: ${cpSummary}`);
       }
       if (kardexParts.length > 0) parts.push(`Nursing kardex: ${kardexParts.join('. ')}`);
@@ -928,19 +1085,25 @@ export default function DischargePage() {
     // Observation charts — recent TPR
     const temps = temperatureData?.results;
     if (temps && temps.length > 0) {
-      const tprSummary = temps.slice(0, 3).map((t) => {
-        const bits = [`${t.temperature}°C`];
-        if (t.pulse != null) bits.push(`HR ${t.pulse}`);
-        if (t.respiratory_rate != null) bits.push(`RR ${t.respiratory_rate}`);
-        return bits.join('/');
-      }).join(', ');
+      const tprSummary = temps
+        .slice(0, 3)
+        .map((t) => {
+          const bits = [`${t.temperature}°C`];
+          if (t.pulse != null) bits.push(`HR ${t.pulse}`);
+          if (t.respiratory_rate != null) bits.push(`RR ${t.respiratory_rate}`);
+          return bits.join('/');
+        })
+        .join(', ');
       parts.push(`Recent TPR: ${tprSummary}`);
     }
 
     // BP monitoring
     const bps = bpData?.results;
     if (bps && bps.length > 0) {
-      const bpSummary = bps.slice(0, 3).map((bp) => bp.bp_display || `${bp.systolic}/${bp.diastolic}`).join(', ');
+      const bpSummary = bps
+        .slice(0, 3)
+        .map((bp) => bp.bp_display || `${bp.systolic}/${bp.diastolic}`)
+        .join(', ');
       parts.push(`Recent BP: ${bpSummary}`);
     }
 
@@ -951,21 +1114,35 @@ export default function DischargePage() {
       const fluidParts: string[] = [];
       if (latest.total_intake_ml != null) fluidParts.push(`Intake ${latest.total_intake_ml}ml`);
       if (latest.total_output_ml != null) fluidParts.push(`Output ${latest.total_output_ml}ml`);
-      if (latest.net_balance_ml != null) fluidParts.push(`Net ${latest.net_balance_ml > 0 ? '+' : ''}${latest.net_balance_ml}ml`);
-      if (fluidParts.length > 0) parts.push(`Fluid balance (${latest.chart_date}): ${fluidParts.join(', ')}`);
+      if (latest.net_balance_ml != null)
+        fluidParts.push(`Net ${latest.net_balance_ml > 0 ? '+' : ''}${latest.net_balance_ml}ml`);
+      if (fluidParts.length > 0)
+        parts.push(`Fluid balance (${latest.chart_date}): ${fluidParts.join(', ')}`);
     }
 
     // Blood transfusions
     const transfusions = transfusionData?.results;
     if (transfusions && transfusions.length > 0) {
-      const txSummary = transfusions.map((t) =>
-        `${t.blood_product_display || t.blood_product} ${t.amount_ml}ml${t.reaction_occurred ? ' [REACTION]' : ''}`
-      ).join('; ');
+      const txSummary = transfusions
+        .map(
+          (t) =>
+            `${t.blood_product_display || t.blood_product} ${t.amount_ml}ml${t.reaction_occurred ? ' [REACTION]' : ''}`
+        )
+        .join('; ');
       parts.push(`Blood transfusions: ${txSummary}`);
     }
 
     return parts.join(' \n');
-  }, [sourceEncounter, wardRounds, orders, kardex, temperatureData, bpData, fluidBalanceData, transfusionData]);
+  }, [
+    sourceEncounter,
+    wardRounds,
+    orders,
+    kardex,
+    temperatureData,
+    bpData,
+    fluidBalanceData,
+    transfusionData,
+  ]);
 
   // Build suggested diagnoses from admission data + encounter + AI care plans
   const suggestedDiagnoses = useMemo(() => {
@@ -993,19 +1170,27 @@ export default function DischargePage() {
 
     // 2. Encounter diagnoses (from the source OPD encounter)
     if (encounterDiagnoses && Array.isArray(encounterDiagnoses)) {
-      for (const d of encounterDiagnoses as any[]) {
+      for (const d of encounterDiagnoses) {
         let key = '';
         let codeVal: DiagnosisCodeValue = emptyDiagnosisCodeValue();
 
         if (d.icd11_code) {
           key = d.icd11_code;
-          codeVal = { ...codeVal, icd11Code: d.icd11_code, icd11Display: `${d.icd11_code} - ${d.icd11_display || d.free_text_diagnosis || ''}` };
+          codeVal = {
+            ...codeVal,
+            icd11Code: d.icd11_code,
+            icd11Display: `${d.icd11_code} - ${d.icd11_display || d.free_text_diagnosis || ''}`,
+          };
         } else if (d.icd10_code || d.icd10_display) {
           const display = d.icd10_display || '';
           const codeStr = display.split(' - ')[0] || String(d.icd10_code || '');
           key = codeStr;
           const text = display.split(' - ').slice(1).join(' - ') || d.free_text_diagnosis || '';
-          codeVal = { ...codeVal, icd10Code: d.icd10_code || null, icd10Display: `${codeStr} - ${text}` };
+          codeVal = {
+            ...codeVal,
+            icd10Code: d.icd10_code || null,
+            icd10Display: `${codeStr} - ${text}`,
+          };
         } else if (d.free_text_diagnosis) {
           key = d.free_text_diagnosis;
           codeVal = { ...codeVal, icd10Display: d.free_text_diagnosis };
@@ -1025,14 +1210,19 @@ export default function DischargePage() {
 
     // 3. AI Care Plan conditions (if stored)
     if (storedCarePlans && Array.isArray(storedCarePlans)) {
-      for (const cp of storedCarePlans as any[]) {
-        const condition = cp.condition || cp.primary_diagnosis || '';
+      for (const cp of storedCarePlans as StoredCarePlanResult[]) {
+        const conditionFromResult =
+          typeof cp.result_data?.condition === 'string' ? cp.result_data.condition : '';
+        const condition = conditionFromResult || cp.primary_diagnosis || '';
         if (condition && !seenCodes.has(condition)) {
           seenCodes.add(condition);
           suggestions.push({
             label: condition,
             source: 'TibaBot',
-            entry: { role: 'SECONDARY', code: { ...emptyDiagnosisCodeValue(), icd10Display: condition } },
+            entry: {
+              role: 'SECONDARY',
+              code: { ...emptyDiagnosisCodeValue(), icd10Display: condition },
+            },
           });
         }
       }
@@ -1054,10 +1244,7 @@ export default function DischargePage() {
   useEffect(() => {
     if (!setEncounterAwareContext || !admission) return;
 
-    setEncounterAwareContext(
-      patientCtx,
-      encounterCtx
-    );
+    setEncounterAwareContext(patientCtx, encounterCtx);
 
     return () => {
       setEncounterAwareContext(null, null);
@@ -1114,7 +1301,7 @@ export default function DischargePage() {
     handleGeneratePatientInstructions,
     handleGenerateMedSuggestions,
   } = useDischargeAI({
-    admission,
+    admission: admission ?? null,
     diagnoses,
     medications,
     lengthOfStay,
@@ -1126,7 +1313,7 @@ export default function DischargePage() {
     generationMode,
     orders,
     wardRounds,
-    storedCarePlans: storedCarePlans as any[] | undefined,
+    storedCarePlans,
     temperatureReadings: temperatureData?.results,
     bpReadings: bpData?.results,
     templateLayout: defaultTemplate?.layout,
@@ -1146,7 +1333,9 @@ export default function DischargePage() {
   // Section management handlers
   const updateSection = useCallback((sectionId: string, newContent: string) => {
     setSections((prev) =>
-      prev.map((s) => s.id === sectionId ? { ...s, content: newContent, advisories: undefined } : s)
+      prev.map((s) =>
+        s.id === sectionId ? { ...s, content: newContent, advisories: undefined } : s
+      )
     );
   }, []);
 
@@ -1161,15 +1350,16 @@ export default function DischargePage() {
     setEditingSectionId(newSection.id);
   }, []);
 
-  const handleRemoveSection = useCallback((sectionId: string) => {
-    setSections((prev) => prev.filter((s) => s.id !== sectionId));
-    if (editingSectionId === sectionId) setEditingSectionId(null);
-  }, [editingSectionId]);
+  const handleRemoveSection = useCallback(
+    (sectionId: string) => {
+      setSections((prev) => prev.filter((s) => s.id !== sectionId));
+      if (editingSectionId === sectionId) setEditingSectionId(null);
+    },
+    [editingSectionId]
+  );
 
   const handleRenameSection = useCallback((sectionId: string, newTitle: string) => {
-    setSections((prev) =>
-      prev.map((s) => s.id === sectionId ? { ...s, title: newTitle } : s)
-    );
+    setSections((prev) => prev.map((s) => (s.id === sectionId ? { ...s, title: newTitle } : s)));
   }, []);
 
   // Helper to extract code string from DiagnosisEntry
@@ -1177,7 +1367,8 @@ export default function DischargePage() {
     entry.code.icd11Code || entry.code.icd10Display?.split(' - ')[0] || '';
   const getDiagDescription = (entry: DiagnosisEntry) =>
     entry.code.icd11Display?.split(' - ').slice(1).join(' - ') ||
-    entry.code.icd10Display?.split(' - ').slice(1).join(' - ') || '';
+    entry.code.icd10Display?.split(' - ').slice(1).join(' - ') ||
+    '';
 
   const buildDraftMedicationList = useCallback((): DischargeMedication[] => {
     const rxMeds: DischargeMedication[] = admissionPrescriptions
@@ -1197,7 +1388,7 @@ export default function DischargePage() {
       );
     const manualMeds = medications
       .filter((m) => m.drug_name)
-      .map((m) => ({ ...m, dispensing_type: m.dispensing_type ?? 'EXTERNAL' as const }));
+      .map((m) => ({ ...m, dispensing_type: m.dispensing_type ?? ('EXTERNAL' as const) }));
     return [...rxMeds, ...manualMeds];
   }, [admissionPrescriptions, medications, rxDispensingTypes, selectedRxIds]);
 
@@ -1205,8 +1396,12 @@ export default function DischargePage() {
     if (!admission) return;
 
     const primaryEntry = diagnoses.find((d) => d.role === 'PRIMARY');
-    const primaryCode = primaryEntry ? getDiagCode(primaryEntry) : admission.admitting_diagnosis || '';
-    const primaryText = primaryEntry ? getDiagDescription(primaryEntry) : admission.admitting_diagnosis_text || '';
+    const primaryCode = primaryEntry
+      ? getDiagCode(primaryEntry)
+      : admission.admitting_diagnosis || '';
+    const primaryText = primaryEntry
+      ? getDiagDescription(primaryEntry)
+      : admission.admitting_diagnosis_text || '';
 
     try {
       await saveDischargeDraft.mutateAsync({
@@ -1220,16 +1415,19 @@ export default function DischargePage() {
         follow_up_instructions: followUpInstructions || undefined,
         referral_facility: undefined,
         referral_reason: undefined,
-        maternity_continuity_action: admission.mch_registration ? maternityContinuityAction : undefined,
+        maternity_continuity_action: admission.mch_registration
+          ? maternityContinuityAction
+          : undefined,
         discharge_medications: buildDraftMedicationList(),
         procedures_performed: '',
         generation_mode: generationMode,
       });
       toast({
         title: 'Draft Saved',
-        description: primaryCode || primaryText
-          ? 'Discharge summary draft saved to server.'
-          : 'Draft saved. Add diagnosis before final discharge.',
+        description:
+          primaryCode || primaryText
+            ? 'Discharge summary draft saved to server.'
+            : 'Draft saved. Add diagnosis before final discharge.',
       });
     } catch {
       toast({
@@ -1257,8 +1455,12 @@ export default function DischargePage() {
   const executeDischarge = async () => {
     if (!admission) return;
     const primaryEntry = diagnoses.find((d) => d.role === 'PRIMARY');
-    const primaryCode = primaryEntry ? getDiagCode(primaryEntry) : admission.admitting_diagnosis || '';
-    const primaryText = primaryEntry ? getDiagDescription(primaryEntry) : admission.admitting_diagnosis_text || '';
+    const primaryCode = primaryEntry
+      ? getDiagCode(primaryEntry)
+      : admission.admitting_diagnosis || '';
+    const primaryText = primaryEntry
+      ? getDiagDescription(primaryEntry)
+      : admission.admitting_diagnosis_text || '';
     try {
       // Mark selected prescriptions as discharge medications on the server
       const rxUpdatePromises = Array.from(selectedRxIds).map((rxId) => {
@@ -1319,7 +1521,9 @@ export default function DischargePage() {
           })),
         treatment_summary: dischargeSummary,
         patient_instructions: patientInstructions,
-        maternity_continuity_action: admission.mch_registration ? maternityContinuityAction : undefined,
+        maternity_continuity_action: admission.mch_registration
+          ? maternityContinuityAction
+          : undefined,
         follow_up_date: followUpDate || undefined,
         follow_up_instructions: followUpInstructions || undefined,
         discharge_medications: allDischargeMeds,
@@ -1340,10 +1544,17 @@ export default function DischargePage() {
         try {
           const rxResult = await inpatientApi.createDischargePrescriptions(result.id);
           if (rxResult.created.length > 0) {
-            toast({ title: 'Prescriptions Created', description: `${rxResult.created.length} prescription(s) auto-created for pharmacy dispensing.` });
+            toast({
+              title: 'Prescriptions Created',
+              description: `${rxResult.created.length} prescription(s) auto-created for pharmacy dispensing.`,
+            });
           }
           if (rxResult.failed.length > 0) {
-            toast({ title: 'Some Medications Not Matched', description: `${rxResult.failed.map((f) => f.drug_name).join(', ')} not found in drug catalog. Create prescriptions manually.`, variant: 'destructive' });
+            toast({
+              title: 'Some Medications Not Matched',
+              description: `${rxResult.failed.map((f) => f.drug_name).join(', ')} not found in drug catalog. Create prescriptions manually.`,
+              variant: 'destructive',
+            });
           }
         } catch {
           // Non-blocking — discharge already succeeded
@@ -1354,7 +1565,10 @@ export default function DischargePage() {
       // Redirect to Last Office for deceased discharges so clinician can complete
       // cause of death, certification, and morgue details
       if (dischargeType === 'DECEASED' && result.death_record_id) {
-        toast({ title: 'Patient Deceased', description: 'Redirecting to Last Office to complete death record...' });
+        toast({
+          title: 'Patient Deceased',
+          description: 'Redirecting to Last Office to complete death record...',
+        });
         router.push(`/last-office/${result.death_record_id}`);
       } else {
         toast({ title: 'Success', description: 'Patient discharged successfully' });
@@ -1440,15 +1654,25 @@ export default function DischargePage() {
         const allDiagTexts = diagnoses
           .map((d) => d.code.icd11Display || d.code.icd10Display || '')
           .filter(Boolean);
-        if (allDiagTexts.length === 0 && (admission.admitting_diagnosis_text || admission.admitting_diagnosis)) {
-          allDiagTexts.push(admission.admitting_diagnosis_text || admission.admitting_diagnosis || '');
+        if (
+          allDiagTexts.length === 0 &&
+          (admission.admitting_diagnosis_text || admission.admitting_diagnosis)
+        ) {
+          allDiagTexts.push(
+            admission.admitting_diagnosis_text || admission.admitting_diagnosis || ''
+          );
         }
         const medNames = medications.filter((m) => m.drug_name).map((m) => m.drug_name);
         const cdsResult = await cdsEvaluate.mutateAsync({
           medications: medNames,
           diagnoses: allDiagTexts,
           patient_age: admission.patient_age,
-          patient_sex: admission.patient_gender === 'M' ? 'male' : admission.patient_gender === 'F' ? 'female' : null,
+          patient_sex:
+            admission.patient_gender === 'M'
+              ? 'male'
+              : admission.patient_gender === 'F'
+                ? 'female'
+                : null,
         });
         if (cdsResult.alerts && cdsResult.alerts.length > 0) {
           setCdsAlerts(cdsResult.alerts);
@@ -1468,7 +1692,8 @@ export default function DischargePage() {
     if (!defaultTemplate) {
       toast({
         title: 'Using default print layout',
-        description: 'No discharge template configured for this facility. Go to Settings → Facility → Discharge Templates to set one up.',
+        description:
+          'No discharge template configured for this facility. Go to Settings → Facility → Discharge Templates to set one up.',
       });
     }
     printDischargeDocument({
@@ -1477,14 +1702,24 @@ export default function DischargePage() {
       patientName: admission?.patient_name || '',
       patientMRN: patientContext?.patient?.mrn,
       patientAge: admission?.patient_age ? `${admission.patient_age} Years` : undefined,
-      patientSex: admission?.patient_gender === 'M' ? 'Male' : admission?.patient_gender === 'F' ? 'Female' : admission?.patient_gender === 'O' ? 'Other' : undefined,
+      patientSex:
+        admission?.patient_gender === 'M'
+          ? 'Male'
+          : admission?.patient_gender === 'F'
+            ? 'Female'
+            : admission?.patient_gender === 'O'
+              ? 'Other'
+              : undefined,
       admissionNumber: admission?.admission_number,
       wardName: admission?.ward_name || '',
       admissionDate: admission?.admission_date,
-      admittingDiagnosis: admission?.admitting_diagnosis_text || admission?.admitting_diagnosis || '',
+      admittingDiagnosis:
+        admission?.admitting_diagnosis_text || admission?.admitting_diagnosis || '',
       facilityName: facility?.name,
       facilityMflCode: facility?.mfl_code,
-      facilityLocation: facilityDetail ? `${facilityDetail.sub_county_name}, ${facilityDetail.county_name}` : undefined,
+      facilityLocation: facilityDetail
+        ? `${facilityDetail.sub_county_name}, ${facilityDetail.county_name}`
+        : undefined,
       facilityLogoUrl: facilityDetail?.effective_logo_url,
       consultantName: deriveConsultantName(admission, wardRounds?.results),
       departmentName: admission?.ward_name || '',
@@ -1502,7 +1737,7 @@ export default function DischargePage() {
     return (
       <div className="container mx-auto py-12 text-center">
         <p className="text-xl font-semibold">Admission not found</p>
-        <p className="text-muted-foreground mt-2">
+        <p className="mt-2 text-muted-foreground">
           Cannot discharge a patient without an active admission.
         </p>
         <Button onClick={() => router.push('/admissions')} className="mt-4">
@@ -1516,7 +1751,7 @@ export default function DischargePage() {
     return (
       <div className="container mx-auto py-12 text-center">
         <p className="text-xl font-semibold">Patient Already Discharged</p>
-        <p className="text-muted-foreground mt-2">
+        <p className="mt-2 text-muted-foreground">
           This admission has already been discharged or is inactive.
         </p>
         <Button onClick={() => router.push(`/admissions/${admissionId}`)} className="mt-4">
@@ -1527,7 +1762,7 @@ export default function DischargePage() {
   }
 
   return (
-    <div className="container mx-auto py-4 sm:py-6 px-3 sm:px-4 lg:px-8 space-y-4 sm:space-y-6 pb-24 sm:pb-6">
+    <div className="container mx-auto space-y-4 px-3 py-4 pb-24 sm:space-y-6 sm:px-4 sm:py-6 sm:pb-6 lg:px-8">
       <PageHeader
         title="Discharge Patient"
         helpContent={`Discharging ${admission.patient_name} from ${admission.ward_name}. Complete the discharge summary, medications, and clearances.`}
@@ -1540,20 +1775,35 @@ export default function DischargePage() {
             <CardTitle className="text-lg">Admission Summary</CardTitle>
             <div className="flex flex-wrap items-center gap-2">
               {patientContext?.hasSHA && (
-                <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-800">SHA</Badge>
+                <Badge
+                  variant="outline"
+                  className="border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-300"
+                >
+                  SHA
+                </Badge>
               )}
               {patientContext?.isVerified && (
-                <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-300 dark:border-green-800">CR Verified</Badge>
+                <Badge
+                  variant="outline"
+                  className="border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-950 dark:text-green-300"
+                >
+                  CR Verified
+                </Badge>
               )}
               {patientContext?.isSensitive && (
-                <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 dark:bg-red-950 dark:text-red-300 dark:border-red-800">Sensitive</Badge>
+                <Badge
+                  variant="outline"
+                  className="border-red-200 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-300"
+                >
+                  Sensitive
+                </Badge>
               )}
             </div>
           </div>
         </CardHeader>
         <CardContent>
           {/* Mobile: compact key-value list; sm+: grid */}
-          <div className="hidden sm:grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="hidden gap-4 sm:grid sm:grid-cols-2 lg:grid-cols-5">
             <div>
               <p className="text-sm text-muted-foreground">Admission Number</p>
               <p className="font-medium">{admission.admission_number}</p>
@@ -1567,47 +1817,55 @@ export default function DischargePage() {
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Ward / Bed</p>
-              <p className="font-medium">{admission.ward_name} - {admission.bed_number}</p>
+              <p className="font-medium">
+                {admission.ward_name} - {admission.bed_number}
+              </p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Admitting Diagnosis</p>
-              <p className="font-medium">{admission.admitting_diagnosis_text || admission.admitting_diagnosis}</p>
+              <p className="font-medium">
+                {admission.admitting_diagnosis_text || admission.admitting_diagnosis}
+              </p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Length of Stay</p>
-              <p className="font-medium flex items-center gap-1">
+              <p className="flex items-center gap-1 font-medium">
                 <Clock className="h-4 w-4" />
                 {lengthOfStay} days
               </p>
             </div>
           </div>
           {/* Mobile compact layout */}
-          <div className="sm:hidden space-y-2 text-sm">
+          <div className="space-y-2 text-sm sm:hidden">
             <div className="flex justify-between gap-2">
-              <span className="text-muted-foreground shrink-0">Patient</span>
-              <span className="font-medium text-right">{admission.patient_name}</span>
+              <span className="shrink-0 text-muted-foreground">Patient</span>
+              <span className="text-right font-medium">{admission.patient_name}</span>
             </div>
             <div className="flex justify-between gap-2">
-              <span className="text-muted-foreground shrink-0">Admission #</span>
-              <span className="font-medium text-right break-all">{admission.admission_number}</span>
+              <span className="shrink-0 text-muted-foreground">Admission #</span>
+              <span className="break-all text-right font-medium">{admission.admission_number}</span>
             </div>
             {patientContext?.patient?.mrn && (
               <div className="flex justify-between gap-2">
-                <span className="text-muted-foreground shrink-0">MRN</span>
-                <span className="font-medium text-right">{patientContext.patient.mrn}</span>
+                <span className="shrink-0 text-muted-foreground">MRN</span>
+                <span className="text-right font-medium">{patientContext.patient.mrn}</span>
               </div>
             )}
             <div className="flex justify-between gap-2">
-              <span className="text-muted-foreground shrink-0">Ward / Bed</span>
-              <span className="font-medium text-right">{admission.ward_name} - {admission.bed_number}</span>
+              <span className="shrink-0 text-muted-foreground">Ward / Bed</span>
+              <span className="text-right font-medium">
+                {admission.ward_name} - {admission.bed_number}
+              </span>
             </div>
             <div className="flex justify-between gap-2">
-              <span className="text-muted-foreground shrink-0">Diagnosis</span>
-              <span className="font-medium text-right">{admission.admitting_diagnosis_text || admission.admitting_diagnosis}</span>
+              <span className="shrink-0 text-muted-foreground">Diagnosis</span>
+              <span className="text-right font-medium">
+                {admission.admitting_diagnosis_text || admission.admitting_diagnosis}
+              </span>
             </div>
             <div className="flex justify-between gap-2">
-              <span className="text-muted-foreground shrink-0">Length of Stay</span>
-              <span className="font-medium flex items-center gap-1">
+              <span className="shrink-0 text-muted-foreground">Length of Stay</span>
+              <span className="flex items-center gap-1 font-medium">
                 <Clock className="h-3.5 w-3.5" />
                 {lengthOfStay} days
               </span>
@@ -1617,7 +1875,10 @@ export default function DischargePage() {
             <div className="mt-4 rounded-md border border-amber-200 bg-amber-50/70 p-3 text-sm">
               <p className="font-medium text-amber-950">Maternity Episode</p>
               <p className="mt-1 text-amber-900">
-                Linked to {admission.mch_registration_number || `MCH #${admission.mch_registration}`}. Choose whether discharge should schedule early PNC or send the mother directly to the PNC queue.
+                Linked to{' '}
+                {admission.mch_registration_number || `MCH #${admission.mch_registration}`}. Choose
+                whether discharge should schedule early PNC or send the mother directly to the PNC
+                queue.
               </p>
               <Button asChild variant="link" className="mt-1 h-auto p-0 text-amber-900">
                 <Link href={`/mch/${admission.mch_registration}`}>Open MCH registration</Link>
@@ -1632,31 +1893,42 @@ export default function DischargePage() {
         <DischargeReadinessPanel
           admissionId={admissionId}
           patientAge={admission.patient_age ?? 0}
-          primaryDiagnosis={admission.admitting_diagnosis_text || admission.admitting_diagnosis || ''}
+          primaryDiagnosis={
+            admission.admitting_diagnosis_text || admission.admitting_diagnosis || ''
+          }
           admissionType={
-            admission.ward_type === 'SURGICAL' ? 'surgical'
-              : admission.ward_type === 'MATERNITY' ? 'obstetric'
-              : admission.ward_type === 'PEDIATRIC' ? 'pediatric'
-              : 'medical'
+            admission.ward_type === 'SURGICAL'
+              ? 'surgical'
+              : admission.ward_type === 'MATERNITY'
+                ? 'obstetric'
+                : admission.ward_type === 'PEDIATRIC'
+                  ? 'pediatric'
+                  : 'medical'
           }
           daysAdmitted={lengthOfStay}
-          vitalsHistory={wardRounds?.results?.map((wr) => {
-            const v = wr.vital_signs;
-            const bpStr = v?.blood_pressure || wr.blood_pressure;
-            const bp = bpStr?.split('/').map(Number);
-            return {
-              timestamp: `${wr.round_date}T${wr.round_time}`,
-              heart_rate: v?.pulse ?? wr.pulse ?? null,
-              systolic_bp: bp?.[0] ?? null,
-              diastolic_bp: bp?.[1] ?? null,
-              temperature: v?.temperature ?? wr.temperature ?? null,
-              respiratory_rate: v?.respiratory_rate ?? wr.respiratory_rate ?? null,
-              oxygen_saturation: v?.spo2 ?? wr.spo2 ?? null,
-            };
-          }).filter((v) =>
-            v.heart_rate != null || v.temperature != null || v.oxygen_saturation != null ||
-            v.systolic_bp != null || v.respiratory_rate != null
-          )}
+          vitalsHistory={wardRounds?.results
+            ?.map((wr) => {
+              const v = wr.vital_signs;
+              const bpStr = v?.blood_pressure || wr.blood_pressure;
+              const bp = bpStr?.split('/').map(Number);
+              return {
+                timestamp: `${wr.round_date}T${wr.round_time}`,
+                heart_rate: v?.pulse ?? wr.pulse ?? null,
+                systolic_bp: bp?.[0] ?? null,
+                diastolic_bp: bp?.[1] ?? null,
+                temperature: v?.temperature ?? wr.temperature ?? null,
+                respiratory_rate: v?.respiratory_rate ?? wr.respiratory_rate ?? null,
+                oxygen_saturation: v?.spo2 ?? wr.spo2 ?? null,
+              };
+            })
+            .filter(
+              (v) =>
+                v.heart_rate != null ||
+                v.temperature != null ||
+                v.oxygen_saturation != null ||
+                v.systolic_bp != null ||
+                v.respiratory_rate != null
+            )}
           labResults={orders?.lab_orders?.flatMap((lo) =>
             lo.items
               .filter((item) => item.has_result && item.result && item.result.numeric_value != null)
@@ -1683,7 +1955,10 @@ export default function DischargePage() {
         </CardHeader>
         <CardContent>
           <div className="space-y-2">
-            <Select value={dischargeType} onValueChange={(v) => setDischargeType(v as DischargeType)}>
+            <Select
+              value={dischargeType}
+              onValueChange={(v) => setDischargeType(v as DischargeType)}
+            >
               <SelectTrigger id="discharge-type" aria-label="Discharge Type">
                 <SelectValue />
               </SelectTrigger>
@@ -1696,9 +1971,11 @@ export default function DischargePage() {
               </SelectContent>
             </Select>
             {!clearanceRequired && (
-              <p className="text-sm text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
+              <p className="flex items-center gap-1.5 text-sm text-amber-600 dark:text-amber-400">
                 <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-                Department clearances are bypassed for {DISCHARGE_TYPES.find((t) => t.value === dischargeType)?.label?.toLowerCase()} discharges.
+                Department clearances are bypassed for{' '}
+                {DISCHARGE_TYPES.find((t) => t.value === dischargeType)?.label?.toLowerCase()}{' '}
+                discharges.
               </p>
             )}
           </div>
@@ -1711,11 +1988,14 @@ export default function DischargePage() {
             <CardTitle className="text-lg">Inter-Facility Transfer Linkage</CardTitle>
             {openInterFacilityTransfer ? (
               <CardDescription>
-                Linked to existing transfer workflow <span className="font-medium">{openInterFacilityTransfer.transfer_number}</span> ({openInterFacilityTransfer.status_display || openInterFacilityTransfer.status}).
+                Linked to existing transfer workflow{' '}
+                <span className="font-medium">{openInterFacilityTransfer.transfer_number}</span> (
+                {openInterFacilityTransfer.status_display || openInterFacilityTransfer.status}).
               </CardDescription>
             ) : (
               <CardDescription>
-                No open transfer workflow found for this admission. Complete this mini-sheet to create and link one during discharge.
+                No open transfer workflow found for this admission. Complete this mini-sheet to
+                create and link one during discharge.
               </CardDescription>
             )}
           </CardHeader>
@@ -1752,7 +2032,9 @@ export default function DischargePage() {
                   <Label>Reason Code</Label>
                   <Select
                     value={transferReasonCode}
-                    onValueChange={(value) => setTransferReasonCode(value as InterFacilityTransferReason)}
+                    onValueChange={(value) =>
+                      setTransferReasonCode(value as InterFacilityTransferReason)
+                    }
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -1772,7 +2054,9 @@ export default function DischargePage() {
                   <Label>Priority</Label>
                   <Select
                     value={transferPriority}
-                    onValueChange={(value) => setTransferPriority(value as InterFacilityTransferPriority)}
+                    onValueChange={(value) =>
+                      setTransferPriority(value as InterFacilityTransferPriority)
+                    }
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -1903,7 +2187,7 @@ export default function DischargePage() {
                 variant="outline"
                 size="sm"
                 onClick={() => handlePrint(printableSummary, 'Discharge Summary')}
-                className="gap-1.5 text-xs shrink-0 w-full sm:w-auto"
+                className="w-full shrink-0 gap-1.5 text-xs sm:w-auto"
               >
                 <Printer className="h-3.5 w-3.5" />
                 Print
@@ -1921,12 +2205,17 @@ export default function DischargePage() {
                   <Label>Suggested Diagnoses</Label>
                   <HelpPopover content="Quick-add diagnoses from the admitting diagnosis, encounter record, or TibaBot care plans. Click + to add them to the discharge diagnoses below." />
                 </div>
-                <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2">
+                <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
                   {suggestedDiagnoses.map((suggestion, idx) => {
                     // Check if already added
                     const alreadyAdded = diagnoses.some((d) => {
-                      const existingKey = d.code.icd11Code || d.code.icd10Display || d.code.snomedCode || '';
-                      const suggestionKey = suggestion.entry.code.icd11Code || suggestion.entry.code.icd10Display || suggestion.entry.code.snomedCode || '';
+                      const existingKey =
+                        d.code.icd11Code || d.code.icd10Display || d.code.snomedCode || '';
+                      const suggestionKey =
+                        suggestion.entry.code.icd11Code ||
+                        suggestion.entry.code.icd10Display ||
+                        suggestion.entry.code.snomedCode ||
+                        '';
                       return existingKey === suggestionKey;
                     });
                     return (
@@ -1935,20 +2224,22 @@ export default function DischargePage() {
                         type="button"
                         disabled={alreadyAdded}
                         onClick={() => handleAddSuggestion(suggestion.entry)}
-                        className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-sm transition-colors max-w-full ${
+                        className={`inline-flex max-w-full items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-sm transition-colors ${
                           alreadyAdded
-                            ? 'border-muted bg-muted/50 text-muted-foreground cursor-not-allowed'
-                            : 'border-primary/20 bg-primary/5 hover:bg-primary/10 hover:border-primary/40'
+                            ? 'cursor-not-allowed border-muted bg-muted/50 text-muted-foreground'
+                            : 'border-primary/20 bg-primary/5 hover:border-primary/40 hover:bg-primary/10'
                         }`}
                       >
                         {!alreadyAdded && (
-                          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground shrink-0">
+                          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
                             <Plus className="h-3.5 w-3.5" />
                           </span>
                         )}
-                        {alreadyAdded && <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-green-600" />}
-                        <span className="truncate min-w-0">{suggestion.label}</span>
-                        <Badge variant="secondary" className="text-[10px] shrink-0">
+                        {alreadyAdded && (
+                          <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-green-600" />
+                        )}
+                        <span className="min-w-0 truncate">{suggestion.label}</span>
+                        <Badge variant="secondary" className="shrink-0 text-[10px]">
                           {suggestion.source}
                         </Badge>
                       </button>
@@ -1961,21 +2252,30 @@ export default function DischargePage() {
             <MultiDiagnosisInput
               value={diagnoses}
               onChange={setDiagnoses}
-              label={<><span className="sm:hidden">Discharge Dx(s)</span><span className="hidden sm:inline">Discharge Diagnoses</span></>}
+              label={
+                <>
+                  <span className="sm:hidden">Discharge Dx(s)</span>
+                  <span className="hidden sm:inline">Discharge Diagnoses</span>
+                </>
+              }
             />
           </div>
 
           {/* Summary Sections */}
-          <div className={`space-y-3 rounded-lg p-3 -m-3 transition-colors ${hasAttemptedSubmit && !dischargeSummary ? 'ring-2 ring-destructive/50 bg-destructive/5' : ''}`}>
+          <div
+            className={`-m-3 space-y-3 rounded-lg p-3 transition-colors ${hasAttemptedSubmit && !dischargeSummary ? 'bg-destructive/5 ring-2 ring-destructive/50' : ''}`}
+          >
             <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2 min-w-0">
+              <div className="flex min-w-0 items-center gap-2">
                 <Label className="shrink-0">Summary Sections *</Label>
                 {hasAttemptedSubmit && !dischargeSummary && (
-                  <Badge variant="destructive" className="text-[10px] px-1.5 py-0 shrink-0">Required</Badge>
+                  <Badge variant="destructive" className="shrink-0 px-1.5 py-0 text-[10px]">
+                    Required
+                  </Badge>
                 )}
                 <HelpPopover content="Add, remove, and customize sections. Use 'Generate with TibaBot' per section or 'Generate All' to draft the entire summary at once." />
               </div>
-              <div className="flex items-center gap-2 shrink-0">
+              <div className="flex shrink-0 items-center gap-2">
                 {isAIEnabled && (
                   <Button
                     type="button"
@@ -1998,17 +2298,19 @@ export default function DischargePage() {
 
             {/* Readiness warning — shown when last assessment returned 'not_ready' */}
             {isNotReady && (
-              <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50/70 dark:border-amber-800 dark:bg-amber-950/30 px-3 py-2 text-sm">
-                <ShieldAlert className="h-4 w-4 mt-0.5 shrink-0 text-amber-600 dark:text-amber-400" />
+              <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50/70 px-3 py-2 text-sm dark:border-amber-800 dark:bg-amber-950/30">
+                <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
                 <span className="text-amber-900 dark:text-amber-200">
-                  Discharge readiness assessment shows <strong>Not Ready</strong> ({latestReadiness?.unmet_criteria_count ?? 0} unmet criteria). Review the assessment panel before proceeding.
+                  Discharge readiness assessment shows <strong>Not Ready</strong> (
+                  {latestReadiness?.unmet_criteria_count ?? 0} unmet criteria). Review the
+                  assessment panel before proceeding.
                 </span>
               </div>
             )}
 
             {/* AI Mode Toggle */}
             {isAIEnabled && (
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between rounded-lg border bg-muted/30 px-3 py-2">
+              <div className="flex flex-col gap-2 rounded-lg border bg-muted/30 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-2">
                   <BrainCircuit className="h-4 w-4 text-purple-500" />
                   <span className="text-sm font-medium">TibaBot Mode</span>
@@ -2016,7 +2318,7 @@ export default function DischargePage() {
                 <TooltipProvider delayDuration={300}>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <div className="flex items-center gap-2 w-fit cursor-default">
+                      <div className="flex w-fit cursor-default items-center gap-2">
                         <Switch
                           checked={generationMode === 'suggest'}
                           onCheckedChange={(checked) => {
@@ -2032,7 +2334,12 @@ export default function DischargePage() {
                             <span className="flex items-center gap-1.5">
                               <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
                               Suggest Mode
-                              <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-amber-300 text-amber-700 dark:text-amber-300">Experimental</Badge>
+                              <Badge
+                                variant="outline"
+                                className="border-amber-300 px-1.5 py-0 text-[10px] text-amber-700 dark:text-amber-300"
+                              >
+                                Experimental
+                              </Badge>
                             </span>
                           ) : (
                             <span className="flex items-center gap-1.5">
@@ -2055,7 +2362,8 @@ export default function DischargePage() {
 
             {/* Info: patient details are auto-included */}
             <p className="text-xs text-muted-foreground">
-              Patient details, admission info, and diagnoses are included automatically — no need to add those as sections.
+              Patient details, admission info, and diagnoses are included automatically — no need to
+              add those as sections.
             </p>
 
             {/* Section Cards */}
@@ -2070,13 +2378,21 @@ export default function DischargePage() {
                 hasActiveGeneration={!!generatingSectionId}
                 onContentChange={(content) => updateSection(section.id, content)}
                 onRename={(title) => handleRenameSection(section.id, title)}
-                onToggleEdit={() => setEditingSectionId(editingSectionId === section.id ? null : section.id)}
+                onToggleEdit={() =>
+                  setEditingSectionId(editingSectionId === section.id ? null : section.id)
+                }
                 onRemove={() => handleRemoveSection(section.id)}
                 onClear={() => updateSection(section.id, '')}
                 onGenerate={() => handleGenerateSection(section.id)}
-                onTogglePrintable={() => setSections((prev) =>
-                  prev.map((s) => s.id === section.id ? { ...s, printable: s.printable === false ? true : false } : s)
-                )}
+                onTogglePrintable={() =>
+                  setSections((prev) =>
+                    prev.map((s) =>
+                      s.id === section.id
+                        ? { ...s, printable: s.printable === false ? true : false }
+                        : s
+                    )
+                  )
+                }
               />
             ))}
 
@@ -2094,21 +2410,29 @@ export default function DischargePage() {
           </div>
 
           {/* Patient Instructions */}
-          <div className={`space-y-2 rounded-lg p-3 -m-3 transition-colors ${hasAttemptedSubmit && !patientInstructions ? 'ring-2 ring-destructive/50 bg-destructive/5' : ''}`}>
+          <div
+            className={`-m-3 space-y-2 rounded-lg p-3 transition-colors ${hasAttemptedSubmit && !patientInstructions ? 'bg-destructive/5 ring-2 ring-destructive/50' : ''}`}
+          >
             <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2 min-w-0">
-                <Label htmlFor="patient-instructions" className="shrink-0">Patient Instructions *</Label>
+              <div className="flex min-w-0 items-center gap-2">
+                <Label htmlFor="patient-instructions" className="shrink-0">
+                  Patient Instructions *
+                </Label>
                 {hasAttemptedSubmit && !patientInstructions && (
-                  <Badge variant="destructive" className="text-[10px] px-1.5 py-0 shrink-0">Required</Badge>
+                  <Badge variant="destructive" className="shrink-0 px-1.5 py-0 text-[10px]">
+                    Required
+                  </Badge>
                 )}
               </div>
-              <div className="flex items-center gap-1 shrink-0">
+              <div className="flex shrink-0 items-center gap-1">
                 {patientInstructions && (
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
-                    onClick={() => handlePrint(patientInstructions, 'Patient Discharge Instructions')}
+                    onClick={() =>
+                      handlePrint(patientInstructions, 'Patient Discharge Instructions')
+                    }
                     className="gap-1.5 text-xs"
                   >
                     <Printer className="h-3.5 w-3.5" />
@@ -2129,19 +2453,21 @@ export default function DischargePage() {
                     ) : (
                       <BrainCircuit className="h-3.5 w-3.5" />
                     )}
-                    <span className="hidden sm:inline">{patientInstructions ? 'Regenerate' : 'Generate'}</span>
+                    <span className="hidden sm:inline">
+                      {patientInstructions ? 'Regenerate' : 'Generate'}
+                    </span>
                   </Button>
                 )}
               </div>
             </div>
             {instructionsGenerated && (
-              <p className="text-xs text-muted-foreground flex items-center gap-1">
+              <p className="flex items-center gap-1 text-xs text-muted-foreground">
                 <BrainCircuit className="h-3 w-3 text-purple-400" />
                 Auto-populated from TibaBot discharge summary. Edit below.
               </p>
             )}
             {clinicalDocument.isPending && !patientInstructions ? (
-              <div className="rounded-md border bg-muted/30 p-4 space-y-2 animate-pulse">
+              <div className="animate-pulse space-y-2 rounded-md border bg-muted/30 p-4">
                 <Skeleton className="h-4 w-2/3" />
                 <Skeleton className="h-4 w-full" />
                 <Skeleton className="h-4 w-3/4" />
@@ -2165,16 +2491,19 @@ export default function DischargePage() {
           </div>
 
           {admission.mch_registration && (
-            <div className="space-y-4 rounded-lg border border-amber-200 bg-amber-50/60 dark:border-amber-800 dark:bg-amber-950/30 p-4">
+            <div className="space-y-4 rounded-lg border border-amber-200 bg-amber-50/60 p-4 dark:border-amber-800 dark:bg-amber-950/30">
               <div className="space-y-1">
                 <Label htmlFor="maternity-continuity-action">Postpartum Continuity Action *</Label>
                 <p className="text-sm text-amber-900">
-                  Make early PNC part of the discharge workflow instead of documenting follow-up only.
+                  Make early PNC part of the discharge workflow instead of documenting follow-up
+                  only.
                 </p>
               </div>
               <Select
                 value={maternityContinuityAction}
-                onValueChange={(value) => setMaternityContinuityAction(value as MaternityContinuityAction)}
+                onValueChange={(value) =>
+                  setMaternityContinuityAction(value as MaternityContinuityAction)
+                }
               >
                 <SelectTrigger id="maternity-continuity-action">
                   <SelectValue />
@@ -2188,7 +2517,11 @@ export default function DischargePage() {
                 </SelectContent>
               </Select>
               <p className="text-sm text-muted-foreground dark:text-amber-300">
-                {MATERNITY_CONTINUITY_ACTIONS.find((action) => action.value === maternityContinuityAction)?.description}
+                {
+                  MATERNITY_CONTINUITY_ACTIONS.find(
+                    (action) => action.value === maternityContinuityAction
+                  )?.description
+                }
               </p>
             </div>
           )}
@@ -2205,7 +2538,13 @@ export default function DischargePage() {
                 allowFuture
                 allowPast={false}
                 minDate={minimumFollowUpDate}
-                placeholder={requiresScheduledFollowUpDate ? 'Select early PNC date' : admission.mch_registration ? 'Optional when routing directly to PNC' : 'Select follow-up date'}
+                placeholder={
+                  requiresScheduledFollowUpDate
+                    ? 'Select early PNC date'
+                    : admission.mch_registration
+                      ? 'Optional when routing directly to PNC'
+                      : 'Select follow-up date'
+                }
               />
             </div>
             <div className="space-y-2">
@@ -2216,7 +2555,11 @@ export default function DischargePage() {
                 id="follow-up-instructions"
                 value={followUpInstructions}
                 onChange={(e) => setFollowUpInstructions(e.target.value)}
-                placeholder={admission.mch_registration ? 'e.g., Escort mother to PNC queue after pharmacy clearance' : 'e.g., Return to OPD in 2 weeks'}
+                placeholder={
+                  admission.mch_registration
+                    ? 'e.g., Escort mother to PNC queue after pharmacy clearance'
+                    : 'e.g., Return to OPD in 2 weeks'
+                }
               />
             </div>
           </div>
@@ -2240,7 +2583,7 @@ export default function DischargePage() {
                   size="sm"
                   onClick={handleGenerateMedSuggestions}
                   disabled={generatingMeds || clinicalDocument.isPending}
-                  className="gap-1.5 text-xs text-purple-600 hover:text-purple-700 dark:text-purple-400 w-full sm:w-auto"
+                  className="w-full gap-1.5 text-xs text-purple-600 hover:text-purple-700 dark:text-purple-400 sm:w-auto"
                 >
                   {generatingMeds ? (
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -2250,7 +2593,12 @@ export default function DischargePage() {
                   <span className="hidden sm:inline">Suggest with TibaBot</span>
                 </Button>
               )}
-              <Button variant="outline" size="sm" onClick={addMedication} className="w-full sm:w-auto">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={addMedication}
+                className="w-full sm:w-auto"
+              >
                 <Plus className="h-4 w-4 sm:mr-2" />
                 <span className="hidden sm:inline">Add New</span>
               </Button>
@@ -2272,14 +2620,17 @@ export default function DischargePage() {
             suggestedMeds={suggestedMeds}
             medications={medications}
             onAddMedication={(med) => {
-              setMedications((prev) => [...prev, {
-                drug_name: med.drug_name,
-                dosage: med.dosage,
-                frequency: med.frequency,
-                duration: med.duration,
-                instructions: '',
-                dispensing_type: 'EXTERNAL',
-              }]);
+              setMedications((prev) => [
+                ...prev,
+                {
+                  drug_name: med.drug_name,
+                  dosage: med.dosage,
+                  frequency: med.frequency,
+                  duration: med.duration,
+                  instructions: '',
+                  dispensing_type: 'EXTERNAL',
+                },
+              ]);
             }}
           />
 
@@ -2288,20 +2639,20 @@ export default function DischargePage() {
             <div className="space-y-3 sm:space-y-4">
               <Label className="text-sm font-medium">Additional Medications</Label>
               {medications.map((med, index) => (
-                <div key={index} className="p-3 sm:p-4 border rounded-lg space-y-3 sm:space-y-4">
+                <div key={index} className="space-y-3 rounded-lg border p-3 sm:space-y-4 sm:p-4">
                   <div className="flex items-center justify-between">
-                    <span className="font-medium text-sm sm:text-base">Medication {index + 1}</span>
+                    <span className="text-sm font-medium sm:text-base">Medication {index + 1}</span>
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => removeMedication(index)}
-                      className="text-destructive h-7 w-7 p-0 sm:h-8 sm:w-auto sm:px-3"
+                      className="h-7 w-7 p-0 text-destructive sm:h-8 sm:w-auto sm:px-3"
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
-                  <div className="grid gap-2.5 sm:gap-4 grid-cols-2 sm:grid-cols-3">
-                    <div className="space-y-1.5 col-span-2 sm:col-span-1">
+                  <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-4">
+                    <div className="col-span-2 space-y-1.5 sm:col-span-1">
                       <Label className="text-xs sm:text-sm">Medication Name *</Label>
                       <Input
                         value={med.drug_name}
@@ -2326,7 +2677,7 @@ export default function DischargePage() {
                       />
                     </div>
                   </div>
-                  <div className="grid gap-2.5 sm:gap-4 grid-cols-2">
+                  <div className="grid grid-cols-2 gap-2.5 sm:gap-4">
                     <div className="space-y-1.5">
                       <Label className="text-xs sm:text-sm">Duration</Label>
                       <Input
@@ -2350,11 +2701,14 @@ export default function DischargePage() {
           )}
 
           {/* Empty state */}
-          {medications.length === 0 && selectedRxIds.size === 0 && suggestedMeds.length === 0 && admissionPrescriptions.length === 0 && (
-            <p className="text-sm text-muted-foreground text-center py-4">
-              No discharge medications added. Click &quot;Add New&quot; to add manually.
-            </p>
-          )}
+          {medications.length === 0 &&
+            selectedRxIds.size === 0 &&
+            suggestedMeds.length === 0 &&
+            admissionPrescriptions.length === 0 && (
+              <p className="py-4 text-center text-sm text-muted-foreground">
+                No discharge medications added. Click &quot;Add New&quot; to add manually.
+              </p>
+            )}
         </CardContent>
       </Card>
 
@@ -2370,29 +2724,42 @@ export default function DischargePage() {
           className="w-full sm:w-auto"
         >
           {saveDischargeDraft.isPending ? (
-            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
           ) : (
-            <Save className="h-4 w-4 mr-2" />
+            <Save className="mr-2 h-4 w-4" />
           )}
           {saveDischargeDraft.isPending ? 'Saving Draft...' : 'Save Draft'}
         </Button>
         <Button
           onClick={handleSubmit}
-          disabled={createDischarge.isPending || cdsEvaluate.isPending || !dischargeSummary || !patientInstructions || !clearanceSatisfied || transferMiniSheetIncomplete || (requiresScheduledFollowUpDate && !followUpDate) || isFollowUpDateInvalid}
+          disabled={
+            createDischarge.isPending ||
+            cdsEvaluate.isPending ||
+            !dischargeSummary ||
+            !patientInstructions ||
+            !clearanceSatisfied ||
+            transferMiniSheetIncomplete ||
+            (requiresScheduledFollowUpDate && !followUpDate) ||
+            isFollowUpDateInvalid
+          }
           className="w-full sm:w-auto"
         >
           {cdsEvaluate.isPending ? (
-            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
           ) : (
-            <Save className="h-4 w-4 mr-2" />
+            <Save className="mr-2 h-4 w-4" />
           )}
-          {createDischarge.isPending ? 'Discharging...' : cdsEvaluate.isPending ? 'Running safety checks...' : 'Confirm Discharge'}
+          {createDischarge.isPending
+            ? 'Discharging...'
+            : cdsEvaluate.isPending
+              ? 'Running safety checks...'
+              : 'Confirm Discharge'}
         </Button>
       </div>
 
       {/* CDS Safety Check Dialog */}
       <AlertDialog open={showCdsDialog} onOpenChange={setShowCdsDialog}>
-        <AlertDialogContent className="max-w-lg mx-4 sm:mx-auto">
+        <AlertDialogContent className="mx-4 max-w-lg sm:mx-auto">
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
               <ShieldAlert className="h-5 w-5 text-amber-500" />
@@ -2402,11 +2769,11 @@ export default function DischargePage() {
               TibaBot identified the following concerns. Review before proceeding.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <div className="space-y-3 max-h-64 overflow-y-auto">
+          <div className="max-h-64 space-y-3 overflow-y-auto">
             {cdsAlerts.map((alert, i) => (
               <div
                 key={i}
-                className={`rounded-lg border p-3 space-y-1 ${
+                className={`space-y-1 rounded-lg border p-3 ${
                   alert.severity === 'critical'
                     ? 'border-red-300 bg-red-50 dark:border-red-800 dark:bg-red-950/30'
                     : alert.severity === 'high'
@@ -2415,15 +2782,23 @@ export default function DischargePage() {
                 }`}
               >
                 <div className="flex items-center gap-2">
-                  <AlertTriangle className={`h-4 w-4 shrink-0 ${
-                    alert.severity === 'critical' ? 'text-red-600' : alert.severity === 'high' ? 'text-amber-600' : 'text-blue-600'
-                  }`} />
+                  <AlertTriangle
+                    className={`h-4 w-4 shrink-0 ${
+                      alert.severity === 'critical'
+                        ? 'text-red-600'
+                        : alert.severity === 'high'
+                          ? 'text-amber-600'
+                          : 'text-blue-600'
+                    }`}
+                  />
                   <span className="text-sm font-medium">{alert.title}</span>
-                  <Badge variant="outline" className="ml-auto text-xs">{alert.severity}</Badge>
+                  <Badge variant="outline" className="ml-auto text-xs">
+                    {alert.severity}
+                  </Badge>
                 </div>
                 <p className="text-sm text-muted-foreground">{alert.message}</p>
                 {alert.recommendation && (
-                  <p className="text-xs text-muted-foreground italic">{alert.recommendation}</p>
+                  <p className="text-xs italic text-muted-foreground">{alert.recommendation}</p>
                 )}
               </div>
             ))}
@@ -2432,7 +2807,7 @@ export default function DischargePage() {
             <AlertDialogCancel>Go Back & Review</AlertDialogCancel>
             <AlertDialogAction
               onClick={executeDischarge}
-              className="bg-amber-600 hover:bg-amber-700 text-white"
+              className="bg-amber-600 text-white hover:bg-amber-700"
             >
               Acknowledge & Discharge
             </AlertDialogAction>
@@ -2442,7 +2817,7 @@ export default function DischargePage() {
 
       {/* Suggest Mode Disclaimer Dialog */}
       <AlertDialog open={showSuggestModeDialog} onOpenChange={setShowSuggestModeDialog}>
-        <AlertDialogContent className="max-w-lg mx-4 sm:mx-auto">
+        <AlertDialogContent className="mx-4 max-w-lg sm:mx-auto">
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-amber-500" />
@@ -2451,12 +2826,16 @@ export default function DischargePage() {
             <AlertDialogDescription asChild>
               <div className="space-y-2 text-sm">
                 <p>
-                  Suggest mode uses AI to generate rich narrative drafts with synthesised clinical content.
-                  This content <strong>may contain inaccuracies, hallucinated details, or missing information</strong>.
+                  Suggest mode uses AI to generate rich narrative drafts with synthesised clinical
+                  content. This content{' '}
+                  <strong>
+                    may contain inaccuracies, hallucinated details, or missing information
+                  </strong>
+                  .
                 </p>
                 <p>
-                  You are responsible for verifying every section before filing.
-                  For audit-safe, facts-only output, use <strong>Strict Mode</strong> (default).
+                  You are responsible for verifying every section before filing. For audit-safe,
+                  facts-only output, use <strong>Strict Mode</strong> (default).
                 </p>
                 <p className="text-xs text-muted-foreground">
                   Your acknowledgement will be logged for accountability.
@@ -2467,18 +2846,20 @@ export default function DischargePage() {
           <AlertDialogFooter className="flex-col-reverse gap-2 sm:flex-row sm:gap-0">
             <AlertDialogCancel>Stay on Strict Mode</AlertDialogCancel>
             <AlertDialogAction
-              className="bg-amber-600 hover:bg-amber-700 text-white"
+              className="bg-amber-600 text-white hover:bg-amber-700"
               onClick={() => {
                 setGenerationMode('suggest');
                 // Audit-log the mode change acknowledgement
                 suggestionAudit.mutate({
                   suggestion_type: 'mode_change',
                   event_type: 'acknowledged',
-                  suggestions: [{
-                    field_name: 'generation_mode',
-                    source: 'ai',
-                    accepted_value: 'suggest',
-                  }],
+                  suggestions: [
+                    {
+                      field_name: 'generation_mode',
+                      source: 'ai',
+                      accepted_value: 'suggest',
+                    },
+                  ],
                 });
               }}
             >
@@ -2493,7 +2874,7 @@ export default function DischargePage() {
 
 function DischargeSkeleton() {
   return (
-    <div className="container mx-auto py-6 space-y-6">
+    <div className="container mx-auto space-y-6 py-6">
       <div className="flex items-center gap-4">
         <Skeleton className="h-10 w-10" />
         <Skeleton className="h-4 w-32" />

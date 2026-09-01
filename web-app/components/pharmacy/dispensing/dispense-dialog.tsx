@@ -153,14 +153,19 @@ export function DispenseDialog({
     if (batch) {
       setSelectedBatch(batch);
       // Auto-set store from the batch
-      if (batch.store_location && storesWithDrugStock.some((store) => store.id === batch.store_location)) {
+      if (
+        batch.store_location &&
+        storesWithDrugStock.some((store) => store.id === batch.store_location)
+      ) {
         setSelectedStore(String(batch.store_location));
       }
     }
   };
 
   // Calculate total price
-  const totalPrice = selectedBatch ? (quantity || 0) * (Number(selectedBatch.selling_price) || 0) : 0;
+  const totalPrice = selectedBatch
+    ? (quantity || 0) * (Number(selectedBatch.selling_price) || 0)
+    : 0;
 
   // Validation checks
   const exceedsStock = selectedBatch && quantity > selectedBatch.quantity_available;
@@ -204,10 +209,11 @@ export function DispenseDialog({
       reset();
       onSuccess?.();
       onClose();
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const apiError = error as { response?: { data?: { error?: string } }; message?: string };
       toast({
         title: 'Dispensing Failed',
-        description: error.response?.data?.error || error.message || 'An error occurred',
+        description: apiError.response?.data?.error || apiError.message || 'An error occurred',
         variant: 'destructive',
       });
     }
@@ -238,22 +244,27 @@ export function DispenseDialog({
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           {/* Drug Information */}
-          <div className="rounded-md border p-3 bg-muted/50">
-            <div className="flex items-center justify-between mb-1.5">
+          <div className="rounded-md border bg-muted/50 p-3">
+            <div className="mb-1.5 flex items-center justify-between">
               <p className="font-semibold">{prescriptionItem.drug_name}</p>
               {prescription.status === 'PARTIAL' && (
-                <Badge variant="outline" className="text-xs">Partial</Badge>
+                <Badge variant="outline" className="text-xs">
+                  Partial
+                </Badge>
               )}
             </div>
             <div className="grid grid-cols-3 gap-x-4 gap-y-1 text-xs text-muted-foreground">
-              <span>{prescriptionItem.dosage} · {prescriptionItem.frequency}</span>
+              <span>
+                {prescriptionItem.dosage} · {prescriptionItem.frequency}
+              </span>
               <span>{prescriptionItem.duration}</span>
               <span className="text-right font-medium text-primary">
-                {prescriptionItem.remaining_quantity}/{prescriptionItem.quantity_prescribed} remaining
+                {prescriptionItem.remaining_quantity}/{prescriptionItem.quantity_prescribed}{' '}
+                remaining
               </span>
             </div>
             {prescriptionItem.instructions && (
-              <p className="text-xs text-muted-foreground mt-1.5 pt-1.5 border-t">
+              <p className="mt-1.5 border-t pt-1.5 text-xs text-muted-foreground">
                 {prescriptionItem.instructions}
               </p>
             )}
@@ -265,7 +276,7 @@ export function DispenseDialog({
               Batch <span className="text-destructive">*</span>
             </Label>
             {batchesLoading ? (
-              <div className="flex items-center gap-2 p-2 border rounded-md">
+              <div className="flex items-center gap-2 rounded-md border p-2">
                 <Loader2 className="h-3 w-3 animate-spin" />
                 <span className="text-xs text-muted-foreground">Loading batches...</span>
               </div>
@@ -292,13 +303,15 @@ export function DispenseDialog({
 
                 {/* Batch Details - compact inline */}
                 {selectedBatch && (
-                  <div className="grid grid-cols-4 gap-2 p-2 border rounded-md bg-muted/30 text-xs">
+                  <div className="grid grid-cols-4 gap-2 rounded-md border bg-muted/30 p-2 text-xs">
                     <div>
                       <span className="text-muted-foreground">Expires</span>
                       <p className="font-medium">
                         {formatDate(selectedBatch.expiry_date, 'MMM dd, yyyy')}
                         {selectedBatch.days_to_expiry < 90 && (
-                          <span className="text-destructive ml-1">({selectedBatch.days_to_expiry}d)</span>
+                          <span className="ml-1 text-destructive">
+                            ({selectedBatch.days_to_expiry}d)
+                          </span>
                         )}
                       </p>
                     </div>
@@ -308,7 +321,9 @@ export function DispenseDialog({
                     </div>
                     <div>
                       <span className="text-muted-foreground">Unit Price</span>
-                      <p className="font-medium">KSh {(Number(selectedBatch.selling_price) || 0).toFixed(2)}</p>
+                      <p className="font-medium">
+                        KSh {(Number(selectedBatch.selling_price) || 0).toFixed(2)}
+                      </p>
                     </div>
                     <div>
                       <span className="text-muted-foreground">Total</span>
@@ -318,8 +333,8 @@ export function DispenseDialog({
                 )}
               </>
             ) : (
-              <div className="flex items-center gap-2 p-2 border border-destructive rounded-md bg-destructive/10">
-                <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />
+              <div className="flex items-center gap-2 rounded-md border border-destructive bg-destructive/10 p-2">
+                <AlertTriangle className="h-4 w-4 shrink-0 text-destructive" />
                 <p className="text-xs text-destructive">No stock available. Receive stock first.</p>
               </div>
             )}
@@ -368,13 +383,13 @@ export function DispenseDialog({
               <p className="text-xs text-destructive">{errors.quantity.message}</p>
             )}
             {exceedsStock && (
-              <p className="text-xs text-destructive flex items-center gap-1">
+              <p className="flex items-center gap-1 text-xs text-destructive">
                 <AlertTriangle className="h-3 w-3" />
                 Only {selectedBatch?.quantity_available} available in batch.
               </p>
             )}
             {exceedsPrescribed && (
-              <p className="text-xs text-yellow-600 flex items-center gap-1">
+              <p className="flex items-center gap-1 text-xs text-yellow-600">
                 <AlertTriangle className="h-3 w-3" />
                 Exceeds prescribed ({prescriptionItem.remaining_quantity} remaining).
               </p>
@@ -383,7 +398,9 @@ export function DispenseDialog({
 
           {/* Counseling Notes */}
           <div className="space-y-1.5">
-            <Label htmlFor="counseling_notes" className="text-xs">Counseling Notes</Label>
+            <Label htmlFor="counseling_notes" className="text-xs">
+              Counseling Notes
+            </Label>
             <Textarea
               id="counseling_notes"
               {...register('counseling_notes')}

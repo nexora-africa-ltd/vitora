@@ -12,7 +12,7 @@ import type { DocumentDefinition } from '../types';
 // =============================================================================
 
 export const dispensingReportSchema: DocumentDefinition = {
-  document_type: 'dispensing_report' as any,
+  document_type: 'dispensing_report',
   version: '1.0',
   layout: 'a4',
   template: 'dispensing-report.html',
@@ -55,7 +55,7 @@ export const dispensingReportSchema: DocumentDefinition = {
 // =============================================================================
 
 export const stockSummaryReportSchema: DocumentDefinition = {
-  document_type: 'stock_summary_report' as any,
+  document_type: 'stock_summary_report',
   version: '1.0',
   layout: 'a4',
   template: 'stock-summary-report.html',
@@ -95,7 +95,7 @@ export const stockSummaryReportSchema: DocumentDefinition = {
 // =============================================================================
 
 export const expiryReportSchema: DocumentDefinition = {
-  document_type: 'expiry_report' as any,
+  document_type: 'expiry_report',
   version: '1.0',
   layout: 'a4',
   template: 'expiry-report.html',
@@ -137,7 +137,7 @@ export const expiryReportSchema: DocumentDefinition = {
 // =============================================================================
 
 export const stockMovementReportSchema: DocumentDefinition = {
-  document_type: 'stock_movement_report' as any,
+  document_type: 'stock_movement_report',
   version: '1.0',
   layout: 'a4',
   template: 'stock-movement-report.html',

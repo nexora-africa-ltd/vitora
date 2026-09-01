@@ -70,7 +70,12 @@ import {
   usePendingPrescriptions,
   useDispensings,
 } from '@/lib/hooks/use-pharmacy';
-import { mockDrugs, mockStockBatches, mockStockAlerts, mockPrescriptions } from '@/__tests__/mocks/pharmacy-data';
+import {
+  mockDrugs,
+  mockStockBatches,
+  mockStockAlerts,
+  mockPrescriptions,
+} from '@/__tests__/mocks/pharmacy-data';
 
 const createTestQueryClient = () =>
   new QueryClient({
@@ -84,9 +89,7 @@ const createTestQueryClient = () =>
 
 const renderWithProviders = (ui: React.ReactElement) => {
   const queryClient = createTestQueryClient();
-  return render(
-    <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>
-  );
+  return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>);
 };
 
 describe('PharmacyPage', () => {
@@ -301,7 +304,9 @@ describe('PharmacyPage', () => {
 
       await waitFor(() => {
         // Use getAllByText for text that may appear multiple times (in widget and main panel)
-        expect(screen.getAllByText(/amoxicillin 500mg stock is below reorder level/i).length).toBeGreaterThan(0);
+        expect(
+          screen.getAllByText(/amoxicillin 500mg stock is below reorder level/i).length
+        ).toBeGreaterThan(0);
         expect(screen.getAllByText(/metformin 500mg is out of stock/i).length).toBeGreaterThan(0);
       });
     });

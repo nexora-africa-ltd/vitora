@@ -30,11 +30,7 @@ import {
   previewReceipt,
   type PrintReceiptOptions,
 } from '@/lib/documents/print-receipt';
-import {
-  renderDocumentAsync,
-  buildPrintDocument,
-  openPrintWindow,
-} from '@/lib/documents/renderer';
+import { renderDocumentAsync, buildPrintDocument, openPrintWindow } from '@/lib/documents/renderer';
 import { getReceiptQRContent } from '@/lib/utils/qr';
 
 // =============================================================================

@@ -64,9 +64,11 @@ jest.mock('@/lib/stores/patient-journey', () => ({
 
 // Mock ScrollArea to avoid Radix React 19 issues
 jest.mock('@/components/ui/scroll-area', () => {
-  const MockScrollArea = React.forwardRef<HTMLDivElement, { children: React.ReactNode; className?: string }>(
-    ({ children, className }, ref) =>
-      React.createElement('div', { ref, 'data-testid': 'scroll-area', className }, children)
+  const MockScrollArea = React.forwardRef<
+    HTMLDivElement,
+    { children: React.ReactNode; className?: string }
+  >(({ children, className }, ref) =>
+    React.createElement('div', { ref, 'data-testid': 'scroll-area', className }, children)
   );
   MockScrollArea.displayName = 'MockScrollArea';
   return { ScrollArea: MockScrollArea };
@@ -94,7 +96,10 @@ jest.mock('@/components/ui/popover', () => ({
 // to call onOpenChange to simulate Radix behavior.
 jest.mock('@/components/ui/collapsible', () => {
   const React = require('react');
-  const Ctx = React.createContext({ open: false, onOpenChange: undefined as undefined | ((open: boolean) => void) });
+  const Ctx = React.createContext({
+    open: false,
+    onOpenChange: undefined as undefined | ((open: boolean) => void),
+  });
 
   function Collapsible({
     children,
@@ -112,18 +117,22 @@ jest.mock('@/components/ui/collapsible', () => {
     );
   }
 
-  function CollapsibleTrigger({ children, asChild }: { children: any; asChild?: boolean }) {
+  function CollapsibleTrigger({ children, asChild }: { children: unknown; asChild?: boolean }) {
     const ctx = React.useContext(Ctx);
     if (asChild && React.isValidElement(children)) {
       const existingOnClick = children.props?.onClick;
       return React.cloneElement(children, {
-        onClick: (e: any) => {
+        onClick: (e: unknown) => {
           existingOnClick?.(e);
           ctx.onOpenChange?.(!ctx.open);
         },
       });
     }
-    return React.createElement('button', { onClick: () => ctx.onOpenChange?.(!ctx.open) }, children);
+    return React.createElement(
+      'button',
+      { onClick: () => ctx.onOpenChange?.(!ctx.open) },
+      children
+    );
   }
 
   function CollapsibleContent({ children }: { children: React.ReactNode }) {
@@ -194,9 +203,9 @@ describe('Sidebar', () => {
     // It's the last button in the sidebar that triggers collapse
     const buttons = screen.getAllByRole('button');
     // Find the button that's likely the collapse toggle (has w-full class and is near the end)
-    const collapseButton = buttons.find(btn =>
-      btn.classList.contains('w-full') && btn.closest('.mt-4')
-    ) || buttons[buttons.length - 1];
+    const collapseButton =
+      buttons.find((btn) => btn.classList.contains('w-full') && btn.closest('.mt-4')) ||
+      buttons[buttons.length - 1];
 
     fireEvent.click(collapseButton);
     expect(defaultProps.onCollapse).toHaveBeenCalled();
@@ -277,7 +286,10 @@ describe('Sidebar', () => {
 
     // Children should be links with correct hrefs
     expect(screen.getByRole('link', { name: /wards/i })).toHaveAttribute('href', '/wards');
-    expect(screen.getByRole('link', { name: /admissions/i })).toHaveAttribute('href', '/admissions');
+    expect(screen.getByRole('link', { name: /admissions/i })).toHaveAttribute(
+      'href',
+      '/admissions'
+    );
   });
 
   it('should have Laboratory and Imaging as separate menus', () => {
@@ -289,8 +301,8 @@ describe('Sidebar', () => {
 
     // Lab children should include a Dashboard link to /laboratory
     const dashboardLinks = screen.getAllByRole('link', { name: /^dashboard$/i });
-    expect(dashboardLinks.some(link => link.getAttribute('href') === '/laboratory')).toBe(true);
-    expect(dashboardLinks.some(link => link.getAttribute('href') === '/imaging')).toBe(true);
+    expect(dashboardLinks.some((link) => link.getAttribute('href') === '/laboratory')).toBe(true);
+    expect(dashboardLinks.some((link) => link.getAttribute('href') === '/imaging')).toBe(true);
   });
 
   it('should have Theatre menu with Schedule, Checklists, Cases, and Reports children (feature-flagged)', () => {
@@ -308,13 +320,19 @@ describe('Sidebar', () => {
 
     // Children should be links with correct hrefs (use getAllByRole to handle potential duplicates)
     const scheduleLinks = screen.getAllByRole('link', { name: /schedule/i });
-    expect(scheduleLinks.some(link => link.getAttribute('href') === '/theatre/schedule')).toBe(true);
+    expect(scheduleLinks.some((link) => link.getAttribute('href') === '/theatre/schedule')).toBe(
+      true
+    );
     const checklistLinks = screen.getAllByRole('link', { name: /checklists/i });
-    expect(checklistLinks.some(link => link.getAttribute('href') === '/theatre/checklists')).toBe(true);
+    expect(checklistLinks.some((link) => link.getAttribute('href') === '/theatre/checklists')).toBe(
+      true
+    );
     const casesLinks = screen.getAllByRole('link', { name: /cases/i });
-    expect(casesLinks.some(link => link.getAttribute('href') === '/theatre/cases')).toBe(true);
+    expect(casesLinks.some((link) => link.getAttribute('href') === '/theatre/cases')).toBe(true);
     const reportsLinks = screen.getAllByRole('link', { name: /reports/i });
-    expect(reportsLinks.some(link => link.getAttribute('href') === '/theatre/reports')).toBe(true);
+    expect(reportsLinks.some((link) => link.getAttribute('href') === '/theatre/reports')).toBe(
+      true
+    );
   });
 
   it('should have Finance menu with Transactions and Insurance children', () => {
@@ -332,8 +350,14 @@ describe('Sidebar', () => {
     // Children should be links with correct hrefs (avoid ambiguity with the main Dashboard link)
     const dashboardLinks = screen.getAllByRole('link', { name: /^dashboard$/i });
     expect(dashboardLinks.some((l) => l.getAttribute('href') === '/finance/overview')).toBe(true);
-    expect(screen.getByRole('link', { name: /invoices/i })).toHaveAttribute('href', '/transactions/invoices');
-    expect(screen.getByRole('link', { name: /payments/i })).toHaveAttribute('href', '/transactions/payments');
+    expect(screen.getByRole('link', { name: /invoices/i })).toHaveAttribute(
+      'href',
+      '/transactions/invoices'
+    );
+    expect(screen.getByRole('link', { name: /payments/i })).toHaveAttribute(
+      'href',
+      '/transactions/payments'
+    );
     expect(screen.getByRole('link', { name: /insurance/i })).toHaveAttribute('href', '/insurance');
   });
 
@@ -345,7 +369,7 @@ describe('Sidebar', () => {
 
     // Reports should exist as a link to /reports (as an Admin child)
     const reportsLinks = screen.getAllByRole('link', { name: /reports/i });
-    expect(reportsLinks.some(link => link.getAttribute('href') === '/reports')).toBe(true);
+    expect(reportsLinks.some((link) => link.getAttribute('href') === '/reports')).toBe(true);
   });
 
   it('should allow collapsing an active parent menu', () => {
@@ -355,9 +379,9 @@ describe('Sidebar', () => {
     render(<Sidebar {...defaultProps} />);
 
     // Finance group should start open due to active child
-    const financeGroup = screen.getAllByTestId('collapsible').find((node) =>
-      node.textContent?.includes('Finance')
-    );
+    const financeGroup = screen
+      .getAllByTestId('collapsible')
+      .find((node) => node.textContent?.includes('Finance'));
     expect(financeGroup).toHaveAttribute('data-open', 'true');
 
     // Clicking the group trigger should close it and it should remain closed
@@ -387,8 +411,14 @@ describe('Sidebar', () => {
     expect(screen.getByText('Current Patient')).toBeInTheDocument();
     expect(screen.getByText('Jane Smith')).toBeInTheDocument();
     expect(screen.getByText(/MRN-20260310-0042/)).toBeInTheDocument();
-    expect(within(card).getByRole('link', { name: /^view$/i })).toHaveAttribute('href', '/patients/42');
-    expect(within(card).getByRole('link', { name: /encounter/i })).toHaveAttribute('href', '/encounters/77');
+    expect(within(card).getByRole('link', { name: /^view$/i })).toHaveAttribute(
+      'href',
+      '/patients/42'
+    );
+    expect(within(card).getByRole('link', { name: /encounter/i })).toHaveAttribute(
+      'href',
+      '/encounters/77'
+    );
   });
 
   it('does not render the current patient card when no patient is selected', () => {
@@ -434,7 +464,10 @@ describe('Sidebar', () => {
 
     const card = screen.getByTestId('current-patient-card');
 
-    expect(within(card).getByRole('link', { name: /^view$/i })).toHaveAttribute('href', '/patients/42');
+    expect(within(card).getByRole('link', { name: /^view$/i })).toHaveAttribute(
+      'href',
+      '/patients/42'
+    );
     expect(within(card).queryByRole('link', { name: /encounter/i })).not.toBeInTheDocument();
   });
 

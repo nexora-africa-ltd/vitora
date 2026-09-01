@@ -85,11 +85,7 @@ function createWrapper() {
     },
   });
   return function Wrapper({ children }: { children: React.ReactNode }) {
-    return (
-      <QueryClientProvider client={queryClient}>
-        {children}
-      </QueryClientProvider>
-    );
+    return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
   };
 }
 
@@ -99,7 +95,12 @@ describe('PatientDetailPage -> Admissions integration', () => {
 
     (patientsApi.getPatient as jest.Mock).mockResolvedValue(mockPatient);
     (patientsApi.getEmergencyContacts as jest.Mock).mockResolvedValue([]);
-    (encountersApi.list as jest.Mock).mockResolvedValue({ results: [], count: 0, next: null, previous: null });
+    (encountersApi.list as jest.Mock).mockResolvedValue({
+      results: [],
+      count: 0,
+      next: null,
+      previous: null,
+    });
   });
 
   it('shows an Admit action that links into Admissions', async () => {

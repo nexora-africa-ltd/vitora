@@ -9,7 +9,7 @@
 import type { DocumentDefinition } from '../types';
 
 export const labReportSchema: DocumentDefinition = {
-  document_type: 'lab_report' as any,
+  document_type: 'lab_report',
   version: '1.0',
   layout: 'a4',
   template: 'lab-report.html',
