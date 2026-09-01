@@ -253,7 +253,7 @@ Write-Info "Download: $DownloadUrl"
 Write-Host ""
 
 # --- Configuration (Activation-Driven) ---
-$CloudUrl = if ($env:CLOUD_URL) { $env:CLOUD_URL } else { "https://api.vitora.digital" }
+$CloudUrl = if ($env:CLOUD_URL) { [string]$env:CLOUD_URL } else { "" }
 
 if ($NonInteractive) {
     $ActivationCode = $env:ACTIVATION_CODE
@@ -261,7 +261,10 @@ if ($NonInteractive) {
         Write-Err "Non-interactive mode requires: ACTIVATION_CODE environment variable"
         exit 1
     }
-    if ($env:CLOUD_URL) { $CloudUrl = $env:CLOUD_URL }
+    if (-not $CloudUrl) {
+        $CloudUrl = "https://api.vitora.digital"
+        Write-Warn "CLOUD_URL not set. Falling back to $CloudUrl"
+    }
     $eulaAccepted = $env:EULA_ACCEPTED
     if (-not $eulaAccepted -or $eulaAccepted.ToLower() -notin @('true', '1', 'yes')) {
         Write-Err "Non-interactive mode requires: EULA_ACCEPTED=true"
@@ -274,8 +277,36 @@ if ($NonInteractive) {
     Write-Host ""
 
     $ActivationCode = (Read-Host "  Activation Code").Trim()
-    $cloudInput = (Read-Host "  Cloud URL [https://api.vitora.digital]").Trim()
-    if ($cloudInput) { $CloudUrl = $cloudInput }
+    while ($true) {
+        $defaultCloudLabel = if ($CloudUrl) { $CloudUrl } else { "required" }
+        $cloudInput = (Read-Host "  Cloud URL [$defaultCloudLabel]").Trim()
+        if ($cloudInput) {
+            $CloudUrl = $cloudInput
+        }
+
+        $candidateCloudUrl = ([string]$CloudUrl).Trim().TrimEnd('/')
+        if (-not $candidateCloudUrl) {
+            Write-Warn "Cloud URL is required. Please enter your cloud API URL."
+            continue
+        }
+
+        $parsedCloudUri = $null
+        if (-not [Uri]::TryCreate($candidateCloudUrl, [UriKind]::Absolute, [ref]$parsedCloudUri)) {
+            Write-Warn "Cloud URL is invalid. Example: https://staging-api.vitora.digital"
+            continue
+        }
+        if ($parsedCloudUri.Scheme -notin @("http", "https")) {
+            Write-Warn "Cloud URL must start with http:// or https://"
+            continue
+        }
+
+        $CloudUrl = $candidateCloudUrl
+        Write-Info "Using Cloud URL: $CloudUrl"
+        $confirmCloudUrl = (Read-Host "  Use this Cloud URL? [Y/n]").Trim()
+        if (-not $confirmCloudUrl -or $confirmCloudUrl -match '^[Yy]$') {
+            break
+        }
+    }
 
     Write-Host ""
     $viewEula = Read-Host "View the Hub EULA now? [Y/n]"

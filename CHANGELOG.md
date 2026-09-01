@@ -19,6 +19,13 @@ All notable changes to Vitora HMIS releases are documented in this file.
 
 - Placeholder section for upcoming release notes.
 
+## [1.0.9] - 2026-09-01
+
+### Hub
+
+- Improved interactive cloud URL capture in the Windows hub installer: removed hardcoded API label, added explicit "Using Cloud URL" confirmation, and re-prompt loops for empty/invalid URLs.
+- Prevented cloud URL/EULA prompt ambiguity in interactive mode by validating and confirming cloud URL before continuing to EULA prompts.
+
 ## [1.0.8] - 2026-09-01
 
 ### Hub
